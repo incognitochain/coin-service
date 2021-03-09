@@ -1,0 +1,1 @@
+# incognito-coin-worker
