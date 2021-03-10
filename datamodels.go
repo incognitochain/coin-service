@@ -1,39 +1,35 @@
 package main
 
-import "github.com/scylladb/gocqlx/table"
-
-var coinMetadata = table.Metadata{
-	Name:    "coindata",
-	Columns: []string{"coin_index", "tokenID", "coin", "coin_pubkey", "ota_secret", "tx_hash", "beacon_height"},
-	PartKey: []string{"tokenID", "ota_secret", "tx_hash"},
-	SortKey: []string{"coin_index", "coin_pubkey", "beacon_height"},
-}
-
-var coinTable = table.New(coinMetadata)
+import "github.com/kamva/mgm/v3"
 
 type CoinData struct {
-	CoinIndex    uint64
-	TokenID      string
-	Coin         []byte
-	CoinPubkey   string
-	OTASecret    string
-	TxHash       string
-	BeaconHeight uint64
+	mgm.DefaultModel `bson:",inline"`
+	CoinIndex        uint64 `json:"coinidx" bson:"coinidx"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	Coin             []byte `json:"coin" bson:"coin"`
+	CoinPubkey       string `json:"coinpubkey" bson:"coinpubkey"`
+	OTASecret        string `json:"otasecret" bson:"otasecret"`
+	TxHash           string `json:"txhash" bson:"txhash"`
+	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
 }
 
-var keyimageMetadata = table.Metadata{
-	Name:    "keyimagedata",
-	Columns: []string{"tokenID", "keyimage", "coin_pubkey", "tx_hash", "beacon_height"},
-	PartKey: []string{"tokenID", "tx_hash"},
-	SortKey: []string{"coin_pubkey", "beacon_height"},
+func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTASecret, txHash string) *CoinData {
+	return &CoinData{
+		CoinIndex: idx, TokenID: tokenID, Coin: coin, CoinPubkey: coinPubkey, OTASecret: OTASecret, TxHash: txHash, BeaconHeight: beaconHeight,
+	}
 }
-
-var keyimageTable = table.New(keyimageMetadata)
 
 type KeyImageData struct {
-	TokenID      string
-	KeyImage     []byte
-	CoinPubkey   string
-	TxHash       string
-	BeaconHeight uint64
+	mgm.DefaultModel `bson:",inline"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	KeyImage         []byte `json:"keyimage" bson:"keyimage"`
+	CoinPubkey       string `json:"coinpubkey" bson:"coinpubkey"`
+	TxHash           string `json:"txhash" bson:"txhash"`
+	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
+}
+
+func NewKeyImageData(tokenID, coinPubkey, txHash string, keyimage []byte, beaconHeight uint64) *KeyImageData {
+	return &KeyImageData{
+		TokenID: tokenID, KeyImage: keyimage, CoinPubkey: coinPubkey, TxHash: txHash, BeaconHeight: beaconHeight,
+	}
 }

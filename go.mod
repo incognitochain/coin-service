@@ -3,14 +3,13 @@ module main
 go 1.13
 
 require (
-	github.com/0xkumi/incognito-dev-framework v0.0.0-20210126025433-6c9cd1a5c024
-	github.com/gocql/gocql v0.0.0-20210303210847-f18e0979d243
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/0xkumi/incognito-dev-framework v0.0.0-20210222031614-567de9ac8b64
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20210121082946-4a4818b0daca
+	github.com/incognitochain/incognito-chain v0.0.0-20210303110621-bb9b06d611f5
+	github.com/kamva/mgm/v3 v3.1.0
 	github.com/scylladb/gocqlx v1.5.0
-	github.com/scylladb/gocqlx/v2 v2.3.0
 	github.com/syndtr/goleveldb v1.0.0
+	go.mongodb.org/mongo-driver v1.5.0
 )
 
 replace github.com/incognitochain/incognito-chain => /home/lam/go/src/github.com/incognitochain/incognito-chain

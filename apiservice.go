@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -31,7 +32,7 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	// accName := r.URL.Query().Get("account")
+	// accName := r.URL.Query().Get("otakey")
 	// accountListLck.RLock()
 	// defer accountListLck.RUnlock()
 	// if _, ok := accountList[accName]; !ok {
@@ -87,12 +88,12 @@ func checkKeyImagesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	// var req API_submit_keyimages_req
-	// err := json.NewDecoder(r.Body).Decode(&req)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusBadRequest)
-	// 	return
-	// }
+	var req API_check_keyimages_request
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	// accountListLck.RLock()
 	// accountState, ok := accountList[req.Account]
 	// accountListLck.RUnlock()
@@ -120,6 +121,12 @@ func submitOTAkeyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req API_submit_otakey_request
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	return

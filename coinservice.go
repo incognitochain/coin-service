@@ -8,6 +8,7 @@ import (
 
 	"github.com/incognitochain/incognito-chain/blockchain"
 	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -34,15 +35,36 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	//store output-coin and keyimage on db
 
 	for _, tx := range blk.Body.Transactions {
-		if tx.GetType() == "n" || tx.GetType() == "tp" {
-			txHash := tx.Hash().String()
-			tokenID := tx.GetTokenID().String()
 
-			fmt.Println(txHash, tokenID)
-			// ins := tx.GetProof().GetInputCoins()
+		txHash := tx.Hash().String()
+		tokenID := tx.GetTokenID().String()
+
+		if tx.GetType() == common.TxNormalType {
+			fmt.Println("\n====================================================")
+			fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
+			if tx.IsPrivacy() {
+				ins := tx.GetProof().GetInputCoins()
+				outs := tx.GetProof().GetOutputCoins()
+				// for _, coin := range ins {
+				// 	coin.GetAssetTag().String()
+				// }
+				fmt.Println(tokenID, txHash, len(ins), len(outs))
+			} else {
+			}
+			fmt.Println("====================================================\n")
+		}
+		if tx.GetType() == common.TxCustomTokenPrivacyType {
+			fmt.Println("\n====================================================")
+			fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
+			txToken := tx.(transaction.TransactionToken)
+			txTokenData := txToken.GetTxTokenData()
+			tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
+			tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
 			// for _, coin := range ins {
 			// 	coin.GetAssetTag().String()
 			// }
+			fmt.Println(tokenID, txHash, len(tokenIns), len(tokenOuts))
+			fmt.Println("====================================================\n")
 		}
 	}
 
