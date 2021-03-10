@@ -58,6 +58,10 @@ func DBGetCoins(OTASecret string) ([]CoinData, error) {
 	return list, err
 }
 
+func DBGetCoinsOTAStat() error {
+	return nil
+}
+
 func DBSaveUsedKeyimage(list []*KeyImageData) error {
 	return nil
 }

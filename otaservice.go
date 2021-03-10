@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -11,19 +12,23 @@ import (
 )
 
 //manage submitted otakey
+type OTAkeyInfo struct {
+	RawKey       string
+	OTAKey       string
+	keyset       *incognitokey.KeySet
+	BeaconHeight uint64
+}
 
 var Submitted_OTAKey = struct {
 	sync.RWMutex
-	Keys    []string
-	OTAs    []string
-	Keysets []*incognitokey.KeySet
+	Keys []*OTAkeyInfo
 }{}
 
 func loadSubmittedOTAKey() error {
-	keys := []string{}
+	keys := []OTAkeyInfo{}
 	Submitted_OTAKey.Lock()
-	for _, key := range keys {
-		keyBytes, err := hex.DecodeString(key)
+	for _, keyInfo := range keys {
+		keyBytes, err := hex.DecodeString(keyInfo.OTAKey)
 		if err != nil {
 			return err
 		}
@@ -33,10 +38,8 @@ func loadSubmittedOTAKey() error {
 		otaKey := OTAKeyFromRaw(keyBytes)
 		ks := &incognitokey.KeySet{}
 		ks.OTAKey = otaKey
-
-		Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, key)
-		Submitted_OTAKey.Keysets = append(Submitted_OTAKey.Keysets, ks)
-		Submitted_OTAKey.OTAs = append(Submitted_OTAKey.OTAs, hex.EncodeToString(ks.OTAKey.GetOTASecretKey().ToBytesS()))
+		keyInfo.keyset = ks
+		Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, &keyInfo)
 	}
 	Submitted_OTAKey.Unlock()
 	return nil
@@ -45,8 +48,7 @@ func saveSubmittedOTAKey() error {
 	return nil
 }
 
-func addOTAKey(key string) error {
-	Submitted_OTAKey.Lock()
+func addOTAKey(key string, beaconHeight uint64) error {
 	keyBytes, err := hex.DecodeString(key)
 	if err != nil {
 		return err
@@ -57,10 +59,14 @@ func addOTAKey(key string) error {
 	otaKey := OTAKeyFromRaw(keyBytes)
 	ks := &incognitokey.KeySet{}
 	ks.OTAKey = otaKey
-
-	Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, key)
-	Submitted_OTAKey.Keysets = append(Submitted_OTAKey.Keysets, ks)
-	Submitted_OTAKey.OTAs = append(Submitted_OTAKey.OTAs, hex.EncodeToString(ks.OTAKey.GetOTASecretKey().ToBytesS()))
+	keyInfo := &OTAkeyInfo{
+		RawKey:       key,
+		OTAKey:       hex.EncodeToString(ks.OTAKey.GetOTASecretKey().ToBytesS()),
+		BeaconHeight: beaconHeight,
+		keyset:       ks,
+	}
+	Submitted_OTAKey.Lock()
+	Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, keyInfo)
 	Submitted_OTAKey.Unlock()
 	return nil
 }
@@ -81,7 +87,7 @@ func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData
 	if len(Submitted_OTAKey.Keys) > 0 {
 		otaCoins := make(map[string][]CoinData)
 		var otherCoins []CoinData
-
+		startTime := time.Now()
 		Submitted_OTAKey.RLock()
 		for _, c := range coinList {
 			newCoin := new(coin.CoinV2)
@@ -89,15 +95,23 @@ func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData
 			if err != nil {
 				panic(err)
 			}
-			for idx, keyset := range Submitted_OTAKey.Keysets {
-				pass, _ := newCoin.DoesCoinBelongToKeySet(keyset)
-				if pass {
-					otaCoins[Submitted_OTAKey.OTAs[idx]] = append(otaCoins[Submitted_OTAKey.OTAs[idx]], c)
+			pass := false
+			for _, keyInfo := range Submitted_OTAKey.Keys {
+				if c.BeaconHeight > keyInfo.BeaconHeight {
+					pass, _ = newCoin.DoesCoinBelongToKeySet(keyInfo.keyset)
+					if pass {
+						otaCoins[keyInfo.OTAKey] = append(otaCoins[keyInfo.OTAKey], c)
+						break
+					}
 				}
 			}
-
+			if !pass {
+				otherCoins = append(otherCoins, c)
+			}
 		}
 		Submitted_OTAKey.RUnlock()
+
+		log.Printf("filtered %v coins with %v keys in %v", len(coinList), len(Submitted_OTAKey.Keys), time.Since(startTime))
 		return otaCoins, otherCoins, nil
 	}
 	return nil, nil, nil
