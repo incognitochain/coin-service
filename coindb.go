@@ -18,22 +18,22 @@ func connectDBCluster(nodes []string) error {
 	return nil
 }
 
-func SaveCoins(list []*CoinData) error {
+func DBSaveCoins(list []*CoinData) error {
 	return nil
 }
 
-func UpdateCoinsWithOTAKey() error {
+func DBUpdateCoinsWithOTAKey() error {
 	return nil
 }
 
-func GetCoins(OTASecret string) ([]CoinData, error) {
+func DBGetCoins(OTASecret string) ([]CoinData, error) {
 	return nil, nil
 }
 
-func SaveUsedKeyimage(list []*KeyImageData) error {
+func DBSaveUsedKeyimage(list []*KeyImageData) error {
 	return nil
 }
 
-func CheckKeyimagesUsed(list []string) ([]bool, error) {
+func DBCheckKeyimagesUsed(list []string) ([]bool, error) {
 	return nil, nil
 }

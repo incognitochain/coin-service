@@ -16,8 +16,9 @@ var upgrader = websocket.Upgrader{
 }
 
 func startAPIService(port string) {
-	http.HandleFunc("/getcoinstodecrypt", getCoinsHandler)
-	http.HandleFunc("/checkkeyimages", checkKeyImages)
+	http.HandleFunc("/submitotakey", submitOTAkeyHandler)
+	http.HandleFunc("/getcoins", getCoinsHandler)
+	http.HandleFunc("/checkkeyimages", checkKeyImagesHandler)
 	err := http.ListenAndServe("127.0.0.1:"+port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
@@ -80,7 +81,7 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func checkKeyImages(w http.ResponseWriter, r *http.Request) {
+func checkKeyImagesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -112,5 +113,14 @@ func checkKeyImages(w http.ResponseWriter, r *http.Request) {
 	// 	panic(err)
 	// }
 	// w.WriteHeader(200)
+	return
+}
+
+func submitOTAkeyHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	return
 }
