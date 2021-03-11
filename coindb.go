@@ -1,17 +1,5 @@
 package main
 
-// var dbSession *gocqlx.Session
-
-// func connectDBCluster(nodes []string) error {
-// 	cluster := gocql.NewCluster(nodes...)
-// 	// Wrap session on creation, gocqlx session embeds gocql.Session pointer.
-// 	session, err := gocqlx.WrapSession(cluster.CreateSession())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	dbSession = &session
-// 	return nil
-// }
 import (
 	"context"
 	"log"

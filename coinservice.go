@@ -35,10 +35,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	//store output-coin and keyimage on db
 
 	for _, tx := range blk.Body.Transactions {
-
 		txHash := tx.Hash().String()
 		tokenID := tx.GetTokenID().String()
-
 		if tx.GetType() == common.TxNormalType {
 			fmt.Println("\n====================================================")
 			fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
