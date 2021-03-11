@@ -11,11 +11,12 @@ type CoinData struct {
 	OTASecret        string `json:"otasecret" bson:"otasecret"`
 	TxHash           string `json:"txhash" bson:"txhash"`
 	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
+	ShardID          int    `json:"shardid" bson:"shardid"`
 }
 
-func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTASecret, txHash string) *CoinData {
+func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTASecret, txHash string, shardID int) *CoinData {
 	return &CoinData{
-		CoinIndex: idx, TokenID: tokenID, Coin: coin, CoinPubkey: coinPubkey, OTASecret: OTASecret, TxHash: txHash, BeaconHeight: beaconHeight,
+		CoinIndex: idx, TokenID: tokenID, Coin: coin, CoinPubkey: coinPubkey, OTASecret: OTASecret, TxHash: txHash, BeaconHeight: beaconHeight, ShardID: shardID,
 	}
 }
 
@@ -26,10 +27,11 @@ type KeyImageData struct {
 	CoinPubkey       string `json:"coinpubkey" bson:"coinpubkey"`
 	TxHash           string `json:"txhash" bson:"txhash"`
 	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
+	ShardID          int    `json:"shardid" bson:"shardid"`
 }
 
-func NewKeyImageData(tokenID, coinPubkey, txHash string, keyimage []byte, beaconHeight uint64) *KeyImageData {
+func NewKeyImageData(tokenID, coinPubkey, txHash string, keyimage []byte, beaconHeight uint64, shardID int) *KeyImageData {
 	return &KeyImageData{
-		TokenID: tokenID, KeyImage: keyimage, CoinPubkey: coinPubkey, TxHash: txHash, BeaconHeight: beaconHeight,
+		TokenID: tokenID, KeyImage: keyimage, CoinPubkey: coinPubkey, TxHash: txHash, BeaconHeight: beaconHeight, ShardID: shardID,
 	}
 }

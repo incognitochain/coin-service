@@ -16,11 +16,12 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func startAPIService(port string) {
+func startAPIService(address string) {
+	log.Println("initiating api-service...")
 	http.HandleFunc("/submitotakey", submitOTAkeyHandler)
 	http.HandleFunc("/getcoins", getCoinsHandler)
 	http.HandleFunc("/checkkeyimages", checkKeyImagesHandler)
-	err := http.ListenAndServe("127.0.0.1:"+port, nil)
+	err := http.ListenAndServe(address, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}

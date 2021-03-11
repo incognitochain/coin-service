@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -32,8 +33,25 @@ func DBSaveCoins(list []CoinData) error {
 	return nil
 }
 
-func DBUpdateCoinsWithOTAKey() error {
-
+func DBUpdateCoins(list []CoinData) error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	docs := []interface{}{}
+	for _, coin := range list {
+		update := bson.M{
+			"$set": coin,
+		}
+		docs = append(docs, update)
+	}
+	for idx, doc := range docs {
+		fmt.Println(list[idx].GetID())
+		_, err := mgm.Coll(&list[0]).UpdateByID(ctx, list[idx].GetID(), doc)
+		if err != nil {
+			log.Printf("failed to update %v coins in %v", len(list), time.Since(startTime))
+			return err
+		}
+	}
+	log.Printf("updated %v coins in %v", len(list), time.Since(startTime))
 	return nil
 }
 
@@ -50,10 +68,34 @@ func DBGetCoinsOTAStat() error {
 	return nil
 }
 
-func DBSaveUsedKeyimage(list []*KeyImageData) error {
+func DBSaveUsedKeyimage(list []KeyImageData) error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	docs := []interface{}{}
+	for _, coin := range list {
+		docs = append(docs, coin)
+	}
+	_, err := mgm.Coll(&list[0]).InsertMany(ctx, docs)
+	if err != nil {
+		log.Printf("failed to insert %v keyimages in %v", len(list), time.Since(startTime))
+		return err
+	}
+	log.Printf("inserted %v keyimages in %v", len(list), time.Since(startTime))
 	return nil
 }
 
 func DBCheckKeyimagesUsed(list []string) ([]bool, error) {
 	return nil, nil
+}
+
+func DBGetCoinsOfShardCount(shardID int) int64 {
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}}
+	doc := KeyImageData{}
+	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return count
 }

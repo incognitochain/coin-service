@@ -7,5 +7,5 @@ const (
 
 const (
 	version           = "0.5.5"
-	DefaultAPIAddress = "127.0.0.1:9000"
+	DefaultAPIAddress = "127.0.0.1:9001"
 )

@@ -3,7 +3,7 @@ module main
 go 1.13
 
 require (
-	github.com/0xkumi/incognito-dev-framework v0.0.0-20210222031614-567de9ac8b64
+	github.com/0xkumi/incognito-dev-framework v0.0.0-20210311020334-9989512477ec
 	github.com/gorilla/websocket v1.4.2
 	github.com/incognitochain/incognito-chain v0.0.0-20210309091302-7c6a7c3393f2
 	github.com/kamva/mgm/v3 v3.1.0
@@ -11,3 +11,4 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	go.mongodb.org/mongo-driver v1.5.0
 )
+

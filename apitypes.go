@@ -5,5 +5,6 @@ type API_check_keyimages_request struct {
 }
 
 type API_submit_otakey_request struct {
-	OTAKeys []string
+	OTAKey       string
+	BeaconHeight uint64
 }
