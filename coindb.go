@@ -55,10 +55,19 @@ func DBUpdateCoins(list []CoinData) error {
 	return nil
 }
 
-func DBGetCoins(OTASecret string) ([]CoinData, error) {
+func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
 	filter := bson.M{"otasecret": bson.M{operator.Eq: OTASecret}}
+	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
+	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	return list, err
+}
+
+func DBGetUnknownCoinsFromBeaconHeight(beaconHeight uint64) ([]CoinData, error) {
+	startTime := time.Now()
+	list := []CoinData{}
+	filter := bson.M{"beaconheight": bson.M{operator.Gte: beaconHeight, operator.Ne: ""}}
 	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err

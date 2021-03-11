@@ -128,6 +128,11 @@ func initOTAIndexingService() {
 	interval := time.NewTicker(10 * time.Second)
 	for {
 		<-interval.C
+		coinList, err := DBGetUnknownCoinsFromBeaconHeight(0)
+		if err != nil {
+			panic(err)
+		}
+		filterCoinsByOTAKey(coinList)
 	}
 }
 
