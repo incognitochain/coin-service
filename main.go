@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	readConfig()
 	node := devframework.NewAppNode("fullnode", devframework.TestNetParam, true, false)
 	localnode = node
 	err := connectDB()

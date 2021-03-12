@@ -3,9 +3,16 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 )
 
 var API_ADDRESS string
+var serviceCfg Config
+
+type Config struct {
+	APIAddress      string `json:"apiaddress"`
+	ChainDataFolder string `json:"chaindata"`
+}
 
 func init() {
 	API_ADDRESS = DefaultAPIAddress
@@ -14,13 +21,12 @@ func init() {
 func readConfig() {
 	data, err := ioutil.ReadFile("./cfg.json")
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 
-	type ConfigJSON struct {
-	}
-	var cfgJson ConfigJSON
-	err = json.Unmarshal(data, &cfgJson)
+	var tempCfg Config
+	err = json.Unmarshal(data, &tempCfg)
 	if err != nil {
 		panic(err)
 	}

@@ -101,11 +101,6 @@ func addOTAKey(key string, beaconHeight uint64) error {
 	return nil
 }
 
-func getUnknowCoinsFromDB() []*CoinData {
-	var result []*CoinData
-	return result
-}
-
 func initOTAIndexingService() {
 	log.Println("initiating ota-indexing-service...")
 

@@ -4,17 +4,15 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
+// var upgrader = websocket.Upgrader{
+// 	ReadBufferSize:  1024,
+// 	WriteBufferSize: 1024,
+// 	CheckOrigin: func(r *http.Request) bool {
+// 		return true
+// 	},
+// }
 
 func startAPIService(address string) {
 	log.Println("initiating api-service...")
@@ -95,6 +93,11 @@ func checkKeyImagesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	for _, v := range coin {
+
+	}
+
 	// accountListLck.RLock()
 	// accountState, ok := accountList[req.Account]
 	// accountListLck.RUnlock()
