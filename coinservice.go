@@ -9,6 +9,9 @@ import (
 
 	"github.com/incognitochain/incognito-chain/blockchain"
 	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/common/base58"
+	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
+	"github.com/incognitochain/incognito-chain/multiview"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -21,6 +24,7 @@ var localnode interface {
 
 var stateLock sync.Mutex
 var ShardProcessedState map[byte]uint64
+var TransactionStateDB map[byte]*statedb.StateDB
 
 func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	var blk blockchain.ShardBlock
@@ -33,59 +37,141 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		fmt.Println(err)
 		return
 	}
+
+	shardID := blk.GetShardID()
+	stateLock.Lock()
+	transactionStateDB := TransactionStateDB[byte(shardID)]
+	stateLock.Unlock()
+
+	if len(blk.Body.Transactions) > 0 {
+		err = bc.CreateAndSaveTxViewPointFromBlock(&blk, transactionStateDB)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	transactionRootHash, err := transactionStateDB.Commit(true)
+	if err != nil {
+		panic(err)
+	}
+	err = transactionStateDB.Database().TrieDB().Commit(transactionRootHash, false)
+	if err != nil {
+		panic(err)
+	}
+	bc.GetBestStateShard(byte(blk.GetShardID())).TransactionStateDBRootHash = transactionRootHash
+	batchData := bc.GetShardChainDatabase(blk.Header.ShardID).NewBatch()
+	err = bc.BackupShardViews(batchData, blk.Header.ShardID)
+	if err != nil {
+		panic("Backup shard view error")
+	}
+
+	if err := batchData.Write(); err != nil {
+		panic(err)
+	}
+
+	localnode.GetBlockchain().ShardChain[shardID] = blockchain.NewShardChain(shardID, multiview.NewMultiView(), localnode.GetBlockchain().GetConfig().BlockGen, localnode.GetBlockchain(), common.GetShardChainKey(blk.Header.ShardID))
+	if err := localnode.GetBlockchain().RestoreShardViews(blk.Header.ShardID); err != nil {
+		panic(err)
+	}
+	stateLock.Lock()
+	TransactionStateDB[byte(blk.GetShardID())] = localnode.GetBlockchain().GetBestStateShard(blk.Header.ShardID).GetCopiedTransactionStateDB()
+	stateLock.Unlock()
+
 	//store output-coin and keyimage on db
 	keyImageList := []KeyImageData{}
 	outCoinList := []CoinData{}
 	beaconHeight := blk.Header.BeaconHeight
-	shardID := int(blk.Header.ShardID)
-	currentIdx := DBGetCoinsOfShardCount(shardID)
+
+	// currentCoinIdxs := make(map[string]uint64)
 	for _, tx := range blk.Body.Transactions {
 		txHash := tx.Hash().String()
 		tokenID := tx.GetTokenID().String()
 		if tx.GetVersion() == 2 {
-			if tx.GetType() == common.TxNormalType {
+			if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType {
 				fmt.Println("\n====================================================")
 				fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
 				ins := tx.GetProof().GetInputCoins()
 				outs := tx.GetProof().GetOutputCoins()
+
+				// if _, ok := currentCoinIdxs[tokenID]; !ok {
+				// 	currentIdx := DBGetCoinsOfShardCount(shardID, tokenID)
+				// 	currentCoinIdxs[tokenID] = uint64(currentIdx)
+				// }
 				for _, coin := range ins {
 					km := NewKeyImageData(tokenID, "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
 					keyImageList = append(keyImageList, *km)
 				}
 				for _, coin := range outs {
-					outCoin := NewCoinData(beaconHeight, uint64(currentIdx)+1, coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID)
-					outCoinList = append(outCoinList, *outCoin)
+					publicKeyBytes := coin.GetPublicKey().ToBytesS()
+					publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+					if publicKeyShardID == byte(shardID) {
+						idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
+						if err != nil {
+
+							fmt.Println("len(outs))", len(outs), base58.Base58Check{}.Encode(publicKeyBytes, 0))
+							panic(err)
+						}
+						outCoin := NewCoinData(beaconHeight, idxBig.Uint64(), coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID)
+						outCoinList = append(outCoinList, *outCoin)
+						// currentCoinIdxs[tokenID] = currentCoinIdxs[tokenID] + 1
+					}
 				}
 				fmt.Println(tokenID, txHash, len(ins), len(outs))
 				fmt.Println("====================================================\n")
 			}
-			if tx.GetType() == common.TxCustomTokenPrivacyType {
+			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
 				fmt.Println("\n====================================================")
 				fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
 				txToken := tx.(transaction.TransactionToken)
 				txTokenData := txToken.GetTxTokenData()
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
+				// if _, ok := currentCoinIdxs[tokenID]; !ok {
+				// 	currentIdx := DBGetCoinsOfShardCount(shardID, tokenID)
+				// 	currentCoinIdxs[tokenID] = uint64(currentIdx)
+				// }
 				for _, coin := range tokenIns {
 					km := NewKeyImageData(tokenID, "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
 					keyImageList = append(keyImageList, *km)
 				}
 				for _, coin := range tokenOuts {
-					outCoin := NewCoinData(beaconHeight, uint64(currentIdx)+1, coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID)
-					outCoinList = append(outCoinList, *outCoin)
+					publicKeyBytes := coin.GetPublicKey().ToBytesS()
+					publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+					if publicKeyShardID == byte(shardID) {
+						idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], *tx.GetTokenID(), publicKeyBytes)
+						if err != nil {
+							panic(err)
+						}
+						outCoin := NewCoinData(beaconHeight, idxBig.Uint64(), coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID)
+						outCoinList = append(outCoinList, *outCoin)
+						// currentCoinIdxs[tokenID] = currentCoinIdxs[tokenID] + 1
+					}
 				}
 				fmt.Println(tokenID, txHash, len(tokenIns), len(tokenOuts))
 				fmt.Println("====================================================\n")
 				if tx.GetTxFee() > 0 {
 					ins := tx.GetProof().GetInputCoins()
 					outs := tx.GetProof().GetOutputCoins()
+					// if _, ok := currentCoinIdxs[common.PRVCoinID.String()]; !ok {
+					// 	currentIdx := DBGetCoinsOfShardCount(shardID, common.PRVCoinID.String())
+					// 	currentCoinIdxs[common.PRVCoinID.String()] = uint64(currentIdx)
+					// }
 					for _, coin := range ins {
 						km := NewKeyImageData(common.PRVCoinID.String(), "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
 						keyImageList = append(keyImageList, *km)
 					}
 					for _, coin := range outs {
-						outCoin := NewCoinData(beaconHeight, uint64(currentIdx)+1, coin.Bytes(), common.PRVCoinID.String(), coin.GetPublicKey().String(), "", txHash, shardID)
-						outCoinList = append(outCoinList, *outCoin)
+						publicKeyBytes := coin.GetPublicKey().ToBytesS()
+						publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+						if publicKeyShardID == byte(shardID) {
+							idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
+							if err != nil {
+								panic(err)
+							}
+							outCoin := NewCoinData(beaconHeight, idxBig.Uint64(), coin.Bytes(), common.PRVCoinID.String(), coin.GetPublicKey().String(), "", txHash, shardID)
+							outCoinList = append(outCoinList, *outCoin)
+							// currentCoinIdxs[common.PRVCoinID.String()] = currentCoinIdxs[common.PRVCoinID.String()] + 1
+						}
 					}
 				}
 			}
@@ -117,6 +203,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 func initCoinService() {
 	log.Println("initiating coin-service...")
 	ShardProcessedState = make(map[byte]uint64)
+	TransactionStateDB = make(map[byte]*statedb.StateDB)
 	//load ShardProcessedState
 	for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		statePrefix := fmt.Sprintf("coin-processed-%v", i)
@@ -134,6 +221,7 @@ func initCoinService() {
 		} else {
 			ShardProcessedState[byte(i)] = 1
 		}
+		TransactionStateDB[byte(i)] = localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
 	}
 	for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)

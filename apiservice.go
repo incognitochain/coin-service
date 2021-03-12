@@ -31,53 +31,23 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	// accName := r.URL.Query().Get("otakey")
-	// accountListLck.RLock()
-	// defer accountListLck.RUnlock()
-	// if _, ok := accountList[accName]; !ok {
-	// 	http.Error(w, "account name isn't exist", http.StatusBadRequest)
-	// 	return
-	// }
-	// // if !accountList[accName].isReady {
-	// // 	http.Error(w, "account not ready", http.StatusBadRequest)
-	// // 	return
-	// // }
-	// accState := accountList[accName]
-	// accState.lock.RLock()
-	// encryptCoins := make(map[string]map[string]string)
-	// fmt.Println("EncryptedCoins", accState.coinState.EncryptedCoins)
-	// for tokenID, coinsPubkey := range accState.coinState.EncryptedCoins {
-	// 	if len(coinsPubkey) > 0 {
-	// 		fmt.Println("len(coinsPubkey)", len(coinsPubkey))
-	// 		coins, err := getCoinsByCoinPubkey(accState.Account.PAstr, tokenID, coinsPubkey)
-	// 		if err != nil {
-	// 			accState.lock.RUnlock()
-	// 			http.Error(w, "Unexpected error", http.StatusInternalServerError)
-	// 			return
-	// 		}
-	// 		otakey := &key.OTAKey{}
-	// 		otakey.SetOTASecretKey(accState.Account.OTAKey)
-	// 		encryptCoins[tokenID], err = ExtractCoinEncryptKeyImgData(coins, otakey)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 	}
-	// }
-	// accState.lock.RUnlock()
-	// if len(encryptCoins) == 0 {
-	// 	http.Error(w, "no coin needed to decrypt", http.StatusBadRequest)
-	// 	return
-	// }
-	// coinsBytes, err := json.Marshal(encryptCoins)
-	// if err != nil {
-	// 	http.Error(w, "Unexpected error", http.StatusInternalServerError)
-	// 	return
-	// }
-	// w.WriteHeader(200)
-	// _, err = w.Write(coinsBytes)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	key := r.URL.Query().Get("otakey")
+
+	var result []interface{}
+	coinList, err := DBGetCoinsByOTAKey(key)
+	for _, c := range coinList {
+		result = append(result, c)
+	}
+	resultBytes, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, "Unexpected error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(200)
+	_, err = w.Write(resultBytes)
+	if err != nil {
+		panic(err)
+	}
 	return
 }
 
@@ -94,30 +64,18 @@ func checkKeyImagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, v := range coin {
-
+	result, err := DBCheckKeyimagesUsed(req.Keyimages, req.ShardID)
+	if err != nil {
+		http.Error(w, "Unexpected error", http.StatusBadRequest)
+		return
 	}
-
-	// accountListLck.RLock()
-	// accountState, ok := accountList[req.Account]
-	// accountListLck.RUnlock()
-	// if !ok {
-	// 	http.Error(w, "account name isn't exist", http.StatusBadRequest)
-	// 	return
-	// }
-	// coinList := make(map[string][]string)
-	// keyimages := make(map[string]string)
-	// for token, coinsKm := range req.Keyimages {
-	// 	for coinPK, km := range coinsKm {
-	// 		coinList[token] = append(coinList[token], coinPK)
-	// 		keyimages[coinPK] = km
-	// 	}
-	// }
-	// err = accountState.UpdateDecryptedCoin(coinList, keyimages)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// w.WriteHeader(200)
+	resultBytes, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, "Unexpected error", http.StatusInternalServerError)
+		return
+	}
+	w.Write(resultBytes)
+	w.WriteHeader(200)
 	return
 }
 
@@ -131,6 +89,17 @@ func submitOTAkeyHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = addOTAKey(req.OTAKey, req.BeaconHeight, req.ShardID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(200)
+	_, err = w.Write([]byte("ok"))
+	if err != nil {
+		http.Error(w, "Unexpected error", http.StatusInternalServerError)
 		return
 	}
 	return

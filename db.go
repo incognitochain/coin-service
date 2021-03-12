@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"time"
@@ -67,7 +68,7 @@ func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
 func DBGetUnknownCoinsFromBeaconHeight(beaconHeight uint64) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
-	filter := bson.M{"beaconheight": bson.M{operator.Gte: beaconHeight, operator.Ne: ""}}
+	filter := bson.M{"beaconheight": bson.M{operator.Gte: beaconHeight}, "otasecret": bson.M{operator.Eq: ""}}
 	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
@@ -93,18 +94,38 @@ func DBSaveUsedKeyimage(list []KeyImageData) error {
 	return nil
 }
 
-func DBCheckKeyimagesUsed(list []string) ([]bool, error) {
-	return nil, nil
+func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
+	startTime := time.Now()
+	var result []bool
+	for _, keyImage := range list {
+		kmBytes, err := hex.DecodeString(keyImage)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		var kmdata *CoinData
+		filter := bson.M{"keyimage": bson.M{operator.Eq: kmBytes}}
+		err = mgm.Coll(&CoinData{}).First(filter, kmdata)
+		if err != nil {
+			log.Println(err)
+			result = append(result, false)
+			continue
+		}
+		result = append(result, true)
+	}
+
+	log.Printf("checked %v keyimages in %v", len(list), time.Since(startTime))
+	return result, nil
 }
 
-func DBGetCoinsOfShardCount(shardID int) int64 {
+func DBGetCoinsOfShardCount(shardID int, tokenID string) int64 {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	doc := KeyImageData{}
 	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
 	if err != nil {
 		log.Println(err)
-		return 0
+		return -1
 	}
 	return count
 }
