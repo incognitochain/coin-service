@@ -14,13 +14,17 @@ import (
 )
 
 func connectDB() error {
-	err := mgm.SetDefaultConfig(nil, "coins", options.Client().ApplyURI("mongodb://root:example@localhost:27017"))
-	return err
+	err := mgm.SetDefaultConfig(nil, "coins", options.Client().ApplyURI(serviceCfg.MongoAddress))
+	if err != nil {
+		return err
+	}
+	log.Println("Database Connected!")
+	return nil
 }
 
 func DBSaveCoins(list []CoinData) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, coin := range list {
 		docs = append(docs, coin)
@@ -36,7 +40,7 @@ func DBSaveCoins(list []CoinData) error {
 
 func DBUpdateCoins(list []CoinData) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, coin := range list {
 		update := bson.M{
@@ -66,10 +70,26 @@ func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
 }
 
 func DBGetUnknownCoinsFromBeaconHeight(beaconHeight uint64) ([]CoinData, error) {
+	limit := int64(500)
 	startTime := time.Now()
 	list := []CoinData{}
 	filter := bson.M{"beaconheight": bson.M{operator.Gte: beaconHeight}, "otasecret": bson.M{operator.Eq: ""}}
-	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
+		Limit: &limit,
+	})
+	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	return list, err
+}
+
+func DBGetUnknownCoinsFromIndex(index int, limit int64) ([]CoinData, error) {
+	startTime := time.Now()
+	list := []CoinData{}
+	filter := bson.M{"coinidx": bson.M{operator.Gt: index}, "otasecret": bson.M{operator.Eq: ""}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
+		Limit: &limit,
+	})
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
 }
@@ -80,7 +100,7 @@ func DBGetCoinsOTAStat() error {
 
 func DBSaveUsedKeyimage(list []KeyImageData) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, coin := range list {
 		docs = append(docs, coin)
@@ -119,7 +139,7 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 }
 
 func DBGetCoinsOfShardCount(shardID int, tokenID string) int64 {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 5*DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	doc := KeyImageData{}
 	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)

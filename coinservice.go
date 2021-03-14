@@ -11,7 +11,6 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
-	"github.com/incognitochain/incognito-chain/multiview"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -69,20 +68,21 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		panic(err)
 	}
 
-	localnode.GetBlockchain().ShardChain[shardID] = blockchain.NewShardChain(shardID, multiview.NewMultiView(), localnode.GetBlockchain().GetConfig().BlockGen, localnode.GetBlockchain(), common.GetShardChainKey(blk.Header.ShardID))
-	if err := localnode.GetBlockchain().RestoreShardViews(blk.Header.ShardID); err != nil {
-		panic(err)
-	}
-	stateLock.Lock()
-	TransactionStateDB[byte(blk.GetShardID())] = localnode.GetBlockchain().GetBestStateShard(blk.Header.ShardID).GetCopiedTransactionStateDB()
-	stateLock.Unlock()
+	// transactionStateDB.ClearObjects()
+
+	// localnode.GetBlockchain().ShardChain[shardID] = blockchain.NewShardChain(shardID, multiview.NewMultiView(), localnode.GetBlockchain().GetConfig().BlockGen, localnode.GetBlockchain(), common.GetShardChainKey(blk.Header.ShardID))
+	// if err := localnode.GetBlockchain().RestoreShardViews(blk.Header.ShardID); err != nil {
+	// 	panic(err)
+	// }
+	// stateLock.Lock()
+	// TransactionStateDB[byte(blk.GetShardID())] = localnode.GetBlockchain().GetBestStateShard(blk.Header.ShardID).GetCopiedTransactionStateDB()
+	// stateLock.Unlock()
 
 	//store output-coin and keyimage on db
 	keyImageList := []KeyImageData{}
 	outCoinList := []CoinData{}
 	beaconHeight := blk.Header.BeaconHeight
 
-	// currentCoinIdxs := make(map[string]uint64)
 	for _, tx := range blk.Body.Transactions {
 		txHash := tx.Hash().String()
 		tokenID := tx.GetTokenID().String()
@@ -93,10 +93,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				ins := tx.GetProof().GetInputCoins()
 				outs := tx.GetProof().GetOutputCoins()
 
-				// if _, ok := currentCoinIdxs[tokenID]; !ok {
-				// 	currentIdx := DBGetCoinsOfShardCount(shardID, tokenID)
-				// 	currentCoinIdxs[tokenID] = uint64(currentIdx)
-				// }
 				for _, coin := range ins {
 					km := NewKeyImageData(tokenID, "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
 					keyImageList = append(keyImageList, *km)
@@ -113,7 +109,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						}
 						outCoin := NewCoinData(beaconHeight, idxBig.Uint64(), coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID)
 						outCoinList = append(outCoinList, *outCoin)
-						// currentCoinIdxs[tokenID] = currentCoinIdxs[tokenID] + 1
 					}
 				}
 				fmt.Println(tokenID, txHash, len(ins), len(outs))
@@ -126,10 +121,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				txTokenData := txToken.GetTxTokenData()
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
-				// if _, ok := currentCoinIdxs[tokenID]; !ok {
-				// 	currentIdx := DBGetCoinsOfShardCount(shardID, tokenID)
-				// 	currentCoinIdxs[tokenID] = uint64(currentIdx)
-				// }
 				for _, coin := range tokenIns {
 					km := NewKeyImageData(tokenID, "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
 					keyImageList = append(keyImageList, *km)
@@ -144,7 +135,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						}
 						outCoin := NewCoinData(beaconHeight, idxBig.Uint64(), coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID)
 						outCoinList = append(outCoinList, *outCoin)
-						// currentCoinIdxs[tokenID] = currentCoinIdxs[tokenID] + 1
 					}
 				}
 				fmt.Println(tokenID, txHash, len(tokenIns), len(tokenOuts))
@@ -152,10 +142,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				if tx.GetTxFee() > 0 {
 					ins := tx.GetProof().GetInputCoins()
 					outs := tx.GetProof().GetOutputCoins()
-					// if _, ok := currentCoinIdxs[common.PRVCoinID.String()]; !ok {
-					// 	currentIdx := DBGetCoinsOfShardCount(shardID, common.PRVCoinID.String())
-					// 	currentCoinIdxs[common.PRVCoinID.String()] = uint64(currentIdx)
-					// }
 					for _, coin := range ins {
 						km := NewKeyImageData(common.PRVCoinID.String(), "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
 						keyImageList = append(keyImageList, *km)
@@ -170,7 +156,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							}
 							outCoin := NewCoinData(beaconHeight, idxBig.Uint64(), coin.Bytes(), common.PRVCoinID.String(), coin.GetPublicKey().String(), "", txHash, shardID)
 							outCoinList = append(outCoinList, *outCoin)
-							// currentCoinIdxs[common.PRVCoinID.String()] = currentCoinIdxs[common.PRVCoinID.String()] + 1
 						}
 					}
 				}

@@ -1,43 +1,32 @@
 package main
 
 import (
-	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 
 	devframework "github.com/0xkumi/incognito-dev-framework"
 )
 
 func main() {
+
+	// acc0, _ = account.NewAccountFromPrivatekey("112t8rnZDRztVgPjbYQiXS7mJgaTzn66NvHD7Vus2SrhSAY611AzADsPFzKjKQCKWTgbkgYrCPo9atvSMoCf9KT23Sc7Js9RKhzbNJkxpJU6")
+	// key = []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// if hex.EncodeToString(key) == "d50c6dbb48f7c7a8108299f2e6836168619d15d957623559094cc927676c460a" {
+	// 	panic(0)
+	// }
 	readConfig()
-	node := devframework.NewAppNode("fullnode", devframework.TestNetParam, true, false)
-	localnode = node
 	err := connectDB()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Database Connected!")
-	initCoinService()
-	go initOTAIndexingService()
+	if serviceCfg.Mode == INDEXERMODE {
+		node := devframework.NewAppNode("fullnode", devframework.TestNetParam, true, false)
+		localnode = node
+		initCoinService()
+		go initOTAIndexingService()
+	}
 	go startAPIService(DefaultAPIAddress)
-
-	// list := []CoinData{*NewCoinData(1, 1, []byte("test"), "abc", "xyz", "bcd", "jkl")}
-	// for i := 0; i < 100; i++ {
-	// 	list = append(list, *NewCoinData(1, uint64(time.Now().Unix()), []byte("test"), "abc", "xyz", "bcd", "jkl"))
-	// }
-	// for i := 0; i < 100; i++ {
-	// 	list = append(list, *NewCoinData(1, uint64(time.Now().Unix()), []byte("test"), "abc", "xyz", "", "jkl"))
-	// }
-	// err = DBSaveCoins(list)
-	// fmt.Println(err)
-	// c, err := DBGetCoins("")
-	// fmt.Println(len(c), err)
-	// c2, err := DBGetCoins("bcd")
-	// fmt.Println(len(c2), err)
-	// newList := []CoinData{}
-	// for _, coin := range c2 {
-	// 	coin.CoinIndex = 0
-	// 	newList = append(newList, coin)
-	// }
-	// err = DBUpdateCoins(newList)
-	// fmt.Println(err)
+	http.ListenAndServe("localhost:8091", nil)
 	select {}
 }

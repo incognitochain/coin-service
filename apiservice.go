@@ -35,6 +35,10 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var result []interface{}
 	coinList, err := DBGetCoinsByOTAKey(key)
+	if err != nil {
+		http.Error(w, "Unexpected error", http.StatusInternalServerError)
+		return
+	}
 	for _, c := range coinList {
 		result = append(result, c)
 	}

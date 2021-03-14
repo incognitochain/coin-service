@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0xkumi/incognito-dev-framework/account"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 )
@@ -48,8 +47,15 @@ func loadSubmittedOTAKey() error {
 		otaKey := OTAKeyFromRaw(keyBytes)
 		ks := &incognitokey.KeySet{}
 		ks.OTAKey = otaKey
-		keyInfo.keyset = ks
-		Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, &keyInfo)
+
+		k := OTAkeyInfo{
+			RawKey:       keyInfo.RawKey,
+			BeaconHeight: keyInfo.BeaconHeight,
+			ShardID:      keyInfo.ShardID,
+			OTAKey:       hex.EncodeToString(ks.OTAKey.GetOTASecretKey().ToBytesS()),
+			keyset:       ks,
+		}
+		Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, &k)
 	}
 	Submitted_OTAKey.Unlock()
 	return nil
@@ -117,64 +123,69 @@ func initOTAIndexingService() {
 		panic(err)
 	}
 
-	acc0, _ := account.NewAccountFromPrivatekey("112t8rnXoBXrThDTACHx2rbEq7nBgrzcZhVZV4fvNEcGJetQ13spZRMuW5ncvsKA1KvtkauZuK2jV8pxEZLpiuHtKX3FkKv2uC5ZeRC8L6we")
-	key := []byte{}
-	key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
-	key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
-	addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
+	// acc0, _ := account.NewAccountFromPrivatekey("112t8rnXoBXrThDTACHx2rbEq7nBgrzcZhVZV4fvNEcGJetQ13spZRMuW5ncvsKA1KvtkauZuK2jV8pxEZLpiuHtKX3FkKv2uC5ZeRC8L6we")
+	// key := []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
+	// addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
 
-	acc0, _ = account.NewAccountFromPrivatekey("112t8rnbcZ92v5omVfbXf1gu7j7S1xxr2eppxitbHfjAMHWdLLBjBcQSv1X1cKjarJLffrPGwBhqZzBvEeA9PhtKeM8ALWiWjhUzN5Fi6WVC")
-	key = []byte{}
-	key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
-	key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
-	addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
+	// acc0, _ = account.NewAccountFromPrivatekey("112t8rnbcZ92v5omVfbXf1gu7j7S1xxr2eppxitbHfjAMHWdLLBjBcQSv1X1cKjarJLffrPGwBhqZzBvEeA9PhtKeM8ALWiWjhUzN5Fi6WVC")
+	// key = []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
+	// addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
 
-	acc0, _ = account.NewAccountFromPrivatekey("112t8rnZUQXxcbayAZvyyZyKDhwVJBLkHuTKMhrS51nQZcXKYXGopUTj22JtZ8KxYQcak54KUQLhimv1GLLPFk1cc8JCHZ2JwxCRXGsg4gXU")
-	key = []byte{}
-	key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
-	key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
-	addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
+	// acc0, _ = account.NewAccountFromPrivatekey("112t8rnZUQXxcbayAZvyyZyKDhwVJBLkHuTKMhrS51nQZcXKYXGopUTj22JtZ8KxYQcak54KUQLhimv1GLLPFk1cc8JCHZ2JwxCRXGsg4gXU")
+	// key = []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
+	// addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
 
-	acc0, _ = account.NewAccountFromPrivatekey("112t8rnXDS4cAjFVgCDEw4sWGdaqQSbKLRH1Hu4nUPBFPJdn29YgUei2KXNEtC8mhi1sEZb1V3gnXdAXjmCuxPa49rbHcH9uNaf85cnF3tMw")
-	key = []byte{}
-	key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
-	key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
-	addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
+	// acc0, _ = account.NewAccountFromPrivatekey("112t8rnXDS4cAjFVgCDEw4sWGdaqQSbKLRH1Hu4nUPBFPJdn29YgUei2KXNEtC8mhi1sEZb1V3gnXdAXjmCuxPa49rbHcH9uNaf85cnF3tMw")
+	// key = []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
+	// addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
 
-	acc0, _ = account.NewAccountFromPrivatekey("112t8rnYoioTRNsM8gnUYt54ThWWrRnG4e1nRX147MWGbEazYP7RWrEUB58JLnBjKhh49FMS5o5ttypZucfw5dFYMAsgDUsHPa9BAasY8U1i")
-	key = []byte{}
-	key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
-	key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
-	addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
+	// acc0, _ = account.NewAccountFromPrivatekey("112t8rnYoioTRNsM8gnUYt54ThWWrRnG4e1nRX147MWGbEazYP7RWrEUB58JLnBjKhh49FMS5o5ttypZucfw5dFYMAsgDUsHPa9BAasY8U1i")
+	// key = []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
+	// addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
 
-	acc0, _ = account.NewAccountFromPrivatekey("112t8roafGgHL1rhAP9632Yef3sx5k8xgp8cwK4MCJsCL1UWcxXvpzg97N4dwvcD735iKf31Q2ZgrAvKfVjeSUEvnzKJyyJD3GqqSZdxN4or")
-	key = []byte{}
-	key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
-	key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
-	addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
-	acc0, _ = account.NewAccountFromPrivatekey("112t8rnZDRztVgPjbYQiXS7mJgaTzn66NvHD7Vus2SrhSAY611AzADsPFzKjKQCKWTgbkgYrCPo9atvSMoCf9KT23Sc7Js9RKhzbNJkxpJU6")
-	key = []byte{}
-	key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
-	key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
-	addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
-	acc0, _ = account.NewAccountFromPrivatekey("112t8rne7fpTVvSgZcSgyFV23FYEv3sbRRJZzPscRcTo8DsdZwstgn6UyHbnKHmyLJrSkvF13fzkZ4e8YD5A2wg8jzUZx6Yscdr4NuUUQDAt")
-	key = []byte{}
-	key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
-	key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
-	addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
+	// acc0, _ = account.NewAccountFromPrivatekey("112t8roafGgHL1rhAP9632Yef3sx5k8xgp8cwK4MCJsCL1UWcxXvpzg97N4dwvcD735iKf31Q2ZgrAvKfVjeSUEvnzKJyyJD3GqqSZdxN4or")
+	// key = []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
+	// addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
+	// acc0, _ = account.NewAccountFromPrivatekey("112t8rnZDRztVgPjbYQiXS7mJgaTzn66NvHD7Vus2SrhSAY611AzADsPFzKjKQCKWTgbkgYrCPo9atvSMoCf9KT23Sc7Js9RKhzbNJkxpJU6")
+	// key = []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
+	// addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
+	// acc0, _ = account.NewAccountFromPrivatekey("112t8rne7fpTVvSgZcSgyFV23FYEv3sbRRJZzPscRcTo8DsdZwstgn6UyHbnKHmyLJrSkvF13fzkZ4e8YD5A2wg8jzUZx6Yscdr4NuUUQDAt")
+	// key = []byte{}
+	// key = append(key, acc0.Keyset.OTAKey.GetOTASecretKey().ToBytesS()...)
+	// key = append(key, acc0.Keyset.OTAKey.GetPublicSpend().ToBytesS()...)
+	// addOTAKey(hex.EncodeToString(key), 0, acc0.ShardID(2))
 	// wl, _ := wallet.Base58CheckDeserialize("112t8rne7fpTVvSgZcSgyFV23FYEv3sbRRJZzPscRcTo8DsdZwstgn6UyHbnKHmyLJrSkvF13fzkZ4e8YD5A2wg8jzUZx6Yscdr4NuUUQDAt")
 	// fmt.Println(acc0.PaymentAddress, wl.Base58CheckSerialize(wallet.OTAKeyType))
 
-	interval := time.NewTicker(10 * time.Second)
+	interval := time.NewTicker(15 * time.Second)
 	for {
 		<-interval.C
 		log.Println("scanning coins...")
+		startTime := time.Now()
+		var coinsToUpdate []CoinData
+		var err error
+		var lastCoinIndex int
+		var filteredCoins map[string][]CoinData
+
 		coinList, err := DBGetUnknownCoinsFromBeaconHeight(0)
 		if err != nil {
 			panic(err)
 		}
-		var coinsToUpdate []CoinData
-		filteredCoins, _, err := filterCoinsByOTAKey(coinList)
+		filteredCoins, _, lastCoinIndex, err = filterCoinsByOTAKey(coinList)
 		if err != nil {
 			panic(err)
 		}
@@ -184,6 +195,28 @@ func initOTAIndexingService() {
 				coinsToUpdate = append(coinsToUpdate, coin)
 			}
 		}
+
+		for {
+			log.Println("requesting 500 coins from index", lastCoinIndex)
+			coinList, err := DBGetUnknownCoinsFromIndex(lastCoinIndex, 500)
+			if err != nil {
+				panic(err)
+			}
+			if len(coinList) == 0 {
+				break
+			}
+			filteredCoins, _, lastCoinIndex, err = filterCoinsByOTAKey(coinList)
+			if err != nil {
+				panic(err)
+			}
+			for key, coins := range filteredCoins {
+				for _, coin := range coins {
+					coin.OTASecret = key
+					coinsToUpdate = append(coinsToUpdate, coin)
+				}
+			}
+		}
+
 		if len(coinsToUpdate) > 0 {
 			fmt.Println("\n=========================================")
 			log.Println("len(coinsToUpdate)", len(coinsToUpdate))
@@ -193,39 +226,64 @@ func initOTAIndexingService() {
 				panic(err)
 			}
 		}
+		log.Println("finish scanning coins in", time.Since(startTime))
 	}
 }
 
-func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData, error) {
+func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData, int, error) {
+	var lastCoinIndex int
 	if len(Submitted_OTAKey.Keys) > 0 {
 		otaCoins := make(map[string][]CoinData)
 		var otherCoins []CoinData
 		startTime := time.Now()
 		Submitted_OTAKey.RLock()
-		for _, c := range coinList {
-			newCoin := new(coin.CoinV2)
-			err := newCoin.SetBytes(c.Coin)
-			if err != nil {
-				panic(err)
-			}
-			pass := false
-			for _, keyInfo := range Submitted_OTAKey.Keys {
-				// if c.BeaconHeight >= keyInfo.BeaconHeight {
-				pass, _ = newCoin.DoesCoinBelongToKeySet(keyInfo.keyset)
-				if pass {
-					otaCoins[keyInfo.OTAKey] = append(otaCoins[keyInfo.OTAKey], c)
-					break
+		var wg sync.WaitGroup
+		tempOTACoinsCh := make(chan map[string]CoinData, serviceCfg.MaxConcurrentOTACheck)
+		for idx, c := range coinList {
+			wg.Add(1)
+			go func(cn CoinData) {
+				newCoin := new(coin.CoinV2)
+				err := newCoin.SetBytes(cn.Coin)
+				if err != nil {
+					panic(err)
 				}
-				// }
+				pass := false
+				for _, keyInfo := range Submitted_OTAKey.Keys {
+					// if cn.BeaconHeight >= keyInfo.BeaconHeight {
+					pass, _ = newCoin.DoesCoinBelongToKeySet(keyInfo.keyset)
+					if pass {
+						tempOTACoinsCh <- map[string]CoinData{keyInfo.OTAKey: cn}
+						break
+					}
+					// }
+				}
+				if !pass {
+					tempOTACoinsCh <- map[string]CoinData{"nil": cn}
+				}
+				wg.Done()
+			}(c)
+			if (idx+1)%serviceCfg.MaxConcurrentOTACheck == 0 || idx+1 == len(coinList) {
+				wg.Wait()
+				close(tempOTACoinsCh)
+				for k := range tempOTACoinsCh {
+					for key, coin := range k {
+						if key == "nil" {
+							otherCoins = append(otherCoins, coin)
+							continue
+						}
+						otaCoins[key] = append(otaCoins[key], coin)
+					}
+				}
+				tempOTACoinsCh = make(chan map[string]CoinData, serviceCfg.MaxConcurrentOTACheck)
 			}
-			if !pass {
-				otherCoins = append(otherCoins, c)
+			if int(c.CoinIndex) > lastCoinIndex {
+				lastCoinIndex = int(c.CoinIndex)
 			}
 		}
 		Submitted_OTAKey.RUnlock()
 		log.Println("len(otaCoins)", len(otaCoins))
 		log.Printf("filtered %v coins with %v keys in %v", len(coinList), len(Submitted_OTAKey.Keys), time.Since(startTime))
-		return otaCoins, otherCoins, nil
+		return otaCoins, otherCoins, lastCoinIndex, nil
 	}
-	return nil, nil, nil
+	return nil, nil, 0, nil
 }
