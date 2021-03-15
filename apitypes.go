@@ -11,5 +11,7 @@ type API_submit_otakey_request struct {
 	BeaconHeight uint64
 }
 
-type API_get_coins_respond struct {
+type API_respond struct {
+	Result interface{}
+	Error  *string
 }

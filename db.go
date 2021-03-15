@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -60,11 +61,44 @@ func DBUpdateCoins(list []CoinData) error {
 	return nil
 }
 
+func DBGetCoinsByIndex(idx int, shardID int, tokenID string) (*CoinData, error) {
+	var result CoinData
+	filter := bson.M{"coinidx": bson.M{operator.Eq: idx}, "shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
+	err := mgm.Coll(&CoinData{}).First(filter, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
-	filter := bson.M{"otasecret": bson.M{operator.Eq: OTASecret}}
-	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
+	temp, _, err := base58.DecodeCheck(OTASecret)
+	if err != nil {
+		return nil, err
+	}
+	filter := bson.M{"otasecret": bson.M{operator.Eq: hex.EncodeToString(temp)}}
+	err = mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	return list, err
+}
+
+func DBGetCoinsByOTAKeyAndHeight(OTASecret string, fromHeight int, toHeight int) ([]CoinData, error) {
+	startTime := time.Now()
+	list := []CoinData{}
+	temp, _, err := base58.DecodeCheck(OTASecret)
+	if err != nil {
+		return nil, err
+	}
+	filter := bson.M{"otasecret": bson.M{operator.Eq: hex.EncodeToString(temp)}, "beaconheight": bson.M{operator.Gte: fromHeight, operator.Lte: toHeight}}
+	err = mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
+	if err != nil {
+		return nil, err
+	}
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
 }
@@ -78,6 +112,9 @@ func DBGetUnknownCoinsFromBeaconHeight(beaconHeight uint64) ([]CoinData, error) 
 	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
 		Limit: &limit,
 	})
+	if err != nil {
+		return nil, err
+	}
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
 }
@@ -90,6 +127,9 @@ func DBGetUnknownCoinsFromIndex(index int, limit int64) ([]CoinData, error) {
 	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
 		Limit: &limit,
 	})
+	if err != nil {
+		return nil, err
+	}
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
 }
@@ -118,7 +158,7 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 	startTime := time.Now()
 	var result []bool
 	for _, keyImage := range list {
-		kmBytes, err := hex.DecodeString(keyImage)
+		kmBytes, _, err := base58.Base58Check{}.Decode(keyImage)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -141,7 +181,7 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 func DBGetCoinsOfShardCount(shardID int, tokenID string) int64 {
 	ctx, _ := context.WithTimeout(context.Background(), 5*DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
-	doc := KeyImageData{}
+	doc := CoinData{}
 	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
 	if err != nil {
 		log.Println(err)

@@ -67,9 +67,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err := batchData.Write(); err != nil {
 		panic(err)
 	}
-
-	// transactionStateDB.ClearObjects()
-
 	// localnode.GetBlockchain().ShardChain[shardID] = blockchain.NewShardChain(shardID, multiview.NewMultiView(), localnode.GetBlockchain().GetConfig().BlockGen, localnode.GetBlockchain(), common.GetShardChainKey(blk.Header.ShardID))
 	// if err := localnode.GetBlockchain().RestoreShardViews(blk.Header.ShardID); err != nil {
 	// 	panic(err)
@@ -116,13 +113,13 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
 				fmt.Println("\n====================================================")
-				fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
+				fmt.Println(common.ConfidentialAssetID.String(), txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
 				txToken := tx.(transaction.TransactionToken)
 				txTokenData := txToken.GetTxTokenData()
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
 				for _, coin := range tokenIns {
-					km := NewKeyImageData(tokenID, "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
+					km := NewKeyImageData(common.ConfidentialAssetID.String(), "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
 					keyImageList = append(keyImageList, *km)
 				}
 				for _, coin := range tokenOuts {
@@ -133,11 +130,11 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						if err != nil {
 							panic(err)
 						}
-						outCoin := NewCoinData(beaconHeight, idxBig.Uint64(), coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID)
+						outCoin := NewCoinData(beaconHeight, idxBig.Uint64(), coin.Bytes(), common.ConfidentialAssetID.String(), coin.GetPublicKey().String(), "", txHash, shardID)
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}
-				fmt.Println(tokenID, txHash, len(tokenIns), len(tokenOuts))
+				fmt.Println(common.ConfidentialAssetID.String(), txHash, len(tokenIns), len(tokenOuts))
 				fmt.Println("====================================================\n")
 				if tx.GetTxFee() > 0 {
 					ins := tx.GetProof().GetInputCoins()
