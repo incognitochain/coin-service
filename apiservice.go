@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"net/http"
@@ -10,8 +12,10 @@ import (
 
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
+	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
+	"github.com/incognitochain/incognito-chain/wallet"
 )
 
 // var upgrader = websocket.Upgrader{
@@ -44,25 +48,33 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	key := r.URL.Query().Get("otakey")
-
 	fromHeight, _ := strconv.Atoi(r.URL.Query().Get("fromheight"))
 	toHeight, _ := strconv.Atoi(r.URL.Query().Get("toheight"))
 
 	var result []jsonresult.OutCoin
-	coinList, err := DBGetCoinsByOTAKeyAndHeight(key, fromHeight, toHeight)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write(buildErrorRespond(err))
+	var pubkey string
+	otakey := r.URL.Query().Get("otakey")
+	if otakey != "" {
+		wl, err := wallet.Base58CheckDeserialize(otakey)
 		if err != nil {
-			log.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write(buildErrorRespond(err))
+			if err != nil {
+				log.Println(err)
+			}
+			return
 		}
-		return
-	}
+		if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write(buildErrorRespond(errors.New("invalid otakey")))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
+		pubkey = hex.EncodeToString(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	for _, c := range coinList {
-		coinV2 := new(coin.CoinV2)
-		err := coinV2.SetBytes(c.Coin)
+		coinList, err := DBGetCoinsByOTAKeyAndHeight(hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), fromHeight, toHeight)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, err = w.Write(buildErrorRespond(err))
@@ -71,14 +83,92 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		idx := new(big.Int).SetUint64(c.CoinIndex)
-		cn := jsonresult.NewOutCoin(coinV2)
-		cn.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
-		result = append(result, cn)
+
+		for _, c := range coinList {
+			coinV2 := new(coin.CoinV2)
+			err := coinV2.SetBytes(c.Coin)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, err = w.Write(buildErrorRespond(err))
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+			idx := new(big.Int).SetUint64(c.CoinIndex)
+			cn := jsonresult.NewOutCoin(coinV2)
+			cn.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+			result = append(result, cn)
+		}
+	}
+
+	viewkey := r.URL.Query().Get("viewkey")
+	var viewKeySet *incognitokey.KeySet
+	if viewkey != "" {
+		wl, err := wallet.Base58CheckDeserialize(viewkey)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write(buildErrorRespond(err))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
+		if wl.KeySet.ReadonlyKey.Rk == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write(buildErrorRespond(errors.New("invalid viewkey")))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
+		if pubkey == "" {
+			pubkey = hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+		}
+		wl.KeySet.PaymentAddress.Pk = wl.KeySet.ReadonlyKey.Pk
+		viewKeySet = &wl.KeySet
+	}
+	fmt.Println("GetCoinV1", pubkey, viewKeySet)
+	coinListV1, err := DBGetCoinV1ByPubkey(pubkey, fromHeight, toHeight)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write(buildErrorRespond(err))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+	for _, c := range coinListV1 {
+		coinV1 := new(coin.CoinV1)
+		err := coinV1.SetBytes(c.Coin)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, err = w.Write(buildErrorRespond(err))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
+		if viewKeySet != nil {
+			plainCoin, err := coinV1.Decrypt(viewKeySet)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, err = w.Write(buildErrorRespond(err))
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+			cn := jsonresult.NewOutCoin(plainCoin)
+			result = append(result, cn)
+		} else {
+			cn := jsonresult.NewOutCoin(coinV1)
+			result = append(result, cn)
+		}
 	}
 	rs := make(map[string]map[string]interface{})
 	rs["Outputs"] = make(map[string]interface{})
-	rs["Outputs"][key] = result
+	rs["Outputs"][otakey] = result
 	respond := API_respond{
 		Result: rs,
 		Error:  nil,
@@ -204,8 +294,10 @@ func getRandomCommitmentsHandler(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
 	token := r.URL.Query().Get("token")
-	if token == "" {
+	if token == "true" {
 		token = common.PRVCoinID.String()
+	} else {
+		token = common.ConfidentialAssetID.String()
 	}
 
 	commitmentIndices := []int{}

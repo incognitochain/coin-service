@@ -16,7 +16,8 @@ func main() {
 	}
 	log.Println("service mode:", serviceCfg.Mode)
 	if serviceCfg.Mode == INDEXERMODE {
-		node := devframework.NewAppNode("fullnode", devframework.TestNetParam, true, false)
+		// devframework.TestNetParam.HighwayAddress = "139.162.55.124:9330"
+		node := devframework.NewAppNode("fullnode", devframework.TestNet2Param, true, false)
 		localnode = node
 		initCoinService()
 		go initOTAIndexingService()
