@@ -84,7 +84,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		txHash := tx.Hash().String()
 		tokenID := tx.GetTokenID().String()
 		if tx.GetVersion() == 2 {
-			if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType {
+			if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType || tx.GetType() == common.TxRewardType || tx.GetType() == common.TxReturnStakingType {
 				fmt.Println("\n====================================================")
 				fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
 				ins := tx.GetProof().GetInputCoins()
