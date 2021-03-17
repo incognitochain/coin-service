@@ -9,11 +9,12 @@ const (
 )
 
 const (
-	version             = "0.5.5"
+	version             = "0.9.0"
 	DefaultAPIAddress   = "0.0.0.0:9001"
 	DefaultMongoAddress = "mongodb://root:example@0.0.0.0:27017"
 	DefaultChainFolder  = "chain"
 	DefaultMode         = INDEXERMODE
+	CHAINSYNCMODE       = "chainsync"
 	INDEXERMODE         = "indexer"
 	QUERYMODE           = "query"
 )

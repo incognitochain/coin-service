@@ -7,10 +7,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -20,6 +22,24 @@ func connectDB() error {
 		return err
 	}
 	log.Println("Database Connected!")
+	return nil
+}
+
+func DBCreateCoinV1Index() error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.M{
+			"beaconheight": -1,
+		},
+		// Options: options.Index().SetUnique(true),
+	})
+	if err != nil {
+		log.Printf("failed to indexs coins in %v", time.Since(startTime))
+		return err
+	}
+	log.Println("indexName", indexName)
+	log.Printf("success indexs coins in %v", time.Since(startTime))
 	return nil
 }
 
@@ -103,10 +123,10 @@ func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
 	return list, err
 }
 
-func DBGetCoinsByOTAKeyAndHeight(OTASecret string, fromHeight int, toHeight int) ([]CoinData, error) {
+func DBGetCoinsByOTAKeyAndHeight(tokenID, OTASecret string, fromHeight int, toHeight int) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
-	filter := bson.M{"otasecret": bson.M{operator.Eq: OTASecret}, "beaconheight": bson.M{operator.Gte: fromHeight, operator.Lte: toHeight}}
+	filter := bson.M{"otasecret": bson.M{operator.Eq: OTASecret}, "beaconheight": bson.M{operator.Gte: fromHeight, operator.Lte: toHeight}, "tokenid": bson.M{operator.Eq: tokenID}}
 	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
 	if err != nil {
 		return nil, err
@@ -131,10 +151,43 @@ func DBGetUnknownCoinsFromBeaconHeight(beaconHeight uint64) ([]CoinData, error) 
 	return list, err
 }
 
-func DBGetUnknownCoinsFromIndex(index int, limit int64) ([]CoinData, error) {
+func DBGetUnknownCoinsFromCoinIndex(prvidx, tokenidx uint64) ([]CoinData, error) {
+	limit := int64(500)
+	startTime := time.Now()
+	listPRV := []CoinData{}
+	listToken := []CoinData{}
+
+	filter := bson.M{"coinidx": bson.M{operator.Gte: prvidx}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: common.PRVCoinID.String()}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &listPRV, filter, &options.FindOptions{
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("found %v prv coins in %v", len(listPRV), time.Since(startTime))
+
+	startTime = time.Now()
+	filterTk := bson.M{"coinidx": bson.M{operator.Gte: tokenidx}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: common.ConfidentialAssetID.String()}}
+	ctxTk, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
+	err = mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctxTk, &listToken, filterTk, &options.FindOptions{
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("found %v token coins in %v", len(listToken), time.Since(startTime))
+	return append(listPRV, listToken...), err
+}
+
+func DBGetUnknownCoinsFromCoinIndexWithLimit(index uint64, isPRV bool, limit int64) ([]CoinData, error) {
+	tokenID := common.PRVCoinID.String()
+	if !isPRV {
+		tokenID = common.ConfidentialAssetID.String()
+	}
 	startTime := time.Now()
 	list := []CoinData{}
-	filter := bson.M{"coinidx": bson.M{operator.Gt: index}, "otasecret": bson.M{operator.Eq: ""}}
+	filter := bson.M{"coinidx": bson.M{operator.Gte: index}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
 		Limit: &limit,
@@ -146,10 +199,10 @@ func DBGetUnknownCoinsFromIndex(index int, limit int64) ([]CoinData, error) {
 	return list, err
 }
 
-func DBGetCoinV1ByPubkey(pubkey string, fromHeight int, toHeight int) ([]CoinData, error) {
+func DBGetCoinV1ByPubkey(tokenID, pubkey string, fromHeight int, toHeight int) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
-	filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "beaconheight": bson.M{operator.Gte: fromHeight, operator.Lte: toHeight}}
+	filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "beaconheight": bson.M{operator.Gte: fromHeight, operator.Lte: toHeight}, "tokenid": bson.M{operator.Eq: tokenID}}
 	err := mgm.Coll(&CoinDataV1{}).SimpleFind(&list, filter)
 	if err != nil {
 		return nil, err

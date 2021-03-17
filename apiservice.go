@@ -51,8 +51,13 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 	fromHeight, _ := strconv.Atoi(r.URL.Query().Get("fromheight"))
 	toHeight, _ := strconv.Atoi(r.URL.Query().Get("toheight"))
 
+	tokenid := r.URL.Query().Get("tokenid")
+	if tokenid == "" {
+		tokenid = common.PRVCoinID.String()
+	}
 	var result []jsonresult.OutCoin
 	var pubkey string
+	highestHeight := uint64(0)
 	otakey := r.URL.Query().Get("otakey")
 	if otakey != "" {
 		wl, err := wallet.Base58CheckDeserialize(otakey)
@@ -73,8 +78,11 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		pubkey = hex.EncodeToString(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
-
-		coinList, err := DBGetCoinsByOTAKeyAndHeight(hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), fromHeight, toHeight)
+		tokenidv2 := tokenid
+		if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
+			tokenidv2 = common.ConfidentialAssetID.String()
+		}
+		coinList, err := DBGetCoinsByOTAKeyAndHeight(tokenidv2, hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), fromHeight, toHeight)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, err = w.Write(buildErrorRespond(err))
@@ -85,6 +93,9 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, c := range coinList {
+			if c.BeaconHeight > highestHeight {
+				highestHeight = c.BeaconHeight
+			}
 			coinV2 := new(coin.CoinV2)
 			err := coinV2.SetBytes(c.Coin)
 			if err != nil {
@@ -129,7 +140,7 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		viewKeySet = &wl.KeySet
 	}
 	fmt.Println("GetCoinV1", pubkey, viewKeySet)
-	coinListV1, err := DBGetCoinV1ByPubkey(pubkey, fromHeight, toHeight)
+	coinListV1, err := DBGetCoinV1ByPubkey(tokenid, pubkey, fromHeight, toHeight)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write(buildErrorRespond(err))
@@ -139,6 +150,9 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, c := range coinListV1 {
+		if c.BeaconHeight > highestHeight {
+			highestHeight = c.BeaconHeight
+		}
 		coinV1 := new(coin.CoinV1)
 		err := coinV1.SetBytes(c.Coin)
 		if err != nil {
@@ -166,9 +180,9 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 			result = append(result, cn)
 		}
 	}
-	rs := make(map[string]map[string]interface{})
-	rs["Outputs"] = make(map[string]interface{})
-	rs["Outputs"][otakey] = result
+	rs := make(map[string]interface{})
+	rs["HighestHeight"] = highestHeight
+	rs["Outputs"] = map[string]interface{}{pubkey: result}
 	respond := API_respond{
 		Result: rs,
 		Error:  nil,
@@ -261,7 +275,7 @@ func submitOTAkeyHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	err = addOTAKey(req.OTAKey, req.BeaconHeight, req.ShardID)
+	err = addOTAKey(req.OTAKey, 0, 0, req.ShardID)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, err = w.Write(buildErrorRespond(err))

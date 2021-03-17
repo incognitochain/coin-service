@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/wallet"
@@ -17,11 +18,12 @@ import (
 
 //manage submitted otakey
 type OTAkeyInfo struct {
-	ShardID      int
-	RawKey       string
-	OTAKey       string
-	keyset       *incognitokey.KeySet
-	BeaconHeight uint64
+	ShardID        int
+	RawKey         string
+	OTAKey         string
+	keyset         *incognitokey.KeySet
+	LastPRVIndex   uint64
+	LastTokenIndex uint64
 }
 
 var Submitted_OTAKey = struct {
@@ -58,11 +60,12 @@ func loadSubmittedOTAKey() error {
 		ks.OTAKey = otaKey
 
 		k := OTAkeyInfo{
-			RawKey:       keyInfo.RawKey,
-			BeaconHeight: keyInfo.BeaconHeight,
-			ShardID:      keyInfo.ShardID,
-			OTAKey:       hex.EncodeToString(ks.OTAKey.GetOTASecretKey().ToBytesS()),
-			keyset:       ks,
+			RawKey:         keyInfo.RawKey,
+			LastPRVIndex:   keyInfo.LastPRVIndex,
+			LastTokenIndex: keyInfo.LastTokenIndex,
+			ShardID:        keyInfo.ShardID,
+			OTAKey:         hex.EncodeToString(ks.OTAKey.GetOTASecretKey().ToBytesS()),
+			keyset:         ks,
 		}
 		Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, &k)
 	}
@@ -83,7 +86,7 @@ func saveSubmittedOTAKey() error {
 	return err
 }
 
-func addOTAKey(key string, beaconHeight uint64, shardID int) error {
+func addOTAKey(key string, lastPRVIndex, lastTokenIndex uint64, shardID int) error {
 	Submitted_OTAKey.RLock()
 	for _, keyInfo := range Submitted_OTAKey.Keys {
 		if keyInfo.RawKey == key {
@@ -108,11 +111,12 @@ func addOTAKey(key string, beaconHeight uint64, shardID int) error {
 	ks := &incognitokey.KeySet{}
 	ks.OTAKey = otaKey
 	keyInfo := &OTAkeyInfo{
-		ShardID:      shardID,
-		RawKey:       key,
-		OTAKey:       hex.EncodeToString(ks.OTAKey.GetOTASecretKey().ToBytesS()),
-		BeaconHeight: beaconHeight,
-		keyset:       ks,
+		ShardID:        shardID,
+		RawKey:         key,
+		OTAKey:         hex.EncodeToString(ks.OTAKey.GetOTASecretKey().ToBytesS()),
+		LastPRVIndex:   lastPRVIndex,
+		LastTokenIndex: lastTokenIndex,
+		keyset:         ks,
 	}
 	Submitted_OTAKey.Lock()
 	Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, keyInfo)
@@ -135,55 +139,67 @@ func initOTAIndexingService() {
 	if err != nil {
 		panic(err)
 	}
-	// wl, _ := wallet.Base58CheckDeserialize("112t8rnbcZ92v5omVfbXf1gu7j7S1xxr2eppxitbHfjAMHWdLLBjBcQSv1X1cKjarJLffrPGwBhqZzBvEeA9PhtKeM8ALWiWjhUzN5Fi6WVC")
-	// key := wl.Base58CheckSerialize(wallet.PaymentAddressType)
-	// if key == "12smKh2tQ8CSqfXYKYXePDAxok9fb9xxxA6bszbtKGzd2ierpgz93kFfxiRxaSs4dFtUwghEoFW79YTJUyF6mXefiqtjWH2cBuNUSq5oGgG4aEeJj2UmeL9WhvikdsHr16KYpRxsKVGDzpWcG6Ku" {
-	// 	panic(9)
-	// }
-	// wl, _ = wallet.Base58CheckDeserialize("112t8rnZUQXxcbayAZvyyZyKDhwVJBLkHuTKMhrS51nQZcXKYXGopUTj22JtZ8KxYQcak54KUQLhimv1GLLPFk1cc8JCHZ2JwxCRXGsg4gXU")
-	// key = wl.Base58CheckSerialize(wallet.ReadonlyKeyType)
-	// fmt.Println("key", hex.EncodeToString(wl.KeySet.PaymentAddress.Pk))
+	wl, _ := wallet.Base58CheckDeserialize("112t8rnXoBXrThDTACHx2rbEq7nBgrzcZhVZV4fvNEcGJetQ13spZRMuW5ncvsKA1KvtkauZuK2jV8pxEZLpiuHtKX3FkKv2uC5ZeRC8L6we")
+	key := wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
 
-	// wl, _ = wallet.Base58CheckDeserialize("112t8rnXDS4cAjFVgCDEw4sWGdaqQSbKLRH1Hu4nUPBFPJdn29YgUei2KXNEtC8mhi1sEZb1V3gnXdAXjmCuxPa49rbHcH9uNaf85cnF3tMw")
-	// key = wl.Base58CheckSerialize(wallet.ReadonlyKeyType)
-	// fmt.Println("key", hex.EncodeToString(wl.KeySet.PaymentAddress.Pk))
+	wl, _ = wallet.Base58CheckDeserialize("112t8rnbcZ92v5omVfbXf1gu7j7S1xxr2eppxitbHfjAMHWdLLBjBcQSv1X1cKjarJLffrPGwBhqZzBvEeA9PhtKeM8ALWiWjhUzN5Fi6WVC")
+	key = wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
 
-	// wl, _ = wallet.Base58CheckDeserialize("112t8rnYoioTRNsM8gnUYt54ThWWrRnG4e1nRX147MWGbEazYP7RWrEUB58JLnBjKhh49FMS5o5ttypZucfw5dFYMAsgDUsHPa9BAasY8U1i")
-	// key = wl.Base58CheckSerialize(wallet.ReadonlyKeyType)
-	// fmt.Println("key", hex.EncodeToString(wl.KeySet.PaymentAddress.Pk))
+	wl, _ = wallet.Base58CheckDeserialize("112t8rnZUQXxcbayAZvyyZyKDhwVJBLkHuTKMhrS51nQZcXKYXGopUTj22JtZ8KxYQcak54KUQLhimv1GLLPFk1cc8JCHZ2JwxCRXGsg4gXU")
+	key = wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
 
-	// wl, _ = wallet.Base58CheckDeserialize("112t8roafGgHL1rhAP9632Yef3sx5k8xgp8cwK4MCJsCL1UWcxXvpzg97N4dwvcD735iKf31Q2ZgrAvKfVjeSUEvnzKJyyJD3GqqSZdxN4or")
-	// key = wl.Base58CheckSerialize(wallet.ReadonlyKeyType)
-	// fmt.Println("key", hex.EncodeToString(wl.KeySet.PaymentAddress.Pk))
+	wl, _ = wallet.Base58CheckDeserialize("112t8rnXDS4cAjFVgCDEw4sWGdaqQSbKLRH1Hu4nUPBFPJdn29YgUei2KXNEtC8mhi1sEZb1V3gnXdAXjmCuxPa49rbHcH9uNaf85cnF3tMw")
+	key = wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
 
-	// wl, _ = wallet.Base58CheckDeserialize("112t8rnZDRztVgPjbYQiXS7mJgaTzn66NvHD7Vus2SrhSAY611AzADsPFzKjKQCKWTgbkgYrCPo9atvSMoCf9KT23Sc7Js9RKhzbNJkxpJU6")
-	// key = wl.Base58CheckSerialize(wallet.ReadonlyKeyType)
-	// fmt.Println("key", key, hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS()))
+	wl, _ = wallet.Base58CheckDeserialize("112t8rnYoioTRNsM8gnUYt54ThWWrRnG4e1nRX147MWGbEazYP7RWrEUB58JLnBjKhh49FMS5o5ttypZucfw5dFYMAsgDUsHPa9BAasY8U1i")
+	key = wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
 
-	// wl, _ = wallet.Base58CheckDeserialize("112t8rne7fpTVvSgZcSgyFV23FYEv3sbRRJZzPscRcTo8DsdZwstgn6UyHbnKHmyLJrSkvF13fzkZ4e8YD5A2wg8jzUZx6Yscdr4NuUUQDAt")
-	// key = wl.Base58CheckSerialize(wallet.ReadonlyKeyType)
-	// fmt.Println("key", hex.EncodeToString(wl.KeySet.PaymentAddress.Pk))
+	wl, _ = wallet.Base58CheckDeserialize("112t8roafGgHL1rhAP9632Yef3sx5k8xgp8cwK4MCJsCL1UWcxXvpzg97N4dwvcD735iKf31Q2ZgrAvKfVjeSUEvnzKJyyJD3GqqSZdxN4or")
+	key = wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
 
-	// wl, _ = wallet.Base58CheckDeserialize("112t8roafGgHL1rhAP9632Yef3sx5k8xgp8cwK4MCJsCL1UWcxXvpzg97N4dwvcD735iKf31Q2ZgrAvKfVjeSUEvnzKJyyJD3GqqSZdxN4or")
-	// key = wl.Base58CheckSerialize(wallet.ReadonlyKeyType)
-	// fmt.Println("key", hex.EncodeToString(wl.KeySet.PaymentAddress.Pk))
+	wl, _ = wallet.Base58CheckDeserialize("112t8rnZDRztVgPjbYQiXS7mJgaTzn66NvHD7Vus2SrhSAY611AzADsPFzKjKQCKWTgbkgYrCPo9atvSMoCf9KT23Sc7Js9RKhzbNJkxpJU6")
+	key = wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
+
+	wl, _ = wallet.Base58CheckDeserialize("112t8rne7fpTVvSgZcSgyFV23FYEv3sbRRJZzPscRcTo8DsdZwstgn6UyHbnKHmyLJrSkvF13fzkZ4e8YD5A2wg8jzUZx6Yscdr4NuUUQDAt")
+	key = wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
+
+	wl, _ = wallet.Base58CheckDeserialize("112t8roafGgHL1rhAP9632Yef3sx5k8xgp8cwK4MCJsCL1UWcxXvpzg97N4dwvcD735iKf31Q2ZgrAvKfVjeSUEvnzKJyyJD3GqqSZdxN4or")
+	key = wl.Base58CheckSerialize(wallet.OTAKeyType)
+	addOTAKey(key, 0, 0, 0)
 
 	// panic(9)
 	interval := time.NewTicker(15 * time.Second)
 	for {
 		<-interval.C
 		log.Println("scanning coins...")
+		if len(Submitted_OTAKey.Keys) == 0 {
+			log.Println("len(Submitted_OTAKey.Keys) == 0")
+			continue
+		}
 		startTime := time.Now()
 		var coinsToUpdate []CoinData
 		var err error
-		var lastCoinIndex int
 		var filteredCoins map[string][]CoinData
 
-		coinList, err := DBGetUnknownCoinsFromBeaconHeight(0)
+		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinCoinIndex()
+		coinList, err := DBGetUnknownCoinsFromCoinIndex(lastPRVIndex+1, lastTokenIndex+1)
 		if err != nil {
 			panic(err)
 		}
-		filteredCoins, _, lastCoinIndex, err = filterCoinsByOTAKey(coinList)
+
+		if len(coinList) == 0 {
+			log.Println("len(coinList) == 0")
+			continue
+		}
+		filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
 		if err != nil {
 			panic(err)
 		}
@@ -193,17 +209,25 @@ func initOTAIndexingService() {
 				coinsToUpdate = append(coinsToUpdate, coin)
 			}
 		}
-
+		// if
 		for {
-			log.Println("requesting 500 coins from index", lastCoinIndex)
-			coinList, err := DBGetUnknownCoinsFromIndex(lastCoinIndex, 500)
+			log.Println("requesting 500 prv from index", lastPRVIndex)
+			coinList, err := DBGetUnknownCoinsFromCoinIndexWithLimit(lastPRVIndex+1, true, 500)
 			if err != nil {
 				panic(err)
 			}
 			if len(coinList) == 0 {
 				break
 			}
-			filteredCoins, _, lastCoinIndex, err = filterCoinsByOTAKey(coinList)
+			log.Println("requesting 500 token from index", lastTokenIndex)
+			coinListTk, err := DBGetUnknownCoinsFromCoinIndexWithLimit(lastTokenIndex+1, false, 500)
+			if err != nil {
+				panic(err)
+			}
+			if len(coinList) == 0 {
+				break
+			}
+			filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(append(coinList, coinListTk...))
 			if err != nil {
 				panic(err)
 			}
@@ -214,7 +238,17 @@ func initOTAIndexingService() {
 				}
 			}
 		}
+		Submitted_OTAKey.Lock()
+		for _, keyInfo := range Submitted_OTAKey.Keys {
+			keyInfo.LastPRVIndex = lastPRVIndex
+			keyInfo.LastTokenIndex = lastTokenIndex
+		}
+		Submitted_OTAKey.Unlock()
 
+		err = saveSubmittedOTAKey()
+		if err != nil {
+			panic(err)
+		}
 		if len(coinsToUpdate) > 0 {
 			fmt.Println("\n=========================================")
 			log.Println("len(coinsToUpdate)", len(coinsToUpdate))
@@ -228,8 +262,8 @@ func initOTAIndexingService() {
 	}
 }
 
-func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData, int, error) {
-	var lastCoinIndex int
+func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData, uint64, uint64, error) {
+	var lastPRVIndex, lastTokenIndex uint64
 	if len(Submitted_OTAKey.Keys) > 0 {
 		otaCoins := make(map[string][]CoinData)
 		var otherCoins []CoinData
@@ -274,14 +308,37 @@ func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData
 				}
 				tempOTACoinsCh = make(chan map[string]CoinData, serviceCfg.MaxConcurrentOTACheck)
 			}
-			if int(c.CoinIndex) > lastCoinIndex {
-				lastCoinIndex = int(c.CoinIndex)
+			if c.TokenID == common.PRVCoinID.String() {
+				if c.CoinIndex > lastPRVIndex {
+					lastPRVIndex = c.CoinIndex
+				}
+			}
+			if c.TokenID == common.ConfidentialAssetID.String() {
+				if c.CoinIndex > lastTokenIndex {
+					lastTokenIndex = c.CoinIndex
+				}
 			}
 		}
 		Submitted_OTAKey.RUnlock()
 		log.Println("len(otaCoins)", len(otaCoins))
 		log.Printf("filtered %v coins with %v keys in %v", len(coinList), len(Submitted_OTAKey.Keys), time.Since(startTime))
-		return otaCoins, otherCoins, lastCoinIndex, nil
+		return otaCoins, otherCoins, lastPRVIndex, lastTokenIndex, nil
 	}
-	return nil, nil, 0, nil
+	return nil, nil, 0, 0, nil
+}
+
+func GetOTAKeyListMinCoinIndex() (uint64, uint64) {
+	Submitted_OTAKey.RLock()
+	minPRVIdx := uint64(Submitted_OTAKey.Keys[0].LastPRVIndex)
+	minTokenIdx := uint64(Submitted_OTAKey.Keys[0].LastTokenIndex)
+	for _, keyInfo := range Submitted_OTAKey.Keys {
+		if minPRVIdx > keyInfo.LastPRVIndex {
+			minPRVIdx = keyInfo.LastPRVIndex
+		}
+		if minTokenIdx > keyInfo.LastTokenIndex {
+			minTokenIdx = keyInfo.LastTokenIndex
+		}
+	}
+	Submitted_OTAKey.RUnlock()
+	return minPRVIdx, minTokenIdx
 }
