@@ -309,9 +309,9 @@ func getRandomCommitmentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	token := r.URL.Query().Get("token")
 	if token == "true" {
-		token = common.PRVCoinID.String()
-	} else {
 		token = common.ConfidentialAssetID.String()
+	} else {
+		token = common.PRVCoinID.String()
 	}
 
 	commitmentIndices := []int{}

@@ -12,6 +12,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -240,9 +241,10 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 			log.Println(err)
 			continue
 		}
-		var kmdata *CoinData
-		filter := bson.M{"keyimage": bson.M{operator.Eq: kmBytes}}
-		err = mgm.Coll(&CoinData{}).First(filter, kmdata)
+		var kmdata *KeyImageData
+		b := primitive.Binary{Subtype: 0, Data: kmBytes}
+		filter := bson.M{"keyimage": bson.M{operator.Eq: b}, "shardid": bson.M{operator.Eq: shardID}}
+		err = mgm.Coll(&KeyImageData{}).First(filter, kmdata)
 		if err != nil {
 			log.Println(err)
 			result = append(result, false)
