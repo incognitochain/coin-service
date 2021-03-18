@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -176,7 +175,37 @@ func initOTAIndexingService() {
 	addOTAKey(key, 0, 0, 0)
 
 	// panic(9)
-	interval := time.NewTicker(15 * time.Second)
+	interval := time.NewTicker(10 * time.Second)
+	var coinList, coinsToUpdate []CoinData
+	var lastPRVIndex, lastTokenIndex uint64
+
+	updateState := func() {
+		Submitted_OTAKey.Lock()
+		for _, keyInfo := range Submitted_OTAKey.Keys {
+			if keyInfo.LastPRVIndex < lastPRVIndex {
+				keyInfo.LastPRVIndex = lastPRVIndex
+			}
+			if keyInfo.LastTokenIndex < lastTokenIndex {
+				keyInfo.LastTokenIndex = lastTokenIndex
+			}
+		}
+		Submitted_OTAKey.Unlock()
+
+		err = saveSubmittedOTAKey()
+		if err != nil {
+			panic(err)
+		}
+		if len(coinsToUpdate) > 0 {
+			log.Println("\n=========================================")
+			log.Println("len(coinsToUpdate)", len(coinsToUpdate))
+			log.Println("=========================================\n")
+			err := DBUpdateCoins(coinsToUpdate)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
 	for {
 		<-interval.C
 		log.Println("scanning coins...")
@@ -185,21 +214,42 @@ func initOTAIndexingService() {
 			continue
 		}
 		startTime := time.Now()
-		var coinsToUpdate []CoinData
-		var err error
-		var filteredCoins map[string][]CoinData
 
-		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinCoinIndex()
-		coinList, err := DBGetUnknownCoinsFromCoinIndex(lastPRVIndex+1, lastTokenIndex+1)
-		if err != nil {
-			panic(err)
+		minPRVIndex, minTokenIndex := GetOTAKeyListMinCoinIndex()
+
+		if time.Since(coinCache.Time) < 20*time.Second {
+			log.Println("getting coins from cache...")
+			var cachePRVIndex, cacheTokenIndex uint64
+			coinList, cachePRVIndex, cacheTokenIndex = coinCache.Read()
+			if len(coinList) == 0 {
+				log.Println("len(coinList) == 0")
+				continue
+			}
+			if cachePRVIndex > minPRVIndex || cacheTokenIndex > minTokenIndex {
+				filteredCoins, remainingCoins, lastPRVIndex, lastTokenIndex, err := filterCoinsByOTAKey(coinList)
+				if err != nil {
+					panic(err)
+				}
+				for key, coins := range filteredCoins {
+					for _, coin := range coins {
+						coin.OTASecret = key
+						coinsToUpdate = append(coinsToUpdate, coin)
+					}
+				}
+				if len(filteredCoins) > 0 {
+					coinCache.Update(remainingCoins, lastPRVIndex, lastTokenIndex)
+					updateState()
+				}
+			}
+			continue
 		}
 
+		coinList = GetCoinsFromDB(minPRVIndex+1, minTokenIndex+1)
 		if len(coinList) == 0 {
 			log.Println("len(coinList) == 0")
 			continue
 		}
-		filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
+		filteredCoins, remainingCoins, lastPRVIndex, lastTokenIndex, err := filterCoinsByOTAKey(coinList)
 		if err != nil {
 			panic(err)
 		}
@@ -209,25 +259,12 @@ func initOTAIndexingService() {
 				coinsToUpdate = append(coinsToUpdate, coin)
 			}
 		}
-		// if
 		for {
-			log.Println("requesting 500 prv from index", lastPRVIndex)
-			coinList, err := DBGetUnknownCoinsFromCoinIndexWithLimit(lastPRVIndex+1, true, 500)
-			if err != nil {
-				panic(err)
-			}
+			coinList = GetCoinsFromDB(lastPRVIndex+1, lastTokenIndex+1)
 			if len(coinList) == 0 {
 				break
 			}
-			log.Println("requesting 500 token from index", lastTokenIndex)
-			coinListTk, err := DBGetUnknownCoinsFromCoinIndexWithLimit(lastTokenIndex+1, false, 500)
-			if err != nil {
-				panic(err)
-			}
-			if len(coinList) == 0 {
-				break
-			}
-			filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(append(coinList, coinListTk...))
+			filteredCoins, remainingCoins, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
 			if err != nil {
 				panic(err)
 			}
@@ -238,26 +275,8 @@ func initOTAIndexingService() {
 				}
 			}
 		}
-		Submitted_OTAKey.Lock()
-		for _, keyInfo := range Submitted_OTAKey.Keys {
-			keyInfo.LastPRVIndex = lastPRVIndex
-			keyInfo.LastTokenIndex = lastTokenIndex
-		}
-		Submitted_OTAKey.Unlock()
-
-		err = saveSubmittedOTAKey()
-		if err != nil {
-			panic(err)
-		}
-		if len(coinsToUpdate) > 0 {
-			fmt.Println("\n=========================================")
-			log.Println("len(coinsToUpdate)", len(coinsToUpdate))
-			fmt.Println("=========================================\n")
-			err := DBUpdateCoins(coinsToUpdate)
-			if err != nil {
-				panic(err)
-			}
-		}
+		coinCache.Update(remainingCoins, lastPRVIndex, lastTokenIndex)
+		updateState()
 		log.Println("finish scanning coins in", time.Since(startTime))
 	}
 }
@@ -281,13 +300,11 @@ func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData
 				}
 				pass := false
 				for _, keyInfo := range Submitted_OTAKey.Keys {
-					// if cn.BeaconHeight >= keyInfo.BeaconHeight {
 					pass, _ = newCoin.DoesCoinBelongToKeySet(keyInfo.keyset)
 					if pass {
 						tempOTACoinsCh <- map[string]CoinData{keyInfo.OTAKey: cn}
 						break
 					}
-					// }
 				}
 				if !pass {
 					tempOTACoinsCh <- map[string]CoinData{"nil": cn}
@@ -341,4 +358,18 @@ func GetOTAKeyListMinCoinIndex() (uint64, uint64) {
 	}
 	Submitted_OTAKey.RUnlock()
 	return minPRVIdx, minTokenIdx
+}
+
+func GetCoinsFromDB(fromPRVIndex, fromTokenIndex uint64) []CoinData {
+	log.Println("requesting 500 prv from index", fromPRVIndex)
+	coinList, err := DBGetUnknownCoinsFromCoinIndexWithLimit(fromPRVIndex, true, 500)
+	if err != nil {
+		panic(err)
+	}
+	log.Println("requesting 500 token from index", fromTokenIndex)
+	coinListTk, err := DBGetUnknownCoinsFromCoinIndexWithLimit(fromTokenIndex, false, 500)
+	if err != nil {
+		panic(err)
+	}
+	return append(coinList, coinListTk...)
 }

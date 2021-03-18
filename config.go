@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"io/ioutil"
 	"log"
 )
@@ -10,33 +11,57 @@ var API_ADDRESS string
 var serviceCfg Config
 
 type Config struct {
-	APIAddress            string `json:"apiaddress"`
+	APIPort               int    `json:"apiport"`
 	ChainDataFolder       string `json:"chaindata"`
 	MaxConcurrentOTACheck int    `json:"maxconcurrentotacheck"`
 	Mode                  string `json:"mode"`
-	MongoAddress          string `json:"mongo:"`
+	MongoAddress          string `json:"mongo"`
 }
 
 func init() {
-	API_ADDRESS = DefaultAPIAddress
-	serviceCfg.APIAddress = DefaultAPIAddress
+	serviceCfg.APIPort = DefaultAPIPort
 	serviceCfg.ChainDataFolder = DefaultChainFolder
-	serviceCfg.MaxConcurrentOTACheck = MAX_CONCURRENT_OTA_CHECK
+	serviceCfg.MaxConcurrentOTACheck = DefaultMaxConcurrentOTACheck
 	serviceCfg.Mode = DefaultMode
 	serviceCfg.MongoAddress = DefaultMongoAddress
 }
 
-func readConfig() {
+func readConfigAndArg() {
 	data, err := ioutil.ReadFile("./cfg.json")
 	if err != nil {
 		log.Println(err)
-		return
+		// return
 	}
-
 	var tempCfg Config
-	err = json.Unmarshal(data, &tempCfg)
-	if err != nil {
-		panic(err)
+	if data != nil {
+		err = json.Unmarshal(data, &tempCfg)
+		if err != nil {
+			panic(err)
+		}
 	}
 
+	// overwrite with args
+	argMode := flag.String("mode", DefaultMode, "set worker mode")
+	argPort := flag.Int("port", DefaultAPIPort, "set worker port")
+	argMongo := flag.String("mongo", DefaultMongoAddress, "set mongo address")
+	argMaxConcurrentOTACheck := flag.Int("maxotacheck", DefaultMaxConcurrentOTACheck, "set MaxConcurrentOTACheck")
+	argChain := flag.String("chain", DefaultChainFolder, "set chain folder")
+	flag.Parse()
+	if tempCfg.APIPort == 0 {
+		tempCfg.APIPort = *argPort
+	}
+	if tempCfg.ChainDataFolder == "" {
+		tempCfg.ChainDataFolder = *argChain
+	}
+	if tempCfg.MaxConcurrentOTACheck == 0 {
+		tempCfg.MaxConcurrentOTACheck = *argMaxConcurrentOTACheck
+	}
+	if tempCfg.Mode == "" {
+		tempCfg.Mode = *argMode
+	}
+	if tempCfg.MongoAddress == "" {
+		tempCfg.MongoAddress = *argMongo
+	}
+
+	serviceCfg = tempCfg
 }

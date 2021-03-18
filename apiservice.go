@@ -26,13 +26,13 @@ import (
 // 	},
 // }
 
-func startAPIService(address string) {
+func startAPIService() {
 	log.Println("initiating api-service...")
 	http.HandleFunc("/submitotakey", submitOTAkeyHandler)
 	http.HandleFunc("/getcoins", getCoinsHandler)
 	http.HandleFunc("/checkkeyimages", checkKeyImagesHandler)
 	http.HandleFunc("/getrandomcommitments", getRandomCommitmentsHandler)
-	err := http.ListenAndServe(address, nil)
+	err := http.ListenAndServe("0.0.0.0:"+strconv.Itoa(serviceCfg.APIPort), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
