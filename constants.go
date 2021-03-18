@@ -9,7 +9,7 @@ const (
 )
 
 const (
-	version                      = "0.9.0"
+	version                      = "0.9.1"
 	DefaultAPIPort               = 9001
 	DefaultMongoAddress          = "mongodb://root:example@0.0.0.0:27017"
 	DefaultMaxConcurrentOTACheck = 10

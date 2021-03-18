@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-var API_ADDRESS string
+var ENABLE_PROFILER bool
 var serviceCfg Config
 
 type Config struct {
@@ -46,6 +46,7 @@ func readConfigAndArg() {
 	argMongo := flag.String("mongo", DefaultMongoAddress, "set mongo address")
 	argMaxConcurrentOTACheck := flag.Int("maxotacheck", DefaultMaxConcurrentOTACheck, "set MaxConcurrentOTACheck")
 	argChain := flag.String("chain", DefaultChainFolder, "set chain folder")
+	argProfiler := flag.Bool("profiler", false, "set profiler")
 	flag.Parse()
 	if tempCfg.APIPort == 0 {
 		tempCfg.APIPort = *argPort
@@ -62,6 +63,9 @@ func readConfigAndArg() {
 	if tempCfg.MongoAddress == "" {
 		tempCfg.MongoAddress = *argMongo
 	}
-
+	if tempCfg.MongoAddress == "" {
+		tempCfg.MongoAddress = *argMongo
+	}
+	ENABLE_PROFILER = *argProfiler
 	serviceCfg = tempCfg
 }
