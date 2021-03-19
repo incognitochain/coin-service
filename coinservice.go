@@ -80,10 +80,51 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	outCoinList := []CoinData{}
 	beaconHeight := blk.Header.BeaconHeight
 
+	for _, txs := range blk.Body.CrossTransactions {
+		for _, tx := range txs {
+			for _, prvout := range tx.OutputCoin {
+				publicKeyBytes := prvout.GetPublicKey().ToBytesS()
+				publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+				if publicKeyShardID == byte(shardID) {
+					coinIdx := uint64(0)
+					if prvout.GetVersion() == 2 {
+						idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
+						if err != nil {
+							fmt.Println("len(outs))", len(tx.OutputCoin), base58.Base58Check{}.Encode(publicKeyBytes, 0))
+							panic(err)
+						}
+						coinIdx = idxBig.Uint64()
+					}
+					outCoin := NewCoinData(beaconHeight, coinIdx, prvout.Bytes(), common.PRVCoinID.String(), prvout.GetPublicKey().String(), "", tx.Hash().String(), shardID, int(prvout.GetVersion()))
+					outCoinList = append(outCoinList, *outCoin)
+				}
+			}
+			for _, tkouts := range tx.TokenPrivacyData {
+				for _, tkout := range tkouts.OutputCoin {
+					publicKeyBytes := tkout.GetPublicKey().ToBytesS()
+					publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+					if publicKeyShardID == byte(shardID) {
+						coinIdx := uint64(0)
+						tokenStr := tkouts.PropertyID.String()
+						if tkout.GetVersion() == 2 {
+							idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], tkouts.PropertyID, publicKeyBytes)
+							if err != nil {
+								panic(err)
+							}
+							coinIdx = idxBig.Uint64()
+							tokenStr = common.ConfidentialAssetID.String()
+						}
+						outCoin := NewCoinData(beaconHeight, coinIdx, tkout.Bytes(), tokenStr, tkout.GetPublicKey().String(), "", tx.Hash().String(), shardID, int(tkout.GetVersion()))
+						outCoinList = append(outCoinList, *outCoin)
+					}
+				}
+			}
+		}
+	}
+
 	for _, tx := range blk.Body.Transactions {
 		txHash := tx.Hash().String()
 		tokenID := tx.GetTokenID().String()
-		// if tx.GetVersion() == 2 {
 		if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType || tx.GetType() == common.TxRewardType || tx.GetType() == common.TxReturnStakingType {
 			fmt.Println("\n====================================================")
 			fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
@@ -173,8 +214,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				}
 			}
 		}
-		// }
-
 	}
 	if len(outCoinList) > 0 {
 		err = DBSaveCoins(outCoinList)
