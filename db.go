@@ -170,10 +170,10 @@ func DBGetUnknownCoinsFromCoinIndexWithLimit(index uint64, isPRV bool, limit int
 	return list, err
 }
 
-func DBGetCoinV1ByPubkey(tokenID, pubkey string, fromHeight int, toHeight int) ([]CoinData, error) {
+func DBGetCoinV1ByPubkey(tokenID, pubkey string, fromIdx int, toIdx int) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
-	filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "beaconheight": bson.M{operator.Gte: fromHeight, operator.Lte: toHeight}, "tokenid": bson.M{operator.Eq: tokenID}}
+	filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "coinidx": bson.M{operator.Gte: fromIdx, operator.Lte: toIdx}, "tokenid": bson.M{operator.Eq: tokenID}}
 	err := mgm.Coll(&CoinDataV1{}).SimpleFind(&list, filter)
 	if err != nil {
 		return nil, err
@@ -307,6 +307,16 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]uint64) error {
 
 	log.Println("update %v keys info successful", lenList)
 	return nil
+}
+
+func DBGetCoinPubkeyInfo(key string) (*KeyInfoData, error) {
+	var result KeyInfoData
+	filter := bson.M{"pubkey": bson.M{operator.Eq: key}}
+	err := mgm.Coll(&KeyInfoData{}).SimpleFind(&result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 func DBGetCoinV1OfShardCount(shardID int, tokenID string) int64 {

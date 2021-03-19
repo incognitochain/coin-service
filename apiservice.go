@@ -18,14 +18,6 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
-// var upgrader = websocket.Upgrader{
-// 	ReadBufferSize:  1024,
-// 	WriteBufferSize: 1024,
-// 	CheckOrigin: func(r *http.Request) bool {
-// 		return true
-// 	},
-// }
-
 func startAPIService() {
 	log.Println("initiating api-service...")
 	http.HandleFunc("/submitotakey", submitOTAkeyHandler)
@@ -33,7 +25,7 @@ func startAPIService() {
 	http.HandleFunc("/checkkeyimages", checkKeyImagesHandler)
 	http.HandleFunc("/getrandomcommitments", getRandomCommitmentsHandler)
 	http.HandleFunc("/getkeyinfo", getKeyInfoHandler)
-	http.HandleFunc("/getcoinpending", getCoinPendingHandler)
+	http.HandleFunc("/getcoinspending", getCoinsPendingHandler)
 	err := http.ListenAndServe("0.0.0.0:"+strconv.Itoa(serviceCfg.APIPort), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
@@ -396,10 +388,54 @@ func getKeyInfoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := r.URL.Query().Get("key")
-	_ = key
+	if key != "" {
+		wl, err := wallet.Base58CheckDeserialize(key)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write(buildErrorRespond(err))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
+		pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+		result, err := DBGetCoinPubkeyInfo(pubkey)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write(buildErrorRespond(err))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		respond := API_respond{
+			Result: result,
+			Error:  nil,
+		}
+		respondBytes, err := json.Marshal(respond)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, err = w.Write(buildErrorRespond(err))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
+		_, err = w.Write(respondBytes)
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		_, err := w.Write(buildErrorRespond(errors.New("key cant be empty")))
+		if err != nil {
+			log.Println(err)
+		}
+	}
 }
 
-func getCoinPendingHandler(w http.ResponseWriter, r *http.Request) {
+func getCoinsPendingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
