@@ -300,6 +300,15 @@ func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData
 				}
 				pass := false
 				for _, keyInfo := range Submitted_OTAKey.Keys {
+					if newCoin.GetAssetTag() == nil {
+						if cn.CoinIndex <= keyInfo.LastPRVIndex {
+							continue
+						}
+					} else {
+						if cn.CoinIndex <= keyInfo.LastTokenIndex {
+							continue
+						}
+					}
 					pass, _ = newCoin.DoesCoinBelongToKeySet(keyInfo.keyset)
 					if pass {
 						tempOTACoinsCh <- map[string]CoinData{keyInfo.OTAKey: cn}

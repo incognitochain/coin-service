@@ -11,7 +11,7 @@ const (
 const (
 	version                      = "0.9.1"
 	DefaultAPIPort               = 9001
-	DefaultMongoAddress          = "mongodb://root:example@0.0.0.0:27017"
+	DefaultMongoAddress          = "mongodb://root:example@51.161.119.66:27017"
 	DefaultMaxConcurrentOTACheck = 10
 	DefaultChainFolder           = "chain"
 	DefaultMode                  = TESTMODE

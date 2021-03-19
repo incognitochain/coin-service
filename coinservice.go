@@ -79,6 +79,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	keyImageList := []KeyImageData{}
 	outCoinList := []CoinData{}
 	beaconHeight := blk.Header.BeaconHeight
+	outcoinsIdx := make(map[string]uint64)
+	coinV1PubkeyInfo := make(map[string]map[string]uint64)
 
 	for _, txs := range blk.Body.CrossTransactions {
 		for _, tx := range txs {
@@ -94,6 +96,19 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							panic(err)
 						}
 						coinIdx = idxBig.Uint64()
+					} else {
+						if _, ok := outcoinsIdx[common.PRVCoinID.String()]; !ok {
+							outcoinsIdx[common.PRVCoinID.String()] = uint64(DBGetCoinV1OfShardCount(shardID, common.PRVCoinID.String()))
+						} else {
+							outcoinsIdx[common.PRVCoinID.String()] = outcoinsIdx[common.PRVCoinID.String()] + 1
+						}
+						coinIdx = outcoinsIdx[common.PRVCoinID.String()]
+						if _, ok := coinV1PubkeyInfo[prvout.GetPublicKey().String()]; !ok {
+							coinV1PubkeyInfo[prvout.GetPublicKey().String()] = make(map[string]uint64)
+						}
+						if _, ok := coinV1PubkeyInfo[prvout.GetPublicKey().String()][common.PRVCoinID.String()]; !ok {
+							coinV1PubkeyInfo[prvout.GetPublicKey().String()][common.PRVCoinID.String()] = coinIdx
+						}
 					}
 					outCoin := NewCoinData(beaconHeight, coinIdx, prvout.Bytes(), common.PRVCoinID.String(), prvout.GetPublicKey().String(), "", tx.Hash().String(), shardID, int(prvout.GetVersion()))
 					outCoinList = append(outCoinList, *outCoin)
@@ -113,6 +128,19 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							}
 							coinIdx = idxBig.Uint64()
 							tokenStr = common.ConfidentialAssetID.String()
+						} else {
+							if _, ok := outcoinsIdx[tokenStr]; !ok {
+								outcoinsIdx[tokenStr] = uint64(DBGetCoinV1OfShardCount(shardID, tokenStr))
+							} else {
+								outcoinsIdx[tokenStr] = outcoinsIdx[tokenStr] + 1
+							}
+							coinIdx = outcoinsIdx[tokenStr]
+							if _, ok := coinV1PubkeyInfo[tkout.GetPublicKey().String()]; !ok {
+								coinV1PubkeyInfo[tkout.GetPublicKey().String()] = make(map[string]uint64)
+							}
+							if _, ok := coinV1PubkeyInfo[tkout.GetPublicKey().String()][tokenStr]; !ok {
+								coinV1PubkeyInfo[tkout.GetPublicKey().String()][tokenStr] = coinIdx
+							}
 						}
 						outCoin := NewCoinData(beaconHeight, coinIdx, tkout.Bytes(), tokenStr, tkout.GetPublicKey().String(), "", tx.Hash().String(), shardID, int(tkout.GetVersion()))
 						outCoinList = append(outCoinList, *outCoin)
@@ -135,7 +163,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			outs := tx.GetProof().GetOutputCoins()
 
 			for _, coin := range ins {
-				km := NewKeyImageData(tokenID, "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
+				km := NewKeyImageData(tokenID, txHash, base58.Base58Check{}.Encode(coin.GetKeyImage().ToBytesS(), 0), beaconHeight, shardID)
 				keyImageList = append(keyImageList, *km)
 			}
 			for _, coin := range outs {
@@ -150,6 +178,19 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							panic(err)
 						}
 						coinIdx = idxBig.Uint64()
+					} else {
+						if _, ok := outcoinsIdx[common.PRVCoinID.String()]; !ok {
+							outcoinsIdx[common.PRVCoinID.String()] = uint64(DBGetCoinV1OfShardCount(shardID, common.PRVCoinID.String()))
+						} else {
+							outcoinsIdx[common.PRVCoinID.String()] = outcoinsIdx[common.PRVCoinID.String()] + 1
+						}
+						coinIdx = outcoinsIdx[common.PRVCoinID.String()]
+						if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()]; !ok {
+							coinV1PubkeyInfo[coin.GetPublicKey().String()] = make(map[string]uint64)
+						}
+						if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()]; !ok {
+							coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()] = coinIdx
+						}
 					}
 					outCoin := NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID, int(coin.GetVersion()))
 					outCoinList = append(outCoinList, *outCoin)
@@ -166,7 +207,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 			tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
 			for _, coin := range tokenIns {
-				km := NewKeyImageData(common.ConfidentialAssetID.String(), "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
+				km := NewKeyImageData(common.ConfidentialAssetID.String(), txHash, base58.Base58Check{}.Encode(coin.GetKeyImage().ToBytesS(), 0), beaconHeight, shardID)
 				keyImageList = append(keyImageList, *km)
 			}
 			for _, coin := range tokenOuts {
@@ -182,6 +223,19 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						}
 						coinIdx = idxBig.Uint64()
 						tokenStr = common.ConfidentialAssetID.String()
+					} else {
+						if _, ok := outcoinsIdx[tokenStr]; !ok {
+							outcoinsIdx[tokenStr] = uint64(DBGetCoinV1OfShardCount(shardID, tokenStr))
+						} else {
+							outcoinsIdx[tokenStr] = outcoinsIdx[tokenStr] + 1
+						}
+						coinIdx = outcoinsIdx[tokenStr]
+						if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()]; !ok {
+							coinV1PubkeyInfo[coin.GetPublicKey().String()] = make(map[string]uint64)
+						}
+						if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()][tokenStr]; !ok {
+							coinV1PubkeyInfo[coin.GetPublicKey().String()][tokenStr] = coinIdx
+						}
 					}
 					outCoin := NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenStr, coin.GetPublicKey().String(), "", txHash, shardID, int(coin.GetVersion()))
 					outCoinList = append(outCoinList, *outCoin)
@@ -193,7 +247,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				ins := tx.GetProof().GetInputCoins()
 				outs := tx.GetProof().GetOutputCoins()
 				for _, coin := range ins {
-					km := NewKeyImageData(common.PRVCoinID.String(), "", txHash, coin.GetKeyImage().ToBytesS(), beaconHeight, shardID)
+
+					km := NewKeyImageData(common.PRVCoinID.String(), txHash, base58.Base58Check{}.Encode(coin.GetKeyImage().ToBytesS(), 0), beaconHeight, shardID)
 					keyImageList = append(keyImageList, *km)
 				}
 				for _, coin := range outs {
@@ -207,6 +262,19 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 								panic(err)
 							}
 							coinIdx = idxBig.Uint64()
+						} else {
+							if _, ok := outcoinsIdx[common.PRVCoinID.String()]; !ok {
+								outcoinsIdx[common.PRVCoinID.String()] = uint64(DBGetCoinV1OfShardCount(shardID, common.PRVCoinID.String()))
+							} else {
+								outcoinsIdx[common.PRVCoinID.String()] = outcoinsIdx[common.PRVCoinID.String()] + 1
+							}
+							coinIdx = outcoinsIdx[common.PRVCoinID.String()]
+							if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()]; !ok {
+								coinV1PubkeyInfo[coin.GetPublicKey().String()] = make(map[string]uint64)
+							}
+							if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()]; !ok {
+								coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()] = coinIdx
+							}
 						}
 						outCoin := NewCoinData(beaconHeight, coinIdx, coin.Bytes(), common.PRVCoinID.String(), coin.GetPublicKey().String(), "", txHash, shardID, int(coin.GetVersion()))
 						outCoinList = append(outCoinList, *outCoin)
@@ -223,6 +291,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 	if len(keyImageList) > 0 {
 		err = DBSaveUsedKeyimage(keyImageList)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if len(coinV1PubkeyInfo) > 0 {
+		err = DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
 		if err != nil {
 			panic(err)
 		}

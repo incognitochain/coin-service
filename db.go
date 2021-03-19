@@ -12,7 +12,6 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -206,29 +205,123 @@ func DBSaveUsedKeyimage(list []KeyImageData) error {
 func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 	startTime := time.Now()
 	var result []bool
-	for _, keyImage := range list {
-		kmBytes, _, err := base58.Base58Check{}.Decode(keyImage)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		var kmdata *KeyImageData
-		b := primitive.Binary{Subtype: 0, Data: kmBytes}
-		filter := bson.M{"keyimage": bson.M{operator.Eq: b}, "shardid": bson.M{operator.Eq: shardID}}
-		err = mgm.Coll(&KeyImageData{}).First(filter, kmdata)
-		if err != nil {
-			log.Println(err)
-			result = append(result, false)
-			continue
-		}
-		result = append(result, true)
+
+	var kmsdata []KeyImageData
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
+	filter := bson.M{"keyimage": bson.M{operator.In: list}}
+	err := mgm.Coll(&KeyImageData{}).SimpleFindWithCtx(ctx, &kmsdata, filter)
+	if err != nil {
+		log.Println(err)
+		return nil, err
 	}
+	for _, km := range list {
+		found := false
+		for _, rkm := range kmsdata {
+			if km == rkm.KeyImage {
+				found = true
+				break
+			}
+		}
+		result = append(result, found)
+	}
+	// for _, keyImage := range list {
+	// 	filter := bson.M{"keyimage": bson.M{operator.Eq: keyImage}}
+	// 	err := mgm.Coll(&KeyImageData{}).First(filter, &kmdata)
+	// 	if err != nil {
+	// 		log.Println(keyImage, err)
+	// 		result = append(result, false)
+	// 		continue
+	// 	}
+	// 	result = append(result, true)
+	// }
 
 	log.Printf("checked %v keyimages in %v", len(list), time.Since(startTime))
 	return result, nil
 }
 
-func DBGetCoinsOfShardCount(shardID int, tokenID string) int64 {
+func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]uint64) error {
+	pubkeys := []string{}
+	lenList := len(list)
+	for pubkey, _ := range list {
+		pubkeys = append(pubkeys, pubkey)
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
+	KeyInfoDatas := []KeyInfoData{}
+	filter := bson.M{"pubkey": bson.M{operator.In: pubkeys}}
+	err := mgm.Coll(&KeyInfoData{}).SimpleFindWithCtx(ctx, &KeyInfoDatas, filter)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	keysToInsert := []KeyInfoData{}
+	keysToUpdate := []KeyInfoData{}
+	for _, keyInfo := range KeyInfoDatas {
+		ki, ok := list[keyInfo.Pubkey]
+		change := false
+		for token, idx := range ki {
+			if _, exist := keyInfo.CoinV1StartIndex[token]; !exist {
+				keyInfo.CoinV1StartIndex[token] = idx
+				change = true
+			}
+		}
+
+		if ok {
+			delete(list, keyInfo.Pubkey)
+		}
+		if change {
+			keysToUpdate = append(keysToUpdate, keyInfo)
+		}
+	}
+
+	for key, tokens := range list {
+		newKeyInfo := NewKeyInfoData(key, "", tokens, nil)
+		keysToInsert = append(keysToInsert, *newKeyInfo)
+	}
+	if len(keysToInsert) > 0 {
+		ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(keysToInsert))*DB_OPERATION_TIMEOUT)
+		docs := []interface{}{}
+		for _, key := range keysToInsert {
+			docs = append(docs, key)
+		}
+		_, err = mgm.Coll(&KeyInfoData{}).InsertMany(ctx, docs)
+		if err != nil {
+			return err
+		}
+	}
+	if len(keysToUpdate) > 0 {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToUpdate))*DB_OPERATION_TIMEOUT)
+		docs := []interface{}{}
+		for _, key := range keysToUpdate {
+			update := bson.M{
+				"$set": key,
+			}
+			docs = append(docs, update)
+		}
+		for idx, doc := range docs {
+			_, err := mgm.Coll(&KeyInfoData{}).UpdateByID(ctx, keysToUpdate[idx].GetID(), doc)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	log.Println("update %v keys info successful", lenList)
+	return nil
+}
+
+func DBGetCoinV1OfShardCount(shardID int, tokenID string) int64 {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
+	doc := CoinDataV1{}
+	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		return -1
+	}
+	return count
+}
+
+func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	doc := CoinData{}

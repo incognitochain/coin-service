@@ -32,6 +32,8 @@ func startAPIService() {
 	http.HandleFunc("/getcoins", getCoinsHandler)
 	http.HandleFunc("/checkkeyimages", checkKeyImagesHandler)
 	http.HandleFunc("/getrandomcommitments", getRandomCommitmentsHandler)
+	http.HandleFunc("/getkeyinfo", getKeyInfoHandler)
+	http.HandleFunc("/getcoinpending", getCoinPendingHandler)
 	err := http.ListenAndServe("0.0.0.0:"+strconv.Itoa(serviceCfg.APIPort), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
@@ -48,8 +50,8 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	fromHeight, _ := strconv.Atoi(r.URL.Query().Get("fromheight"))
-	toHeight, _ := strconv.Atoi(r.URL.Query().Get("toheight"))
+	fromIdx, _ := strconv.Atoi(r.URL.Query().Get("from"))
+	toIdx, _ := strconv.Atoi(r.URL.Query().Get("to"))
 
 	tokenid := r.URL.Query().Get("tokenid")
 	if tokenid == "" {
@@ -57,7 +59,7 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var result []jsonresult.OutCoin
 	var pubkey string
-	highestHeight := uint64(0)
+	highestIdx := uint64(0)
 	otakey := r.URL.Query().Get("otakey")
 	if otakey != "" {
 		wl, err := wallet.Base58CheckDeserialize(otakey)
@@ -82,7 +84,7 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
 			tokenidv2 = common.ConfidentialAssetID.String()
 		}
-		coinList, err := DBGetCoinsByOTAKeyAndHeight(tokenidv2, hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), fromHeight, toHeight)
+		coinList, err := DBGetCoinsByOTAKeyAndHeight(tokenidv2, hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), fromIdx, toIdx)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, err = w.Write(buildErrorRespond(err))
@@ -93,8 +95,8 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, c := range coinList {
-			if c.BeaconHeight > highestHeight {
-				highestHeight = c.BeaconHeight
+			if c.CoinIndex > highestIdx {
+				highestIdx = c.CoinIndex
 			}
 			coinV2 := new(coin.CoinV2)
 			err := coinV2.SetBytes(c.Coin)
@@ -140,7 +142,7 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		viewKeySet = &wl.KeySet
 	}
 	fmt.Println("GetCoinV1", pubkey, viewKeySet)
-	coinListV1, err := DBGetCoinV1ByPubkey(tokenid, pubkey, fromHeight, toHeight)
+	coinListV1, err := DBGetCoinV1ByPubkey(tokenid, pubkey, fromIdx, toIdx)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write(buildErrorRespond(err))
@@ -150,8 +152,8 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, c := range coinListV1 {
-		if c.BeaconHeight > highestHeight {
-			highestHeight = c.BeaconHeight
+		if c.CoinIndex > highestIdx {
+			highestIdx = c.CoinIndex
 		}
 		coinV1 := new(coin.CoinV1)
 		err := coinV1.SetBytes(c.Coin)
@@ -181,7 +183,7 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	rs := make(map[string]interface{})
-	rs["HighestHeight"] = highestHeight
+	rs["HighestIndex"] = highestIdx
 	rs["Outputs"] = map[string]interface{}{pubkey: result}
 	respond := API_respond{
 		Result: rs,
@@ -317,7 +319,7 @@ func getRandomCommitmentsHandler(w http.ResponseWriter, r *http.Request) {
 	commitmentIndices := []int{}
 	var publicKeys, commitments, assetTags []string
 
-	lenOTA := new(big.Int).SetInt64(DBGetCoinsOfShardCount(shardid, token) - 1)
+	lenOTA := new(big.Int).SetInt64(DBGetCoinV2OfShardCount(shardid, token) - 1)
 	var hasAssetTags bool = true
 	for i := 0; i < limit; i++ {
 		idx, _ := common.RandBigIntMaxRange(lenOTA)
@@ -381,6 +383,32 @@ func getRandomCommitmentsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 	return
+}
+
+func getKeyInfoHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_, err := w.Write(buildErrorRespond(errors.New("Method not allowed")))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+	key := r.URL.Query().Get("key")
+	_ = key
+}
+
+func getCoinPendingHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_, err := w.Write(buildErrorRespond(errors.New("Method not allowed")))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
 }
 
 func buildErrorRespond(err error) []byte {
