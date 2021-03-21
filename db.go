@@ -32,7 +32,9 @@ func DBCreateCoinV1Index() error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys: bson.M{
-			"beaconheight": -1,
+			"coinpubkey": 1,
+			"tokenid":    1,
+			"coinidx":    1,
 		},
 		// Options: options.Index().SetUnique(true),
 	})
@@ -367,7 +369,7 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]uint64) error {
 func DBGetCoinPubkeyInfo(key string) (*KeyInfoData, error) {
 	var result KeyInfoData
 	filter := bson.M{"pubkey": bson.M{operator.Eq: key}}
-	err := mgm.Coll(&KeyInfoData{}).SimpleFind(&result, filter)
+	err := mgm.Coll(&KeyInfoData{}).First(filter, &result)
 	if err != nil {
 		return nil, err
 	}
