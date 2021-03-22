@@ -1,0 +1,7 @@
+{
+    "apiport":9001,
+	"chaindata":"chain",
+	"maxconcurrentotacheck":10,
+	"mode":"query",
+	"mongo":"mongodb://root:example@51.161.119.66:27017"
+}
