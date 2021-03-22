@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/incognitochain/incognito-chain/common"
@@ -44,6 +42,11 @@ func DBCreateCoinV1Index() error {
 	}
 	log.Println("indexName", indexName)
 	log.Printf("success indexs coins in %v", time.Since(startTime))
+	return nil
+}
+
+func DBCreateCoinV2Index() error {
+
 	return nil
 }
 
@@ -174,69 +177,22 @@ func DBGetUnknownCoinsFromCoinIndexWithLimit(index uint64, isPRV bool, limit int
 	return list, err
 }
 
-func DBGetCoinV1ByPubkey(tokenID, pubkey string, fromIdx int, toIdx int) ([]CoinData, error) {
+func DBGetCoinV1ByPubkey(tokenID, pubkey string, offset int64, limit int64) ([]CoinData, error) {
 	startTime := time.Now()
-	totalIdxs := toIdx - fromIdx
-	if totalIdxs < 0 {
-		return nil, errors.New("invalid from/to index")
+	if limit == 0 {
+		limit = int64(10000)
 	}
-	if totalIdxs/COINS_GET_PER_DBREQUEST < 5 {
-		list := []CoinData{}
-		filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "coinidx": bson.M{operator.Gte: fromIdx, operator.Lte: toIdx}, "tokenid": bson.M{operator.Eq: tokenID}}
-		err := mgm.Coll(&CoinDataV1{}).SimpleFind(&list, filter)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("found %v coins in %v", len(list), time.Since(startTime))
-		return list, err
+	list := []CoinData{}
+	filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "tokenid": bson.M{operator.Eq: tokenID}}
+	err := mgm.Coll(&CoinDataV1{}).SimpleFind(&list, filter, &options.FindOptions{
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
 	}
-	log.Println("large db request")
-	collectCh := make(chan []CoinData, 5)
-	finalList := []CoinData{}
-	from := fromIdx
-	to := from + COINS_GET_PER_DBREQUEST
-	if to > toIdx {
-		to = toIdx
-	}
-	var wg sync.WaitGroup
-	requestCount := 0
-	for {
-		wg.Add(1)
-		requestCount++
-		go func(f, t int) {
-		get:
-			log.Println("get coins", f, t)
-			list := []CoinData{}
-			filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "coinidx": bson.M{operator.Gte: f, operator.Lte: t}, "tokenid": bson.M{operator.Eq: tokenID}}
-			err := mgm.Coll(&CoinDataV1{}).SimpleFind(&list, filter)
-			if err != nil {
-				log.Println(err)
-				goto get
-			}
-			log.Println("len(list)", len(list), len(collectCh))
-			collectCh <- list
-			wg.Done()
-		}(from, to)
-		if requestCount%5 == 0 || to+COINS_GET_PER_DBREQUEST >= toIdx {
-			wg.Wait()
-			log.Println("collect coins")
-			close(collectCh)
-			for list := range collectCh {
-				finalList = append(finalList, list...)
-			}
-			collectCh = make(chan []CoinData, 5)
-		}
-		from = to
-		if from == toIdx {
-			break
-		}
-		to = from + COINS_GET_PER_DBREQUEST
-		if to > toIdx {
-			to = toIdx
-		}
-	}
-	log.Printf("found %v coins in %v", len(finalList), time.Since(startTime))
-	return finalList, nil
+	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	return list, err
 }
 
 func DBGetCoinsOTAStat() error {
@@ -281,22 +237,11 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 		}
 		result = append(result, found)
 	}
-	// for _, keyImage := range list {
-	// 	filter := bson.M{"keyimage": bson.M{operator.Eq: keyImage}}
-	// 	err := mgm.Coll(&KeyImageData{}).First(filter, &kmdata)
-	// 	if err != nil {
-	// 		log.Println(keyImage, err)
-	// 		result = append(result, false)
-	// 		continue
-	// 	}
-	// 	result = append(result, true)
-	// }
-
 	log.Printf("checked %v keyimages in %v", len(list), time.Since(startTime))
 	return result, nil
 }
 
-func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]uint64) error {
+func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	pubkeys := []string{}
 	lenList := len(list)
 	for pubkey, _ := range list {

@@ -4,11 +4,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"math/big"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
@@ -42,56 +42,47 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	fromIdx, _ := strconv.Atoi(r.URL.Query().Get("from"))
-	toIdx, _ := strconv.Atoi(r.URL.Query().Get("to"))
+	version, _ := strconv.Atoi(r.URL.Query().Get("version"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	// toIdx, _ := strconv.Atoi(r.URL.Query().Get("to"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
 	tokenid := r.URL.Query().Get("tokenid")
 	if tokenid == "" {
 		tokenid = common.PRVCoinID.String()
 	}
-	var result []jsonresult.OutCoin
+	if version != 1 && version != 2 {
+		version = 1
+	}
+	var result []interface{}
 	var pubkey string
 	highestIdx := uint64(0)
-	otakey := r.URL.Query().Get("otakey")
-	if otakey != "" {
-		wl, err := wallet.Base58CheckDeserialize(otakey)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, err = w.Write(buildErrorRespond(err))
+	if version == 2 {
+		otakey := r.URL.Query().Get("otakey")
+		if otakey != "" {
+			wl, err := wallet.Base58CheckDeserialize(otakey)
 			if err != nil {
-				log.Println(err)
+				w.WriteHeader(http.StatusBadRequest)
+				_, err = w.Write(buildErrorRespond(err))
+				if err != nil {
+					log.Println(err)
+				}
+				return
 			}
-			return
-		}
-		if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, err = w.Write(buildErrorRespond(errors.New("invalid otakey")))
-			if err != nil {
-				log.Println(err)
+			if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, err = w.Write(buildErrorRespond(errors.New("invalid otakey")))
+				if err != nil {
+					log.Println(err)
+				}
+				return
 			}
-			return
-		}
-		pubkey = hex.EncodeToString(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
-		tokenidv2 := tokenid
-		if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
-			tokenidv2 = common.ConfidentialAssetID.String()
-		}
-		coinList, err := DBGetCoinsByOTAKeyAndHeight(tokenidv2, hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), fromIdx, toIdx)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, err = w.Write(buildErrorRespond(err))
-			if err != nil {
-				log.Println(err)
+			pubkey = base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+			tokenidv2 := tokenid
+			if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
+				tokenidv2 = common.ConfidentialAssetID.String()
 			}
-			return
-		}
-
-		for _, c := range coinList {
-			if c.CoinIndex > highestIdx {
-				highestIdx = c.CoinIndex
-			}
-			coinV2 := new(coin.CoinV2)
-			err := coinV2.SetBytes(c.Coin)
+			coinList, err := DBGetCoinsByOTAKeyAndHeight(tokenidv2, hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), offset, limit)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err = w.Write(buildErrorRespond(err))
@@ -100,16 +91,39 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-			idx := new(big.Int).SetUint64(c.CoinIndex)
-			cn := jsonresult.NewOutCoin(coinV2)
-			cn.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
-			result = append(result, cn)
+
+			for _, c := range coinList {
+				if c.CoinIndex > highestIdx {
+					highestIdx = c.CoinIndex
+				}
+				coinV2 := new(coin.CoinV2)
+				err := coinV2.SetBytes(c.Coin)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					_, err = w.Write(buildErrorRespond(err))
+					if err != nil {
+						log.Println(err)
+					}
+					return
+				}
+				idx := new(big.Int).SetUint64(c.CoinIndex)
+				cn := jsonresult.NewOutCoin(coinV2)
+				cn.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+				result = append(result, cn)
+			}
 		}
 	}
-
-	viewkey := r.URL.Query().Get("viewkey")
-	var viewKeySet *incognitokey.KeySet
-	if viewkey != "" {
+	if version == 1 {
+		viewkey := r.URL.Query().Get("viewkey")
+		var viewKeySet *incognitokey.KeySet
+		if viewkey == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err := w.Write(buildErrorRespond(errors.New("viewkey cant be empty")))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
 		wl, err := wallet.Base58CheckDeserialize(viewkey)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -119,6 +133,8 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+		// fmt.Println(wl.Base58CheckSerialize(wallet.PaymentAddressType))
+		// fmt.Println(wl.Base58CheckSerialize(wallet.ReadonlyKeyType))
 		if wl.KeySet.ReadonlyKey.Rk == nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err = w.Write(buildErrorRespond(errors.New("invalid viewkey")))
@@ -127,28 +143,10 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		if pubkey == "" {
-			pubkey = hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
-		}
+		pubkey = base58.EncodeCheck(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
 		wl.KeySet.PaymentAddress.Pk = wl.KeySet.ReadonlyKey.Pk
 		viewKeySet = &wl.KeySet
-	}
-	fmt.Println("GetCoinV1", pubkey, viewKeySet)
-	coinListV1, err := DBGetCoinV1ByPubkey(tokenid, pubkey, fromIdx, toIdx)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write(buildErrorRespond(err))
-		if err != nil {
-			log.Println(err)
-		}
-		return
-	}
-	for _, c := range coinListV1 {
-		if c.CoinIndex > highestIdx {
-			highestIdx = c.CoinIndex
-		}
-		coinV1 := new(coin.CoinV1)
-		err := coinV1.SetBytes(c.Coin)
+		coinListV1, err := DBGetCoinV1ByPubkey(tokenid, hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS()), int64(offset), int64(limit))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, err = w.Write(buildErrorRespond(err))
@@ -157,8 +155,15 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		if viewKeySet != nil {
-			plainCoin, err := coinV1.Decrypt(viewKeySet)
+		var wg sync.WaitGroup
+		collectCh := make(chan OutCoinV1, MAX_CONCURRENT_COIN_DECRYPT)
+		decryptCount := 0
+		for idx, c := range coinListV1 {
+			if c.CoinIndex > highestIdx {
+				highestIdx = c.CoinIndex
+			}
+			coinV1 := new(coin.CoinV1)
+			err := coinV1.SetBytes(c.Coin)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err = w.Write(buildErrorRespond(err))
@@ -167,13 +172,36 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-			cn := jsonresult.NewOutCoin(plainCoin)
-			result = append(result, cn)
-		} else {
-			cn := jsonresult.NewOutCoin(coinV1)
-			result = append(result, cn)
+			if viewKeySet != nil {
+				wg.Add(1)
+				go func() {
+					plainCoin, err := coinV1.Decrypt(viewKeySet)
+					if err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						_, err = w.Write(buildErrorRespond(err))
+						if err != nil {
+							log.Println(err)
+						}
+						return
+					}
+					collectCh <- NewOutCoinV1(plainCoin)
+					wg.Done()
+				}()
+				if decryptCount%MAX_CONCURRENT_COIN_DECRYPT == 0 || idx+1 == len(coinListV1) {
+					wg.Wait()
+					close(collectCh)
+					for coins := range collectCh {
+						result = append(result, coins)
+					}
+					collectCh = make(chan OutCoinV1, MAX_CONCURRENT_COIN_DECRYPT)
+				}
+			} else {
+				cn := NewOutCoinV1(coinV1)
+				result = append(result, cn)
+			}
 		}
 	}
+
 	rs := make(map[string]interface{})
 	rs["HighestIndex"] = highestIdx
 	rs["Outputs"] = map[string]interface{}{pubkey: result}

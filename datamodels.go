@@ -38,15 +38,20 @@ func NewKeyImageData(tokenID, txHash, keyimage string, beaconHeight uint64, shar
 	}
 }
 
+type CoinInfo struct {
+	Start uint64
+	Total uint64
+	End   uint64
+}
 type KeyInfoData struct {
 	mgm.DefaultModel `bson:",inline"`
-	Pubkey           string            `json:"pubkey" bson:"pubkey"`
-	OTAKey           string            `json:"otakey" bson:"otakey"`
-	CoinV1StartIndex map[string]uint64 `json:"v1startindex" bson:"v1startindex"`
-	CoinV2StartIndex map[string]uint64 `json:"v2startindex" bson:"v2startindex"`
+	Pubkey           string              `json:"pubkey" bson:"pubkey"`
+	OTAKey           string              `json:"otakey" bson:"otakey"`
+	CoinV1StartIndex map[string]CoinInfo `json:"v1startindex" bson:"v1startindex"`
+	CoinV2StartIndex map[string]CoinInfo `json:"v2startindex" bson:"v2startindex"`
 }
 
-func NewKeyInfoData(Pubkey, OTAKey string, CoinV1StartIndex, CoinV2StartIndex map[string]uint64) *KeyInfoData {
+func NewKeyInfoData(Pubkey, OTAKey string, CoinV1StartIndex, CoinV2StartIndex map[string]CoinInfo) *KeyInfoData {
 	return &KeyInfoData{
 		Pubkey: Pubkey, OTAKey: OTAKey, CoinV1StartIndex: CoinV1StartIndex, CoinV2StartIndex: CoinV2StartIndex,
 	}
