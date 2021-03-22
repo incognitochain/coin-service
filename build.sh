@@ -1,4 +1,4 @@
 #!/bin/bash
 
-echo "build coin-worker..."
+echo "building coin-worker..."
 go build -v -o coinservice

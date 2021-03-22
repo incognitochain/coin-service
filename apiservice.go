@@ -20,6 +20,7 @@ import (
 
 func startAPIService() {
 	log.Println("initiating api-service...")
+	http.HandleFunc("/health", healthCheckHandler)
 	http.HandleFunc("/submitotakey", submitOTAkeyHandler)
 	http.HandleFunc("/getcoins", getCoinsHandler)
 	http.HandleFunc("/checkkeyimages", checkKeyImagesHandler)
