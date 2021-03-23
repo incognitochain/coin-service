@@ -69,9 +69,10 @@ func readConfigAndArg() {
 	if tempCfg.MongoAddress == "" {
 		tempCfg.MongoAddress = *argMongo
 	}
-	if tempCfg.MongoAddress == "" {
-		tempCfg.MongoAddress = *argMongo
-	}
 	ENABLE_PROFILER = *argProfiler
 	serviceCfg = tempCfg
+
+	if serviceCfg.MongoAddress == "" || serviceCfg.FullnodeAddress == "" {
+		log.Fatalln("MongoAddress & FullnodeAddress can't be empty")
+	}
 }
