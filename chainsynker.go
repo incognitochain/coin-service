@@ -438,6 +438,11 @@ func mempoolWatcher(fullnode string) {
 			pendingTxs = append(pendingTxs, *NewCoinPendingData(sn, txHash))
 		}
 		fmt.Println("pendingTxs", pendingTxs)
+		err = DBSavePendingTx(pendingTxs)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 	}
 }
 

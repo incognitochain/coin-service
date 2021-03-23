@@ -475,6 +475,35 @@ func getCoinsPendingHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	result , err:= DBGetPendingCoins()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write(buildErrorRespond(err))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	respond := API_respond{
+		Result: result,
+		Error:  nil,
+	}
+	respondBytes, err := json.Marshal(respond)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write(buildErrorRespond(err))
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+	_, err = w.Write(respondBytes)
+	if err != nil {
+		log.Println(err)
+	}
+	return
 }
 
 func buildErrorRespond(err error) []byte {

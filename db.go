@@ -345,3 +345,41 @@ func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
 	}
 	return count
 }
+
+func DBSavePendingTx(list []CoinPendingData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&CoinPendingData{}).Drop(ctx)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(list) > 0 {
+		ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
+		docs := []interface{}{}
+		for _, coin := range list {
+			docs = append(docs, coin)
+		}
+		_, err = mgm.Coll(&CoinPendingData{}).InsertMany(ctx, docs)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func DBGetPendingCoins() ([]string, error) {
+	list := []CoinPendingData{}
+	filter := bson.M{}
+	err := mgm.Coll(&CoinPendingData{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	var result []string
+	for _, v := range list {
+		result = append(result, v.SerialNumber...)
+	}
+	return result, nil
+
+}
