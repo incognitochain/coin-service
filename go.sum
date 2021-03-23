@@ -10,6 +10,14 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20210309103136-946a802b3d99 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210309103136-946a802b3d99/go.mod h1:RE3QJ4Nwofnl0xpduze6QJpUwWgfoI97efOJ6CwMRgs=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210311020334-9989512477ec h1:8EFAeORniBzU2n26eAFF4t4ifUZsd1CG2DFjBJs32iU=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210311020334-9989512477ec/go.mod h1:RE3QJ4Nwofnl0xpduze6QJpUwWgfoI97efOJ6CwMRgs=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210319040612-7d6796c9859f h1:C+8L8pxOmcfX+vW6vFH7fQCq9h5n0/kh+ugtmSyje6s=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210319040612-7d6796c9859f/go.mod h1:RE3QJ4Nwofnl0xpduze6QJpUwWgfoI97efOJ6CwMRgs=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210323035444-8831ba282066 h1:QXnKzHStV6y9L10IqQugwEyyq6KJAtWGHjZ5KjmwgCA=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210323035444-8831ba282066/go.mod h1:RE3QJ4Nwofnl0xpduze6QJpUwWgfoI97efOJ6CwMRgs=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210323042827-b52153f9be1a h1:kI+bz9S/4rSZk7PtDnPc5dE5rtLVwojbQsDS9GzTVFw=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210323042827-b52153f9be1a/go.mod h1:RE3QJ4Nwofnl0xpduze6QJpUwWgfoI97efOJ6CwMRgs=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210323082808-0831daddbb6b h1:yFam6/knWM9MNfn/GNqlUZ1kdA9nvRvsQI0gXhmjp+s=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210323082808-0831daddbb6b/go.mod h1:RE3QJ4Nwofnl0xpduze6QJpUwWgfoI97efOJ6CwMRgs=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
