@@ -13,6 +13,7 @@ var serviceCfg Config
 type Config struct {
 	APIPort               int    `json:"apiport"`
 	ChainDataFolder       string `json:"chaindata"`
+	FullnodeAddress       string `json:"fullnode"`
 	MaxConcurrentOTACheck int    `json:"maxconcurrentotacheck"`
 	Mode                  string `json:"mode"`
 	MongoAddress          string `json:"mongo"`
@@ -22,6 +23,7 @@ func init() {
 	serviceCfg.APIPort = DefaultAPIPort
 	serviceCfg.ChainDataFolder = DefaultChainFolder
 	serviceCfg.MaxConcurrentOTACheck = DefaultMaxConcurrentOTACheck
+	serviceCfg.FullnodeAddress = DefaultFullnode
 	serviceCfg.Mode = DefaultMode
 	serviceCfg.MongoAddress = DefaultMongoAddress
 }
@@ -44,6 +46,7 @@ func readConfigAndArg() {
 	argMode := flag.String("mode", DefaultMode, "set worker mode")
 	argPort := flag.Int("port", DefaultAPIPort, "set worker port")
 	argMongo := flag.String("mongo", DefaultMongoAddress, "set mongo address")
+	argFullnode := flag.String("fullnode", DefaultFullnode, "set fullnode address")
 	argMaxConcurrentOTACheck := flag.Int("maxotacheck", DefaultMaxConcurrentOTACheck, "set MaxConcurrentOTACheck")
 	argChain := flag.String("chain", DefaultChainFolder, "set chain folder")
 	argProfiler := flag.Bool("profiler", false, "set profiler")
@@ -53,6 +56,9 @@ func readConfigAndArg() {
 	}
 	if tempCfg.ChainDataFolder == "" {
 		tempCfg.ChainDataFolder = *argChain
+	}
+	if tempCfg.FullnodeAddress == "" {
+		tempCfg.FullnodeAddress = *argFullnode
 	}
 	if tempCfg.MaxConcurrentOTACheck == 0 {
 		tempCfg.MaxConcurrentOTACheck = *argMaxConcurrentOTACheck

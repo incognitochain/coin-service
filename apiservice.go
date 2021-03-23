@@ -43,6 +43,7 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	version, _ := strconv.Atoi(r.URL.Query().Get("version"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	// toIdx, _ := strconv.Atoi(r.URL.Query().Get("to"))

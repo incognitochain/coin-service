@@ -59,11 +59,11 @@ func NewKeyInfoData(Pubkey, OTAKey string, CoinV1StartIndex, CoinV2StartIndex ma
 
 type CoinPendingData struct {
 	mgm.DefaultModel `bson:",inline"`
-	SerialNumber     string `json:"serialnum" bson:"serialnum"`
-	TxHash           string `json:"txhash" bson:"txhash"`
+	SerialNumber     []string `json:"serialnum" bson:"serialnum"`
+	TxHash           string   `json:"txhash" bson:"txhash"`
 }
 
-func NewCoinPendingData(SerialNumber, TxHash string) *CoinPendingData {
+func NewCoinPendingData(SerialNumber []string, TxHash string) *CoinPendingData {
 	return &CoinPendingData{
 		SerialNumber: SerialNumber, TxHash: TxHash,
 	}

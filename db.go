@@ -259,20 +259,21 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	keysToUpdate := []KeyInfoData{}
 	for _, keyInfo := range KeyInfoDatas {
 		ki, ok := list[keyInfo.Pubkey]
-		change := false
 		for token, idx := range ki {
 			if _, exist := keyInfo.CoinV1StartIndex[token]; !exist {
 				keyInfo.CoinV1StartIndex[token] = idx
-				change = true
+			} else {
+				info := keyInfo.CoinV1StartIndex[token]
+				info.End = idx.End
+				info.Total = info.Total + idx.Total
+				keyInfo.CoinV1StartIndex[token] = info
 			}
 		}
 
 		if ok {
 			delete(list, keyInfo.Pubkey)
 		}
-		if change {
-			keysToUpdate = append(keysToUpdate, keyInfo)
-		}
+		keysToUpdate = append(keysToUpdate, keyInfo)
 	}
 
 	for key, tokens := range list {
@@ -307,7 +308,7 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 		}
 	}
 
-	log.Println("update %v keys info successful", lenList)
+	log.Printf("update %v keys info successful\n", lenList)
 	return nil
 }
 

@@ -13,6 +13,7 @@ const (
 	DefaultMongoAddress          = "mongodb://root:example@51.161.119.66:27017"
 	DefaultMaxConcurrentOTACheck = 10
 	DefaultChainFolder           = "chain"
+	DefaultFullnode              = "http://51.161.119.66:9334"
 	DefaultMode                  = TESTMODE
 	CHAINSYNCMODE                = "chainsync"
 	INDEXERMODE                  = "indexer"

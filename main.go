@@ -2,11 +2,8 @@ package main
 
 import (
 	"log"
-
 	"net/http"
 	_ "net/http/pprof"
-
-	devframework "github.com/0xkumi/incognito-dev-framework"
 )
 
 func main() {
@@ -17,16 +14,12 @@ func main() {
 	}
 	log.Println("service mode:", serviceCfg.Mode)
 	if serviceCfg.Mode == TESTMODE {
-		node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.TestNet2Param, true, false)
-		localnode = node
-		initCoinService()
+		initChainSynker()
 		go initOTAIndexingService()
 	}
+
 	if serviceCfg.Mode == CHAINSYNCMODE {
-		// devframework.TestNetParam.HighwayAddress = "139.162.55.124:9330"
-		node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.TestNet2Param, true, false)
-		localnode = node
-		initCoinService()
+		initChainSynker()
 	}
 	if serviceCfg.Mode == INDEXERMODE {
 		go initOTAIndexingService()
