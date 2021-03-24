@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o coinservice
+RUN go build -ldflags "-linkmode external -extldflags -static" -o coinservice
 
 
 FROM alpine
