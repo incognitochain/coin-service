@@ -381,5 +381,18 @@ func DBGetPendingCoins() ([]string, error) {
 		result = append(result, v.SerialNumber...)
 	}
 	return result, nil
+}
 
+func DBGetCoinV1ByIndexes(indexes []uint64, shardID int) ([]CoinDataV1, error) {
+	startTime := time.Now()
+	var result []CoinDataV1
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(indexes)+1)*DB_OPERATION_TIMEOUT)
+	filter := bson.M{"coinidx": bson.M{operator.In: indexes}, "shardid": bson.M{operator.Eq: shardID}}
+	err := mgm.Coll(&CoinDataV1{}).SimpleFindWithCtx(ctx, &result, filter)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	log.Printf("found %v coinV1 in %v", len(result), time.Since(startTime))
+	return result, nil
 }

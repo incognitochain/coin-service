@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
@@ -13,8 +14,10 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
+	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
+	"github.com/incognitochain/incognito-chain/transaction/utils"
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
@@ -175,8 +178,8 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			if viewKeySet != nil {
 				wg.Add(1)
-				go func() {
-					plainCoin, err := coinV1.Decrypt(viewKeySet)
+				go func(cn *coin.CoinV1, cData CoinData) {
+					plainCoin, err := cn.Decrypt(viewKeySet)
 					if err != nil {
 						w.WriteHeader(http.StatusInternalServerError)
 						_, err = w.Write(buildErrorRespond(err))
@@ -185,14 +188,17 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 						}
 						return
 					}
-					collectCh <- NewOutCoinV1(plainCoin)
+					cV1 := NewOutCoinV1(plainCoin)
+					idx := new(big.Int).SetUint64(cData.CoinIndex)
+					cV1.Index = base58.EncodeCheck(idx.Bytes())
+					collectCh <- cV1
 					wg.Done()
-				}()
+				}(coinV1, c)
 				if decryptCount%MAX_CONCURRENT_COIN_DECRYPT == 0 || idx+1 == len(coinListV1) {
 					wg.Wait()
 					close(collectCh)
-					for coins := range collectCh {
-						result = append(result, coins)
+					for coin := range collectCh {
+						result = append(result, coin)
 					}
 					collectCh = make(chan OutCoinV1, MAX_CONCURRENT_COIN_DECRYPT)
 				}
@@ -318,7 +324,7 @@ func submitOTAkeyHandler(w http.ResponseWriter, r *http.Request) {
 
 func getRandomCommitmentsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	if r.Method != "GET" {
+	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		_, err := w.Write(buildErrorRespond(errors.New("Method not allowed")))
 		if err != nil {
@@ -326,26 +332,24 @@ func getRandomCommitmentsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	shardid, _ := strconv.Atoi(r.URL.Query().Get("shardid"))
-
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-
-	token := r.URL.Query().Get("token")
-	if token == "true" {
-		token = common.ConfidentialAssetID.String()
-	} else {
-		token = common.PRVCoinID.String()
+	w.Header().Set("Content-Type", "application/json")
+	var req API_get_random_commitment_request
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_, err = w.Write(buildErrorRespond(err))
+		if err != nil {
+			log.Println(err)
+		}
+		return
 	}
 
-	commitmentIndices := []int{}
+	commitmentIndices := []uint64{}
+	myIndices := []uint64{}
 	var publicKeys, commitments, assetTags []string
 
-	lenOTA := new(big.Int).SetInt64(DBGetCoinV2OfShardCount(shardid, token) - 1)
-	var hasAssetTags bool = true
-	for i := 0; i < limit; i++ {
-		idx, _ := common.RandBigIntMaxRange(lenOTA)
-		log.Println("getRandomCommitmentsHandler", lenOTA, idx.Int64())
-		coinData, err := DBGetCoinsByIndex(int(idx.Int64()), shardid, token)
+	if req.Version == 1 && len(req.Indexes) > 0 {
+		result, err := DBGetCoinV1ByIndexes(req.Indexes, req.ShardID)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err = w.Write(buildErrorRespond(err))
@@ -354,35 +358,135 @@ func getRandomCommitmentsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		coinV2 := new(coin.CoinV2)
-		err = coinV2.SetBytes(coinData.Coin)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, err = w.Write(buildErrorRespond(err))
-			if err != nil {
-				log.Println(err)
-			}
+		listUsableCommitments := make(map[common.Hash][]byte)
+		listUsableCommitmentsIndices := make([]common.Hash, len(req.Indexes))
+		mapIndexCommitmentsInUsableTx := make(map[string]*big.Int)
+		usableInputCoins := []*coin.CoinV1{}
+		for i, c := range result {
+			coinV1 := new(coin.CoinV1)
+			coinV1.SetBytes(c.Coin)
+			usableInputCoins = append(usableInputCoins, coinV1)
+			usableCommitment := coinV1.GetCommitment().ToBytesS()
+			commitmentInHash := common.HashH(usableCommitment)
+			listUsableCommitments[commitmentInHash] = usableCommitment
+			listUsableCommitmentsIndices[i] = commitmentInHash
+			commitmentInBase58Check := base58.Base58Check{}.Encode(usableCommitment, common.ZeroByte)
+			mapIndexCommitmentsInUsableTx[commitmentInBase58Check] = new(big.Int).SetUint64(c.CoinIndex)
+		}
+
+		// loop to random commitmentIndexs
+		cpRandNum := (len(listUsableCommitments) * privacy.CommitmentRingSize) - len(listUsableCommitments)
+		//fmt.Printf("cpRandNum: %d\n", cpRandNum)
+		lenCommitment := new(big.Int).SetInt64(DBGetCoinV1OfShardCount(req.ShardID, req.TokenID))
+		if lenCommitment == nil {
+			utils.Logger.Log.Error(errors.New("Commitments is empty"))
 			return
 		}
-		publicKey := coinV2.GetPublicKey()
-		commitment := coinV2.GetCommitment()
+		if lenCommitment.Uint64() == 1 && len(req.Indexes) == 1 {
+			commitmentIndices = []uint64{0, 0, 0, 0, 0, 0, 0}
+			temp := base58.EncodeCheck(usableInputCoins[0].GetCommitment().ToBytesS())
+			commitments = []string{temp, temp, temp, temp, temp, temp, temp}
+		} else {
+			randIdxs := []uint64{}
+			for i := 0; i < cpRandNum; i++ {
+			random:
+				index, _ := common.RandBigIntMaxRange(lenCommitment)
+				for _, v := range mapIndexCommitmentsInUsableTx {
+					if index.Uint64() == v.Uint64() {
+						goto random
+					}
+				}
+				randIdxs = append(randIdxs, index.Uint64())
+			}
 
-		commitmentIndices = append(commitmentIndices, int(idx.Int64()))
-		publicKeys = append(publicKeys, base58.EncodeCheck(publicKey.ToBytesS()))
-		commitments = append(commitments, base58.EncodeCheck(commitment.ToBytesS()))
-
-		if hasAssetTags {
-			assetTag := coinV2.GetAssetTag()
-			if assetTag != nil {
-				assetTags = append(assetTags, base58.EncodeCheck(assetTag.ToBytesS()))
-			} else {
-				hasAssetTags = false
+			coinList, err := DBGetCoinV1ByIndexes(randIdxs, req.ShardID)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, err = w.Write(buildErrorRespond(err))
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+			if len(randIdxs) != len(coinList) {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, err = w.Write(buildErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+			for _, c := range coinList {
+				coinV1 := new(coin.CoinV1)
+				coinV1.SetBytes(c.Coin)
+				commitmentIndices = append(commitmentIndices, c.CoinIndex)
+				commitments = append(commitments, coinV1.GetCommitment().String())
 			}
 		}
+		// loop to insert usable commitments into commitmentIndexs for every group
+		j := 0
+		for _, commitmentInHash := range listUsableCommitmentsIndices {
+			commitmentValue := base58.Base58Check{}.Encode(listUsableCommitments[commitmentInHash], common.ZeroByte)
+			index := mapIndexCommitmentsInUsableTx[commitmentValue]
+			randInt := rand.Intn(privacy.CommitmentRingSize)
+			i := (j * privacy.CommitmentRingSize) + randInt
+			commitmentIndices = append(commitmentIndices[:i], append([]uint64{index.Uint64()}, commitmentIndices[i:]...)...)
+			commitments = append(commitments[:i], append([]string{commitmentValue}, commitments[i:]...)...)
+			myIndices = append(myIndices, uint64(i)) // create myCommitmentIndexs
+			j++
+		}
+
+	}
+	if req.Version == 2 && req.Limit > 0 {
+		if req.TokenID != common.PRVCoinID.String() {
+			req.TokenID = common.ConfidentialAssetID.String()
+		}
+		lenOTA := new(big.Int).SetInt64(DBGetCoinV2OfShardCount(req.ShardID, req.TokenID) - 1)
+		var hasAssetTags bool = true
+		for i := 0; i < req.Limit; i++ {
+			idx, _ := common.RandBigIntMaxRange(lenOTA)
+			log.Println("getRandomCommitmentsHandler", lenOTA, idx.Int64())
+			coinData, err := DBGetCoinsByIndex(int(idx.Int64()), req.ShardID, req.TokenID)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, err = w.Write(buildErrorRespond(err))
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+			coinV2 := new(coin.CoinV2)
+			err = coinV2.SetBytes(coinData.Coin)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, err = w.Write(buildErrorRespond(err))
+				if err != nil {
+					log.Println(err)
+				}
+				return
+			}
+			publicKey := coinV2.GetPublicKey()
+			commitment := coinV2.GetCommitment()
+
+			commitmentIndices = append(commitmentIndices, idx.Uint64())
+			publicKeys = append(publicKeys, base58.EncodeCheck(publicKey.ToBytesS()))
+			commitments = append(commitments, base58.EncodeCheck(commitment.ToBytesS()))
+
+			if hasAssetTags {
+				assetTag := coinV2.GetAssetTag()
+				if assetTag != nil {
+					assetTags = append(assetTags, base58.EncodeCheck(assetTag.ToBytesS()))
+				} else {
+					hasAssetTags = false
+				}
+			}
+		}
+
 	}
 
 	rs := make(map[string]interface{})
 	rs["CommitmentIndices"] = commitmentIndices
+	rs["MyIndices"] = myIndices
 	rs["PublicKeys"] = publicKeys
 	rs["Commitments"] = commitments
 	rs["AssetTags"] = assetTags
