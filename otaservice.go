@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/hex"
-	"encoding/json"
+
 	"errors"
 	"log"
 	"os"
@@ -34,7 +34,7 @@ func loadSubmittedOTAKey() error {
 	file, _ := os.Open("./keys.json")
 	defer file.Close()
 	decoder := json.NewDecoder(file)
-	decoder.Token()
+	// decoder.Token()
 	Submitted_OTAKey.Lock()
 	keyInfo := OTAkeyInfo{}
 	for decoder.More() {

@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/hex"
-	"encoding/json"
+
 	"errors"
 	"log"
 	"math/big"

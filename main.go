@@ -4,7 +4,11 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func main() {
 	readConfigAndArg()

@@ -1,4 +1,4 @@
 #!/bin/bash
 
 echo "building coin-worker..."
-go build -v -o coinservice
+go build -tags=jsoniter -v -o coinservice
