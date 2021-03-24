@@ -53,7 +53,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 	}
-
+	// Store Incomming Cross Shard
+	if len(blk.Body.CrossTransactions) > 0 {
+		if err := bc.CreateAndSaveCrossTransactionViewPointFromBlock(&blk, transactionStateDB); err != nil {
+			panic(err)
+		}
+	}
 	transactionRootHash, err := transactionStateDB.Commit(true)
 	if err != nil {
 		panic(err)
