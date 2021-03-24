@@ -46,7 +46,6 @@ func getCoinsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	version, _ := strconv.Atoi(r.URL.Query().Get("version"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-	// toIdx, _ := strconv.Atoi(r.URL.Query().Get("to"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
 	tokenid := r.URL.Query().Get("tokenid")
@@ -476,7 +475,7 @@ func getCoinsPendingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result , err:= DBGetPendingCoins()
+	result, err := DBGetPendingCoins()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write(buildErrorRespond(err))

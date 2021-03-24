@@ -17,7 +17,7 @@ import (
 )
 
 func connectDB() error {
-	err := mgm.SetDefaultConfig(nil, "coins", options.Client().ApplyURI(serviceCfg.MongoAddress))
+	err := mgm.SetDefaultConfig(nil, serviceCfg.MongoDB, options.Client().ApplyURI(serviceCfg.MongoAddress))
 	if err != nil {
 		return err
 	}

@@ -4,5 +4,6 @@
 	"fullnode":"http://1.2.3.4:9334",
 	"maxconcurrentotacheck":10,
 	"mode":"query",
-	"mongo":"mongodb://root:example@1.2.3.4:27017"
+	"mongo":"mongodb://root:example@1.2.3.4:27017",
+	"mongodb":""
 }
