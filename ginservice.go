@@ -35,7 +35,7 @@ func startGinService() {
 	r.POST("/checkkeyimages", API_CheckKeyImages)
 	r.POST("/getrandomcommitments", API_GetRandomCommitments)
 	r.POST("/submitotakey", API_SubmitOTA)
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	r.Run("0.0.0.0:" + strconv.Itoa(serviceCfg.APIPort))
 }
 
 func API_GetCoins(c *gin.Context) {
@@ -45,7 +45,7 @@ func API_GetCoins(c *gin.Context) {
 	viewkey := c.Query("viewkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
-
+	log.Println("tokenid", tokenid, common.PRVCoinID.String())
 	if tokenid == "" {
 		tokenid = common.PRVCoinID.String()
 	}
@@ -198,7 +198,7 @@ func API_GetKeyInfo(c *gin.Context) {
 
 func API_CheckKeyImages(c *gin.Context) {
 	var req API_check_keyimages_request
-	err := c.ShouldBindJSON(req)
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -220,7 +220,7 @@ func API_CheckKeyImages(c *gin.Context) {
 func API_GetRandomCommitments(c *gin.Context) {
 
 	var req API_get_random_commitment_request
-	err := c.ShouldBindJSON(req)
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -231,7 +231,7 @@ func API_GetRandomCommitments(c *gin.Context) {
 	var publicKeys, commitments, assetTags []string
 
 	if req.Version == 1 && len(req.Indexes) > 0 {
-		result, err := DBGetCoinV1ByIndexes(req.Indexes, req.ShardID)
+		result, err := DBGetCoinV1ByIndexes(req.Indexes, req.ShardID, req.TokenID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -277,7 +277,7 @@ func API_GetRandomCommitments(c *gin.Context) {
 				randIdxs = append(randIdxs, index.Uint64())
 			}
 
-			coinList, err := DBGetCoinV1ByIndexes(randIdxs, req.ShardID)
+			coinList, err := DBGetCoinV1ByIndexes(randIdxs, req.ShardID, req.TokenID)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 				return
@@ -292,7 +292,7 @@ func API_GetRandomCommitments(c *gin.Context) {
 				coinV1 := new(coin.CoinV1)
 				coinV1.SetBytes(c.Coin)
 				commitmentIndices = append(commitmentIndices, c.CoinIndex)
-				commitments = append(commitments, coinV1.GetCommitment().String())
+				commitments = append(commitments, base58.EncodeCheck(coinV1.GetCommitment().ToBytesS()))
 			}
 		}
 		// loop to insert usable commitments into commitmentIndexs for every group
@@ -376,7 +376,7 @@ func API_GetCoinsPending(c *gin.Context) {
 
 func API_SubmitOTA(c *gin.Context) {
 	var req API_submit_otakey_request
-	err := c.ShouldBindJSON(req)
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

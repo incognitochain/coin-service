@@ -28,7 +28,7 @@ func main() {
 	if serviceCfg.Mode == INDEXERMODE {
 		go initOTAIndexingService()
 	}
-	go startAPIService()
+	go startGinService()
 	if ENABLE_PROFILER {
 		http.ListenAndServe("localhost:8091", nil)
 	}
