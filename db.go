@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 func connectDB() error {
@@ -29,21 +30,15 @@ func connectDB() error {
 func DBCreateCoinV1Index() error {
 	startTime := time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
-	coinMdl1 := mongo.IndexModel{
-		Keys: bson.M{
-			"coinpubkey": 1,
-			"tokenid":    1,
-			"coinidx":    1,
+	coinMdl1 := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
 		},
 	}
-	coinMdl2 := mongo.IndexModel{
-		Keys: bson.M{
-			"shardid": 1,
-			"tokenid": 1,
-			"coinidx": 1,
-		},
-	}
-	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, []mongo.IndexModel{coinMdl1, coinMdl2})
+	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, coinMdl1)
 	if err != nil {
 		log.Printf("failed to indexs coins in %v", time.Since(startTime))
 		return err
@@ -62,9 +57,7 @@ func DBCreateKeyimageIndex() error {
 	startTime := time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	imageMdl1 := mongo.IndexModel{
-		Keys: bson.M{
-			"keyimage": 1,
-		},
+		Keys: bsonx.Doc{{Key: "keyimage", Value: bsonx.Int32(1)}},
 	}
 	indexName, err := mgm.Coll(&KeyImageData{}).Indexes().CreateMany(ctx, []mongo.IndexModel{imageMdl1})
 	if err != nil {
