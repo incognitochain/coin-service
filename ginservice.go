@@ -394,6 +394,8 @@ func API_SubmitOTA(c *gin.Context) {
 }
 
 func API_HealthCheck(c *gin.Context) {
+	//check block time
+	//ping pong vs mongo
 	c.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})
