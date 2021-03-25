@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/0xkumi/incognito-dev-framework v0.0.0-20210324063737-592e0e19378b
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
+	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/golang/protobuf v1.5.1 // indirect
