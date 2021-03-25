@@ -1,9 +1,0 @@
-{
-	"apiport":9001,
-	"chaindata":"chain",
-	"fullnode":"http://51.161.119.66:9334",
-	"maxconcurrentotacheck":10,
-	"mode":"query",
-	"mongo":"mongodb://root:example@10.0.1.1:37017",
-	"mongodb":"coinservice"
-}

@@ -15,5 +15,6 @@
 vendor/
 .idea/
 cfg.json
-cfg-*-staging.json
+cfg-synker-staging.json
+cfg-query-staging.json
 deploy_dev.sh
