@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coinservice-api
+spec:
+  selector:
+    matchLabels:
+      run: coinservice-api
+  replicas: 10
+  template:
+    metadata:
+      labels:
+        run: coinservice-api
+    spec:
+      containers:
+        - name: coinservice-api-container
+          image: localhost:32000/incognito-coinservice:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9001
+          volumeMounts:
+            - mountPath: /app/cfg.json
+              name: config-json-file
+      volumes:
+        - name: config-json-file
+          hostPath:
+            path: /home/coin-service/incognito-coin-service/cfg-query-staging.json
+            type: File
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: coinservice-api
+  labels:
+    run: coinservice-api
+spec:
+  type: NodePort
+  ports:
+    - port: 9001
+      targetPort: 9001
+      nodePort: 9001
+      protocol: TCP
+      name: http
+  selector:
+    run: coinservice-api

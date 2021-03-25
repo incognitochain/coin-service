@@ -13,3 +13,8 @@
 
 # Dependency directories (remove the comment below to include it)
 vendor/
+.idea/
+cfg.json
+cfg-synker-staging.json
+cfg-query-staging.json
+deploy_dev.sh
