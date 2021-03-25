@@ -13,3 +13,7 @@
 
 # Dependency directories (remove the comment below to include it)
 vendor/
+.idea/
+cfg.json
+cfg-*-staging.json
+deploy_dev.sh
