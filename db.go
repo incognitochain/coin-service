@@ -29,14 +29,21 @@ func connectDB() error {
 func DBCreateCoinV1Index() error {
 	startTime := time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
-	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateOne(ctx, mongo.IndexModel{
+	coinMdl1 := mongo.IndexModel{
 		Keys: bson.M{
 			"coinpubkey": 1,
 			"tokenid":    1,
 			"coinidx":    1,
 		},
-		// Options: options.Index().SetUnique(true),
-	})
+	}
+	coinMdl2 := mongo.IndexModel{
+		Keys: bson.M{
+			"shardid": 1,
+			"tokenid": 1,
+			"coinidx": 1,
+		},
+	}
+	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, []mongo.IndexModel{coinMdl1, coinMdl2})
 	if err != nil {
 		log.Printf("failed to indexs coins in %v", time.Since(startTime))
 		return err
@@ -48,6 +55,24 @@ func DBCreateCoinV1Index() error {
 
 func DBCreateCoinV2Index() error {
 
+	return nil
+}
+
+func DBCreateKeyimageIndex() error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	imageMdl1 := mongo.IndexModel{
+		Keys: bson.M{
+			"keyimage": 1,
+		},
+	}
+	indexName, err := mgm.Coll(&KeyImageData{}).Indexes().CreateMany(ctx, []mongo.IndexModel{imageMdl1})
+	if err != nil {
+		log.Printf("failed to indexs coins in %v", time.Since(startTime))
+		return err
+	}
+	log.Println("indexName", indexName)
+	log.Printf("success indexs keyimages in %v", time.Since(startTime))
 	return nil
 }
 

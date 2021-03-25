@@ -387,6 +387,14 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 }
 
 func initChainSynker() {
+	err := DBCreateCoinV1Index()
+	if err != nil {
+		panic(err)
+	}
+	err = DBCreateKeyimageIndex()
+	if err != nil {
+		panic(err)
+	}
 	// devframework.TestNetParam.HighwayAddress = "139.162.55.124:9330"
 	node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.TestNet2Param, true, false)
 	localnode = node
