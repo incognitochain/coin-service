@@ -4,7 +4,11 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func main() {
 	readConfigAndArg()
@@ -24,7 +28,7 @@ func main() {
 	if serviceCfg.Mode == INDEXERMODE {
 		go initOTAIndexingService()
 	}
-	go startAPIService()
+	go startGinService()
 	if ENABLE_PROFILER {
 		http.ListenAndServe("localhost:8091", nil)
 	}

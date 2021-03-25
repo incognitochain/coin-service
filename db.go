@@ -185,7 +185,8 @@ func DBGetCoinV1ByPubkey(tokenID, pubkey string, offset int64, limit int64) ([]C
 	}
 	list := []CoinData{}
 	filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "tokenid": bson.M{operator.Eq: tokenID}}
-	err := mgm.Coll(&CoinDataV1{}).SimpleFind(&list, filter, &options.FindOptions{
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&CoinDataV1{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
 		Skip:  &offset,
 		Limit: &limit,
 	})
@@ -388,11 +389,11 @@ func DBGetPendingCoins() ([]string, error) {
 	return result, nil
 }
 
-func DBGetCoinV1ByIndexes(indexes []uint64, shardID int) ([]CoinDataV1, error) {
+func DBGetCoinV1ByIndexes(indexes []uint64, shardID int, tokenID string) ([]CoinDataV1, error) {
 	startTime := time.Now()
 	var result []CoinDataV1
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(indexes)+1)*DB_OPERATION_TIMEOUT)
-	filter := bson.M{"coinidx": bson.M{operator.In: indexes}, "shardid": bson.M{operator.Eq: shardID}}
+	filter := bson.M{"coinidx": bson.M{operator.In: indexes}, "shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	err := mgm.Coll(&CoinDataV1{}).SimpleFindWithCtx(ctx, &result, filter)
 	if err != nil {
 		log.Println(err)

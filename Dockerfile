@@ -8,10 +8,12 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -ldflags "-linkmode external -extldflags -static" -o coinservice
+RUN go build -tags=jsoniter -ldflags "-linkmode external -extldflags -static" -o coinservice
 
 
 FROM alpine
+
+WORKDIR /app
 
 COPY --from=build /app/coinservice /app/coinservice
 
