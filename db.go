@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -218,16 +219,20 @@ func DBSaveUsedKeyimage(list []KeyImageData) error {
 func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 	startTime := time.Now()
 	var result []bool
-
+	var listToCheck []string
 	var kmsdata []KeyImageData
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
-	filter := bson.M{"keyimage": bson.M{operator.In: list}}
+	for _, v := range list {
+		a, _ := base64.StdEncoding.DecodeString(v)
+		listToCheck = append(listToCheck, base58.EncodeCheck(a))
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(listToCheck)+1)*DB_OPERATION_TIMEOUT)
+	filter := bson.M{"keyimage": bson.M{operator.In: listToCheck}}
 	err := mgm.Coll(&KeyImageData{}).SimpleFindWithCtx(ctx, &kmsdata, filter)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
-	for _, km := range list {
+	for _, km := range listToCheck {
 		found := false
 		for _, rkm := range kmsdata {
 			if km == rkm.KeyImage {
@@ -237,7 +242,7 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 		}
 		result = append(result, found)
 	}
-	log.Printf("checked %v keyimages in %v", len(list), time.Since(startTime))
+	log.Printf("checked %v keyimages in %v", len(listToCheck), time.Since(startTime))
 	return result, nil
 }
 
