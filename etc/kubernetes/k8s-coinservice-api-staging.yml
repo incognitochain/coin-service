@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: coinservice-api
+  name: coinservice-api-stg
 spec:
   selector:
     matchLabels:
-      run: coinservice-api
+      run: coinservice-api-stg
   replicas: 10
   template:
     metadata:
       labels:
-        run: coinservice-api
+        run: coinservice-api-stg
     spec:
       containers:
-        - name: coinservice-api-container
-          image: localhost:32000/incognito-coinservice:latest
-          imagePullPolicy: Always
+        - name: coinservice-api-stg-container
+          image: incognito/coin-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 9001
           volumeMounts:
@@ -24,7 +24,7 @@ spec:
       volumes:
         - name: config-json-file
           hostPath:
-            path: /home/coin-service/incognito-coin-service/cfg-query-staging.json
+            path: /home/coin-service/config/staging/cfg-query-staging.json
             type: File
 
 ---
@@ -32,16 +32,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: coinservice-api
+  name: coinservice-api-stg
   labels:
-    run: coinservice-api
+    run: coinservice-api-stg
 spec:
-  type: NodePort
+  type: ClusterIP
+  clusterIP: 10.152.183.123
   ports:
     - port: 9001
       targetPort: 9001
-      nodePort: 9001
       protocol: TCP
       name: http
   selector:
-    run: coinservice-api
+    run: coinservice-api-stg

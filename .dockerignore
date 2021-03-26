@@ -1,3 +1,7 @@
 vendor
 data
 .git
+chain
+chain-data
+chain.log.*
+nohup.out
