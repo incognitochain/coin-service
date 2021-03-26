@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"os"
 
 	"fmt"
 	"io/ioutil"
@@ -17,6 +19,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 	"github.com/incognitochain/incognito-chain/transaction"
+	"github.com/kamva/mgm/v3"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -388,6 +391,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 }
 
 func initChainSynker() {
+	if RESET_FLAG {
+		err := ResetMongoAndReSync()
+		if err != nil {
+			panic(err)
+		}
+	}
 	err := DBCreateCoinV1Index()
 	if err != nil {
 		panic(err)
@@ -400,8 +409,25 @@ func initChainSynker() {
 	node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.TestNet2Param, true, false)
 	localnode = node
 	log.Println("initiating chain-synker...")
+	if RESET_FLAG {
+		err := localnode.GetUserDatabase().Delete([]byte("genesis-processed"), nil)
+		if err != nil {
+			panic(err)
+		}
+		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+			statePrefix := fmt.Sprintf("coin-processed-%v", i)
+			err := localnode.GetUserDatabase().Delete([]byte(statePrefix), nil)
+			if err != nil {
+				panic(err)
+			}
+		}
+		fmt.Println("=========================")
+		fmt.Println("RESET SUCCESS")
+		fmt.Println("=========================")
+	}
 	ShardProcessedState = make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
+
 	//load ShardProcessedState
 	p, err := localnode.GetUserDatabase().Get([]byte("genesis-processed"), nil)
 	if err != nil {
@@ -422,16 +448,13 @@ func initChainSynker() {
 		v, err := localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 		if err != nil {
 			log.Println(err)
-		}
-		if v != nil {
+			ShardProcessedState[byte(i)] = 1
+		} else {
 			height, err := strconv.ParseUint(string(v), 0, 64)
 			if err != nil {
-				log.Println(err)
-				continue
+				panic(err)
 			}
 			ShardProcessedState[byte(i)] = height
-		} else {
-			ShardProcessedState[byte(i)] = 1
 		}
 		TransactionStateDB[byte(i)] = localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
 	}
@@ -758,6 +781,32 @@ func processGenesisBlocks() error {
 				panic(err)
 			}
 		}
+	}
+	return nil
+}
+
+func ResetMongoAndReSync() error {
+	dir := serviceCfg.ChainDataFolder + "/database"
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, f := range files {
+		fileName := f.Name()
+		if fileName == "userdb" {
+			continue
+		}
+		err := os.RemoveAll(dir + "/" + fileName)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, _, db, _ := mgm.DefaultConfigs()
+	err = db.Drop(context.Background())
+	if err != nil {
+		return err
 	}
 	return nil
 }

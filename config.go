@@ -8,6 +8,7 @@ import (
 
 var ENABLE_PROFILER bool
 var serviceCfg Config
+var RESET_FLAG bool
 
 type Config struct {
 	APIPort               int    `json:"apiport"`
@@ -52,6 +53,7 @@ func readConfigAndArg() {
 	argChain := flag.String("chain", DefaultChainFolder, "set chain folder")
 	argDBName := flag.String("dbname", DefaultChainFolder, "set mongodb name")
 	argProfiler := flag.Bool("profiler", false, "set profiler")
+	argResetDB := flag.Bool("resetdb", false, "reset mongodb and resync")
 	flag.Parse()
 	if tempCfg.APIPort == 0 {
 		tempCfg.APIPort = *argPort
@@ -74,6 +76,7 @@ func readConfigAndArg() {
 	if tempCfg.MongoDB == "" {
 		tempCfg.MongoDB = *argDBName
 	}
+	RESET_FLAG = *argResetDB
 	ENABLE_PROFILER = *argProfiler
 	serviceCfg = tempCfg
 
