@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -403,10 +404,14 @@ func API_HealthCheck(c *gin.Context) {
 	mongoStatus := "connected"
 	shardsHeight := make(map[int]string)
 	if serviceCfg.Mode == CHAINSYNCMODE {
+		blockTime := time.Unix(localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetProposeTime(), 0)
+		if time.Since(blockTime) >= time.Duration((5 * time.Minute).Minutes()) {
+			status = "unhealthy"
+		}
 		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 			height, _ := localnode.GetShardState(i)
-			chainheight := localnode.GetBlockchain().ShardChain[i].CurrentHeight()
-			if chainheight-height > 10 {
+			chainheight := localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
+			if chainheight-height > 6 {
 				status = "unhealthy"
 			}
 			shardsHeight[i] = fmt.Sprintf("%v/%v", height, chainheight)
