@@ -409,8 +409,6 @@ func initChainSynker() {
 	node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.TestNet2Param, true, false)
 	localnode = node
 	log.Println("initiating chain-synker...")
-	ShardProcessedState = make(map[byte]uint64)
-	TransactionStateDB = make(map[byte]*statedb.StateDB)
 	if RESET_FLAG {
 		err := localnode.GetUserDatabase().Delete([]byte("genesis-processed"), nil)
 		if err != nil {
@@ -423,7 +421,13 @@ func initChainSynker() {
 				panic(err)
 			}
 		}
+		fmt.Println("=========================")
+		fmt.Println("RESET SUCCESS")
+		fmt.Println("=========================")
 	}
+	ShardProcessedState = make(map[byte]uint64)
+	TransactionStateDB = make(map[byte]*statedb.StateDB)
+
 	//load ShardProcessedState
 	p, err := localnode.GetUserDatabase().Get([]byte("genesis-processed"), nil)
 	if err != nil {
@@ -444,16 +448,13 @@ func initChainSynker() {
 		v, err := localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 		if err != nil {
 			log.Println(err)
-		}
-		if v != nil {
+			ShardProcessedState[byte(i)] = 1
+		} else {
 			height, err := strconv.ParseUint(string(v), 0, 64)
 			if err != nil {
-				log.Println(err)
-				continue
+				panic(err)
 			}
 			ShardProcessedState[byte(i)] = height
-		} else {
-			ShardProcessedState[byte(i)] = 1
 		}
 		TransactionStateDB[byte(i)] = localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
 	}
@@ -796,7 +797,7 @@ func ResetMongoAndReSync() error {
 		if fileName == "userdb" {
 			continue
 		}
-		err := os.Remove(dir + "/" + fileName)
+		err := os.RemoveAll(dir + "/" + fileName)
 		if err != nil {
 			return err
 		}
