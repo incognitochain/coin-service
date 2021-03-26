@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"math/rand"
@@ -19,6 +21,7 @@ import (
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/wallet"
+	"github.com/kamva/mgm/v3"
 )
 
 func startGinService() {
@@ -394,8 +397,31 @@ func API_SubmitOTA(c *gin.Context) {
 }
 
 func API_HealthCheck(c *gin.Context) {
+	//check block time
+	//ping pong vs mongo
+	status := "healthy"
+	mongoStatus := "connected"
+	shardsHeight := make(map[int]string)
+	if serviceCfg.Mode == CHAINSYNCMODE {
+		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+			height, _ := localnode.GetShardState(i)
+			chainheight := localnode.GetBlockchain().ShardChain[i].CurrentHeight()
+			if chainheight-height > 10 {
+				status = "unhealthy"
+			}
+			shardsHeight[i] = fmt.Sprintf("%v/%v", height, chainheight)
+		}
+	}
+	_, cd, _, _ := mgm.DefaultConfigs()
+	err := cd.Ping(context.Background(), nil)
+	if err != nil {
+		status = "unhealthy"
+		mongoStatus = "disconnected"
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
+		"status": status,
+		"mongo":  mongoStatus,
+		"chain":  shardsHeight,
 	})
 }
 

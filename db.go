@@ -88,7 +88,6 @@ func DBSaveCoins(list []CoinData) error {
 			return err
 		}
 		log.Printf("inserted %v v2coins in %v", len(docs), time.Since(startTime))
-
 	}
 	if len(docsV1) > 0 {
 		_, err := mgm.Coll(&CoinDataV1{}).InsertMany(ctx, docsV1)
