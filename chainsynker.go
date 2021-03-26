@@ -24,6 +24,7 @@ var localnode interface {
 	GetUserDatabase() *leveldb.DB
 	GetBlockchain() *blockchain.BlockChain
 	OnNewBlockFromParticularHeight(chainID int, blkHeight int64, isFinalized bool, f func(bc *blockchain.BlockChain, h common.Hash, height uint64))
+	GetShardState(shardID int) (uint64, *common.Hash)
 }
 
 var stateLock sync.Mutex
