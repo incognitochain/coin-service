@@ -433,12 +433,12 @@ func initChainSynker() {
 	if err != nil {
 		log.Println(err)
 	}
-	if p == nil {
+	if p == nil || len(p) == 0 {
 		err := processGenesisBlocks()
 		if err != nil {
 			panic(err)
 		}
-		localnode.GetUserDatabase().Put([]byte("genesis-processed"), []byte{1}, nil)
+		err = localnode.GetUserDatabase().Put([]byte("genesis-processed"), []byte{1}, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -789,12 +789,13 @@ func ResetMongoAndReSync() error {
 	dir := serviceCfg.ChainDataFolder + "/database"
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		return err
+		log.Println(err)
+		return nil
 	}
 
 	for _, f := range files {
 		fileName := f.Name()
-		if fileName == "userdb" {
+		if fileName == "userdb" || fileName == "beacon" {
 			continue
 		}
 		err := os.RemoveAll(dir + "/" + fileName)

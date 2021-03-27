@@ -37,6 +37,10 @@ func DBCreateCoinV1Index() error {
 		{
 			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys:    bsonx.Doc{{Key: "coin", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
 	}
 	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, coinMdl1)
 	if err != nil {
@@ -270,7 +274,7 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	for pubkey, _ := range list {
 		pubkeys = append(pubkeys, pubkey)
 	}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
 	KeyInfoDatas := []KeyInfoData{}
 	filter := bson.M{"pubkey": bson.M{operator.In: pubkeys}}
 	err := mgm.Coll(&KeyInfoData{}).SimpleFindWithCtx(ctx, &KeyInfoDatas, filter)
@@ -304,7 +308,7 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 		keysToInsert = append(keysToInsert, *newKeyInfo)
 	}
 	if len(keysToInsert) > 0 {
-		ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(keysToInsert))*DB_OPERATION_TIMEOUT)
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToInsert)+10)*DB_OPERATION_TIMEOUT)
 		docs := []interface{}{}
 		for _, key := range keysToInsert {
 			docs = append(docs, key)
@@ -315,7 +319,6 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 		}
 	}
 	if len(keysToUpdate) > 0 {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToUpdate))*DB_OPERATION_TIMEOUT)
 		docs := []interface{}{}
 		for _, key := range keysToUpdate {
 			update := bson.M{
@@ -324,6 +327,7 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 			docs = append(docs, update)
 		}
 		for idx, doc := range docs {
+			ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 			_, err := mgm.Coll(&KeyInfoData{}).UpdateByID(ctx, keysToUpdate[idx].GetID(), doc)
 			if err != nil {
 				return err
