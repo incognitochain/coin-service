@@ -411,12 +411,21 @@ func API_HealthCheck(c *gin.Context) {
 		}
 		shardsHeight[-1] = fmt.Sprintf("%v", localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
 		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
-			height, _ := localnode.GetShardState(i)
 			chainheight := localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
-			if chainheight-height > 6 {
+			height, _ := localnode.GetShardState(i)
+			statePrefix := fmt.Sprintf("coin-processed-%v", i)
+			v, err := localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
+			if err != nil {
+				log.Println(err)
+			}
+			coinHeight, err := strconv.Atoi(string(v))
+			if err != nil {
+				coinHeight = 0
+			}
+			if chainheight-height > 5 || height-uint64(coinHeight) > 5 {
 				status = "unhealthy"
 			}
-			shardsHeight[i] = fmt.Sprintf("%v/%v", height, chainheight)
+			shardsHeight[i] = fmt.Sprintf("%v|%v|%v", coinHeight, height, chainheight)
 		}
 	}
 	_, cd, _, _ := mgm.DefaultConfigs()
