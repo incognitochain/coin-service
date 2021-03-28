@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coinservice-api-prod
+spec:
+  selector:
+    matchLabels:
+      run: coinservice-api-prod
+  replicas: 10
+  template:
+    metadata:
+      labels:
+        run: coinservice-api-prod
+    spec:
+      containers:
+        - name: coinservice-api-prod-container
+          image: incognito/coin-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9001
+          volumeMounts:
+            - mountPath: /app/cfg.json
+              name: config-json-file
+      volumes:
+        - name: config-json-file
+          hostPath:
+            path: /home/coin-service/config/prod/cfg-query-prod.json
+            type: File
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: coinservice-api-prod
+  labels:
+    run: coinservice-api-prod
+spec:
+  type: ClusterIP
+  clusterIP: 10.152.183.183
+  ports:
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: http
+  selector:
+    run: coinservice-api-prod

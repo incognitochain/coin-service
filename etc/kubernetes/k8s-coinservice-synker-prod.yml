@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: coinservice-synker-stg
+  name: coinservice-synker-prod
 spec:
   selector:
     matchLabels:
-      run: coinservice-synker-stg
+      run: coinservice-synker-prod
   replicas: 1
   template:
     metadata:
       labels:
-        run: coinservice-synker-stg
+        run: coinservice-synker-prod
     spec:
       containers:
-        - name: coinservice-synker-stg-container
+        - name: coinservice-synker-prod-container
           image: incognito/coin-service:latest
           imagePullPolicy: Never
           ports:
@@ -30,19 +30,19 @@ spec:
       volumes:
         - name: config-json-file
           hostPath:
-            path: /home/coin-service/config/staging/cfg-synker-staging.json
+            path: /home/coin-service/config/prod/cfg-synker-prod.json
             type: File
         - name: keylist-json
           hostPath:
-            path: /home/coin-service/config/staging/keylist.json
+            path: /home/coin-service/config/prod/keylist.json
             type: File
         - name: keylist-v2-json
           hostPath:
-            path: /home/coin-service/config/staging/keylist-v2.json
+            path: /home/coin-service/config/prod/keylist-v2.json
             type: File
         - name: chain-data
           hostPath:
-            path: /home/coin-service/storage/staging/chain-data
+            path: /home/coin-service/storage/prod/chain-data
             type: DirectoryOrCreate
 
 ---
@@ -50,16 +50,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: coinservice-synker-stg
+  name: coinservice-synker-prod
   labels:
-    run: coinservice-synker-stg
+    run: coinservice-synker-prod
 spec:
   type: ClusterIP
-  clusterIP: 10.152.183.124
+  clusterIP: 10.152.183.126
   ports:
     - port: 9001
       targetPort: 9001
       protocol: TCP
       name: http
   selector:
-    run: coinservice-synker-stg
+    run: coinservice-synker-prod
