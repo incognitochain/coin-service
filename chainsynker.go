@@ -21,6 +21,7 @@ import (
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/kamva/mgm/v3"
 	"github.com/syndtr/goleveldb/leveldb"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var localnode interface {
@@ -47,27 +48,27 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 
 	shardID := blk.GetShardID()
-	stateLock.Lock()
-	transactionStateDB := TransactionStateDB[byte(shardID)]
-	stateLock.Unlock()
+	// stateLock.Lock()
+	// transactionStateDB := TransactionStateDB[byte(shardID)]
+	// stateLock.Unlock()
 
 	if len(blk.Body.Transactions) > 0 {
-		err = bc.CreateAndSaveTxViewPointFromBlock(&blk, transactionStateDB)
+		err = bc.CreateAndSaveTxViewPointFromBlock(&blk, TransactionStateDB[byte(shardID)])
 		if err != nil {
 			panic(err)
 		}
 	}
 	// Store Incomming Cross Shard
 	if len(blk.Body.CrossTransactions) > 0 {
-		if err := bc.CreateAndSaveCrossTransactionViewPointFromBlock(&blk, transactionStateDB); err != nil {
+		if err := bc.CreateAndSaveCrossTransactionViewPointFromBlock(&blk, TransactionStateDB[byte(shardID)]); err != nil {
 			panic(err)
 		}
 	}
-	transactionRootHash, err := transactionStateDB.Commit(true)
+	transactionRootHash, err := TransactionStateDB[byte(shardID)].Commit(true)
 	if err != nil {
 		panic(err)
 	}
-	err = transactionStateDB.Database().TrieDB().Commit(transactionRootHash, false)
+	err = TransactionStateDB[byte(shardID)].Database().TrieDB().Commit(transactionRootHash, false)
 	if err != nil {
 		panic(err)
 	}
@@ -93,7 +94,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	keyImageList := []KeyImageData{}
 	outCoinList := []CoinData{}
 	beaconHeight := blk.Header.BeaconHeight
-	// outcoinsIdx := make(map[string]uint64)
 	coinV1PubkeyInfo := make(map[string]map[string]CoinInfo)
 
 	for _, txs := range blk.Body.CrossTransactions {
@@ -362,19 +362,36 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 		}
 	}
+	alreadyWriteToBD := false
 	if len(outCoinList) > 0 {
 		err = DBSaveCoins(outCoinList)
 		if err != nil {
-			panic(err)
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				log.Println(err)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			} else {
+				alreadyWriteToBD = true
+			}
 		}
 	}
 	if len(keyImageList) > 0 {
 		err = DBSaveUsedKeyimage(keyImageList)
 		if err != nil {
-			panic(err)
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				log.Println(err)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			}
 		}
 	}
-	if len(coinV1PubkeyInfo) > 0 {
+	if len(coinV1PubkeyInfo) > 0 && !alreadyWriteToBD {
 		err = DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
 		if err != nil {
 			panic(err)
