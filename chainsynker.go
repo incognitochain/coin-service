@@ -422,7 +422,7 @@ func initChainSynker() {
 		panic(err)
 	}
 	// devframework.TestNet2Param.HighwayAddress = "74.207.247.250:999"
-	node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.TestNet2Param, true, false)
+	node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.MainNetParam, true, false)
 	localnode = node
 	log.Println("initiating chain-synker...")
 	if RESET_FLAG {
