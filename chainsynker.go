@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	devframework "github.com/0xkumi/incognito-dev-framework"
@@ -31,7 +30,7 @@ var localnode interface {
 	GetShardState(shardID int) (uint64, *common.Hash)
 }
 
-var stateLock sync.Mutex
+// var stateLock sync.Mutex
 var ShardProcessedState map[byte]uint64
 var TransactionStateDB map[byte]*statedb.StateDB
 
@@ -402,9 +401,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		panic(err)
 	}
-	stateLock.Lock()
-	ShardProcessedState[blk.Header.ShardID] = blk.Header.Height
-	stateLock.Unlock()
+	// stateLock.Lock()
+	// ShardProcessedState[blk.Header.ShardID] = blk.Header.Height
+	// stateLock.Unlock()
 }
 
 func initChainSynker() {
@@ -422,7 +421,7 @@ func initChainSynker() {
 	if err != nil {
 		panic(err)
 	}
-	// devframework.TestNetParam.HighwayAddress = "139.162.55.124:9330"
+	// devframework.TestNet2Param.HighwayAddress = "74.207.247.250:999"
 	node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.TestNet2Param, true, false)
 	localnode = node
 	log.Println("initiating chain-synker...")
