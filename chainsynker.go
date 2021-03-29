@@ -14,6 +14,7 @@ import (
 
 	devframework "github.com/0xkumi/incognito-dev-framework"
 	"github.com/incognitochain/incognito-chain/blockchain"
+	"github.com/incognitochain/incognito-chain/blockchain/types"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
@@ -35,7 +36,7 @@ var ShardProcessedState map[byte]uint64
 var TransactionStateDB map[byte]*statedb.StateDB
 
 func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
-	var blk blockchain.ShardBlock
+	var blk types.ShardBlock
 	blkBytes, err := localnode.GetUserDatabase().Get(h.Bytes(), nil)
 	if err != nil {
 		fmt.Println(err)
