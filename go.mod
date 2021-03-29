@@ -3,7 +3,7 @@ module main
 go 1.13
 
 require (
-	github.com/0xkumi/incognito-dev-framework v0.0.0-20210329042330-746ce38e2074
+	github.com/0xkumi/incognito-dev-framework v0.0.0-20210329044355-59412741bf43
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.6.3
