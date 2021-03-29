@@ -425,7 +425,19 @@ func initChainSynker() {
 		panic(err)
 	}
 	// devframework.TestNet2Param.HighwayAddress = "74.207.247.250:999"
-	node := devframework.NewAppNode(serviceCfg.ChainDataFolder, devframework.TestNet2Param, true, false, false)
+	var netw devframework.NetworkParam
+	switch serviceCfg.ChainNetwork {
+	case "testnet2":
+		netw = devframework.TestNet2Param
+	case "testnet":
+		netw = devframework.TestNetParam
+	case "mainnet":
+		netw = devframework.MainNetParam
+	default:
+		panic("unknown network")
+	}
+	netw.HighwayAddress = serviceCfg.Highway
+	node := devframework.NewAppNode(serviceCfg.ChainDataFolder, netw, true, false, false)
 	localnode = node
 	log.Println("initiating chain-synker...")
 	if RESET_FLAG {
