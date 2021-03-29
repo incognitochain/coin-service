@@ -50,9 +50,9 @@ type OutCoinV2 struct {
 }
 
 type OutCoinV1 struct {
-	Version string `json:"Version"`
-	Index   string `json:"Index"`
-	// PublicKey            string `json:"PublicKey"`
+	Version     string `json:"Version"`
+	Index       string `json:"Index"`
+	PublicKey   string `json:"PublicKey"`
 	Commitment  string `json:"Commitment"`
 	SNDerivator string `json:"SNDerivator"`
 	KeyImage    string `json:"KeyImage"`
@@ -145,6 +145,11 @@ func NewOutCoinV1(outCoin ICoinInfo) OutCoinV1 {
 		keyImage = base58.Base58Check{}.Encode(outCoin.GetKeyImage().ToBytesS(), common.ZeroByte)
 	}
 
+	publicKey := ""
+	if outCoin.GetPublicKey() != nil {
+		publicKey = base58.Base58Check{}.Encode(outCoin.GetPublicKey().ToBytesS(), common.ZeroByte)
+	}
+
 	commitment := ""
 	if outCoin.GetCommitment() != nil {
 		commitment = base58.Base58Check{}.Encode(outCoin.GetCommitment().ToBytesS(), common.ZeroByte)
@@ -161,8 +166,8 @@ func NewOutCoinV1(outCoin ICoinInfo) OutCoinV1 {
 	}
 
 	result := OutCoinV1{
-		Version: strconv.FormatUint(uint64(outCoin.GetVersion()), 10),
-		// PublicKey:   publicKey,
+		Version:     strconv.FormatUint(uint64(outCoin.GetVersion()), 10),
+		PublicKey:   publicKey,
 		Value:       strconv.FormatUint(outCoin.GetValue(), 10),
 		Info:        base58.Base58Check{}.Encode(outCoin.GetInfo(), 0x0),
 		Commitment:  commitment,
