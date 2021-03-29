@@ -23,16 +23,18 @@ import (
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
+	"github.com/semihalev/gin-stats"
 )
 
 func startGinService() {
 	log.Println("initiating api-service...")
+
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
+	r.Use(stats.RequestStats())
+
+	r.GET("/stats", func(c *gin.Context) {
+		c.JSON(http.StatusOK, stats.Report())
 	})
 	r.GET("/health", API_HealthCheck)
 	r.GET("/getcoinspending", API_GetCoinsPending)

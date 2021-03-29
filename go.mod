@@ -10,6 +10,7 @@ require (
 	github.com/incognitochain/incognito-chain v0.0.0-20210318094207-91e0b9ab8bcc
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
+	github.com/semihalev/gin-stats v0.0.0-20180505163755-30fdcbbd3533
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	go.mongodb.org/mongo-driver v1.5.0
 )
