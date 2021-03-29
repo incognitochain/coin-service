@@ -16,6 +16,8 @@ const (
 	DefaultChainFolder           = "chain"
 	DefaultFullnode              = ""
 	DefaultMode                  = TESTMODE
+	DefaultNetwork               = "testnet2"
+	DefaultHighway               = "74.207.247.250:9330"
 	CHAINSYNCMODE                = "chainsync"
 	INDEXERMODE                  = "indexer"
 	QUERYMODE                    = "query"
