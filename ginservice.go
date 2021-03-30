@@ -23,7 +23,7 @@ import (
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
-	"github.com/semihalev/gin-stats"
+	stats "github.com/semihalev/gin-stats"
 )
 
 func startGinService() {
@@ -184,13 +184,13 @@ func API_GetKeyInfo(c *gin.Context) {
 	if key != "" {
 		wl, err := wallet.Base58CheckDeserialize(key)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("key cant be empty")))
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
 		pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
 		result, err := DBGetCoinPubkeyInfo(pubkey)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("key cant be empty")))
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
 		respond := API_respond{
