@@ -387,7 +387,7 @@ func DBGetCoinPubkeyInfo(key string) (*KeyInfoData, error) {
 	err := mgm.Coll(&KeyInfoData{}).First(filter, &result)
 
 	if err != nil {
-		if err != mongo.ErrNoDocuments {
+		if err == mongo.ErrNoDocuments {
 			return &KeyInfoData{
 				Pubkey: key,
 			}, nil
@@ -471,3 +471,5 @@ func DBGetCoinV1ByIndexes(indexes []uint64, shardID int, tokenID string) ([]Coin
 	log.Printf("found %v coinV1 in %v", len(result), time.Since(startTime))
 	return result, nil
 }
+
+// func DBSaveOTAKey()
