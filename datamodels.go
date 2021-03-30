@@ -68,3 +68,15 @@ func NewCoinPendingData(SerialNumber []string, TxHash string) *CoinPendingData {
 		SerialNumber: SerialNumber, TxHash: TxHash,
 	}
 }
+
+type SubmittedOTAKeyData struct {
+	mgm.DefaultModel `bson:",inline"`
+	OTAKey           string `json:"otakey" bson:"otakey"`
+	Pubkey           string `json:"pubkey" bson:"pubkey"`
+}
+
+func NewSubmittedOTAKeyData(OTAkey, pubkey string) *SubmittedOTAKeyData {
+	return &SubmittedOTAKeyData{
+		OTAKey: OTAkey, Pubkey: pubkey,
+	}
+}
