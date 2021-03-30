@@ -23,6 +23,11 @@ func connectDB() error {
 	if err != nil {
 		return err
 	}
+	_, cd, _, _ := mgm.DefaultConfigs()
+	err = cd.Ping(context.Background(), nil)
+	if err != nil {
+		return err
+	}
 	log.Println("Database Connected!")
 	return nil
 }
@@ -44,15 +49,50 @@ func DBCreateCoinV1Index() error {
 	}
 	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, coinMdl)
 	if err != nil {
-		log.Printf("failed to indexs coins in %v", time.Since(startTime))
+		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
 	}
 	log.Println("indexName", indexName)
-	log.Printf("success indexs coins in %v", time.Since(startTime))
+	log.Printf("success index coins in %v", time.Since(startTime))
 	return nil
 }
 
 func DBCreateCoinV2Index() error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	coinMdl := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "otasecret", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "coin", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	indexName, err := mgm.Coll(&CoinData{}).Indexes().CreateMany(ctx, coinMdl)
+	if err != nil {
+		log.Printf("failed to index coins in %v", time.Since(startTime))
+		return err
+	}
+	log.Println("indexName", indexName)
+	log.Printf("success index coins in %v", time.Since(startTime))
+
+	startTime2 := time.Now()
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	otaMdl := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}, {Key: "pubkey", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	indexName, err = mgm.Coll(&SubmittedOTAKeyData{}).Indexes().CreateMany(ctx, otaMdl)
+	if err != nil {
+		log.Printf("failed to index otakey in %v", time.Since(startTime))
+		return err
+	}
+	log.Println("indexName", indexName)
+	log.Printf("success index otakey in %v", time.Since(startTime2))
+
 	return nil
 }
 
@@ -67,11 +107,11 @@ func DBCreateKeyimageIndex() error {
 	}
 	indexName, err := mgm.Coll(&KeyImageData{}).Indexes().CreateMany(ctx, imageMdl)
 	if err != nil {
-		log.Printf("failed to indexs coins in %v", time.Since(startTime))
+		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
 	}
 	log.Println("indexName", indexName)
-	log.Printf("success indexs keyimages in %v", time.Since(startTime))
+	log.Printf("success index keyimages in %v", time.Since(startTime))
 	return nil
 }
 
@@ -345,7 +385,13 @@ func DBGetCoinPubkeyInfo(key string) (*KeyInfoData, error) {
 	var result KeyInfoData
 	filter := bson.M{"pubkey": bson.M{operator.Eq: key}}
 	err := mgm.Coll(&KeyInfoData{}).First(filter, &result)
+
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return &KeyInfoData{
+				Pubkey: key,
+			}, nil
+		}
 		return nil, err
 	}
 	return &result, nil
@@ -425,3 +471,5 @@ func DBGetCoinV1ByIndexes(indexes []uint64, shardID int, tokenID string) ([]Coin
 	log.Printf("found %v coinV1 in %v", len(result), time.Since(startTime))
 	return result, nil
 }
+
+// func DBSaveOTAKey()
