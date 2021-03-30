@@ -244,6 +244,10 @@ func API_GetRandomCommitments(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
+		if len(req.Indexes) != len(result) {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.Indexes) != len(result)")))
+			return
+		}
 		listUsableCommitments := make(map[common.Hash][]byte)
 		listUsableCommitmentsIndices := make([]common.Hash, len(req.Indexes))
 		mapIndexCommitmentsInUsableTx := make(map[string]*big.Int)
@@ -287,12 +291,12 @@ func API_GetRandomCommitments(c *gin.Context) {
 
 			coinList, err := DBGetCoinV1ByIndexes(randIdxs, req.ShardID, req.TokenID)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
 			if len(randIdxs) != len(coinList) {
 				if err != nil {
-					c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
+					c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
 					return
 				}
 			}
