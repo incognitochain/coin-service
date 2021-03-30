@@ -2,10 +2,11 @@
     "apiport":9001,
 	"chaindata":"chain",
 	"fullnode":"http://1.2.3.4:9334",
-	"maxconcurrentotacheck":10,
 	"mode":"query",
 	"mongo":"mongodb://root:example@1.2.3.4:27017",
 	"mongodb":"",
 	"chainnetwork":"testnet2",
-	"highway":"74.207.247.250:9330"
+	"highway":"74.207.247.250:9330",
+	"concurrentotacheck":10,
+	"indexerbucket":2
 }

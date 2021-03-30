@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/kamva/mgm/v3"
+	"github.com/kamva/mgm/v3/builder"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -181,21 +181,21 @@ func DBGetCoinsByIndex(idx int, shardID int, tokenID string) (*CoinData, error) 
 	return &result, nil
 }
 
-func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
-	startTime := time.Now()
-	list := []CoinData{}
-	temp, _, err := base58.DecodeCheck(OTASecret)
-	if err != nil {
-		return nil, err
-	}
-	filter := bson.M{"otasecret": bson.M{operator.Eq: hex.EncodeToString(temp)}}
-	err = mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
-	return list, err
-}
+// func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
+// 	startTime := time.Now()
+// 	list := []CoinData{}
+// 	temp, _, err := base58.DecodeCheck(OTASecret)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	filter := bson.M{"otasecret": bson.M{operator.Eq: hex.EncodeToString(temp)}}
+// 	err = mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+// 	return list, err
+// }
 
 func DBGetCoinsByOTAKeyAndHeight(tokenID, OTASecret string, fromHeight int, toHeight int) ([]CoinData, error) {
 	startTime := time.Now()
@@ -209,21 +209,21 @@ func DBGetCoinsByOTAKeyAndHeight(tokenID, OTASecret string, fromHeight int, toHe
 	return list, err
 }
 
-func DBGetUnknownCoinsFromBeaconHeight(beaconHeight uint64) ([]CoinData, error) {
-	limit := int64(500)
-	startTime := time.Now()
-	list := []CoinData{}
-	filter := bson.M{"beaconheight": bson.M{operator.Gte: beaconHeight}, "otasecret": bson.M{operator.Eq: ""}}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
-		Limit: &limit,
-	})
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
-	return list, err
-}
+// func DBGetUnknownCoinsFromBeaconHeight(beaconHeight uint64) ([]CoinData, error) {
+// 	limit := int64(500)
+// 	startTime := time.Now()
+// 	list := []CoinData{}
+// 	filter := bson.M{"beaconheight": bson.M{operator.Gte: beaconHeight}, "otasecret": bson.M{operator.Eq: ""}}
+// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
+// 	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
+// 		Limit: &limit,
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+// 	return list, err
+// }
 
 func DBGetUnknownCoinsFromCoinIndexWithLimit(index uint64, isPRV bool, limit int64) ([]CoinData, error) {
 	tokenID := common.PRVCoinID.String()
@@ -261,10 +261,6 @@ func DBGetCoinV1ByPubkey(tokenID, pubkey string, offset int64, limit int64) ([]C
 	}
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
-}
-
-func DBGetCoinsOTAStat() error {
-	return nil
 }
 
 func DBSaveUsedKeyimage(list []KeyImageData) error {
@@ -510,4 +506,75 @@ func DBGetOTAKeys(bucketID int) ([]SubmittedOTAKeyData, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func DBUpdateOTAKey(keys []SubmittedOTAKeyData) error {
+	if len(keys) > 0 {
+		docs := []interface{}{}
+		for _, key := range keys {
+			update := bson.M{
+				"$set": key,
+			}
+			docs = append(docs, update)
+		}
+		for idx, doc := range docs {
+			ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*DB_OPERATION_TIMEOUT))
+			_, err := mgm.Coll(&KeyInfoData{}).UpdateByID(ctx, keys[idx].GetID(), doc)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func DBSaveOTAKey(keys []SubmittedOTAKeyData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	if len(keys) > 0 {
+		ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(keys))*DB_OPERATION_TIMEOUT)
+		docs := []interface{}{}
+		for _, coin := range keys {
+			docs = append(docs, coin)
+		}
+		_, err := mgm.Coll(&SubmittedOTAKeyData{}).InsertMany(ctx, docs)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	return nil
+}
+
+func DBGetBucketStats() (map[int]uint64, error) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*DB_OPERATION_TIMEOUT)
+	d := mgm.Coll(&SubmittedOTAKeyData{})
+	pipeline := bson.A{
+		builder.S(builder.Group(d.Name(), bson.M{"bucketid": operator.SortByCount})),
+	}
+	cur, err := mgm.Coll(&SubmittedOTAKeyData{}).Aggregate(ctx, pipeline)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var result bson.M
+		err := cur.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+
+		// do something with result....
+		fmt.Printf("%+v\n", result)
+	}
+	return nil, nil
+}
+
+func DBSaveCoinsUnfinalized(list []CoinDataUnfinalized) error {
+	return nil
+}
+
+func DBSaveKeyimageUnfinalized(list []KeyImageDataUnfinalized) error {
+	return nil
 }

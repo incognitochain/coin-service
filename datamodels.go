@@ -16,6 +16,7 @@ type CoinData struct {
 }
 
 type CoinDataV1 CoinData
+type CoinDataUnfinalized CoinData
 
 func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTASecret, txHash string, shardID, version int) *CoinData {
 	return &CoinData{
@@ -31,6 +32,8 @@ type KeyImageData struct {
 	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
 	ShardID          int    `json:"shardid" bson:"shardid"`
 }
+
+type KeyImageDataUnfinalized KeyImageData
 
 func NewKeyImageData(tokenID, txHash, keyimage string, beaconHeight uint64, shardID int) *KeyImageData {
 	return &KeyImageData{
