@@ -43,6 +43,7 @@ func startGinService() {
 	r.POST("/checkkeyimages", API_CheckKeyImages)
 	r.POST("/getrandomcommitments", API_GetRandomCommitments)
 	r.POST("/submitotakey", API_SubmitOTA)
+	r.POST("/checktxs", API_CheckTXs)
 	r.Run("0.0.0.0:" + strconv.Itoa(serviceCfg.APIPort))
 }
 
@@ -401,6 +402,27 @@ func API_SubmitOTA(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})
+}
+
+func API_CheckTXs(c *gin.Context) {
+	var req API_check_tx_request
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	result, err := DBCheckTxsExist(req.Txs, req.ShardID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	respond := API_respond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func API_HealthCheck(c *gin.Context) {

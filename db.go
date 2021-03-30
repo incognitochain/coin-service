@@ -101,8 +101,11 @@ func DBCreateKeyimageIndex() error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	imageMdl := []mongo.IndexModel{
 		{
-			Keys:    bsonx.Doc{{Key: "keyimage", Value: bsonx.Int32(1)}},
+			Keys:    bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "keyimage", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "txhash", Value: bsonx.Int32(1)}},
 		},
 	}
 	indexName, err := mgm.Coll(&KeyImageData{}).Indexes().CreateMany(ctx, imageMdl)
@@ -290,7 +293,7 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 		listToCheck = append(listToCheck, base58.EncodeCheck(a))
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(listToCheck)+1)*DB_OPERATION_TIMEOUT)
-	filter := bson.M{"keyimage": bson.M{operator.In: listToCheck}}
+	filter := bson.M{"keyimage": bson.M{operator.In: listToCheck}, "shardid": bson.M{operator.Eq: shardID}}
 	err := mgm.Coll(&KeyImageData{}).SimpleFindWithCtx(ctx, &kmsdata, filter)
 	if err != nil {
 		log.Println(err)
@@ -472,4 +475,39 @@ func DBGetCoinV1ByIndexes(indexes []uint64, shardID int, tokenID string) ([]Coin
 	return result, nil
 }
 
-// func DBSaveOTAKey()
+func DBCheckTxsExist(txList []string, shardID int) ([]bool, error) {
+	startTime := time.Now()
+	var result []bool
+	var kmsdata []KeyImageData
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(txList)+1)*DB_OPERATION_TIMEOUT)
+	filter := bson.M{"txhash": bson.M{operator.In: txList}, "shardid": bson.M{operator.Eq: shardID}}
+	err := mgm.Coll(&KeyImageData{}).SimpleFindWithCtx(ctx, &kmsdata, filter)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	for _, km := range txList {
+		found := false
+		for _, rkm := range kmsdata {
+			if km == rkm.TxHash {
+				found = true
+				break
+			}
+		}
+		result = append(result, found)
+	}
+	log.Printf("checked %v keyimages in %v", len(txList), time.Since(startTime))
+	return result, nil
+}
+
+func DBGetOTAKeys(bucketID int) ([]SubmittedOTAKeyData, error) {
+	var result []SubmittedOTAKeyData
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	filter := bson.M{"bucketid": bson.M{operator.In: bucketID}}
+	err := mgm.Coll(&SubmittedOTAKeyData{}).SimpleFindWithCtx(ctx, &result, filter)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return result, nil
+}
