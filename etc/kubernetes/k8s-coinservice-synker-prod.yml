@@ -12,6 +12,9 @@ spec:
       labels:
         run: coinservice-synker-prod
     spec:
+      strategy:
+        # Force recreate container to prevent data duplication
+        type: Recreate
       containers:
         - name: coinservice-synker-prod-container
           image: incognito/coin-service:latest
