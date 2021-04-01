@@ -114,8 +114,6 @@ func API_GetCoins(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		// fmt.Println(wl.Base58CheckSerialize(wallet.PaymentAddressType))
-		// fmt.Println(wl.Base58CheckSerialize(wallet.ReadonlyKeyType))
 		if wl.KeySet.ReadonlyKey.Rk == nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid viewkey")))
 			return

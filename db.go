@@ -253,6 +253,7 @@ func DBGetCoinV1ByPubkey(tokenID, pubkey string, offset int64, limit int64) ([]C
 	filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "tokenid": bson.M{operator.Eq: tokenID}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&CoinDataV1{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})
@@ -571,10 +572,49 @@ func DBGetBucketStats() (map[int]uint64, error) {
 	return nil, nil
 }
 
-func DBSaveCoinsUnfinalized(list []CoinDataUnfinalized) error {
+func DBSaveCoinsUnfinalized(list []CoinData) error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	docsV1 := []interface{}{}
+	for _, coin := range list {
+		if coin.CoinVersion == 2 {
+			docs = append(docs, coin)
+		} else {
+			docsV1 = append(docsV1, coin)
+		}
+	}
+	if len(docs) > 0 {
+		_, err := mgm.Coll(&CoinDataUnfinalized{}).InsertMany(ctx, docs)
+		if err != nil {
+			log.Printf("failed to insert %v coins in %v", len(docs), time.Since(startTime))
+			return err
+		}
+		log.Printf("inserted %v v2coins in %v", len(docs), time.Since(startTime))
+	}
+	if len(docsV1) > 0 {
+		_, err := mgm.Coll(&CoinDataV1Unfinalized{}).InsertMany(ctx, docsV1)
+		if err != nil {
+			log.Printf("failed to insert %v coins in %v", len(docsV1), time.Since(startTime))
+			return err
+		}
+		log.Printf("inserted %v v1coins in %v", len(docsV1), time.Since(startTime))
+	}
 	return nil
 }
 
-func DBSaveKeyimageUnfinalized(list []KeyImageDataUnfinalized) error {
+func DBSaveKeyimageUnfinalized(list []KeyImageData) error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, km := range list {
+		docs = append(docs, km)
+	}
+	_, err := mgm.Coll(&KeyImageDataUnfinalized{}).InsertMany(ctx, docs)
+	if err != nil {
+		log.Printf("failed to insert %v keyimages in %v", len(list), time.Since(startTime))
+		return err
+	}
+	log.Printf("inserted %v keyimages in %v", len(list), time.Since(startTime))
 	return nil
 }

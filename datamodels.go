@@ -17,6 +17,7 @@ type CoinData struct {
 
 type CoinDataV1 CoinData
 type CoinDataUnfinalized CoinData
+type CoinDataV1Unfinalized CoinData
 
 func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTASecret, txHash string, shardID, version int) *CoinData {
 	return &CoinData{
