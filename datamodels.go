@@ -16,6 +16,8 @@ type CoinData struct {
 }
 
 type CoinDataV1 CoinData
+type CoinDataUnfinalized CoinData
+type CoinDataV1Unfinalized CoinData
 
 func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTASecret, txHash string, shardID, version int) *CoinData {
 	return &CoinData{
@@ -31,6 +33,8 @@ type KeyImageData struct {
 	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
 	ShardID          int    `json:"shardid" bson:"shardid"`
 }
+
+type KeyImageDataUnfinalized KeyImageData
 
 func NewKeyImageData(tokenID, txHash, keyimage string, beaconHeight uint64, shardID int) *KeyImageData {
 	return &KeyImageData{
@@ -73,10 +77,11 @@ type SubmittedOTAKeyData struct {
 	mgm.DefaultModel `bson:",inline"`
 	OTAKey           string `json:"otakey" bson:"otakey"`
 	Pubkey           string `json:"pubkey" bson:"pubkey"`
+	BucketID         int    `json:"bucketid" bson:"bucketid"`
 }
 
-func NewSubmittedOTAKeyData(OTAkey, pubkey string) *SubmittedOTAKeyData {
+func NewSubmittedOTAKeyData(OTAkey, pubkey string, bucketID int) *SubmittedOTAKeyData {
 	return &SubmittedOTAKeyData{
-		OTAKey: OTAkey, Pubkey: pubkey,
+		OTAKey: OTAkey, Pubkey: pubkey, BucketID: bucketID,
 	}
 }

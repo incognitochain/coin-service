@@ -5,6 +5,11 @@ type API_check_keyimages_request struct {
 	ShardID   int
 }
 
+type API_check_tx_request struct {
+	Txs     []string
+	ShardID int
+}
+
 type API_submit_otakey_request struct {
 	OTAKey       string
 	ShardID      int

@@ -203,6 +203,7 @@ func initOTAIndexingService() {
 		}
 	}
 
+	// DBGetOTAKeys(serviceCfg.IndexerBucketID)
 	for {
 		<-interval.C
 		log.Println("scanning coins...")
@@ -378,4 +379,8 @@ func GetCoinsFromDB(fromPRVIndex, fromTokenIndex uint64) []CoinData {
 		panic(err)
 	}
 	return append(coinList, coinListTk...)
+}
+
+func AssignBucketID(key SubmittedOTAKeyData) (int, error) {
+	return 0, nil
 }

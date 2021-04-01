@@ -14,25 +14,26 @@ type Config struct {
 	APIPort               int    `json:"apiport"`
 	ChainDataFolder       string `json:"chaindata"`
 	FullnodeAddress       string `json:"fullnode"`
-	MaxConcurrentOTACheck int    `json:"maxconcurrentotacheck"`
+	MaxConcurrentOTACheck int    `json:"concurrentotacheck"`
 	Mode                  string `json:"mode"`
 	MongoAddress          string `json:"mongo"`
 	MongoDB               string `json:"mongodb"`
 	ChainNetwork          string `json:"chainnetwork"`
 	Highway               string `json:"highway"`
+	IndexerBucketID       int    `json:"indexerbucket"`
 }
 
-func init() {
-	serviceCfg.APIPort = DefaultAPIPort
-	serviceCfg.ChainDataFolder = DefaultChainFolder
-	serviceCfg.MaxConcurrentOTACheck = DefaultMaxConcurrentOTACheck
-	serviceCfg.FullnodeAddress = DefaultFullnode
-	serviceCfg.Mode = DefaultMode
-	serviceCfg.MongoAddress = DefaultMongoAddress
-	serviceCfg.MongoDB = DefaultMongoDB
-	serviceCfg.ChainNetwork = DefaultNetwork
-	serviceCfg.Highway = DefaultHighway
-}
+// func init() {
+// 	serviceCfg.APIPort = DefaultAPIPort
+// 	serviceCfg.ChainDataFolder = DefaultChainFolder
+// 	serviceCfg.MaxConcurrentOTACheck = DefaultMaxConcurrentOTACheck
+// 	serviceCfg.FullnodeAddress = DefaultFullnode
+// 	serviceCfg.Mode = DefaultMode
+// 	serviceCfg.MongoAddress = DefaultMongoAddress
+// 	serviceCfg.MongoDB = DefaultMongoDB
+// 	serviceCfg.ChainNetwork = DefaultNetwork
+// 	serviceCfg.Highway = DefaultHighway
+// }
 
 func readConfigAndArg() {
 	data, err := ioutil.ReadFile("./cfg.json")

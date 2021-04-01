@@ -43,6 +43,7 @@ func startGinService() {
 	r.POST("/checkkeyimages", API_CheckKeyImages)
 	r.POST("/getrandomcommitments", API_GetRandomCommitments)
 	r.POST("/submitotakey", API_SubmitOTA)
+	r.POST("/checktxs", API_CheckTXs)
 	r.Run("0.0.0.0:" + strconv.Itoa(serviceCfg.APIPort))
 }
 
@@ -113,8 +114,6 @@ func API_GetCoins(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		// fmt.Println(wl.Base58CheckSerialize(wallet.PaymentAddressType))
-		// fmt.Println(wl.Base58CheckSerialize(wallet.ReadonlyKeyType))
 		if wl.KeySet.ReadonlyKey.Rk == nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid viewkey")))
 			return
@@ -244,6 +243,10 @@ func API_GetRandomCommitments(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
+		if len(req.Indexes) != len(result) {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.Indexes) != len(result)")))
+			return
+		}
 		listUsableCommitments := make(map[common.Hash][]byte)
 		listUsableCommitmentsIndices := make([]common.Hash, len(req.Indexes))
 		mapIndexCommitmentsInUsableTx := make(map[string]*big.Int)
@@ -287,12 +290,12 @@ func API_GetRandomCommitments(c *gin.Context) {
 
 			coinList, err := DBGetCoinV1ByIndexes(randIdxs, req.ShardID, req.TokenID)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
 			if len(randIdxs) != len(coinList) {
 				if err != nil {
-					c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
+					c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
 					return
 				}
 			}
@@ -397,6 +400,27 @@ func API_SubmitOTA(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})
+}
+
+func API_CheckTXs(c *gin.Context) {
+	var req API_check_tx_request
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	result, err := DBCheckTxsExist(req.Txs, req.ShardID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	respond := API_respond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func API_HealthCheck(c *gin.Context) {
