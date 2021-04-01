@@ -42,8 +42,11 @@ func startGinService() {
 	r.GET("/getkeyinfo", API_GetKeyInfo)
 	r.POST("/checkkeyimages", API_CheckKeyImages)
 	r.POST("/getrandomcommitments", API_GetRandomCommitments)
-	r.POST("/submitotakey", API_SubmitOTA)
 	r.POST("/checktxs", API_CheckTXs)
+
+	// if serviceCfg.Mode == INDEXERMODE {
+	r.POST("/submitotakey", API_SubmitOTA)
+	// }
 	r.Run("0.0.0.0:" + strconv.Itoa(serviceCfg.APIPort))
 }
 
@@ -392,7 +395,26 @@ func API_SubmitOTA(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	err = addOTAKey(req.OTAKey, 0, 0, req.ShardID)
+
+	wl, err := wallet.Base58CheckDeserialize(req.OTAKey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("OTASecretKey is invalid")))
+		return
+	}
+	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
+	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+
+	newSubmitRequest := NewSubmittedOTAKeyData(otaKey, pubKey, 0)
+	resp := make(chan error)
+	otaAssignChn <- otaAssignRequest{
+		Key:     newSubmitRequest,
+		Respond: resp,
+	}
+	err = <-resp
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

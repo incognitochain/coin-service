@@ -20,7 +20,8 @@ type Config struct {
 	MongoDB               string `json:"mongodb"`
 	ChainNetwork          string `json:"chainnetwork"`
 	Highway               string `json:"highway"`
-	IndexerBucketID       int    `json:"indexerbucket"`
+	IndexerBucketID       int    `json:"bucketid"`
+	NumberOfBucket        int    `json:"numberofbucket"`
 }
 
 // func init() {

@@ -10,7 +10,6 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/kamva/mgm/v3"
-	"github.com/kamva/mgm/v3/builder"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -80,6 +79,9 @@ func DBCreateCoinV2Index() error {
 	startTime2 := time.Now()
 	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	otaMdl := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "bucketid", Value: bsonx.Int32(1)}},
+		},
 		{
 			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}, {Key: "pubkey", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
@@ -546,30 +548,20 @@ func DBSaveOTAKey(keys []SubmittedOTAKeyData) error {
 	return nil
 }
 
-func DBGetBucketStats() (map[int]uint64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*DB_OPERATION_TIMEOUT)
+func DBGetBucketStats(bucketSize int) (map[int]uint64, error) {
+	result := make(map[int]uint64)
 	d := mgm.Coll(&SubmittedOTAKeyData{})
-	pipeline := bson.A{
-		builder.S(builder.Group(d.Name(), bson.M{"bucketid": operator.SortByCount})),
-	}
-	cur, err := mgm.Coll(&SubmittedOTAKeyData{}).Aggregate(ctx, pipeline)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	defer cur.Close(ctx)
-
-	for cur.Next(ctx) {
-		var result bson.M
-		err := cur.Decode(&result)
+	for i := 0; i < bucketSize; i++ {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*DB_OPERATION_TIMEOUT)
+		filter := bson.M{"bucketid": bson.M{operator.Eq: i}}
+		count, err := d.CountDocuments(ctx, filter)
 		if err != nil {
 			return nil, err
 		}
-
-		// do something with result....
-		fmt.Printf("%+v\n", result)
+		result[i] = uint64(count)
 	}
-	return nil, nil
+
+	return result, nil
 }
 
 func DBSaveCoinsUnfinalized(list []CoinData) error {

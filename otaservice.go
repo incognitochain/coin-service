@@ -384,3 +384,37 @@ func GetCoinsFromDB(fromPRVIndex, fromTokenIndex uint64) []CoinData {
 func AssignBucketID(key SubmittedOTAKeyData) (int, error) {
 	return 0, nil
 }
+
+type otaAssignRequest struct {
+	Key     *SubmittedOTAKeyData
+	Respond chan error
+}
+
+var otaAssignChn chan otaAssignRequest
+
+func startBucketAssigner() {
+	otaAssignChn = make(chan otaAssignRequest)
+	bucketInfo, err := DBGetBucketStats(serviceCfg.NumberOfBucket)
+	if err != nil {
+		panic(err)
+	}
+	for {
+		request := <-otaAssignChn
+		leastOccupiedBucketID := 0
+		for bucketID, keyLength := range bucketInfo {
+			if keyLength < bucketInfo[leastOccupiedBucketID] {
+				leastOccupiedBucketID = bucketID
+			}
+		}
+		request.Key.BucketID = leastOccupiedBucketID
+		err := DBSaveOTAKey([]SubmittedOTAKeyData{*request.Key})
+		if err != nil {
+			go func() {
+				request.Respond <- err
+			}()
+		} else {
+			bucketInfo[leastOccupiedBucketID] += 1
+			request.Respond <- nil
+		}
+	}
+}
