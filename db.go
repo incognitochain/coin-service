@@ -331,13 +331,13 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	for _, keyInfo := range KeyInfoDatas {
 		ki, ok := list[keyInfo.Pubkey]
 		for token, idx := range ki {
-			if _, exist := keyInfo.CoinV1StartIndex[token]; !exist {
-				keyInfo.CoinV1StartIndex[token] = idx
+			if _, exist := keyInfo.CoinIndex[token]; !exist {
+				keyInfo.CoinIndex[token] = idx
 			} else {
-				info := keyInfo.CoinV1StartIndex[token]
+				info := keyInfo.CoinIndex[token]
 				info.End = idx.End
 				info.Total = info.Total + idx.Total
-				keyInfo.CoinV1StartIndex[token] = info
+				keyInfo.CoinIndex[token] = info
 			}
 		}
 
@@ -348,7 +348,7 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	}
 
 	for key, tokens := range list {
-		newKeyInfo := NewKeyInfoData(key, "", tokens, nil)
+		newKeyInfo := NewKeyInfoData(key, "", tokens)
 		keysToInsert = append(keysToInsert, *newKeyInfo)
 	}
 	if len(keysToInsert) > 0 {
@@ -383,10 +383,97 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	return nil
 }
 
-func DBGetCoinPubkeyInfo(key string) (*KeyInfoData, error) {
+func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]CoinInfo) error {
+	otakeys := []string{}
+	lenList := len(list)
+	for otakey, _ := range list {
+		otakeys = append(otakeys, otakey)
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
+	KeyInfoDatas := []KeyInfoData{}
+	filter := bson.M{"otakey": bson.M{operator.In: otakeys}}
+	err := mgm.Coll(&KeyInfoDataV2{}).SimpleFindWithCtx(ctx, &KeyInfoDatas, filter)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	keysToInsert := []KeyInfoData{}
+	keysToUpdate := []KeyInfoData{}
+	for _, keyInfo := range KeyInfoDatas {
+		ki, ok := list[keyInfo.OTAKey]
+		for token, idx := range ki {
+			if _, exist := keyInfo.CoinIndex[token]; !exist {
+				keyInfo.CoinIndex[token] = idx
+			} else {
+				info := keyInfo.CoinIndex[token]
+				info.End = idx.End
+				info.Total = info.Total + idx.Total
+				keyInfo.CoinIndex[token] = info
+			}
+		}
+
+		if ok {
+			delete(list, keyInfo.OTAKey)
+		}
+		keysToUpdate = append(keysToUpdate, keyInfo)
+	}
+
+	for key, tokens := range list {
+		newKeyInfo := NewKeyInfoData(key, "", tokens)
+		keysToInsert = append(keysToInsert, *newKeyInfo)
+	}
+	if len(keysToInsert) > 0 {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToInsert)+10)*DB_OPERATION_TIMEOUT)
+		docs := []interface{}{}
+		for _, key := range keysToInsert {
+			docs = append(docs, key)
+		}
+		_, err = mgm.Coll(&KeyInfoDataV2{}).InsertMany(ctx, docs)
+		if err != nil {
+			return err
+		}
+	}
+	if len(keysToUpdate) > 0 {
+		docs := []interface{}{}
+		for _, key := range keysToUpdate {
+			update := bson.M{
+				"$set": key,
+			}
+			docs = append(docs, update)
+		}
+		for idx, doc := range docs {
+			ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+			_, err := mgm.Coll(&KeyInfoDataV2{}).UpdateByID(ctx, keysToUpdate[idx].GetID(), doc)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	log.Printf("update %v keys info successful\n", lenList)
+	return nil
+}
+
+func DBGetCoinV1PubkeyInfo(key string) (*KeyInfoData, error) {
 	var result KeyInfoData
 	filter := bson.M{"pubkey": bson.M{operator.Eq: key}}
 	err := mgm.Coll(&KeyInfoData{}).First(filter, &result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return &KeyInfoData{
+				Pubkey: key,
+			}, nil
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
+func DBGetCoinV2PubkeyInfo(key string) (*KeyInfoData, error) {
+	var result KeyInfoData
+	filter := bson.M{"otakey": bson.M{operator.Eq: key}}
+	err := mgm.Coll(&KeyInfoDataV2{}).First(filter, &result)
 
 	if err != nil {
 		if err == mongo.ErrNoDocuments {

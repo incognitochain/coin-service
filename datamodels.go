@@ -51,13 +51,14 @@ type KeyInfoData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Pubkey           string              `json:"pubkey" bson:"pubkey"`
 	OTAKey           string              `json:"otakey" bson:"otakey"`
-	CoinV1StartIndex map[string]CoinInfo `json:"v1startindex" bson:"v1startindex"`
-	CoinV2StartIndex map[string]CoinInfo `json:"v2startindex" bson:"v2startindex"`
+	CoinIndex        map[string]CoinInfo `json:"coinindex" bson:"coinindex"`
 }
 
-func NewKeyInfoData(Pubkey, OTAKey string, CoinV1StartIndex, CoinV2StartIndex map[string]CoinInfo) *KeyInfoData {
+type KeyInfoDataV2 KeyInfoData
+
+func NewKeyInfoData(Pubkey, OTAKey string, coinIdx map[string]CoinInfo) *KeyInfoData {
 	return &KeyInfoData{
-		Pubkey: Pubkey, OTAKey: OTAKey, CoinV1StartIndex: CoinV1StartIndex, CoinV2StartIndex: CoinV2StartIndex,
+		Pubkey: Pubkey, OTAKey: OTAKey, CoinIndex: coinIdx,
 	}
 }
 

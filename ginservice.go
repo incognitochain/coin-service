@@ -190,7 +190,7 @@ func API_GetKeyInfo(c *gin.Context) {
 			return
 		}
 		pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
-		result, err := DBGetCoinPubkeyInfo(pubkey)
+		result, err := DBGetCoinV1PubkeyInfo(pubkey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
