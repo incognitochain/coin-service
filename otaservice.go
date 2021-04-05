@@ -381,10 +381,6 @@ func GetCoinsFromDB(fromPRVIndex, fromTokenIndex uint64) []CoinData {
 	return append(coinList, coinListTk...)
 }
 
-func AssignBucketID(key SubmittedOTAKeyData) (int, error) {
-	return 0, nil
-}
-
 type otaAssignRequest struct {
 	Key     *SubmittedOTAKeyData
 	Respond chan error
@@ -415,6 +411,9 @@ func startBucketAssigner() {
 		} else {
 			bucketInfo[leastOccupiedBucketID] += 1
 			request.Respond <- nil
+			if bucketInfo[leastOccupiedBucketID] >= 1000 {
+				log.Printf("Bucket %v has more than 1000 keys", leastOccupiedBucketID)
+			}
 		}
 	}
 }
