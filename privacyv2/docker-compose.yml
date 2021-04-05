@@ -1,10 +1,61 @@
 version: '3.1'
 services:
+  chainsync:
+    image: alpine
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 10
+      NUMBEROFBUCKET: 5
+      MODE: "chainsync"
+    depends_on:
+      - mongov2
+  # indexer0:
+  #   image: alpine
+  #   volumes:
+  #     - .:/home
+  #   environment:
+  #     BUKCETID: 0
+  #     NUMBEROFBUCKET: 5
+  #     MODE: "indexer"
+  # indexer1:
+  #   image: alpine
+  #   volumes:
+  #     - .:/home
+  #   environment:
+  #     BUKCETID: 1
+  #     NUMBEROFBUCKET: 5
+  #     MODE: "indexer"
+  # indexer2:
+  #   image: alpine
+  #   volumes:
+  #     - .:/home
+  #   environment:
+  #     BUKCETID: 2
+  #     NUMBEROFBUCKET: 5
+  #     MODE: "indexer"
+  # indexer3:
+  #   image: alpine
+  #   volumes:
+  #     - .:/home
+  #   environment:
+  #     BUKCETID: 3
+  #     NUMBEROFBUCKET: 5
+  #     MODE: "indexer"
+  # indexer4:
+  #   image: alpine
+  #   volumes:
+  #     - .:/home
+  #   environment:
+  #     BUKCETID: 4
+  #     NUMBEROFBUCKET: 5
+  #     MODE: "indexer"    
   mongov2:
     image: mongo
     restart: always
     ports:
-      - 27018:27017
+      - 27019:27017
     volumes:
       - mongodb:/data/db
       - mongodb_config:/data/configdb
@@ -16,7 +67,7 @@ services:
     image: mongo-express
     restart: always
     ports:
-      - 8082:8081
+      - 8084:8081
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
