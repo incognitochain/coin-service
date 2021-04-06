@@ -45,12 +45,23 @@ func DBCreateCoinV1Index() error {
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, coinMdl)
+	_, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, coinMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
 	}
-	log.Println("indexName", indexName)
+
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	keyInfoMdl := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "pubkey", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&KeyInfoData{}).Indexes().CreateMany(ctx, keyInfoMdl)
+	if err != nil {
+		log.Printf("failed to index coins in %v", time.Since(startTime))
+		return err
+	}
 	log.Printf("success index coins in %v", time.Since(startTime))
 	return nil
 }
@@ -60,22 +71,19 @@ func DBCreateCoinV2Index() error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	coinMdl := []mongo.IndexModel{
 		{
-			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "otasecret", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+			Keys: bsonx.Doc{{Key: "otasecret", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "coin", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	indexName, err := mgm.Coll(&CoinData{}).Indexes().CreateMany(ctx, coinMdl)
+	_, err := mgm.Coll(&CoinData{}).Indexes().CreateMany(ctx, coinMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
 	}
-	log.Println("indexName", indexName)
-	log.Printf("success index coins in %v", time.Since(startTime))
 
-	startTime2 := time.Now()
 	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	otaMdl := []mongo.IndexModel{
 		{
@@ -86,13 +94,24 @@ func DBCreateCoinV2Index() error {
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	indexName, err = mgm.Coll(&SubmittedOTAKeyData{}).Indexes().CreateMany(ctx, otaMdl)
+	_, err = mgm.Coll(&SubmittedOTAKeyData{}).Indexes().CreateMany(ctx, otaMdl)
 	if err != nil {
 		log.Printf("failed to index otakey in %v", time.Since(startTime))
 		return err
 	}
-	log.Println("indexName", indexName)
-	log.Printf("success index otakey in %v", time.Since(startTime2))
+
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	keyInfoMdl := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&KeyInfoDataV2{}).Indexes().CreateMany(ctx, keyInfoMdl)
+	if err != nil {
+		log.Printf("failed to index coins in %v", time.Since(startTime))
+		return err
+	}
+	log.Printf("success index coins in %v", time.Since(startTime))
 
 	return nil
 }

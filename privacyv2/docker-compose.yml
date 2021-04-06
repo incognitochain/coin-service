@@ -12,14 +12,31 @@ services:
     depends_on:
       - mongov2
 
+  query:
+    image: alpine
+    ports:
+      - 9008:9008
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 0
+      MODE: "query"
+      PORT: 9008
+    depends_on:
+      - chainsync
+
   indexer0:
     image: alpine
+    ports:
+      - 9009:9009
     volumes:
       - .:/home
     entrypoint: [/home/run.sh]
     environment:
       BUKCETID: 0
       MODE: "indexer"
+      PORT: 9009
     depends_on:
       - chainsync
 
