@@ -201,22 +201,6 @@ func DBGetCoinsByIndex(idx int, shardID int, tokenID string) (*CoinData, error) 
 	return &result, nil
 }
 
-// func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
-// 	startTime := time.Now()
-// 	list := []CoinData{}
-// 	temp, _, err := base58.DecodeCheck(OTASecret)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	filter := bson.M{"otasecret": bson.M{operator.Eq: hex.EncodeToString(temp)}}
-// 	err = mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
-// 	return list, err
-// }
-
 func DBGetCoinsByOTAKey(tokenID, OTASecret string, offset, limit int64) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
@@ -235,25 +219,6 @@ func DBGetCoinsByOTAKey(tokenID, OTASecret string, offset, limit int64) ([]CoinD
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
 }
-
-// func DBGetUnknownCoinsFromCoinIndexWithLimit(index uint64, isPRV bool, limit int64) ([]CoinData, error) {
-// 	tokenID := common.PRVCoinID.String()
-// 	if !isPRV {
-// 		tokenID = common.ConfidentialAssetID.String()
-// 	}
-// 	startTime := time.Now()
-// 	list := []CoinData{}
-// 	filter := bson.M{"coinidx": bson.M{operator.Gte: index}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}}
-// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
-// 	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
-// 		Limit: &limit,
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
-// 	return list, err
-// }
 
 func DBGetCoinV1ByPubkey(tokenID, pubkey string, offset int64, limit int64) ([]CoinData, error) {
 	startTime := time.Now()
