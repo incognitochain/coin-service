@@ -22,4 +22,5 @@ const (
 	INDEXERMODE                  = "indexer"
 	QUERYMODE                    = "query"
 	TESTMODE                     = "test"
+	MAX_BUCKET_SIZE              = 1000
 )
