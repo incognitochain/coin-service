@@ -43,9 +43,10 @@ func NewKeyImageData(tokenID, txHash, keyimage string, beaconHeight uint64, shar
 }
 
 type CoinInfo struct {
-	Start uint64
-	Total uint64
-	End   uint64
+	Start       uint64
+	Total       uint64
+	End         uint64
+	LastScanned uint64
 }
 type KeyInfoData struct {
 	mgm.DefaultModel `bson:",inline"`
