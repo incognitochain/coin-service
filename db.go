@@ -576,11 +576,14 @@ func DBCheckTxsExist(txList []string, shardID int) ([]bool, error) {
 	return result, nil
 }
 
-func DBGetOTAKeys(bucketID int) ([]SubmittedOTAKeyData, error) {
+func DBGetOTAKeys(bucketID int, offset int64) ([]SubmittedOTAKeyData, error) {
 	var result []SubmittedOTAKeyData
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	filter := bson.M{"bucketid": bson.M{operator.Eq: bucketID}}
-	err := mgm.Coll(&SubmittedOTAKeyData{}).SimpleFindWithCtx(ctx, &result, filter)
+	err := mgm.Coll(&SubmittedOTAKeyData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort: bson.D{{"created_at", 1}},
+		Skip: &offset,
+	})
 	if err != nil {
 		log.Println(err)
 		return nil, err

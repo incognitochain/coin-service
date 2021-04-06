@@ -13,7 +13,6 @@ import (
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/kamva/mgm/v3"
-	"github.com/kamva/mgm/v3/builder"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -32,7 +31,7 @@ var Submitted_OTAKey = struct {
 }{}
 
 func loadSubmittedOTAKey() {
-	keys, err := DBGetOTAKeys(serviceCfg.IndexerBucketID)
+	keys, err := DBGetOTAKeys(serviceCfg.IndexerBucketID, 0)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -66,17 +65,61 @@ func loadSubmittedOTAKey() {
 	}
 	Submitted_OTAKey.Unlock()
 
-	pipeline := bson.A{builder.S()}
-	changeStream, err := mgm.Coll(&SubmittedOTAKeyData{}).Watch(context.Background(), pipeline)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	for changeStream.Next(context.Background()) {
-		key := SubmittedOTAKeyData{}
-		if err := changeStream.Decode(key); err != nil {
-			log.Fatal(err)
+	// pipeline := bson.A{}
+	// changeStream, err := mgm.Coll(&SubmittedOTAKeyData{}).Watch(context.Background(), pipeline)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+	// for changeStream.Next(context.Background()) {
+	// 	key := SubmittedOTAKeyData{}
+	// 	if err := changeStream.Decode(key); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	if key.BucketID == serviceCfg.IndexerBucketID {
+	// 		pubkey, _, _ := base58.Base58Check{}.Decode(key.Pubkey)
+	// 		keyBytes, _, _ := base58.Base58Check{}.Decode(key.OTAKey)
+	// 		keyBytes = append(keyBytes, pubkey...)
+	// 		if len(keyBytes) != 64 {
+	// 			log.Fatalln(errors.New("keyBytes length isn't 64"))
+	// 		}
+	// 		if len(keyBytes) != 64 {
+	// 			log.Fatalln(errors.New("keyBytes length isn't 64"))
+	// 		}
+	// 		otaKey := OTAKeyFromRaw(keyBytes)
+	// 		ks := &incognitokey.KeySet{}
+	// 		ks.OTAKey = otaKey
+	// 		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+	// 		data, err := DBGetCoinV2PubkeyInfo(key.OTAKey)
+	// 		if err != nil {
+	// 			log.Fatal(err)
+	// 		}
+	// 		k := OTAkeyInfo{
+	// 			KeyInfo: data,
+	// 			ShardID: int(shardID),
+	// 			OTAKey:  key.OTAKey,
+	// 			Pubkey:  key.Pubkey,
+	// 			keyset:  ks,
+	// 		}
+
+	// 		Submitted_OTAKey.Lock()
+	// 		Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, &k)
+	// 		Submitted_OTAKey.Unlock()
+	// 	}
+	// }
+
+	// if err := changeStream.Close(context.Background()); err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	interval := time.NewTicker(5 * time.Second)
+	for {
+		<-interval.C
+		keys, err := DBGetOTAKeys(serviceCfg.IndexerBucketID, int64(len(Submitted_OTAKey.Keys)))
+		if err != nil {
+			log.Fatalln(err)
 		}
-		if key.BucketID == serviceCfg.IndexerBucketID {
+		Submitted_OTAKey.Lock()
+		for _, key := range keys {
 			pubkey, _, _ := base58.Base58Check{}.Decode(key.Pubkey)
 			keyBytes, _, _ := base58.Base58Check{}.Decode(key.OTAKey)
 			keyBytes = append(keyBytes, pubkey...)
@@ -92,7 +135,7 @@ func loadSubmittedOTAKey() {
 			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
 			data, err := DBGetCoinV2PubkeyInfo(key.OTAKey)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalln(err)
 			}
 			k := OTAkeyInfo{
 				KeyInfo: data,
@@ -101,15 +144,10 @@ func loadSubmittedOTAKey() {
 				Pubkey:  key.Pubkey,
 				keyset:  ks,
 			}
-
-			Submitted_OTAKey.Lock()
 			Submitted_OTAKey.Keys = append(Submitted_OTAKey.Keys, &k)
-			Submitted_OTAKey.Unlock()
 		}
-	}
+		Submitted_OTAKey.Unlock()
 
-	if err := changeStream.Close(context.Background()); err != nil {
-		log.Fatal(err)
 	}
 }
 

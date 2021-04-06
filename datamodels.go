@@ -25,6 +25,23 @@ func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTA
 	}
 }
 
+func (model *CoinData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *CoinData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type KeyImageData struct {
 	mgm.DefaultModel `bson:",inline"`
 	TokenID          string `json:"tokenid" bson:"tokenid"`
@@ -40,6 +57,22 @@ func NewKeyImageData(tokenID, txHash, keyimage string, beaconHeight uint64, shar
 	return &KeyImageData{
 		TokenID: tokenID, KeyImage: keyimage, TxHash: txHash, BeaconHeight: beaconHeight, ShardID: shardID,
 	}
+}
+func (model *KeyImageData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *KeyImageData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type CoinInfo struct {
@@ -63,6 +96,23 @@ func NewKeyInfoData(Pubkey, OTAKey string, coinIdx map[string]CoinInfo) *KeyInfo
 	}
 }
 
+func (model *KeyInfoData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *KeyInfoData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type CoinPendingData struct {
 	mgm.DefaultModel `bson:",inline"`
 	SerialNumber     []string `json:"serialnum" bson:"serialnum"`
@@ -73,6 +123,23 @@ func NewCoinPendingData(SerialNumber []string, TxHash string) *CoinPendingData {
 	return &CoinPendingData{
 		SerialNumber: SerialNumber, TxHash: TxHash,
 	}
+}
+
+func (model *CoinPendingData) CoinPendingData() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *CoinPendingData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type SubmittedOTAKeyData struct {
@@ -86,4 +153,21 @@ func NewSubmittedOTAKeyData(OTAkey, pubkey string, bucketID int) *SubmittedOTAKe
 	return &SubmittedOTAKeyData{
 		OTAKey: OTAkey, Pubkey: pubkey, BucketID: bucketID,
 	}
+}
+
+func (model *SubmittedOTAKeyData) CoinPendingData() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *SubmittedOTAKeyData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
 }
