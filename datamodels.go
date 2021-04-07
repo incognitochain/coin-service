@@ -25,6 +25,23 @@ func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTA
 	}
 }
 
+func (model *CoinData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *CoinData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type KeyImageData struct {
 	mgm.DefaultModel `bson:",inline"`
 	TokenID          string `json:"tokenid" bson:"tokenid"`
@@ -41,24 +58,59 @@ func NewKeyImageData(tokenID, txHash, keyimage string, beaconHeight uint64, shar
 		TokenID: tokenID, KeyImage: keyimage, TxHash: txHash, BeaconHeight: beaconHeight, ShardID: shardID,
 	}
 }
+func (model *KeyImageData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *KeyImageData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 type CoinInfo struct {
-	Start uint64
-	Total uint64
-	End   uint64
+	Start       uint64
+	Total       uint64
+	End         uint64
+	LastScanned uint64
 }
 type KeyInfoData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Pubkey           string              `json:"pubkey" bson:"pubkey"`
 	OTAKey           string              `json:"otakey" bson:"otakey"`
-	CoinV1StartIndex map[string]CoinInfo `json:"v1startindex" bson:"v1startindex"`
-	CoinV2StartIndex map[string]CoinInfo `json:"v2startindex" bson:"v2startindex"`
+	CoinIndex        map[string]CoinInfo `json:"coinindex" bson:"coinindex"`
 }
 
-func NewKeyInfoData(Pubkey, OTAKey string, CoinV1StartIndex, CoinV2StartIndex map[string]CoinInfo) *KeyInfoData {
+type KeyInfoDataV2 KeyInfoData
+
+func NewKeyInfoData(Pubkey, OTAKey string, coinIdx map[string]CoinInfo) *KeyInfoData {
 	return &KeyInfoData{
-		Pubkey: Pubkey, OTAKey: OTAKey, CoinV1StartIndex: CoinV1StartIndex, CoinV2StartIndex: CoinV2StartIndex,
+		Pubkey: Pubkey, OTAKey: OTAKey, CoinIndex: coinIdx,
 	}
+}
+
+func (model *KeyInfoData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *KeyInfoData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type CoinPendingData struct {
@@ -73,6 +125,23 @@ func NewCoinPendingData(SerialNumber []string, TxHash string) *CoinPendingData {
 	}
 }
 
+func (model *CoinPendingData) CoinPendingData() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *CoinPendingData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type SubmittedOTAKeyData struct {
 	mgm.DefaultModel `bson:",inline"`
 	OTAKey           string `json:"otakey" bson:"otakey"`
@@ -84,4 +153,21 @@ func NewSubmittedOTAKeyData(OTAkey, pubkey string, bucketID int) *SubmittedOTAKe
 	return &SubmittedOTAKeyData{
 		OTAKey: OTAkey, Pubkey: pubkey, BucketID: bucketID,
 	}
+}
+
+func (model *SubmittedOTAKeyData) CoinPendingData() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *SubmittedOTAKeyData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
 }

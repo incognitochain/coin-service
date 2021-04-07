@@ -1,22 +1,110 @@
 version: '3.1'
 services:
+  chainsync:
+    image: alpine
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 10
+      NUMBEROFBUCKET: 5
+      MODE: "chainsync"
+      PORT: 9001
+    depends_on:
+      - mongov2
+
+  query:
+    image: alpine
+    ports:
+      - 9008:9008
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 0
+      MODE: "query"
+      PORT: 9008
+    depends_on:
+      - chainsync
+
+  indexer0:
+    image: alpine
+    ports:
+      - 9009:9009
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 0
+      MODE: "indexer"
+      PORT: 9009
+    depends_on:
+      - chainsync
+
+  indexer1:
+    image: alpine
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 1
+      MODE: "indexer"
+      PORT: 9001
+    depends_on:
+      - chainsync
+
+  indexer2:
+    image: alpine
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 2
+      MODE: "indexer"
+      PORT: 9001
+    depends_on:
+      - chainsync
+
+  indexer3:
+    image: alpine
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 3
+      MODE: "indexer"
+      PORT: 9001
+    depends_on:
+      - chainsync
+
+  indexer4:
+    image: alpine
+    volumes:
+      - .:/home
+    entrypoint: [/home/run.sh]
+    environment:
+      BUKCETID: 4
+      MODE: "indexer" 
+      PORT: 9001
+    depends_on:
+      - chainsync   
+
   mongov2:
     image: mongo
     restart: always
     ports:
-      - 27018:27017
+      - 27019:27017
     volumes:
       - mongodb:/data/db
       - mongodb_config:/data/configdb
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
-
   mongo-expressv2:
     image: mongo-express
     restart: always
     ports:
-      - 8082:8081
+      - 8084:8081
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: example

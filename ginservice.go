@@ -37,16 +37,19 @@ func startGinService() {
 		c.JSON(http.StatusOK, stats.Report())
 	})
 	r.GET("/health", API_HealthCheck)
+	// if serviceCfg.Mode == QUERYMODE {
 	r.GET("/getcoinspending", API_GetCoinsPending)
 	r.GET("/getcoins", API_GetCoins)
 	r.GET("/getkeyinfo", API_GetKeyInfo)
 	r.POST("/checkkeyimages", API_CheckKeyImages)
 	r.POST("/getrandomcommitments", API_GetRandomCommitments)
 	r.POST("/checktxs", API_CheckTXs)
-
-	// if serviceCfg.Mode == INDEXERMODE {
-	r.POST("/submitotakey", API_SubmitOTA)
+	// r.POST("/gettxsbyreceiver", API_GetTxsByReceiver)
 	// }
+
+	if serviceCfg.Mode == INDEXERMODE && serviceCfg.IndexerBucketID == 0 {
+		r.POST("/submitotakey", API_SubmitOTA)
+	}
 	r.Run("0.0.0.0:" + strconv.Itoa(serviceCfg.APIPort))
 }
 
@@ -83,7 +86,8 @@ func API_GetCoins(c *gin.Context) {
 			if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
 				tokenidv2 = common.ConfidentialAssetID.String()
 			}
-			coinList, err := DBGetCoinsByOTAKeyAndHeight(tokenidv2, hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), offset, limit)
+
+			coinList, err := DBGetCoinsByOTAKey(tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 				return
@@ -190,7 +194,7 @@ func API_GetKeyInfo(c *gin.Context) {
 			return
 		}
 		pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
-		result, err := DBGetCoinPubkeyInfo(pubkey)
+		result, err := DBGetCoinV1PubkeyInfo(pubkey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -443,6 +447,27 @@ func API_CheckTXs(c *gin.Context) {
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
+}
+
+func API_GetTxsByReceiver(c *gin.Context) {
+	// var req API_get_txs_request
+	// err := c.ShouldBindJSON(&req)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
+
+	// result, err := DBCheckTxsExist(req.Txs, req.ShardID)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
+
+	// respond := API_respond{
+	// 	Result: result,
+	// 	Error:  nil,
+	// }
+	// c.JSON(http.StatusOK, respond)
 }
 
 func API_HealthCheck(c *gin.Context) {
