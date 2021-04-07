@@ -71,7 +71,10 @@ func DBCreateCoinV2Index() error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	coinMdl := []mongo.IndexModel{
 		{
-			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "otasecret", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "realtokenid", Value: bsonx.Int32(1)}, {Key: "otasecret", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "coin", Value: bsonx.Int32(1)}},
@@ -103,7 +106,8 @@ func DBCreateCoinV2Index() error {
 	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	keyInfoMdl := []mongo.IndexModel{
 		{
-			Keys: bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}},
+			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
 		},
 	}
 	_, err = mgm.Coll(&KeyInfoDataV2{}).Indexes().CreateMany(ctx, keyInfoMdl)
@@ -201,13 +205,31 @@ func DBGetCoinsByIndex(idx int, shardID int, tokenID string) (*CoinData, error) 
 	return &result, nil
 }
 
-func DBGetCoinsByOTAKey(tokenID, OTASecret string, fromidx, limit int64) ([]CoinData, error) {
+func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
 	if limit == 0 {
 		limit = 10000
 	}
-	filter := bson.M{"otasecret": bson.M{operator.Eq: OTASecret}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gt: fromidx}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gt: fromidx}}
+	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	return list, err
+}
+
+func DBGetCoinsByOTAKey(shardID int, realTokenID, OTASecret string, fromidx, limit int64) ([]CoinData, error) {
+	startTime := time.Now()
+	list := []CoinData{}
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: OTASecret}, "realtokenid": bson.M{operator.Eq: realTokenID}, "coinidx": bson.M{operator.Gt: fromidx}}
 	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
 		Sort:  bson.D{{"coinidx", 1}},
 		Limit: &limit,

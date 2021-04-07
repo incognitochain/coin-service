@@ -81,13 +81,14 @@ func API_GetCoins(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid otakey")))
 				return
 			}
-			pubkey = base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+			pukeyBytes := wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
+			pubkey = base58.EncodeCheck(pukeyBytes)
+			shardID := common.GetShardIDFromLastByte(pukeyBytes[len(pukeyBytes)-1])
 			tokenidv2 := tokenid
-			if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
-				tokenidv2 = common.ConfidentialAssetID.String()
-			}
-
-			coinList, err := DBGetCoinsByOTAKey(tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
+			// if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
+			// 	tokenidv2 = common.ConfidentialAssetID.String()
+			// }
+			coinList, err := DBGetCoinsByOTAKey(int(shardID), tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 				return
@@ -186,6 +187,10 @@ func API_GetCoins(c *gin.Context) {
 }
 
 func API_GetKeyInfo(c *gin.Context) {
+	version, _ := strconv.Atoi(c.Query("version"))
+	if version != 1 && version != 2 {
+		version = 1
+	}
 	key := c.Query("key")
 	if key != "" {
 		wl, err := wallet.Base58CheckDeserialize(key)

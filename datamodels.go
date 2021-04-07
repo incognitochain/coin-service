@@ -7,6 +7,7 @@ type CoinData struct {
 	CoinIndex        uint64 `json:"coinidx" bson:"coinidx"`
 	CoinVersion      int    `json:"version" bson:"version"`
 	TokenID          string `json:"tokenid" bson:"tokenid"`
+	RealTokenID      string `json:"realtokenid" bson:"realtokenid"`
 	Coin             []byte `json:"coin" bson:"coin"`
 	CoinPubkey       string `json:"coinpubkey" bson:"coinpubkey"`
 	OTASecret        string `json:"otasecret" bson:"otasecret"`
