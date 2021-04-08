@@ -385,7 +385,9 @@ func filterCoinsByOTAKey(coinList []CoinData) (map[string][]CoinData, []CoinData
 						otaCoins[key] = append(otaCoins[key], coin)
 					}
 				}
-				tempOTACoinsCh = make(chan map[string]CoinData, serviceCfg.MaxConcurrentOTACheck)
+				if idx+1 != len(coinList) {
+					tempOTACoinsCh = make(chan map[string]CoinData, serviceCfg.MaxConcurrentOTACheck)
+				}
 			}
 			if c.TokenID == common.PRVCoinID.String() {
 				if _, ok := lastPRVIndex[c.ShardID]; !ok {

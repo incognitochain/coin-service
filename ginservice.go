@@ -20,6 +20,7 @@ import (
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
+	"github.com/incognitochain/incognito-chain/privacy/operation"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
@@ -44,6 +45,7 @@ func startGinService() {
 	r.POST("/checkkeyimages", API_CheckKeyImages)
 	r.POST("/getrandomcommitments", API_GetRandomCommitments)
 	r.POST("/checktxs", API_CheckTXs)
+	r.POST("/parsetokenid", API_ParseTokenID)
 	// r.POST("/gettxsbyreceiver", API_GetTxsByReceiver)
 	// }
 
@@ -454,25 +456,118 @@ func API_CheckTXs(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func API_GetTxsByReceiver(c *gin.Context) {
-	// var req API_get_txs_request
-	// err := c.ShouldBindJSON(&req)
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-	// 	return
-	// }
+// func API_GetTxsByReceiver(c *gin.Context) {
+// var req API_get_txs_request
+// err := c.ShouldBindJSON(&req)
+// if err != nil {
+// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+// 	return
+// }
 
-	// result, err := DBCheckTxsExist(req.Txs, req.ShardID)
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-	// 	return
-	// }
+// result, err := DBCheckTxsExist(req.Txs, req.ShardID)
+// if err != nil {
+// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+// 	return
+// }
 
-	// respond := API_respond{
-	// 	Result: result,
-	// 	Error:  nil,
-	// }
-	// c.JSON(http.StatusOK, respond)
+// respond := API_respond{
+// 	Result: result,
+// 	Error:  nil,
+// }
+// c.JSON(http.StatusOK, respond)
+// }
+
+func API_ParseTokenID(c *gin.Context) {
+	var req API_parse_tokenid_request
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(req.AssetTags) != len(req.OTARandoms) {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.AssetTags) != len(req.ShardSecrets)")))
+		return
+	}
+	assetTags, err := AssetTagStringToPoint(req.AssetTags)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	sharedSecrets, err := CalculateSharedSecret(req.OTARandoms, req.OTAKey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	tokenCount, err := DBGetTokenCount()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+	tokenIDs := []*common.Hash{}
+	tokenIDstrs := []string{}
+	if tokenCount != lastTokenListCount {
+		tokenInfos, err := DBGetTokenInfo()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+			return
+		}
+		for _, tokenInfo := range tokenInfos {
+			tokenID, err := new(common.Hash).NewHashFromStr(tokenInfo.TokenID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				return
+			}
+			tokenIDs = append(tokenIDs, tokenID)
+			tokenIDstrs = append(tokenIDstrs, tokenInfo.TokenID)
+		}
+		tokenListLock.Lock()
+		lastTokenListCount = tokenCount
+		lastTokenIDHash = tokenIDs
+		lastTokenIDstr = tokenIDstrs
+		tokenListLock.Unlock()
+	} else {
+		tokenListLock.Lock()
+		copy(tokenIDs, lastTokenIDHash)
+		copy(tokenIDstrs, lastTokenIDstr)
+		tokenListLock.Unlock()
+	}
+	var wg sync.WaitGroup
+	tempIDCheckCh := make(chan map[int]int, 10)
+	result := make([]string, len(sharedSecrets))
+	for idx, sharedSecret := range sharedSecrets {
+		wg.Add(1)
+		go func(i int, sc *operation.Point) {
+			var ok bool
+			var tokenIDidx int
+			for ti, tokenID := range tokenIDs {
+				if ok, _ = CheckTokenIDWithOTA(sc, assetTags[i], tokenID); ok {
+					tokenIDidx = ti
+					break
+				}
+			}
+			tempIDCheckCh <- map[int]int{i: tokenIDidx}
+			wg.Done()
+		}(idx, sharedSecret)
+
+		if (idx+1)%serviceCfg.MaxConcurrentOTACheck == 0 || idx+1 == len(sharedSecrets) {
+			wg.Wait()
+			close(tempIDCheckCh)
+			for k := range tempIDCheckCh {
+				for coinIdx, tokenIdx := range k {
+					result[coinIdx] = tokenIDstrs[tokenIdx]
+				}
+			}
+			if idx+1 != len(sharedSecrets) {
+				tempIDCheckCh = make(chan map[int]int, 10)
+			}
+		}
+	}
+	respond := API_respond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func API_HealthCheck(c *gin.Context) {
