@@ -10,6 +10,11 @@ type API_check_tx_request struct {
 	ShardID int
 }
 
+type API_parse_tokenid_request struct {
+	OTARandoms []string
+	AssetTags  []string
+	OTAKey     string
+}
 type API_get_txs_request struct {
 	Publickey string
 	Skip      int

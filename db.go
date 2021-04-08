@@ -506,7 +506,7 @@ func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
 }
 
 func DBSavePendingTx(list []CoinPendingData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&CoinPendingData{}).Drop(ctx)
 	if err != nil {
 		log.Println(err)
@@ -526,6 +526,49 @@ func DBSavePendingTx(list []CoinPendingData) error {
 	}
 
 	return nil
+}
+
+func DBSaveTokenInfo(list []TokenInfoData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&TokenInfoData{}).Drop(ctx)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(list) > 0 {
+		ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
+		docs := []interface{}{}
+		for _, token := range list {
+			docs = append(docs, token)
+		}
+		_, err = mgm.Coll(&TokenInfoData{}).InsertMany(ctx, docs)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func DBGetTokenCount() (int64, error) {
+	filter := bson.M{}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	c, err := mgm.Coll(&TokenInfoData{}).Collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return c, err
+	}
+	return c, nil
+}
+
+func DBGetTokenInfo() ([]TokenInfoData, error) {
+	list := []TokenInfoData{}
+	filter := bson.M{}
+	err := mgm.Coll(&TokenInfoData{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }
 
 func DBGetPendingCoins() ([]string, error) {
