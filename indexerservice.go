@@ -500,8 +500,8 @@ func startBucketAssigner() {
 		} else {
 			bucketInfo[leastOccupiedBucketID] += 1
 			request.Respond <- nil
-			if bucketInfo[leastOccupiedBucketID] >= 1000 {
-				log.Printf("Bucket %v has more than 1000 keys", leastOccupiedBucketID)
+			if bucketInfo[leastOccupiedBucketID] >= 5000 {
+				log.Printf("Bucket %v has more than 5000 keys", leastOccupiedBucketID)
 			}
 		}
 	}
