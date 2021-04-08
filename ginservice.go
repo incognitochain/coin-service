@@ -195,22 +195,41 @@ func API_GetKeyInfo(c *gin.Context) {
 	}
 	key := c.Query("key")
 	if key != "" {
-		wl, err := wallet.Base58CheckDeserialize(key)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
+		if version == 1 {
+			wl, err := wallet.Base58CheckDeserialize(key)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+			result, err := DBGetCoinV1PubkeyInfo(pubkey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			respond := API_respond{
+				Result: result,
+				Error:  nil,
+			}
+			c.JSON(http.StatusOK, respond)
+		} else {
+			wl, err := wallet.Base58CheckDeserialize(key)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			otakey := hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
+			result, err := DBGetCoinV2PubkeyInfo(otakey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			respond := API_respond{
+				Result: result,
+				Error:  nil,
+			}
+			c.JSON(http.StatusOK, respond)
 		}
-		pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
-		result, err := DBGetCoinV1PubkeyInfo(pubkey)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		respond := API_respond{
-			Result: result,
-			Error:  nil,
-		}
-		c.JSON(http.StatusOK, respond)
 	} else {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("key cant be empty")))
 		return
