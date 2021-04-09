@@ -13,6 +13,7 @@ import (
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/kamva/mgm/v3"
+	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -117,7 +118,7 @@ func loadSubmittedOTAKey() {
 	interval := time.NewTicker(5 * time.Second)
 	for {
 		<-interval.C
-		keys, err := DBGetSubmittedOTAKeys(serviceCfg.IndexerBucketID, int64(len(Submitted_OTAKey.Keys)))
+		keys, err := DBGetSubmittedOTAKeys(serviceCfg.IndexerBucketID, int64(Submitted_OTAKey.TotalKeys))
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -166,11 +167,11 @@ func updateSubmittedOTAKey() error {
 			docs = append(docs, update)
 			KeyInfoList = append(KeyInfoList, key.KeyInfo)
 		}
-
 	}
 	for idx, doc := range docs {
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(docs)+1)*DB_OPERATION_TIMEOUT)
-		result, err := mgm.Coll(&KeyInfoDataV2{}).UpdateByID(ctx, KeyInfoList[idx].GetID(), doc, mgm.UpsertTrueOption())
+		filter := bson.M{"otasecret": bson.M{operator.Eq: KeyInfoList[idx].OTAKey}}
+		result, err := mgm.Coll(&KeyInfoDataV2{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
 		if err != nil {
 			Submitted_OTAKey.Unlock()
 			return err
