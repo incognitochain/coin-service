@@ -207,8 +207,14 @@ func API_GetKeyInfo(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
+			var result2 struct {
+				Pubkey       string              `json:"pubkey" bson:"pubkey"`
+				V1Startindex map[string]CoinInfo `json:"v1startindex"`
+			}
+			result2.Pubkey = result.Pubkey
+			result2.V1Startindex = result.CoinIndex
 			respond := API_respond{
-				Result: result,
+				Result: result2,
 				Error:  nil,
 			}
 			c.JSON(http.StatusOK, respond)
