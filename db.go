@@ -326,6 +326,9 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	for _, keyInfo := range KeyInfoDatas {
 		ki, ok := list[keyInfo.Pubkey]
 		for token, idx := range ki {
+			if len(keyInfo.CoinIndex) == 0 {
+				keyInfo.CoinIndex = make(map[string]CoinInfo)
+			}
 			if _, exist := keyInfo.CoinIndex[token]; !exist {
 				keyInfo.CoinIndex[token] = idx
 			} else {
