@@ -54,6 +54,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20210403033547-2feac7e7f4d3 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210403033547-2feac7e7f4d3/go.mod h1:w3oslsyFG9xkabNTiPNCScA4TXVf0sHWfBmD85An88I=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210405093353-aa453a575d22 h1:q6Zgs28XILnhU5yPOiZub1ur9nyeIOi0tl5YEtmN6jg=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210405093353-aa453a575d22/go.mod h1:w3oslsyFG9xkabNTiPNCScA4TXVf0sHWfBmD85An88I=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210408082730-9b6f0269b8b9 h1:k1M9lUJfo9fEfRqRJxzZd6FjfH9MV1QeQRHGHN1goP0=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210408082730-9b6f0269b8b9/go.mod h1:dH2hwOSIdEu+pCSlPnMTs4cSK/sVbqy+DOOlnYAk6u0=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
@@ -332,6 +334,9 @@ github.com/incognitochain/incognito-chain v0.0.0-20210406093212-4fda9fe12bce h1:
 github.com/incognitochain/incognito-chain v0.0.0-20210406093212-4fda9fe12bce/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/incognitochain/incognito-chain v0.0.0-20210406095652-4b7ed6549ad1 h1:Vx/T2b70Q0h/JPpmM3fM8QrLC9O7NA0e97PX7wJHQMw=
 github.com/incognitochain/incognito-chain v0.0.0-20210406095652-4b7ed6549ad1/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
+github.com/incognitochain/incognito-chain v0.0.0-20210408081857-d6ac709d20f2/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
+github.com/incognitochain/incognito-chain v0.0.0-20210408104221-8b295525a795 h1:0oH+3IhMXL96R28xQQBkA74rW5YvwPY2oYkktXSCbh4=
+github.com/incognitochain/incognito-chain v0.0.0-20210408104221-8b295525a795/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
