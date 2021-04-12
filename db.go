@@ -7,10 +7,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/kamva/mgm/v3"
-	"github.com/kamva/mgm/v3/builder"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -47,12 +45,23 @@ func DBCreateCoinV1Index() error {
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	indexName, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, coinMdl)
+	_, err := mgm.Coll(&CoinDataV1{}).Indexes().CreateMany(ctx, coinMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
 	}
-	log.Println("indexName", indexName)
+
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	keyInfoMdl := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "pubkey", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&KeyInfoData{}).Indexes().CreateMany(ctx, keyInfoMdl)
+	if err != nil {
+		log.Printf("failed to index coins in %v", time.Since(startTime))
+		return err
+	}
 	log.Printf("success index coins in %v", time.Since(startTime))
 	return nil
 }
@@ -62,36 +71,51 @@ func DBCreateCoinV2Index() error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	coinMdl := []mongo.IndexModel{
 		{
-			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "otasecret", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "realtokenid", Value: bsonx.Int32(1)}, {Key: "otasecret", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "coin", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	indexName, err := mgm.Coll(&CoinData{}).Indexes().CreateMany(ctx, coinMdl)
+	_, err := mgm.Coll(&CoinData{}).Indexes().CreateMany(ctx, coinMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
 	}
-	log.Println("indexName", indexName)
-	log.Printf("success index coins in %v", time.Since(startTime))
 
-	startTime2 := time.Now()
 	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
 	otaMdl := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "bucketid", Value: bsonx.Int32(1)}},
+		},
 		{
 			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}, {Key: "pubkey", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	indexName, err = mgm.Coll(&SubmittedOTAKeyData{}).Indexes().CreateMany(ctx, otaMdl)
+	_, err = mgm.Coll(&SubmittedOTAKeyData{}).Indexes().CreateMany(ctx, otaMdl)
 	if err != nil {
 		log.Printf("failed to index otakey in %v", time.Since(startTime))
 		return err
 	}
-	log.Println("indexName", indexName)
-	log.Printf("success index otakey in %v", time.Since(startTime2))
+
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	keyInfoMdl := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err = mgm.Coll(&KeyInfoDataV2{}).Indexes().CreateMany(ctx, keyInfoMdl)
+	if err != nil {
+		log.Printf("failed to index coins in %v", time.Since(startTime))
+		return err
+	}
+	log.Printf("success index coins in %v", time.Since(startTime))
 
 	return nil
 }
@@ -181,27 +205,17 @@ func DBGetCoinsByIndex(idx int, shardID int, tokenID string) (*CoinData, error) 
 	return &result, nil
 }
 
-// func DBGetCoinsByOTAKey(OTASecret string) ([]CoinData, error) {
-// 	startTime := time.Now()
-// 	list := []CoinData{}
-// 	temp, _, err := base58.DecodeCheck(OTASecret)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	filter := bson.M{"otasecret": bson.M{operator.Eq: hex.EncodeToString(temp)}}
-// 	err = mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
-// 	return list, err
-// }
-
-func DBGetCoinsByOTAKeyAndHeight(tokenID, OTASecret string, fromHeight int, toHeight int) ([]CoinData, error) {
+func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
-	filter := bson.M{"otasecret": bson.M{operator.Eq: OTASecret}, "beaconheight": bson.M{operator.Gte: fromHeight, operator.Lte: toHeight}, "tokenid": bson.M{operator.Eq: tokenID}}
-	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter)
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gt: fromidx}}
+	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -209,32 +223,15 @@ func DBGetCoinsByOTAKeyAndHeight(tokenID, OTASecret string, fromHeight int, toHe
 	return list, err
 }
 
-// func DBGetUnknownCoinsFromBeaconHeight(beaconHeight uint64) ([]CoinData, error) {
-// 	limit := int64(500)
-// 	startTime := time.Now()
-// 	list := []CoinData{}
-// 	filter := bson.M{"beaconheight": bson.M{operator.Gte: beaconHeight}, "otasecret": bson.M{operator.Eq: ""}}
-// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
-// 	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
-// 		Limit: &limit,
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
-// 	return list, err
-// }
-
-func DBGetUnknownCoinsFromCoinIndexWithLimit(index uint64, isPRV bool, limit int64) ([]CoinData, error) {
-	tokenID := common.PRVCoinID.String()
-	if !isPRV {
-		tokenID = common.ConfidentialAssetID.String()
-	}
+func DBGetCoinsByOTAKey(shardID int, realTokenID, OTASecret string, fromidx, limit int64) ([]CoinData, error) {
 	startTime := time.Now()
 	list := []CoinData{}
-	filter := bson.M{"coinidx": bson.M{operator.Gte: index}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&CoinData{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: OTASecret}, "realtokenid": bson.M{operator.Eq: realTokenID}, "coinidx": bson.M{operator.Gt: fromidx}}
+	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
 		Limit: &limit,
 	})
 	if err != nil {
@@ -253,6 +250,7 @@ func DBGetCoinV1ByPubkey(tokenID, pubkey string, offset int64, limit int64) ([]C
 	filter := bson.M{"coinpubkey": bson.M{operator.Eq: pubkey}, "tokenid": bson.M{operator.Eq: tokenID}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&CoinDataV1{}).SimpleFindWithCtx(ctx, &list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})
@@ -328,13 +326,16 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	for _, keyInfo := range KeyInfoDatas {
 		ki, ok := list[keyInfo.Pubkey]
 		for token, idx := range ki {
-			if _, exist := keyInfo.CoinV1StartIndex[token]; !exist {
-				keyInfo.CoinV1StartIndex[token] = idx
+			if len(keyInfo.CoinIndex) == 0 {
+				keyInfo.CoinIndex = make(map[string]CoinInfo)
+			}
+			if _, exist := keyInfo.CoinIndex[token]; !exist {
+				keyInfo.CoinIndex[token] = idx
 			} else {
-				info := keyInfo.CoinV1StartIndex[token]
+				info := keyInfo.CoinIndex[token]
 				info.End = idx.End
 				info.Total = info.Total + idx.Total
-				keyInfo.CoinV1StartIndex[token] = info
+				keyInfo.CoinIndex[token] = info
 			}
 		}
 
@@ -345,7 +346,7 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	}
 
 	for key, tokens := range list {
-		newKeyInfo := NewKeyInfoData(key, "", tokens, nil)
+		newKeyInfo := NewKeyInfoData(key, "", tokens)
 		keysToInsert = append(keysToInsert, *newKeyInfo)
 	}
 	if len(keysToInsert) > 0 {
@@ -380,7 +381,78 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]CoinInfo) error {
 	return nil
 }
 
-func DBGetCoinPubkeyInfo(key string) (*KeyInfoData, error) {
+func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]CoinInfo) error {
+	otakeys := []string{}
+	lenList := len(list)
+	for otakey, _ := range list {
+		otakeys = append(otakeys, otakey)
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
+	KeyInfoDatas := []KeyInfoData{}
+	filter := bson.M{"otakey": bson.M{operator.In: otakeys}}
+	err := mgm.Coll(&KeyInfoDataV2{}).SimpleFindWithCtx(ctx, &KeyInfoDatas, filter)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	keysToInsert := []KeyInfoData{}
+	keysToUpdate := []KeyInfoData{}
+	for _, keyInfo := range KeyInfoDatas {
+		ki, ok := list[keyInfo.OTAKey]
+		for token, idx := range ki {
+			if _, exist := keyInfo.CoinIndex[token]; !exist {
+				keyInfo.CoinIndex[token] = idx
+			} else {
+				info := keyInfo.CoinIndex[token]
+				info.End = idx.End
+				info.Total = info.Total + idx.Total
+				keyInfo.CoinIndex[token] = info
+			}
+		}
+
+		if ok {
+			delete(list, keyInfo.OTAKey)
+		}
+		keysToUpdate = append(keysToUpdate, keyInfo)
+	}
+
+	for key, tokens := range list {
+		newKeyInfo := NewKeyInfoData(key, "", tokens)
+		keysToInsert = append(keysToInsert, *newKeyInfo)
+	}
+	if len(keysToInsert) > 0 {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToInsert)+10)*DB_OPERATION_TIMEOUT)
+		docs := []interface{}{}
+		for _, key := range keysToInsert {
+			docs = append(docs, key)
+		}
+		_, err = mgm.Coll(&KeyInfoDataV2{}).InsertMany(ctx, docs)
+		if err != nil {
+			return err
+		}
+	}
+	if len(keysToUpdate) > 0 {
+		docs := []interface{}{}
+		for _, key := range keysToUpdate {
+			update := bson.M{
+				"$set": key,
+			}
+			docs = append(docs, update)
+		}
+		for idx, doc := range docs {
+			ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+			_, err := mgm.Coll(&KeyInfoDataV2{}).UpdateByID(ctx, keysToUpdate[idx].GetID(), doc)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	log.Printf("update %v keys info successful\n", lenList)
+	return nil
+}
+
+func DBGetCoinV1PubkeyInfo(key string) (*KeyInfoData, error) {
 	var result KeyInfoData
 	filter := bson.M{"pubkey": bson.M{operator.Eq: key}}
 	err := mgm.Coll(&KeyInfoData{}).First(filter, &result)
@@ -389,6 +461,22 @@ func DBGetCoinPubkeyInfo(key string) (*KeyInfoData, error) {
 		if err == mongo.ErrNoDocuments {
 			return &KeyInfoData{
 				Pubkey: key,
+			}, nil
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
+func DBGetCoinV2PubkeyInfo(key string) (*KeyInfoData, error) {
+	var result KeyInfoData
+	filter := bson.M{"otakey": bson.M{operator.Eq: key}}
+	err := mgm.Coll(&KeyInfoDataV2{}).First(filter, &result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return &KeyInfoData{
+				OTAKey: key,
 			}, nil
 		}
 		return nil, err
@@ -421,7 +509,7 @@ func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
 }
 
 func DBSavePendingTx(list []CoinPendingData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&CoinPendingData{}).Drop(ctx)
 	if err != nil {
 		log.Println(err)
@@ -441,6 +529,49 @@ func DBSavePendingTx(list []CoinPendingData) error {
 	}
 
 	return nil
+}
+
+func DBSaveTokenInfo(list []TokenInfoData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&TokenInfoData{}).Drop(ctx)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(list) > 0 {
+		ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(list)+1)*DB_OPERATION_TIMEOUT)
+		docs := []interface{}{}
+		for _, token := range list {
+			docs = append(docs, token)
+		}
+		_, err = mgm.Coll(&TokenInfoData{}).InsertMany(ctx, docs)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func DBGetTokenCount() (int64, error) {
+	filter := bson.M{}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
+	c, err := mgm.Coll(&TokenInfoData{}).Collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return c, err
+	}
+	return c, nil
+}
+
+func DBGetTokenInfo() ([]TokenInfoData, error) {
+	list := []TokenInfoData{}
+	filter := bson.M{}
+	err := mgm.Coll(&TokenInfoData{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }
 
 func DBGetPendingCoins() ([]string, error) {
@@ -496,11 +627,14 @@ func DBCheckTxsExist(txList []string, shardID int) ([]bool, error) {
 	return result, nil
 }
 
-func DBGetOTAKeys(bucketID int) ([]SubmittedOTAKeyData, error) {
+func DBGetSubmittedOTAKeys(bucketID int, offset int64) ([]SubmittedOTAKeyData, error) {
 	var result []SubmittedOTAKeyData
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*DB_OPERATION_TIMEOUT)
-	filter := bson.M{"bucketid": bson.M{operator.In: bucketID}}
-	err := mgm.Coll(&SubmittedOTAKeyData{}).SimpleFindWithCtx(ctx, &result, filter)
+	filter := bson.M{"bucketid": bson.M{operator.Eq: bucketID}}
+	err := mgm.Coll(&SubmittedOTAKeyData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort: bson.D{{"created_at", 1}},
+		Skip: &offset,
+	})
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -545,36 +679,65 @@ func DBSaveOTAKey(keys []SubmittedOTAKeyData) error {
 	return nil
 }
 
-func DBGetBucketStats() (map[int]uint64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*DB_OPERATION_TIMEOUT)
+func DBGetBucketStats(bucketSize int) (map[int]uint64, error) {
+	result := make(map[int]uint64)
 	d := mgm.Coll(&SubmittedOTAKeyData{})
-	pipeline := bson.A{
-		builder.S(builder.Group(d.Name(), bson.M{"bucketid": operator.SortByCount})),
-	}
-	cur, err := mgm.Coll(&SubmittedOTAKeyData{}).Aggregate(ctx, pipeline)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	defer cur.Close(ctx)
-
-	for cur.Next(ctx) {
-		var result bson.M
-		err := cur.Decode(&result)
+	for i := 0; i < bucketSize; i++ {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*DB_OPERATION_TIMEOUT)
+		filter := bson.M{"bucketid": bson.M{operator.Eq: i}}
+		count, err := d.CountDocuments(ctx, filter)
 		if err != nil {
 			return nil, err
 		}
-
-		// do something with result....
-		fmt.Printf("%+v\n", result)
+		result[i] = uint64(count)
 	}
-	return nil, nil
+
+	return result, nil
 }
 
-func DBSaveCoinsUnfinalized(list []CoinDataUnfinalized) error {
+func DBSaveCoinsUnfinalized(list []CoinData) error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	docsV1 := []interface{}{}
+	for _, coin := range list {
+		if coin.CoinVersion == 2 {
+			docs = append(docs, coin)
+		} else {
+			docsV1 = append(docsV1, coin)
+		}
+	}
+	if len(docs) > 0 {
+		_, err := mgm.Coll(&CoinDataUnfinalized{}).InsertMany(ctx, docs)
+		if err != nil {
+			log.Printf("failed to insert %v coins in %v", len(docs), time.Since(startTime))
+			return err
+		}
+		log.Printf("inserted %v v2coins in %v", len(docs), time.Since(startTime))
+	}
+	if len(docsV1) > 0 {
+		_, err := mgm.Coll(&CoinDataV1Unfinalized{}).InsertMany(ctx, docsV1)
+		if err != nil {
+			log.Printf("failed to insert %v coins in %v", len(docsV1), time.Since(startTime))
+			return err
+		}
+		log.Printf("inserted %v v1coins in %v", len(docsV1), time.Since(startTime))
+	}
 	return nil
 }
 
-func DBSaveKeyimageUnfinalized(list []KeyImageDataUnfinalized) error {
+func DBSaveKeyimageUnfinalized(list []KeyImageData) error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, km := range list {
+		docs = append(docs, km)
+	}
+	_, err := mgm.Coll(&KeyImageDataUnfinalized{}).InsertMany(ctx, docs)
+	if err != nil {
+		log.Printf("failed to insert %v keyimages in %v", len(list), time.Since(startTime))
+		return err
+	}
+	log.Printf("inserted %v keyimages in %v", len(list), time.Since(startTime))
 	return nil
 }

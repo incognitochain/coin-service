@@ -26,6 +26,9 @@ func main() {
 		initChainSynker()
 	}
 	if serviceCfg.Mode == INDEXERMODE {
+		if serviceCfg.IndexerBucketID == 0 {
+			go startBucketAssigner()
+		}
 		go initOTAIndexingService()
 	}
 	go startGinService()

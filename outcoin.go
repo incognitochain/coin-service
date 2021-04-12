@@ -62,7 +62,7 @@ type OutCoinV1 struct {
 	// SharedRandom         string `json:"SharedRandom"`
 	// SharedConcealRandom  string `json:"SharedConcealRandom"`
 	// TxRandom             string `json:"TxRandom"`
-	// CoinDetailsEncrypted string `json:"CoinDetailsEncrypted"`
+	CoinDetailsEncrypted string `json:"CoinDetailsEncrypted"`
 	// AssetTag             string `json:"AssetTag"`
 }
 
@@ -180,13 +180,13 @@ func NewOutCoinV1(outCoin ICoinInfo) OutCoinV1 {
 
 func NewCoinFromJsonOutCoinV2(jsonOutCoin OutCoinV2) (ICoinInfo, *big.Int, error) {
 	var keyImage, pubkey, cm *privacy.Point
-	var snd, randomness *privacy.Scalar
+	var randomness *privacy.Scalar
 	var info []byte
 	var err error
 	var idx *big.Int
 	var sharedRandom, sharedConcealRandom *privacy.Scalar
 	var txRandom *coin.TxRandom
-	var coinDetailEncrypted *privacy.HybridCipherText
+	// var coinDetailEncrypted *privacy.HybridCipherText
 	var assetTag *privacy.Point
 
 	value, ok := math.ParseUint64(jsonOutCoin.Value)
@@ -243,15 +243,15 @@ func NewCoinFromJsonOutCoinV2(jsonOutCoin OutCoinV2) (ICoinInfo, *big.Int, error
 		randomness = new(privacy.Scalar).FromBytesS(randomnessInBytes)
 	}
 
-	if len(jsonOutCoin.SNDerivator) == 0 {
-		snd = nil
-	} else {
-		sndInBytes, _, err := base58.Base58Check{}.Decode(jsonOutCoin.SNDerivator)
-		if err != nil {
-			return nil, nil, err
-		}
-		snd = new(privacy.Scalar).FromBytesS(sndInBytes)
-	}
+	// if len(jsonOutCoin.SNDerivator) == 0 {
+	// 	snd = nil
+	// } else {
+	// 	sndInBytes, _, err := base58.Base58Check{}.Decode(jsonOutCoin.SNDerivator)
+	// 	if err != nil {
+	// 		return nil, nil, err
+	// 	}
+	// 	snd = new(privacy.Scalar).FromBytesS(sndInBytes)
+	// }
 
 	if len(jsonOutCoin.Info) == 0 {
 		info = []byte{}
@@ -319,37 +319,38 @@ func NewCoinFromJsonOutCoinV2(jsonOutCoin OutCoinV2) (ICoinInfo, *big.Int, error
 		idx = new(big.Int).SetBytes(idxInBytes)
 	}
 
-	if jsonOutCoin.Version == "1" {
-		pCoinV1 := new(coin.PlainCoinV1).Init()
+	// if jsonOutCoin.Version == "1" {
+	// 	pCoinV1 := new(coin.PlainCoinV1).Init()
 
-		pCoinV1.SetRandomness(randomness)
-		pCoinV1.SetPublicKey(pubkey)
-		pCoinV1.SetCommitment(cm)
-		pCoinV1.SetSNDerivator(snd)
-		pCoinV1.SetKeyImage(keyImage)
-		pCoinV1.SetInfo(info)
-		pCoinV1.SetValue(value)
+	// 	pCoinV1.SetRandomness(randomness)
+	// 	pCoinV1.SetPublicKey(pubkey)
+	// 	pCoinV1.SetCommitment(cm)
+	// 	pCoinV1.SetSNDerivator(snd)
+	// 	pCoinV1.SetKeyImage(keyImage)
+	// 	pCoinV1.SetInfo(info)
+	// 	pCoinV1.SetValue(value)
 
-		if len(jsonOutCoin.CoinDetailsEncrypted) != 0 {
-			coinDetailEncryptedInBytes, _, err := base58.Base58Check{}.Decode(jsonOutCoin.CoinDetailsEncrypted)
-			if err != nil {
-				return nil, nil, err
-			}
-			coinDetailEncrypted = new(privacy.HybridCipherText)
-			err = coinDetailEncrypted.SetBytes(coinDetailEncryptedInBytes)
-			if err != nil {
-				return nil, nil, err
-			}
+	// 	if len(jsonOutCoin.CoinDetailsEncrypted) != 0 {
+	// 		coinDetailEncryptedInBytes, _, err := base58.Base58Check{}.Decode(jsonOutCoin.CoinDetailsEncrypted)
+	// 		if err != nil {
+	// 			return nil, nil, err
+	// 		}
+	// 		coinDetailEncrypted = new(privacy.HybridCipherText)
+	// 		err = coinDetailEncrypted.SetBytes(coinDetailEncryptedInBytes)
+	// 		if err != nil {
+	// 			return nil, nil, err
+	// 		}
 
-			coinV1 := new(coin.CoinV1).Init()
-			coinV1.CoinDetails = pCoinV1
-			coinV1.CoinDetailsEncrypted = coinDetailEncrypted
+	// 		coinV1 := new(coin.CoinV1).Init()
+	// 		coinV1.CoinDetails = pCoinV1
+	// 		coinV1.CoinDetailsEncrypted = coinDetailEncrypted
 
-			return coinV1, idx, nil
-		}
+	// 		return coinV1, idx, nil
+	// 	}
 
-		return pCoinV1, idx, nil
-	} else if jsonOutCoin.Version == "2" {
+	// 	return pCoinV1, idx, nil
+	// } else
+	if jsonOutCoin.Version == "2" {
 		coinV2 := new(coin.CoinV2).Init()
 		if len(jsonOutCoin.CoinDetailsEncrypted) != 0 {
 			coinDetailEncryptedInBytes, _, err := base58.Base58Check{}.Decode(jsonOutCoin.CoinDetailsEncrypted)
@@ -526,23 +527,23 @@ func NewCoinFromJsonOutCoinV1(jsonOutCoin OutCoinV1) (ICoinInfo, *big.Int, error
 		pCoinV1.SetInfo(info)
 		pCoinV1.SetValue(value)
 
-		// if len(jsonOutCoin.CoinDetailsEncrypted) != 0 {
-		// 	coinDetailEncryptedInBytes, _, err := base58.Base58Check{}.Decode(jsonOutCoin.CoinDetailsEncrypted)
-		// 	if err != nil {
-		// 		return nil, nil, err
-		// 	}
-		// 	coinDetailEncrypted = new(privacy.HybridCipherText)
-		// 	err = coinDetailEncrypted.SetBytes(coinDetailEncryptedInBytes)
-		// 	if err != nil {
-		// 		return nil, nil, err
-		// 	}
+		if len(jsonOutCoin.CoinDetailsEncrypted) != 0 {
+			coinDetailEncryptedInBytes, _, err := base58.Base58Check{}.Decode(jsonOutCoin.CoinDetailsEncrypted)
+			if err != nil {
+				return nil, nil, err
+			}
+			coinDetailEncrypted := new(privacy.HybridCipherText)
+			err = coinDetailEncrypted.SetBytes(coinDetailEncryptedInBytes)
+			if err != nil {
+				return nil, nil, err
+			}
 
-		// 	coinV1 := new(coin.CoinV1).Init()
-		// 	coinV1.CoinDetails = pCoinV1
-		// 	coinV1.CoinDetailsEncrypted = coinDetailEncrypted
+			coinV1 := new(coin.CoinV1).Init()
+			coinV1.CoinDetails = pCoinV1
+			coinV1.CoinDetailsEncrypted = coinDetailEncrypted
 
-		// 	return coinV1, idx, nil
-		// }
+			return coinV1, idx, nil
+		}
 
 		return pCoinV1, idx, nil
 	}
