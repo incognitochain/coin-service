@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/kamva/mgm/v3"
 )
 
@@ -151,13 +153,13 @@ type TokenInfoData struct {
 	Name             string `json:"name" bson:"name"`
 	Symbol           string `json:"symbol" bson:"symbol"`
 	Image            string `json:"image" bson:"image"`
-	Amount           uint64 `json:"amount" bson:"amount"`
+	Amount           string `json:"amount" bson:"amount"`
 	IsPrivacy        bool   `json:"isprivacy" bson:"isprivacy"`
 }
 
 func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy bool, amount uint64) *TokenInfoData {
 	return &TokenInfoData{
-		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, Amount: amount,
+		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, Amount: strconv.FormatUint(amount, 10),
 	}
 }
 
