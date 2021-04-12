@@ -8,7 +8,7 @@ const (
 )
 
 const (
-	version                      = "0.9.2"
+	version                      = "0.9.5"
 	DefaultAPIPort               = 9001
 	DefaultMongoAddress          = ""
 	DefaultMongoDB               = "coins"
@@ -22,4 +22,5 @@ const (
 	INDEXERMODE                  = "indexer"
 	QUERYMODE                    = "query"
 	TESTMODE                     = "test"
+	MAX_BUCKET_SIZE              = 1000
 )

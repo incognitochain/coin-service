@@ -20,6 +20,7 @@ import (
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
+	"github.com/incognitochain/incognito-chain/privacy/operation"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
@@ -37,16 +38,20 @@ func startGinService() {
 		c.JSON(http.StatusOK, stats.Report())
 	})
 	r.GET("/health", API_HealthCheck)
+	// if serviceCfg.Mode == QUERYMODE {
 	r.GET("/getcoinspending", API_GetCoinsPending)
 	r.GET("/getcoins", API_GetCoins)
 	r.GET("/getkeyinfo", API_GetKeyInfo)
 	r.POST("/checkkeyimages", API_CheckKeyImages)
 	r.POST("/getrandomcommitments", API_GetRandomCommitments)
 	r.POST("/checktxs", API_CheckTXs)
-
-	// if serviceCfg.Mode == INDEXERMODE {
-	r.POST("/submitotakey", API_SubmitOTA)
+	r.POST("/parsetokenid", API_ParseTokenID)
+	// r.POST("/gettxsbyreceiver", API_GetTxsByReceiver)
 	// }
+
+	if serviceCfg.Mode == INDEXERMODE && serviceCfg.IndexerBucketID == 0 {
+		r.POST("/submitotakey", API_SubmitOTA)
+	}
 	r.Run("0.0.0.0:" + strconv.Itoa(serviceCfg.APIPort))
 }
 
@@ -78,12 +83,14 @@ func API_GetCoins(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid otakey")))
 				return
 			}
-			pubkey = base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+			pukeyBytes := wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
+			pubkey = base58.EncodeCheck(pukeyBytes)
+			shardID := common.GetShardIDFromLastByte(pukeyBytes[len(pukeyBytes)-1])
 			tokenidv2 := tokenid
-			if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
-				tokenidv2 = common.ConfidentialAssetID.String()
-			}
-			coinList, err := DBGetCoinsByOTAKeyAndHeight(tokenidv2, hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), offset, limit)
+			// if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
+			// 	tokenidv2 = common.ConfidentialAssetID.String()
+			// }
+			coinList, err := DBGetCoinsByOTAKey(int(shardID), tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 				return
@@ -182,24 +189,53 @@ func API_GetCoins(c *gin.Context) {
 }
 
 func API_GetKeyInfo(c *gin.Context) {
+	version, _ := strconv.Atoi(c.Query("version"))
+	if version != 1 && version != 2 {
+		version = 1
+	}
 	key := c.Query("key")
 	if key != "" {
-		wl, err := wallet.Base58CheckDeserialize(key)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
+		if version == 1 {
+			wl, err := wallet.Base58CheckDeserialize(key)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+			result, err := DBGetCoinV1PubkeyInfo(pubkey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			var result2 struct {
+				Pubkey       string              `json:"pubkey" bson:"pubkey"`
+				V1Startindex map[string]CoinInfo `json:"v1startindex"`
+			}
+			result2.Pubkey = result.Pubkey
+			result2.V1Startindex = result.CoinIndex
+			respond := API_respond{
+				Result: result2,
+				Error:  nil,
+			}
+			c.JSON(http.StatusOK, respond)
+		} else {
+			wl, err := wallet.Base58CheckDeserialize(key)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			otakey := hex.EncodeToString(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
+			result, err := DBGetCoinV2PubkeyInfo(otakey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			respond := API_respond{
+				Result: result,
+				Error:  nil,
+			}
+			c.JSON(http.StatusOK, respond)
 		}
-		pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
-		result, err := DBGetCoinPubkeyInfo(pubkey)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		respond := API_respond{
-			Result: result,
-			Error:  nil,
-		}
-		c.JSON(http.StatusOK, respond)
 	} else {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("key cant be empty")))
 		return
@@ -438,6 +474,120 @@ func API_CheckTXs(c *gin.Context) {
 		return
 	}
 
+	respond := API_respond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+// func API_GetTxsByReceiver(c *gin.Context) {
+// var req API_get_txs_request
+// err := c.ShouldBindJSON(&req)
+// if err != nil {
+// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+// 	return
+// }
+
+// result, err := DBCheckTxsExist(req.Txs, req.ShardID)
+// if err != nil {
+// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+// 	return
+// }
+
+// respond := API_respond{
+// 	Result: result,
+// 	Error:  nil,
+// }
+// c.JSON(http.StatusOK, respond)
+// }
+
+func API_ParseTokenID(c *gin.Context) {
+	var req API_parse_tokenid_request
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(req.AssetTags) != len(req.OTARandoms) {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.AssetTags) != len(req.ShardSecrets)")))
+		return
+	}
+	assetTags, err := AssetTagStringToPoint(req.AssetTags)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	sharedSecrets, err := CalculateSharedSecret(req.OTARandoms, req.OTAKey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	tokenCount, err := DBGetTokenCount()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+	tokenIDs := []*common.Hash{}
+	tokenIDstrs := []string{}
+	if tokenCount != lastTokenListCount {
+		tokenInfos, err := DBGetTokenInfo()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+			return
+		}
+		for _, tokenInfo := range tokenInfos {
+			tokenID, err := new(common.Hash).NewHashFromStr(tokenInfo.TokenID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				return
+			}
+			tokenIDs = append(tokenIDs, tokenID)
+			tokenIDstrs = append(tokenIDstrs, tokenInfo.TokenID)
+		}
+		tokenListLock.Lock()
+		lastTokenListCount = tokenCount
+		lastTokenIDHash = tokenIDs
+		lastTokenIDstr = tokenIDstrs
+		tokenListLock.Unlock()
+	} else {
+		tokenListLock.Lock()
+		copy(tokenIDs, lastTokenIDHash)
+		copy(tokenIDstrs, lastTokenIDstr)
+		tokenListLock.Unlock()
+	}
+	var wg sync.WaitGroup
+	tempIDCheckCh := make(chan map[int]int, 10)
+	result := make([]string, len(sharedSecrets))
+	for idx, sharedSecret := range sharedSecrets {
+		wg.Add(1)
+		go func(i int, sc *operation.Point) {
+			var ok bool
+			var tokenIDidx int
+			for ti, tokenID := range tokenIDs {
+				if ok, _ = CheckTokenIDWithOTA(sc, assetTags[i], tokenID); ok {
+					tokenIDidx = ti
+					break
+				}
+			}
+			tempIDCheckCh <- map[int]int{i: tokenIDidx}
+			wg.Done()
+		}(idx, sharedSecret)
+
+		if (idx+1)%serviceCfg.MaxConcurrentOTACheck == 0 || idx+1 == len(sharedSecrets) {
+			wg.Wait()
+			close(tempIDCheckCh)
+			for k := range tempIDCheckCh {
+				for coinIdx, tokenIdx := range k {
+					result[coinIdx] = tokenIDstrs[tokenIdx]
+				}
+			}
+			if idx+1 != len(sharedSecrets) {
+				tempIDCheckCh = make(chan map[int]int, 10)
+			}
+		}
+	}
 	respond := API_respond{
 		Result: result,
 		Error:  nil,
