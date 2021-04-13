@@ -447,6 +447,9 @@ func GetOTAKeyListMinScannedCoinIndex() (map[int]uint64, map[int]uint64) {
 func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []CoinData {
 	var result []CoinData
 	for shardID, v := range fromPRVIndex {
+		if v != 0 {
+			v += 1
+		}
 		coinList, err := DBGetUnknownCoinsV2(shardID, common.PRVCoinID.String(), int64(v), 500)
 		if err != nil {
 			panic(err)
@@ -454,6 +457,9 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []CoinDa
 		result = append(result, coinList...)
 	}
 	for shardID, v := range fromTokenIndex {
+		if v != 0 {
+			v += 1
+		}
 		coinList, err := DBGetUnknownCoinsV2(shardID, common.ConfidentialAssetID.String(), int64(v), 500)
 		if err != nil {
 			panic(err)
