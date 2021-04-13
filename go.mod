@@ -7,7 +7,7 @@ require (
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.6.3
-	github.com/incognitochain/incognito-chain v0.0.0-20210408104221-8b295525a795
+	github.com/incognitochain/incognito-chain v0.0.0-20210413060325-f564a82c43aa
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/semihalev/gin-stats v0.0.0-20180505163755-30fdcbbd3533
