@@ -26,6 +26,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20210324050502-00a4692e2cb8 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210324050502-00a4692e2cb8/go.mod h1:oisy61udMAjbIRTchT/F8i9RCQ7J3sJ+RTtVHXtW2NA=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210324063737-592e0e19378b h1:bFnXHUcUn7KBDWAK7B/Qg+BMe7EgXi3LSXQqzFgiSxk=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210324063737-592e0e19378b/go.mod h1:oisy61udMAjbIRTchT/F8i9RCQ7J3sJ+RTtVHXtW2NA=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210324103532-8361e6ac21c1 h1:U7ynwA8Uwu+50M8rKfKfer9SEBppD430/HWRgDTRo3s=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210324103532-8361e6ac21c1/go.mod h1:RE3QJ4Nwofnl0xpduze6QJpUwWgfoI97efOJ6CwMRgs=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210326051754-2987b6d75ef8 h1:2qgwrzdug+sm5MSYxfNQqnj9EovH618ZsTRHa/+uFII=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210326051754-2987b6d75ef8/go.mod h1:oisy61udMAjbIRTchT/F8i9RCQ7J3sJ+RTtVHXtW2NA=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210328125848-ac0dd4c583c9 h1:zcTEpVyKkIoYIasGvHLQHT7L5feQZsAr+RZQL2XR7gI=
@@ -334,11 +336,14 @@ github.com/incognitochain/incognito-chain v0.0.0-20210406093212-4fda9fe12bce h1:
 github.com/incognitochain/incognito-chain v0.0.0-20210406093212-4fda9fe12bce/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/incognitochain/incognito-chain v0.0.0-20210406095652-4b7ed6549ad1 h1:Vx/T2b70Q0h/JPpmM3fM8QrLC9O7NA0e97PX7wJHQMw=
 github.com/incognitochain/incognito-chain v0.0.0-20210406095652-4b7ed6549ad1/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
+github.com/incognitochain/incognito-chain v0.0.0-20210408081857-d6ac709d20f2 h1:11+zXMyWD9ZZ4d/EA18vLuLJXrPFkvXXpH1z943MtPc=
 github.com/incognitochain/incognito-chain v0.0.0-20210408081857-d6ac709d20f2/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/incognitochain/incognito-chain v0.0.0-20210408104221-8b295525a795 h1:0oH+3IhMXL96R28xQQBkA74rW5YvwPY2oYkktXSCbh4=
 github.com/incognitochain/incognito-chain v0.0.0-20210408104221-8b295525a795/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/incognitochain/incognito-chain v0.0.0-20210413022936-606843c87284 h1:ABMUn/6R2P//Vf8umVgzDkNM6HHaUF62jtQn2dX9G90=
 github.com/incognitochain/incognito-chain v0.0.0-20210413022936-606843c87284/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
+github.com/incognitochain/incognito-chain v0.0.0-20210413053631-b25d19e2d689 h1:FSsvtjBR/gEJAvgfC7NCZm3DIcdpodznDpEZKq3vEEw=
+github.com/incognitochain/incognito-chain v0.0.0-20210413053631-b25d19e2d689/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/incognitochain/incognito-chain v0.0.0-20210413060325-f564a82c43aa h1:LitHZ34NNk1QtZRnmJL9vxhP6fgE1jspcPZ/2qyRBJo=
 github.com/incognitochain/incognito-chain v0.0.0-20210413060325-f564a82c43aa/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
