@@ -447,10 +447,6 @@ func initChainSynker() {
 	localnode = node
 	log.Println("initiating chain-synker...")
 	if RESET_FLAG {
-		// err := localnode.GetUserDatabase().Delete([]byte("genesis-processed"), nil)
-		// if err != nil {
-		// 	panic(err)
-		// }
 		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
 			err := localnode.GetUserDatabase().Delete([]byte(statePrefix), nil)
@@ -465,21 +461,6 @@ func initChainSynker() {
 	ShardProcessedState = make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
 
-	//load ShardProcessedState
-	// p, err := localnode.GetUserDatabase().Get([]byte("genesis-processed"), nil)
-	// if err != nil {
-	// 	log.Println(err)
-	// }
-	// if p == nil || len(p) == 0 {
-	// 	err := processGenesisBlocks()
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	err = localnode.GetUserDatabase().Put([]byte("genesis-processed"), []byte{1}, nil)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
 	for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		statePrefix := fmt.Sprintf("coin-processed-%v", i)
 		v, err := localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
@@ -499,11 +480,11 @@ func initChainSynker() {
 		localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
 	go mempoolWatcher(serviceCfg.FullnodeAddress)
+	go tokenListWatcher(serviceCfg.FullnodeAddress)
 }
 func mempoolWatcher(fullnode string) {
 	interval := time.NewTicker(5 * time.Second)
 	rpcclient := devframework.NewRPCClient(fullnode)
-
 	for {
 		<-interval.C
 		mempoolTxs, err := rpcclient.API_GetRawMempool()
@@ -527,6 +508,28 @@ func mempoolWatcher(fullnode string) {
 		}
 		fmt.Println("pendingTxs", pendingTxs)
 		err = DBSavePendingTx(pendingTxs)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+	}
+}
+func tokenListWatcher(fullnode string) {
+	interval := time.NewTicker(5 * time.Second)
+	rpcclient := devframework.NewRPCClient(fullnode)
+	for {
+		<-interval.C
+		tokenList, err := rpcclient.API_ListPrivacyCustomToken()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		var tokenInfoList []TokenInfoData
+		for _, token := range tokenList.ListCustomToken {
+			tokenInfo := NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.Amount)
+			tokenInfoList = append(tokenInfoList, *tokenInfo)
+		}
+		err = DBSaveTokenInfo(tokenInfoList)
 		if err != nil {
 			log.Println(err)
 			continue

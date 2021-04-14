@@ -21,7 +21,6 @@ type Config struct {
 	ChainNetwork          string `json:"chainnetwork"`
 	Highway               string `json:"highway"`
 	IndexerBucketID       int    `json:"bucketid"`
-	NumberOfBucket        int    `json:"numberofbucket"`
 }
 
 // func init() {

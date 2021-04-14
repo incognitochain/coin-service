@@ -1,13 +1,16 @@
 package main
 
 import (
+	"sync"
 	"time"
+
+	"github.com/incognitochain/incognito-chain/common"
 )
 
 type CoinCache struct {
 	Coins           []CoinData
-	PRVLastHeight   uint64
-	TokenLastHeight uint64
+	PRVLastHeight   map[int]uint64
+	TokenLastHeight map[int]uint64
 	Length          int
 	Time            time.Time
 }
@@ -19,13 +22,18 @@ func (cc *CoinCache) Reset() {
 
 }
 
-func (cc *CoinCache) Update(coins []CoinData, PRVLastHeight, TokenLastHeight uint64) {
+func (cc *CoinCache) Update(coins []CoinData, PRVLastHeight, TokenLastHeight map[int]uint64) {
 	cc.Coins = coins
 	cc.PRVLastHeight = PRVLastHeight
 	cc.TokenLastHeight = TokenLastHeight
 	cc.Time = time.Now()
 }
 
-func (cc *CoinCache) Read() ([]CoinData, uint64, uint64) {
+func (cc *CoinCache) Read() ([]CoinData, map[int]uint64, map[int]uint64) {
 	return cc.Coins, cc.PRVLastHeight, cc.TokenLastHeight
 }
+
+var lastTokenListCount int64
+var tokenListLock sync.Mutex
+var lastTokenIDHash []*common.Hash
+var lastTokenIDstr []string
