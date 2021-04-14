@@ -299,9 +299,9 @@ func API_GetRandomCommitments(c *gin.Context) {
 		// loop to random commitmentIndexs
 		cpRandNum := (len(listUsableCommitments) * privacy.CommitmentRingSize) - len(listUsableCommitments)
 		//fmt.Printf("cpRandNum: %d\n", cpRandNum)
-		lenCommitment := new(big.Int).SetInt64(DBGetCoinV1OfShardCount(req.ShardID, req.TokenID))
+		lenCommitment := new(big.Int).SetInt64(DBGetCoinV1OfShardCount(req.ShardID, req.TokenID) - 1)
 		if lenCommitment == nil {
-			log.Println(errors.New("Commitments is empty"))
+			log.Println(errors.New("commitments is empty"))
 			return
 		}
 		if lenCommitment.Uint64() == 1 && len(req.Indexes) == 1 {
@@ -310,7 +310,10 @@ func API_GetRandomCommitments(c *gin.Context) {
 			commitments = []string{temp, temp, temp, temp, temp, temp, temp}
 		} else {
 			randIdxs := []uint64{}
-			for i := 0; i < cpRandNum; i++ {
+			for {
+				if len(randIdxs) == cpRandNum {
+					break
+				}
 			random:
 				index, _ := common.RandBigIntMaxRange(lenCommitment)
 				for _, v := range mapIndexCommitmentsInUsableTx {
@@ -327,10 +330,8 @@ func API_GetRandomCommitments(c *gin.Context) {
 				return
 			}
 			if len(randIdxs) != len(coinList) {
-				if err != nil {
-					c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
-					return
-				}
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
+				return
 			}
 			for _, c := range coinList {
 				coinV1 := new(coin.CoinV1)
@@ -449,9 +450,11 @@ func API_SubmitOTA(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
-	})
+	respond := API_respond{
+		Result: "ok",
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func API_CheckTXs(c *gin.Context) {

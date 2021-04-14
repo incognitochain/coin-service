@@ -40,8 +40,14 @@ func loadSubmittedOTAKey() {
 	Submitted_OTAKey.Keys = make(map[int][]*OTAkeyInfo)
 	Submitted_OTAKey.Lock()
 	for _, key := range keys {
-		pubkey, _, _ := base58.Base58Check{}.Decode(key.Pubkey)
-		keyBytes, _, _ := base58.Base58Check{}.Decode(key.OTAKey)
+		pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
+		if err != nil {
+			log.Fatalln(err)
+		}
 		keyBytes = append(keyBytes, pubkey...)
 		if len(keyBytes) != 64 {
 			log.Fatalln(errors.New("keyBytes length isn't 64"))
@@ -68,7 +74,7 @@ func loadSubmittedOTAKey() {
 		Submitted_OTAKey.TotalKeys += 1
 	}
 	Submitted_OTAKey.Unlock()
-
+	log.Printf("Loaded %v keys\n", len(keys))
 	// pipeline := bson.A{}
 	// changeStream, err := mgm.Coll(&SubmittedOTAKeyData{}).Watch(context.Background(), pipeline)
 	// if err != nil {
@@ -124,8 +130,14 @@ func loadSubmittedOTAKey() {
 		}
 		Submitted_OTAKey.Lock()
 		for _, key := range keys {
-			pubkey, _, _ := base58.Base58Check{}.Decode(key.Pubkey)
-			keyBytes, _, _ := base58.Base58Check{}.Decode(key.OTAKey)
+			pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
+			if err != nil {
+				log.Fatalln(err)
+			}
 			keyBytes = append(keyBytes, pubkey...)
 			if len(keyBytes) != 64 {
 				log.Fatalln(errors.New("keyBytes length isn't 64"))
