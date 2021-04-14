@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/hex"
+	"errors"
 
 	"github.com/incognitochain/incognito-chain/common"
-	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/privacy/operation"
+	"github.com/incognitochain/incognito-chain/wallet"
 )
 
 func OTAKeyFromRaw(b []byte) privacy.OTAKey {
@@ -40,13 +41,13 @@ func AssetTagStringToPoint(assetTags []string) ([]*operation.Point, error) {
 
 func CalculateSharedSecret(txOTARandomPointList []string, otakey string) ([]*operation.Point, error) {
 	var result []*operation.Point
-	otakeyBytes, _, err := base58.DecodeCheck(otakey)
+	wl, err := wallet.Base58CheckDeserialize(otakey)
 	if err != nil {
 		return nil, err
 	}
-	key := &privacy.OTAKey{}
-	key.SetOTASecretKey(otakeyBytes[0:32])
-	key.SetPublicSpend(otakeyBytes[32:64])
+	if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
+		return nil, errors.New("OTASecretKey is invalid")
+	}
 	for _, txOTARandomPoint := range txOTARandomPointList {
 		randPointBytes, err := hex.DecodeString(txOTARandomPoint)
 		if err != nil {
@@ -56,7 +57,7 @@ func CalculateSharedSecret(txOTARandomPointList []string, otakey string) ([]*ope
 		if err != nil {
 			return nil, err
 		}
-		rK := new(operation.Point).ScalarMult(randPoint, key.GetOTASecretKey())
+		rK := new(operation.Point).ScalarMult(randPoint, wl.KeySet.OTAKey.GetOTASecretKey())
 		result = append(result, rK)
 	}
 	return result, nil

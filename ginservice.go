@@ -525,6 +525,7 @@ func API_ParseTokenID(c *gin.Context) {
 	}
 	tokenIDs := []*common.Hash{}
 	tokenIDstrs := []string{}
+	log.Println("tokenCount", tokenCount)
 	if tokenCount != lastTokenListCount {
 		tokenInfos, err := DBGetTokenInfo()
 		if err != nil {
@@ -542,12 +543,16 @@ func API_ParseTokenID(c *gin.Context) {
 		}
 		tokenListLock.Lock()
 		lastTokenListCount = tokenCount
-		lastTokenIDHash = tokenIDs
-		lastTokenIDstr = tokenIDstrs
+		lastTokenIDHash = make([]*common.Hash, len(tokenIDs))
+		copy(lastTokenIDHash, tokenIDs)
+		lastTokenIDstr = make([]string, len(tokenIDstrs))
+		copy(lastTokenIDstr, tokenIDstrs)
 		tokenListLock.Unlock()
 	} else {
 		tokenListLock.Lock()
+		tokenIDs = make([]*common.Hash, len(lastTokenIDHash))
 		copy(tokenIDs, lastTokenIDHash)
+		tokenIDstrs = make([]string, len(lastTokenIDstr))
 		copy(tokenIDstrs, lastTokenIDstr)
 		tokenListLock.Unlock()
 	}
