@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"log"
 	"time"
 
@@ -184,7 +183,6 @@ func DBUpdateCoins(list []CoinData) error {
 		docs = append(docs, update)
 	}
 	for idx, doc := range docs {
-		fmt.Println(list[idx].GetID())
 		_, err := mgm.Coll(&CoinData{}).UpdateByID(ctx, list[idx].GetID(), doc)
 		if err != nil {
 			log.Printf("failed to update %v coins in %v", len(list), time.Since(startTime))

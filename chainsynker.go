@@ -29,7 +29,6 @@ var localnode interface {
 	GetShardState(shardID int) (uint64, *common.Hash)
 }
 
-// var stateLock sync.Mutex
 var ShardProcessedState map[byte]uint64
 var TransactionStateDB map[byte]*statedb.StateDB
 
@@ -37,18 +36,15 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	var blk types.ShardBlock
 	blkBytes, err := localnode.GetUserDatabase().Get(h.Bytes(), nil)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	if err := json.Unmarshal(blkBytes, &blk); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
 	shardID := blk.GetShardID()
-	// stateLock.Lock()
-	// transactionStateDB := TransactionStateDB[byte(shardID)]
-	// stateLock.Unlock()
 
 	if len(blk.Body.Transactions) > 0 {
 		err = bc.CreateAndSaveTxViewPointFromBlock(&blk, TransactionStateDB[byte(shardID)])
@@ -83,13 +79,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err := batchData.Write(); err != nil {
 		panic(err)
 	}
-	// localnode.GetBlockchain().ShardChain[shardID] = blockchain.NewShardChain(shardID, multiview.NewMultiView(), localnode.GetBlockchain().GetConfig().BlockGen, localnode.GetBlockchain(), common.GetShardChainKey(blk.Header.ShardID))
-	// if err := localnode.GetBlockchain().RestoreShardViews(blk.Header.ShardID); err != nil {
-	// 	panic(err)
-	// }
-	// stateLock.Lock()
-	// TransactionStateDB[byte(blk.GetShardID())] = localnode.GetBlockchain().GetBestStateShard(blk.Header.ShardID).GetCopiedTransactionStateDB()
-	// stateLock.Unlock()
 
 	//store output-coin and keyimage on db
 	keyImageList := []KeyImageData{}
@@ -107,7 +96,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					if prvout.GetVersion() == 2 {
 						idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
 						if err != nil {
-							fmt.Println("len(outs))", len(tx.OutputCoin), base58.Base58Check{}.Encode(publicKeyBytes, 0))
+							log.Println("len(outs))", len(tx.OutputCoin), base58.Base58Check{}.Encode(publicKeyBytes, 0))
 							panic(err)
 						}
 						coinIdx = idxBig.Uint64()
@@ -195,8 +184,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		txHash := tx.Hash().String()
 		tokenID := tx.GetTokenID().String()
 		if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType || tx.GetType() == common.TxRewardType || tx.GetType() == common.TxReturnStakingType {
-			fmt.Println("\n====================================================")
-			fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
 			if tx.GetProof() == nil {
 				continue
 			}
@@ -215,7 +202,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					if coin.GetVersion() == 2 {
 						idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
 						if err != nil {
-							fmt.Println("len(outs))", len(outs), base58.Base58Check{}.Encode(publicKeyBytes, 0))
+							log.Println("len(outs))", len(outs), base58.Base58Check{}.Encode(publicKeyBytes, 0))
 							panic(err)
 						}
 						coinIdx = idxBig.Uint64()
@@ -250,12 +237,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					outCoinList = append(outCoinList, *outCoin)
 				}
 			}
-			fmt.Println(tokenID, txHash, len(ins), len(outs))
-			fmt.Println("====================================================\n")
 		}
 		if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
-			fmt.Println("\n====================================================")
-			fmt.Println(common.ConfidentialAssetID.String(), txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
 			txToken := tx.(transaction.TransactionToken)
 			txTokenData := txToken.GetTxTokenData()
 			if txTokenData.TxNormal.GetProof() != nil {
@@ -309,9 +292,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}
-				fmt.Println(common.ConfidentialAssetID.String(), txHash, len(tokenIns), len(tokenOuts))
 			}
-			fmt.Println("====================================================\n")
 			if tx.GetTxFee() > 0 {
 				ins := tx.GetProof().GetInputCoins()
 				outs := tx.GetProof().GetOutputCoins()
@@ -405,9 +386,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		panic(err)
 	}
-	// stateLock.Lock()
-	// ShardProcessedState[blk.Header.ShardID] = blk.Header.Height
-	// stateLock.Unlock()
 }
 
 func initChainSynker() {
@@ -430,7 +408,6 @@ func initChainSynker() {
 	if err != nil {
 		panic(err)
 	}
-	// devframework.TestNet2Param.HighwayAddress = "74.207.247.250:999"
 	var netw devframework.NetworkParam
 	switch serviceCfg.ChainNetwork {
 	case "testnet2":
@@ -454,9 +431,9 @@ func initChainSynker() {
 				panic(err)
 			}
 		}
-		fmt.Println("=========================")
-		fmt.Println("RESET SUCCESS")
-		fmt.Println("=========================")
+		log.Println("=========================")
+		log.Println("RESET SUCCESS")
+		log.Println("=========================")
 	}
 	ShardProcessedState = make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
@@ -492,7 +469,6 @@ func mempoolWatcher(fullnode string) {
 			log.Println(err)
 			continue
 		}
-		fmt.Println("mempoolTxs", mempoolTxs)
 		var pendingTxs []CoinPendingData
 		for _, txHash := range mempoolTxs.TxHashes {
 			txDetail, err := getTxByHash(fullnode, txHash)
@@ -506,7 +482,6 @@ func mempoolWatcher(fullnode string) {
 			}
 			pendingTxs = append(pendingTxs, *NewCoinPendingData(sn, txHash))
 		}
-		fmt.Println("pendingTxs", pendingTxs)
 		err = DBSavePendingTx(pendingTxs)
 		if err != nil {
 			log.Println(err)
@@ -515,7 +490,7 @@ func mempoolWatcher(fullnode string) {
 	}
 }
 func tokenListWatcher(fullnode string) {
-	interval := time.NewTicker(5 * time.Second)
+	interval := time.NewTicker(10 * time.Second)
 	rpcclient := devframework.NewRPCClient(fullnode)
 	for {
 		<-interval.C
@@ -567,184 +542,3 @@ func ResetMongoAndReSync() error {
 	}
 	return nil
 }
-
-// func processGenesisBlocks() error {
-// 	for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
-// 		transactionStateDB := localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
-// 		genesisBlock := localnode.GetBlockchain().ShardChain[i].Blockchain.GetChainParams().GenesisShardBlock
-// 		outCoinList := []CoinData{}
-// 		beaconHeight := genesisBlock.Header.BeaconHeight
-// 		// outcoinsIdx := make(map[string]uint64)
-// 		coinV1PubkeyInfo := make(map[string]map[string]CoinInfo)
-// 		shardID := i
-// 		for _, tx := range genesisBlock.Body.Transactions {
-// 			txHash := tx.Hash().String()
-// 			tokenID := tx.GetTokenID().String()
-// 			if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType || tx.GetType() == common.TxRewardType || tx.GetType() == common.TxReturnStakingType {
-// 				fmt.Println("\n====================================================")
-// 				fmt.Println(tokenID, txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
-// 				if tx.GetProof() == nil {
-// 					continue
-// 				}
-// 				outs := tx.GetProof().GetOutputCoins()
-
-// 				for _, coin := range outs {
-// 					publicKeyBytes := coin.GetPublicKey().ToBytesS()
-// 					publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
-// 					if publicKeyShardID == byte(shardID) {
-// 						coinIdx := uint64(0)
-// 						if coin.GetVersion() == 2 {
-// 							idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(shardID)], common.PRVCoinID, publicKeyBytes)
-// 							if err != nil {
-// 								fmt.Println("len(outs))", len(outs), base58.Base58Check{}.Encode(publicKeyBytes, 0))
-// 								panic(err)
-// 							}
-// 							coinIdx = idxBig.Uint64()
-// 						} else {
-// 							idxBig, err := statedb.GetCommitmentIndex(transactionStateDB, common.PRVCoinID, coin.GetCommitment().ToBytesS(), byte(shardID))
-// 							if err != nil {
-// 								panic(err)
-// 							}
-// 							coinIdx = idxBig.Uint64()
-// 							if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()]; !ok {
-// 								coinV1PubkeyInfo[coin.GetPublicKey().String()] = make(map[string]CoinInfo)
-// 							}
-// 							if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()]; !ok {
-// 								coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()] = CoinInfo{
-// 									Start: coinIdx,
-// 									Total: 1,
-// 									End:   coinIdx,
-// 								}
-// 							} else {
-// 								newCoinInfo := coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()]
-// 								newCoinInfo.Total = newCoinInfo.Total + 1
-// 								if coinIdx > newCoinInfo.End {
-// 									newCoinInfo.End = coinIdx
-// 								}
-// 								if coinIdx < newCoinInfo.Start {
-// 									newCoinInfo.Start = coinIdx
-// 								}
-// 								coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()] = newCoinInfo
-// 							}
-// 						}
-// 						outCoin := NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", txHash, shardID, int(coin.GetVersion()))
-// 						outCoinList = append(outCoinList, *outCoin)
-// 					}
-// 				}
-// 				fmt.Println(tokenID, txHash, len(outs))
-// 				fmt.Println("====================================================\n")
-// 			}
-// 			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
-// 				fmt.Println("\n====================================================")
-// 				fmt.Println(common.ConfidentialAssetID.String(), txHash, tx.IsPrivacy(), tx.GetProof(), tx.GetVersion(), tx.GetMetadataType())
-// 				txToken := tx.(transaction.TransactionToken)
-// 				txTokenData := txToken.GetTxTokenData()
-// 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
-// 				for _, coin := range tokenOuts {
-// 					publicKeyBytes := coin.GetPublicKey().ToBytesS()
-// 					publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
-// 					if publicKeyShardID == byte(shardID) {
-// 						coinIdx := uint64(0)
-// 						tokenStr := txToken.GetTokenID().String()
-// 						if coin.GetVersion() == 2 {
-// 							idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(shardID)], *tx.GetTokenID(), publicKeyBytes)
-// 							if err != nil {
-// 								panic(err)
-// 							}
-// 							coinIdx = idxBig.Uint64()
-// 							tokenStr = common.ConfidentialAssetID.String()
-// 						} else {
-// 							idxBig, err := statedb.GetCommitmentIndex(transactionStateDB, *txToken.GetTokenID(), coin.GetCommitment().ToBytesS(), byte(shardID))
-// 							if err != nil {
-// 								panic(err)
-// 							}
-// 							coinIdx = idxBig.Uint64()
-// 							if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()]; !ok {
-// 								coinV1PubkeyInfo[coin.GetPublicKey().String()] = make(map[string]CoinInfo)
-// 							}
-// 							if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()][tokenStr]; !ok {
-// 								coinV1PubkeyInfo[coin.GetPublicKey().String()][tokenStr] = CoinInfo{
-// 									Start: coinIdx,
-// 									Total: 1,
-// 									End:   coinIdx,
-// 								}
-// 							} else {
-// 								newCoinInfo := coinV1PubkeyInfo[coin.GetPublicKey().String()][tokenStr]
-// 								newCoinInfo.Total = newCoinInfo.Total + 1
-// 								if coinIdx > newCoinInfo.End {
-// 									newCoinInfo.End = coinIdx
-// 								}
-// 								if coinIdx < newCoinInfo.Start {
-// 									newCoinInfo.Start = coinIdx
-// 								}
-// 								coinV1PubkeyInfo[coin.GetPublicKey().String()][tokenStr] = newCoinInfo
-// 							}
-// 						}
-// 						outCoin := NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenStr, coin.GetPublicKey().String(), "", txHash, shardID, int(coin.GetVersion()))
-// 						outCoinList = append(outCoinList, *outCoin)
-// 					}
-// 				}
-// 				fmt.Println(common.ConfidentialAssetID.String(), txHash, len(tokenOuts))
-// 				fmt.Println("====================================================\n")
-// 				if tx.GetTxFee() > 0 {
-// 					outs := tx.GetProof().GetOutputCoins()
-// 					for _, coin := range outs {
-// 						publicKeyBytes := coin.GetPublicKey().ToBytesS()
-// 						publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
-// 						if publicKeyShardID == byte(shardID) {
-// 							coinIdx := uint64(0)
-// 							if coin.GetVersion() == 2 {
-// 								idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(shardID)], common.PRVCoinID, publicKeyBytes)
-// 								if err != nil {
-// 									panic(err)
-// 								}
-// 								coinIdx = idxBig.Uint64()
-// 							} else {
-// 								idxBig, err := statedb.GetCommitmentIndex(transactionStateDB, common.PRVCoinID, coin.GetCommitment().ToBytesS(), byte(shardID))
-// 								if err != nil {
-// 									panic(err)
-// 								}
-// 								coinIdx = idxBig.Uint64()
-// 								if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()]; !ok {
-// 									coinV1PubkeyInfo[coin.GetPublicKey().String()] = make(map[string]CoinInfo)
-// 								}
-// 								if _, ok := coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()]; !ok {
-// 									coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()] = CoinInfo{
-// 										Start: coinIdx,
-// 										Total: 1,
-// 										End:   coinIdx,
-// 									}
-// 								} else {
-// 									newCoinInfo := coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()]
-// 									newCoinInfo.Total = newCoinInfo.Total + 1
-// 									if coinIdx > newCoinInfo.End {
-// 										newCoinInfo.End = coinIdx
-// 									}
-// 									if coinIdx < newCoinInfo.Start {
-// 										newCoinInfo.Start = coinIdx
-// 									}
-// 									coinV1PubkeyInfo[coin.GetPublicKey().String()][common.PRVCoinID.String()] = newCoinInfo
-// 								}
-// 							}
-// 							outCoin := NewCoinData(beaconHeight, coinIdx, coin.Bytes(), common.PRVCoinID.String(), coin.GetPublicKey().String(), "", txHash, shardID, int(coin.GetVersion()))
-// 							outCoinList = append(outCoinList, *outCoin)
-// 						}
-// 					}
-// 				}
-// 			}
-// 		}
-// 		if len(outCoinList) > 0 {
-// 			err := DBSaveCoins(outCoinList)
-// 			if err != nil {
-// 				panic(err)
-// 			}
-// 		}
-// 		if len(coinV1PubkeyInfo) > 0 {
-// 			err := DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
-// 			if err != nil {
-// 				panic(err)
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }

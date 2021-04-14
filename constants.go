@@ -8,7 +8,6 @@ const (
 )
 
 const (
-	version                      = "0.9.5"
 	DefaultAPIPort               = 9001
 	DefaultMongoAddress          = ""
 	DefaultMongoDB               = "coins"
@@ -18,9 +17,20 @@ const (
 	DefaultMode                  = TESTMODE
 	DefaultNetwork               = "testnet2"
 	DefaultHighway               = "74.207.247.250:9330"
-	CHAINSYNCMODE                = "chainsync"
-	INDEXERMODE                  = "indexer"
-	QUERYMODE                    = "query"
-	TESTMODE                     = "test"
-	MAX_BUCKET_SIZE              = 1000
+)
+
+const (
+	version         = "0.9.5"
+	CHAINSYNCMODE   = "chainsync"
+	INDEXERMODE     = "indexer"
+	QUERYMODE       = "query"
+	TESTMODE        = "test"
+	MAX_BUCKET_SIZE = 1000
+)
+
+const (
+	MONGO_STATUS_OK   = "connected"
+	MONGO_STATUS_NOK  = "disconnected"
+	HEALTH_STATUS_OK  = "healthy"
+	HEALTH_STATUS_NOK = "unhealthy"
 )

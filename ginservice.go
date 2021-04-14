@@ -597,14 +597,14 @@ func API_ParseTokenID(c *gin.Context) {
 func API_HealthCheck(c *gin.Context) {
 	//check block time
 	//ping pong vs mongo
-	status := "healthy"
-	mongoStatus := "connected"
+	status := HEALTH_STATUS_OK
+	mongoStatus := MONGO_STATUS_OK
 	shardsHeight := make(map[int]string)
 	if serviceCfg.Mode == CHAINSYNCMODE {
 		now := time.Now().Unix()
 		blockTime := localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetProposeTime()
 		if (now - blockTime) >= (5 * time.Minute).Nanoseconds() {
-			status = "unhealthy"
+			status = HEALTH_STATUS_NOK
 		}
 		shardsHeight[-1] = fmt.Sprintf("%v", localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
 		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
@@ -620,7 +620,7 @@ func API_HealthCheck(c *gin.Context) {
 				coinHeight = 0
 			}
 			if chainheight-height > 5 || height-uint64(coinHeight) > 5 {
-				status = "unhealthy"
+				status = HEALTH_STATUS_NOK
 			}
 			shardsHeight[i] = fmt.Sprintf("%v|%v|%v", coinHeight, height, chainheight)
 		}
@@ -628,8 +628,8 @@ func API_HealthCheck(c *gin.Context) {
 	_, cd, _, _ := mgm.DefaultConfigs()
 	err := cd.Ping(context.Background(), nil)
 	if err != nil {
-		status = "unhealthy"
-		mongoStatus = "disconnected"
+		status = HEALTH_STATUS_NOK
+		mongoStatus = MONGO_STATUS_NOK
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status": status,
