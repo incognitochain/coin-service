@@ -21,6 +21,7 @@ type Config struct {
 	ChainNetwork          string `json:"chainnetwork"`
 	Highway               string `json:"highway"`
 	IndexerBucketID       int    `json:"bucketid"`
+	NumOfShard            int    `json:"numberofshard"`
 }
 
 // func init() {
@@ -78,6 +79,9 @@ func readConfigAndArg() {
 	}
 	if tempCfg.Highway == "" {
 		tempCfg.Highway = DefaultHighway
+	}
+	if tempCfg.NumOfShard == 0 {
+		tempCfg.NumOfShard = DefaultNumOfShard
 	}
 	RESET_FLAG = *argResetDB
 	ENABLE_PROFILER = *argProfiler

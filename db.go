@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/incognitochain/incognito-chain/common/base58"
@@ -209,14 +210,15 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]C
 	if limit == 0 {
 		limit = 10000
 	}
-	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx, operator.Lte: fromidx + limit}}
 	err := mgm.Coll(&CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
-		Sort:  bson.D{{"coinidx", 1}},
-		Limit: &limit,
+		// Sort: bson.D{{Key: "coinidx", Value: 1}},
+		// Limit: &limit,
 	})
 	if err != nil {
 		return nil, err
 	}
+	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
 }
@@ -235,6 +237,7 @@ func DBGetCoinsByOTAKey(shardID int, tokenID, OTASecret string, fromidx, limit i
 	if err != nil {
 		return nil, err
 	}
+	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
 	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
 	return list, err
 }
@@ -644,6 +647,7 @@ func DBUpdateOTAKey(keys []SubmittedOTAKeyData) error {
 	if len(keys) > 0 {
 		docs := []interface{}{}
 		for _, key := range keys {
+			key.Saving()
 			update := bson.M{
 				"$set": key,
 			}
@@ -665,8 +669,10 @@ func DBSaveOTAKey(keys []SubmittedOTAKeyData) error {
 	if len(keys) > 0 {
 		ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(keys))*DB_OPERATION_TIMEOUT)
 		docs := []interface{}{}
-		for _, coin := range keys {
-			docs = append(docs, coin)
+		for _, key := range keys {
+			key.Creating()
+			key.Saving()
+			docs = append(docs, key)
 		}
 		_, err := mgm.Coll(&SubmittedOTAKeyData{}).InsertMany(ctx, docs)
 		if err != nil {

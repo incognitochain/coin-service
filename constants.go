@@ -11,12 +11,13 @@ const (
 	DefaultAPIPort               = 9001
 	DefaultMongoAddress          = ""
 	DefaultMongoDB               = "coins"
-	DefaultMaxConcurrentOTACheck = 10
+	DefaultMaxConcurrentOTACheck = 100
 	DefaultChainFolder           = "chain"
 	DefaultFullnode              = ""
 	DefaultMode                  = TESTMODE
 	DefaultNetwork               = "testnet2"
 	DefaultHighway               = "74.207.247.250:9330"
+	DefaultNumOfShard            = 8
 )
 
 const (
