@@ -577,7 +577,7 @@ func API_ParseTokenID(c *gin.Context) {
 			wg.Done()
 		}(idx, sharedSecret)
 
-		if (idx+1)%serviceCfg.MaxConcurrentOTACheck == 0 || idx+1 == len(sharedSecrets) {
+		if (idx+1)%10 == 0 || idx+1 == len(sharedSecrets) {
 			wg.Wait()
 			close(tempIDCheckCh)
 			for k := range tempIDCheckCh {
