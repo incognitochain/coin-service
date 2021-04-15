@@ -305,7 +305,7 @@ func API_GetRandomCommitments(c *gin.Context) {
 		// loop to random commitmentIndexs
 		cpRandNum := (len(listUsableCommitments) * privacy.CommitmentRingSize) - len(listUsableCommitments)
 		//fmt.Printf("cpRandNum: %d\n", cpRandNum)
-		lenCommitment := new(big.Int).SetInt64(DBGetCoinV1OfShardCount(req.ShardID, req.TokenID))
+		lenCommitment := new(big.Int).SetInt64(DBGetCoinV1OfShardCount(req.ShardID, req.TokenID) - 1)
 		if lenCommitment == nil {
 			log.Println(errors.New("Commitments is empty"))
 			return
@@ -333,10 +333,8 @@ func API_GetRandomCommitments(c *gin.Context) {
 				return
 			}
 			if len(randIdxs) != len(coinList) {
-				if err != nil {
-					c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
-					return
-				}
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(randIdxs) != len(coinList)")))
+				return
 			}
 			for _, c := range coinList {
 				coinV1 := new(coin.CoinV1)
