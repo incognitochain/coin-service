@@ -6,13 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"main/shared"
 	"math/big"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/shared"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -441,7 +443,7 @@ func API_SubmitOTA(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := NewSubmittedOTAKeyData(otaKey, pubKey, 0)
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, 0)
 	resp := make(chan error)
 	otaAssignChn <- otaAssignRequest{
 		Key:     newSubmitRequest,
@@ -467,7 +469,7 @@ func API_CheckTXs(c *gin.Context) {
 		return
 	}
 
-	result, err := DBCheckTxsExist(req.Txs, req.ShardID)
+	result, err := database.DBCheckTxsExist(req.Txs, req.ShardID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

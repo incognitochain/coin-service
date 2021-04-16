@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"log"
-	"main/shared"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/incognitochain/coin-service/shared"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/incognito-chain/common"

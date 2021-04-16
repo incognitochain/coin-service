@@ -2,10 +2,11 @@ package main
 
 import (
 	"log"
-	"main/database"
-	"main/shared"
 	"net/http"
 	_ "net/http/pprof"
+
+	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/shared"
 
 	jsoniter "github.com/json-iterator/go"
 )
