@@ -10,3 +10,144 @@
 	"concurrentotacheck":10,
 	"indexerbucket":2
 }
+
+
+Testnet                  = 0x16
+TestnetName              = "testnet"
+TestnetDefaultPort       = "9444"
+TestnetGenesisBlockTime  = "2019-11-29T00:00:00.000Z"
+TestnetEpoch             = 20
+TestnetRandomTime        = 50
+TestnetEpochV2BreakPoint = 1e9
+TestnetEpochV2           = 100
+TestnetRandomTimeV2      = 50
+TestnetOffset            = 1
+TestnetSwapOffset        = 1
+TestnetAssignOffset      = 2
+
+TestNetShardCommitteeSize     = 6
+TestNetMinShardCommitteeSize  = 4
+TestNetBeaconCommitteeSize    = 4
+TestNetMinBeaconCommitteeSize = 4
+TestNetActiveShards           = 2
+TestNetStakingAmountShard     = 1750000000000 // 1750 PRV = 1750 * 10^9 nano PRV
+
+TestNetMinBeaconBlkInterval = 10 * time.Second //second
+TestNetMaxBeaconBlkCreation = 8 * time.Second  //second
+TestNetMinShardBlkInterval  = 10 * time.Second //second
+TestNetMaxShardBlkCreation  = 6 * time.Second  //second
+
+//board and proposal parameters
+TestnetBasicReward                      = 400000000 //40 mili PRV
+TestnetETHContractAddressStr            = "0x20D68dEc2CebD95E338396A714E366121e57FB82"
+TestnetIncognitoDAOAddress              = "12S5Lrs1XeQLbqN4ySyKtjAjd2d7sBP2tjFijzmp6avrrkQCNFMpkXm3FPzj2Wcu2ZNqJEmh9JriVuRErVwhuQnLmWSaggobEWsBEci" // community fund
+TestnetCentralizedWebsitePaymentAddress = "12S5Lrs1XeQLbqN4ySyKtjAjd2d7sBP2tjFijzmp6avrrkQCNFMpkXm3FPzj2Wcu2ZNqJEmh9JriVuRErVwhuQnLmWSaggobEWsBEci"
+
+// relaying header chain
+TestnetBNBChainID        = "Binance-Chain-Ganges"
+TestnetBTCChainID        = "Bitcoin-Testnet"
+TestnetBTCDataFolderName = "btcrelayingv14"
+
+// BNB fullnode
+TestnetBNBFullNodeHost     = "data-seed-pre-0-s3.binance.org"
+TestnetBNBFullNodeProtocol = "https"
+TestnetBNBFullNodePort     = "443"
+TestnetPortalFeeder        = "12ss6PhRTe7G7PuNkRVcosHRRS1dsJukwurhvvD3NAiaxbFeUYcQC1eJ1rGprJ941zHsC5AT4YykUGmzxRopeAw7J5SpYJjNkk8WzgdxsxTa7p4mJkurRV1L4a7GERSTVNPvNKn5zYeRBwXVKcZf"
+
+// Enable Feature Flag
+TestnetEnablePortalRelaying = 1
+TestnetEnablePortalV3       = 0
+
+
+
+
+
+
+
+Name:                   TestnetName,
+Net:                    Testnet,
+DefaultPort:            TestnetDefaultPort,
+GenesisParams:          genesisParamsTestnetNew,
+MaxShardCommitteeSize:  TestNetShardCommitteeSize,     //TestNetShardCommitteeSize,
+MinShardCommitteeSize:  TestNetMinShardCommitteeSize,  //TestNetShardCommitteeSize,
+MaxBeaconCommitteeSize: TestNetBeaconCommitteeSize,    //TestNetBeaconCommitteeSize,
+MinBeaconCommitteeSize: TestNetMinBeaconCommitteeSize, //TestNetBeaconCommitteeSize,
+StakingAmountShard:     TestNetStakingAmountShard,
+ActiveShards:           TestNetActiveShards,
+// blockChain parameters
+// GenesisBeaconBlock:               CreateGenesisBeaconBlock(1, Testnet, TestnetGenesisBlockTime, genesisParamsTestnetNew),
+// GenesisShardBlock:                CreateGenesisShardBlock(1, Testnet, TestnetGenesisBlockTime, genesisParamsTestnetNew),
+MinShardBlockInterval:            TestNetMinShardBlkInterval,
+MaxShardBlockCreation:            TestNetMaxShardBlkCreation,
+MinBeaconBlockInterval:           TestNetMinBeaconBlkInterval,
+MaxBeaconBlockCreation:           TestNetMaxBeaconBlkCreation,
+NumberOfFixedBlockValidators:     4,
+BasicReward:                      TestnetBasicReward,
+Epoch:                            TestnetEpoch,
+RandomTime:                       TestnetRandomTime,
+Offset:                           TestnetOffset,
+AssignOffset:                     TestnetAssignOffset,
+SwapOffset:                       TestnetSwapOffset,
+EthContractAddressStr:            TestnetETHContractAddressStr,
+IncognitoDAOAddress:              TestnetIncognitoDAOAddress,
+CentralizedWebsitePaymentAddress: TestnetCentralizedWebsitePaymentAddress,
+SlashLevels:                      []SlashLevel{
+	//SlashLevel{MinRange: 20, PunishedEpoches: 1},
+	//SlashLevel{MinRange: 50, PunishedEpoches: 2},
+	//SlashLevel{MinRange: 75, PunishedEpoches: 3},
+},
+CheckForce:                     false,
+ChainVersion:                   "version-chain-test.json",
+ConsensusV2Epoch:               1,
+StakingFlowV2Height:            1e12,
+EnableSlashingStakingFlowV2:    1e12,
+Timeslot:                       10,
+BeaconHeightBreakPointBurnAddr: 2,
+PortalParams: portal.PortalParams{
+	PortalParamsV3: map[uint64]portalv3.PortalParams{
+		0: {
+			TimeOutCustodianReturnPubToken:       15 * time.Minute,
+			TimeOutWaitingPortingRequest:         15 * time.Minute,
+			TimeOutWaitingRedeemRequest:          10 * time.Minute,
+			MaxPercentLiquidatedCollateralAmount: 105,
+			MaxPercentCustodianRewards:           10, // todo: need to be updated before deploying
+			MinPercentCustodianRewards:           1,
+			MinLockCollateralAmountInEpoch:       10000 * 1e9, // 10000 usd
+			MinPercentLockedCollateral:           150,
+			TP120:                                120,
+			TP130:                                130,
+			MinPercentPortingFee:                 0.01,
+			MinPercentRedeemFee:                  0.01,
+			SupportedCollateralTokens:            getSupportedPortalCollateralsTestnet(), // todo: need to be updated before deploying
+			MinPortalFee:                         100,
+			PortalTokens:                         initPortalTokensV3ForTestNet(),
+			PortalFeederAddress:                  TestnetPortalFeeder,
+			PortalETHContractAddressStr:          "0x6D53de7aFa363F779B5e125876319695dC97171E", // todo: update sc address,
+			MinUnlockOverRateCollaterals:         25,
+		},
+	},
+	RelayingParam: portalrelaying.RelayingParams{
+		BNBRelayingHeaderChainID: TestnetBNBChainID,
+		BTCRelayingHeaderChainID: TestnetBTCChainID,
+		BTCDataFolderName:        TestnetBTCDataFolderName,
+		BNBFullNodeProtocol:      TestnetBNBFullNodeProtocol,
+		BNBFullNodeHost:          TestnetBNBFullNodeHost,
+		BNBFullNodePort:          TestnetBNBFullNodePort,
+	},
+},
+EpochBreakPointSwapNewKey:   TestnetReplaceCommitteeEpoch,
+ReplaceStakingTxHeight:      1,
+IsBackup:                    false,
+PreloadAddress:              "",
+BCHeightBreakPointNewZKP:    2, //TODO: change this value when deployed testnet
+ETHRemoveBridgeSigEpoch:     0,
+EpochV2:                     TestnetEpochV2,
+EpochV2BreakPoint:           TestnetEpochV2BreakPoint,
+RandomTimeV2:                TestnetRandomTimeV2,
+PortalETHContractAddressStr: "0x6D53de7aFa363F779B5e125876319695dC97171E", // todo: update sc address
+BCHeightBreakPointPortalV3:  30158,
+BCHeightBreakPointPrivacyV2: 52300, //TODO: change this value when deployed testnet
+EnableFeatureFlags: map[int]uint64{
+	common.PortalV3Flag:       TestnetEnablePortalV3,
+	common.PortalRelayingFlag: TestnetEnablePortalRelaying,
+},

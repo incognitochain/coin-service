@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"log"
+	"main/shared"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
@@ -23,7 +25,7 @@ type OTAkeyInfo struct {
 	Pubkey  string
 	OTAKey  string
 	keyset  *incognitokey.KeySet
-	KeyInfo *KeyInfoData
+	KeyInfo *shared.KeyInfoData
 }
 
 var Submitted_OTAKey = struct {
@@ -33,7 +35,7 @@ var Submitted_OTAKey = struct {
 }{}
 
 func loadSubmittedOTAKey() {
-	keys, err := DBGetSubmittedOTAKeys(serviceCfg.IndexerBucketID, 0)
+	keys, err := database.DBGetSubmittedOTAKeys(shared.ServiceCfg.IndexerBucketID, 0)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -52,11 +54,11 @@ func loadSubmittedOTAKey() {
 		if len(keyBytes) != 64 {
 			log.Fatalln(errors.New("keyBytes length isn't 64"))
 		}
-		otaKey := OTAKeyFromRaw(keyBytes)
+		otaKey := shared.OTAKeyFromRaw(keyBytes)
 		ks := &incognitokey.KeySet{}
 		ks.OTAKey = otaKey
 		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-		data, err := DBGetCoinV2PubkeyInfo(key.OTAKey)
+		data, err := database.DBGetCoinV2PubkeyInfo(key.OTAKey)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -77,7 +79,7 @@ func loadSubmittedOTAKey() {
 func updateSubmittedOTAKey() error {
 	Submitted_OTAKey.Lock()
 	docs := []interface{}{}
-	KeyInfoList := []*KeyInfoData{}
+	KeyInfoList := []*shared.KeyInfoData{}
 	for _, keys := range Submitted_OTAKey.Keys {
 		for _, key := range keys {
 			key.KeyInfo.Saving()
@@ -89,9 +91,9 @@ func updateSubmittedOTAKey() error {
 		}
 	}
 	for idx, doc := range docs {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(docs)+1)*DB_OPERATION_TIMEOUT)
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(docs)+1)*shared.DB_OPERATION_TIMEOUT)
 		filter := bson.M{"otasecret": bson.M{operator.Eq: KeyInfoList[idx].OTAKey}}
-		result, err := mgm.Coll(&KeyInfoDataV2{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
+		result, err := mgm.Coll(&shared.KeyInfoDataV2{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
 		if err != nil {
 			Submitted_OTAKey.Unlock()
 			return err
@@ -216,7 +218,7 @@ func initOTAIndexingService() {
 			if len(keyBytes) != 64 {
 				log.Fatalln(errors.New("keyBytes length isn't 64"))
 			}
-			otaKey := OTAKeyFromRaw(keyBytes)
+			otaKey := shared.OTAKeyFromRaw(keyBytes)
 			ks := &incognitokey.KeySet{}
 			ks.OTAKey = otaKey
 			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
@@ -456,7 +458,7 @@ func startBucketAssigner() {
 			}
 		}
 		request.Key.BucketID = leastOccupiedBucketID
-		err := DBSaveOTAKey([]SubmittedOTAKeyData{*request.Key})
+		err := DBSaveSubmittedOTAKeys([]SubmittedOTAKeyData{*request.Key})
 		if err != nil {
 			go func() {
 				request.Respond <- err

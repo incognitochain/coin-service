@@ -4,7 +4,7 @@ services:
     image: alpine
     volumes:
       - .:/home
-      - ./chain:/chain
+      # - ./chain:/chain
     entrypoint: [/home/run.sh]
     environment:
       BUKCETID: 10

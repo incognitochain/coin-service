@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"main/shared"
 	"os"
 
 	"fmt"
@@ -471,7 +472,7 @@ func mempoolWatcher(fullnode string) {
 		}
 		var pendingTxs []CoinPendingData
 		for _, txHash := range mempoolTxs.TxHashes {
-			txDetail, err := getTxByHash(fullnode, txHash)
+			txDetail, err := shared.GetTxByHash(fullnode, txHash)
 			if err != nil {
 				log.Println(err)
 				continue

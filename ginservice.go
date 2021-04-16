@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"main/shared"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -49,7 +50,7 @@ func startGinService() {
 	// r.POST("/gettxsbyreceiver", API_GetTxsByReceiver)
 	// }
 
-	if serviceCfg.Mode == INDEXERMODE && serviceCfg.IndexerBucketID == 0 {
+	if serviceCfg.Mode == shared.INDEXERMODE && serviceCfg.IndexerBucketID == 0 {
 		r.POST("/submitotakey", API_SubmitOTA)
 	}
 	r.Run("0.0.0.0:" + strconv.Itoa(serviceCfg.APIPort))
@@ -137,7 +138,7 @@ func API_GetCoins(c *gin.Context) {
 			return
 		}
 		var wg sync.WaitGroup
-		collectCh := make(chan OutCoinV1, MAX_CONCURRENT_COIN_DECRYPT)
+		collectCh := make(chan shared.OutCoinV1, shared.MAX_CONCURRENT_COIN_DECRYPT)
 		decryptCount := 0
 		for idx, cdata := range coinListV1 {
 			if cdata.CoinIndex > highestIdx {
@@ -157,22 +158,22 @@ func API_GetCoins(c *gin.Context) {
 						c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 						return
 					}
-					cV1 := NewOutCoinV1(plainCoin)
+					cV1 := shared.NewOutCoinV1(plainCoin)
 					idx := new(big.Int).SetUint64(cData.CoinIndex)
 					cV1.Index = base58.EncodeCheck(idx.Bytes())
 					collectCh <- cV1
 					wg.Done()
 				}(coinV1, cdata)
-				if decryptCount%MAX_CONCURRENT_COIN_DECRYPT == 0 || idx+1 == len(coinListV1) {
+				if decryptCount%shared.MAX_CONCURRENT_COIN_DECRYPT == 0 || idx+1 == len(coinListV1) {
 					wg.Wait()
 					close(collectCh)
 					for coin := range collectCh {
 						result = append(result, coin)
 					}
-					collectCh = make(chan OutCoinV1, MAX_CONCURRENT_COIN_DECRYPT)
+					collectCh = make(chan shared.OutCoinV1, shared.MAX_CONCURRENT_COIN_DECRYPT)
 				}
 			} else {
-				cn := NewOutCoinV1(coinV1)
+				cn := shared.NewOutCoinV1(coinV1)
 				result = append(result, cn)
 			}
 		}
@@ -201,6 +202,7 @@ func API_GetKeyInfo(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
+			wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
 			pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
 			result, err := DBGetCoinV1PubkeyInfo(pubkey)
 			if err != nil {
@@ -510,13 +512,13 @@ func API_ParseTokenID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.AssetTags) != len(req.ShardSecrets)")))
 		return
 	}
-	assetTags, err := AssetTagStringToPoint(req.AssetTags)
+	assetTags, err := shared.AssetTagStringToPoint(req.AssetTags)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
 
-	sharedSecrets, err := CalculateSharedSecret(req.OTARandoms, req.OTAKey)
+	sharedSecrets, err := shared.CalculateSharedSecret(req.OTARandoms, req.OTAKey)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -568,7 +570,7 @@ func API_ParseTokenID(c *gin.Context) {
 			var ok bool
 			var tokenIDidx int
 			for ti, tokenID := range tokenIDs {
-				if ok, _ = CheckTokenIDWithOTA(sc, assetTags[i], tokenID); ok {
+				if ok, _ = shared.CheckTokenIDWithOTA(sc, assetTags[i], tokenID); ok {
 					tokenIDidx = ti
 					break
 				}
@@ -600,14 +602,14 @@ func API_ParseTokenID(c *gin.Context) {
 func API_HealthCheck(c *gin.Context) {
 	//check block time
 	//ping pong vs mongo
-	status := HEALTH_STATUS_OK
-	mongoStatus := MONGO_STATUS_OK
+	status := shared.HEALTH_STATUS_OK
+	mongoStatus := shared.MONGO_STATUS_OK
 	shardsHeight := make(map[int]string)
-	if serviceCfg.Mode == CHAINSYNCMODE {
+	if serviceCfg.Mode == shared.CHAINSYNCMODE {
 		now := time.Now().Unix()
 		blockTime := localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetProposeTime()
 		if (now - blockTime) >= (5 * time.Minute).Nanoseconds() {
-			status = HEALTH_STATUS_NOK
+			status = shared.HEALTH_STATUS_NOK
 		}
 		shardsHeight[-1] = fmt.Sprintf("%v", localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
 		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
@@ -623,7 +625,7 @@ func API_HealthCheck(c *gin.Context) {
 				coinHeight = 0
 			}
 			if chainheight-height > 5 || height-uint64(coinHeight) > 5 {
-				status = HEALTH_STATUS_NOK
+				status = shared.HEALTH_STATUS_NOK
 			}
 			shardsHeight[i] = fmt.Sprintf("%v|%v|%v", coinHeight, height, chainheight)
 		}
@@ -631,8 +633,8 @@ func API_HealthCheck(c *gin.Context) {
 	_, cd, _, _ := mgm.DefaultConfigs()
 	err := cd.Ping(context.Background(), nil)
 	if err != nil {
-		status = HEALTH_STATUS_NOK
-		mongoStatus = MONGO_STATUS_NOK
+		status = shared.HEALTH_STATUS_NOK
+		mongoStatus = shared.MONGO_STATUS_NOK
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status": status,

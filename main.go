@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"main/database"
+	"main/shared"
 	"net/http"
 	_ "net/http/pprof"
 
@@ -10,29 +12,36 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
+// @title Swagger Coinservice API
+// @version 1.0
+// @description coinservice api
+
+// @license.name MIT
+
+// @BasePath /t
 func main() {
-	readConfigAndArg()
-	err := connectDB()
+	shared.ReadConfigAndArg()
+	err := database.ConnectDB()
 	if err != nil {
 		panic(err)
 	}
-	log.Println("service mode:", serviceCfg.Mode)
-	if serviceCfg.Mode == TESTMODE {
+	log.Println("service mode:", shared.ServiceCfg.Mode)
+	if shared.ServiceCfg.Mode == shared.TESTMODE {
 		initChainSynker()
 		go initOTAIndexingService()
 	}
 
-	if serviceCfg.Mode == CHAINSYNCMODE {
+	if shared.ServiceCfg.Mode == shared.CHAINSYNCMODE {
 		initChainSynker()
 	}
-	if serviceCfg.Mode == INDEXERMODE {
-		if serviceCfg.IndexerBucketID == 0 {
+	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
+		if shared.ServiceCfg.IndexerBucketID == 0 {
 			go startBucketAssigner()
 		}
 		go initOTAIndexingService()
 	}
 	go startGinService()
-	if ENABLE_PROFILER {
+	if shared.ENABLE_PROFILER {
 		http.ListenAndServe("localhost:8091", nil)
 	}
 	select {}
