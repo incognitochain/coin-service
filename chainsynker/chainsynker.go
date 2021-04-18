@@ -1,4 +1,4 @@
-package main
+package chainsynker
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	jsoniter "github.com/json-iterator/go"
 
 	"fmt"
 	"io/ioutil"
@@ -25,7 +26,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var localnode interface {
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var Localnode interface {
 	GetUserDatabase() *leveldb.DB
 	GetBlockchain() *blockchain.BlockChain
 	OnNewBlockFromParticularHeight(chainID int, blkHeight int64, isFinalized bool, f func(bc *blockchain.BlockChain, h common.Hash, height uint64))
@@ -37,7 +39,7 @@ var TransactionStateDB map[byte]*statedb.StateDB
 
 func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	var blk types.ShardBlock
-	blkBytes, err := localnode.GetUserDatabase().Get(h.Bytes(), nil)
+	blkBytes, err := Localnode.GetUserDatabase().Get(h.Bytes(), nil)
 	if err != nil {
 		log.Println(err)
 		return
@@ -385,13 +387,13 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		}
 	}
 	statePrefix := fmt.Sprintf("coin-processed-%v", blk.Header.ShardID)
-	err = localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
+	err = Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func initChainSynker() {
+func InitChainSynker() {
 	if shared.RESET_FLAG {
 		err := ResetMongoAndReSync()
 		if err != nil {
@@ -424,12 +426,12 @@ func initChainSynker() {
 	}
 	netw.HighwayAddress = shared.ServiceCfg.Highway
 	node := devframework.NewAppNode(shared.ServiceCfg.ChainDataFolder, netw, true, false, false)
-	localnode = node
+	Localnode = node
 	log.Println("initiating chain-synker...")
 	if shared.RESET_FLAG {
-		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+		for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
-			err := localnode.GetUserDatabase().Delete([]byte(statePrefix), nil)
+			err := Localnode.GetUserDatabase().Delete([]byte(statePrefix), nil)
 			if err != nil {
 				panic(err)
 			}
@@ -441,9 +443,9 @@ func initChainSynker() {
 	ShardProcessedState = make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
 
-	for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		statePrefix := fmt.Sprintf("coin-processed-%v", i)
-		v, err := localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
+		v, err := Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 		if err != nil {
 			log.Println(err)
 			ShardProcessedState[byte(i)] = 1
@@ -454,10 +456,10 @@ func initChainSynker() {
 			}
 			ShardProcessedState[byte(i)] = height
 		}
-		TransactionStateDB[byte(i)] = localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
+		TransactionStateDB[byte(i)] = Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
 	}
-	for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
-		localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
+	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
 	go mempoolWatcher(shared.ServiceCfg.FullnodeAddress)
 	go tokenListWatcher(shared.ServiceCfg.FullnodeAddress)

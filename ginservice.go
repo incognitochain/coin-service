@@ -13,7 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 
 	"github.com/gin-contrib/gzip"
@@ -52,10 +54,10 @@ func startGinService() {
 	// r.POST("/gettxsbyreceiver", API_GetTxsByReceiver)
 	// }
 
-	if serviceCfg.Mode == shared.INDEXERMODE && serviceCfg.IndexerBucketID == 0 {
+	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
 		r.POST("/submitotakey", API_SubmitOTA)
 	}
-	r.Run("0.0.0.0:" + strconv.Itoa(serviceCfg.APIPort))
+	r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
 }
 
 func API_GetCoins(c *gin.Context) {
@@ -93,7 +95,7 @@ func API_GetCoins(c *gin.Context) {
 			if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
 				tokenidv2 = common.ConfidentialAssetID.String()
 			}
-			coinList, err := DBGetCoinsByOTAKey(int(shardID), tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
+			coinList, err := database.DBGetCoinsByOTAKey(int(shardID), tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 				return
@@ -134,7 +136,7 @@ func API_GetCoins(c *gin.Context) {
 		pubkey = base58.EncodeCheck(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
 		wl.KeySet.PaymentAddress.Pk = wl.KeySet.ReadonlyKey.Pk
 		viewKeySet = &wl.KeySet
-		coinListV1, err := DBGetCoinV1ByPubkey(tokenid, hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS()), int64(offset), int64(limit))
+		coinListV1, err := database.DBGetCoinV1ByPubkey(tokenid, hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS()), int64(offset), int64(limit))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
@@ -154,7 +156,7 @@ func API_GetCoins(c *gin.Context) {
 			}
 			if viewKeySet != nil {
 				wg.Add(1)
-				go func(cn *coin.CoinV1, cData CoinData) {
+				go func(cn *coin.CoinV1, cData shared.CoinData) {
 					plainCoin, err := cn.Decrypt(viewKeySet)
 					if err != nil {
 						c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
@@ -206,7 +208,7 @@ func API_GetKeyInfo(c *gin.Context) {
 			}
 			wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
 			pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
-			result, err := DBGetCoinV1PubkeyInfo(pubkey)
+			result, err := database.DBGetCoinV1PubkeyInfo(pubkey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -223,7 +225,7 @@ func API_GetKeyInfo(c *gin.Context) {
 				return
 			}
 			otakey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
-			result, err := DBGetCoinV2PubkeyInfo(otakey)
+			result, err := database.DBGetCoinV2PubkeyInfo(otakey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -248,7 +250,7 @@ func API_CheckKeyImages(c *gin.Context) {
 		return
 	}
 
-	result, err := DBCheckKeyimagesUsed(req.Keyimages, req.ShardID)
+	result, err := database.DBCheckKeyimagesUsed(req.Keyimages, req.ShardID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -275,7 +277,7 @@ func API_GetRandomCommitments(c *gin.Context) {
 	var publicKeys, commitments, assetTags []string
 
 	if req.Version == 1 && len(req.Indexes) > 0 {
-		result, err := DBGetCoinV1ByIndexes(req.Indexes, req.ShardID, req.TokenID)
+		result, err := database.DBGetCoinV1ByIndexes(req.Indexes, req.ShardID, req.TokenID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -303,7 +305,7 @@ func API_GetRandomCommitments(c *gin.Context) {
 		// loop to random commitmentIndexs
 		cpRandNum := (len(listUsableCommitments) * privacy.CommitmentRingSize) - len(listUsableCommitments)
 		//fmt.Printf("cpRandNum: %d\n", cpRandNum)
-		lenCommitment := new(big.Int).SetInt64(DBGetCoinV1OfShardCount(req.ShardID, req.TokenID) - 1)
+		lenCommitment := new(big.Int).SetInt64(database.DBGetCoinV1OfShardCount(req.ShardID, req.TokenID) - 1)
 		if lenCommitment == nil {
 			log.Println(errors.New("commitments is empty"))
 			return
@@ -328,7 +330,7 @@ func API_GetRandomCommitments(c *gin.Context) {
 				randIdxs = append(randIdxs, index.Uint64())
 			}
 
-			coinList, err := DBGetCoinV1ByIndexes(randIdxs, req.ShardID, req.TokenID)
+			coinList, err := database.DBGetCoinV1ByIndexes(randIdxs, req.ShardID, req.TokenID)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -362,12 +364,12 @@ func API_GetRandomCommitments(c *gin.Context) {
 		if req.TokenID != common.PRVCoinID.String() {
 			req.TokenID = common.ConfidentialAssetID.String()
 		}
-		lenOTA := new(big.Int).SetInt64(DBGetCoinV2OfShardCount(req.ShardID, req.TokenID) - 1)
+		lenOTA := new(big.Int).SetInt64(database.DBGetCoinV2OfShardCount(req.ShardID, req.TokenID) - 1)
 		var hasAssetTags bool = true
 		for i := 0; i < req.Limit; i++ {
 			idx, _ := common.RandBigIntMaxRange(lenOTA)
 			log.Println("getRandomCommitmentsHandler", lenOTA, idx.Int64())
-			coinData, err := DBGetCoinsByIndex(int(idx.Int64()), req.ShardID, req.TokenID)
+			coinData, err := database.DBGetCoinsByIndex(int(idx.Int64()), req.ShardID, req.TokenID)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -411,7 +413,7 @@ func API_GetRandomCommitments(c *gin.Context) {
 }
 
 func API_GetCoinsPending(c *gin.Context) {
-	result, err := DBGetPendingCoins()
+	result, err := database.DBGetPendingCoins()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
@@ -445,7 +447,7 @@ func API_SubmitOTA(c *gin.Context) {
 
 	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, 0)
 	resp := make(chan error)
-	otaAssignChn <- otaAssignRequest{
+	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,
 		Respond: resp,
 	}
@@ -490,7 +492,7 @@ func API_CheckTXs(c *gin.Context) {
 // 	return
 // }
 
-// result, err := DBCheckTxsExist(req.Txs, req.ShardID)
+// result, err := database.DBCheckTxsExist(req.Txs, req.ShardID)
 // if err != nil {
 // 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 // 	return
@@ -525,7 +527,7 @@ func API_ParseTokenID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	tokenCount, err := DBGetTokenCount()
+	tokenCount, err := database.DBGetTokenCount()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
@@ -533,8 +535,8 @@ func API_ParseTokenID(c *gin.Context) {
 	tokenIDs := []*common.Hash{}
 	tokenIDstrs := []string{}
 	log.Println("tokenCount", tokenCount)
-	if tokenCount != lastTokenListCount {
-		tokenInfos, err := DBGetTokenInfo()
+	if tokenCount != shared.LastTokenListCount {
+		tokenInfos, err := database.DBGetTokenInfo()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
@@ -548,20 +550,20 @@ func API_ParseTokenID(c *gin.Context) {
 			tokenIDs = append(tokenIDs, tokenID)
 			tokenIDstrs = append(tokenIDstrs, tokenInfo.TokenID)
 		}
-		tokenListLock.Lock()
-		lastTokenListCount = tokenCount
-		lastTokenIDHash = make([]*common.Hash, len(tokenIDs))
-		copy(lastTokenIDHash, tokenIDs)
-		lastTokenIDstr = make([]string, len(tokenIDstrs))
-		copy(lastTokenIDstr, tokenIDstrs)
-		tokenListLock.Unlock()
+		shared.TokenListLock.Lock()
+		shared.LastTokenListCount = tokenCount
+		shared.LastTokenIDHash = make([]*common.Hash, len(tokenIDs))
+		copy(shared.LastTokenIDHash, tokenIDs)
+		shared.LastTokenIDstr = make([]string, len(tokenIDstrs))
+		copy(shared.LastTokenIDstr, tokenIDstrs)
+		shared.TokenListLock.Unlock()
 	} else {
-		tokenListLock.Lock()
-		tokenIDs = make([]*common.Hash, len(lastTokenIDHash))
-		copy(tokenIDs, lastTokenIDHash)
-		tokenIDstrs = make([]string, len(lastTokenIDstr))
-		copy(tokenIDstrs, lastTokenIDstr)
-		tokenListLock.Unlock()
+		shared.TokenListLock.Lock()
+		tokenIDs = make([]*common.Hash, len(shared.LastTokenIDHash))
+		copy(tokenIDs, shared.LastTokenIDHash)
+		tokenIDstrs = make([]string, len(shared.LastTokenIDstr))
+		copy(tokenIDstrs, shared.LastTokenIDstr)
+		shared.TokenListLock.Unlock()
 	}
 	var wg sync.WaitGroup
 	tempIDCheckCh := make(chan map[int]int, 10)
@@ -607,18 +609,18 @@ func API_HealthCheck(c *gin.Context) {
 	status := shared.HEALTH_STATUS_OK
 	mongoStatus := shared.MONGO_STATUS_OK
 	shardsHeight := make(map[int]string)
-	if serviceCfg.Mode == shared.CHAINSYNCMODE {
+	if shared.ServiceCfg.Mode == shared.CHAINSYNCMODE {
 		now := time.Now().Unix()
-		blockTime := localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetProposeTime()
+		blockTime := chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetProposeTime()
 		if (now - blockTime) >= (5 * time.Minute).Nanoseconds() {
 			status = shared.HEALTH_STATUS_NOK
 		}
-		shardsHeight[-1] = fmt.Sprintf("%v", localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
-		for i := 0; i < localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
-			chainheight := localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
-			height, _ := localnode.GetShardState(i)
+		shardsHeight[-1] = fmt.Sprintf("%v", chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
+		for i := 0; i < chainsynker.Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+			chainheight := chainsynker.Localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
+			height, _ := chainsynker.Localnode.GetShardState(i)
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
-			v, err := localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
+			v, err := chainsynker.Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 			if err != nil {
 				log.Println(err)
 			}

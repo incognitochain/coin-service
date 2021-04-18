@@ -1,4 +1,4 @@
-package main
+package shared
 
 import (
 	"sync"
@@ -33,7 +33,7 @@ func (cc *CoinCache) Read() ([]CoinData, map[int]uint64, map[int]uint64) {
 	return cc.Coins, cc.PRVLastHeight, cc.TokenLastHeight
 }
 
-var lastTokenListCount int64
-var tokenListLock sync.Mutex
-var lastTokenIDHash []*common.Hash
-var lastTokenIDstr []string
+var LastTokenListCount int64
+var TokenListLock sync.Mutex
+var LastTokenIDHash []*common.Hash
+var LastTokenIDstr []string

@@ -5,7 +5,9 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 
 	jsoniter "github.com/json-iterator/go"
@@ -22,24 +24,24 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 // @BasePath /t
 func main() {
 	shared.ReadConfigAndArg()
-	err := database.ConnectDB()
+	err := database.ConnectDB(&shared.ServiceCfg)
 	if err != nil {
 		panic(err)
 	}
 	log.Println("service mode:", shared.ServiceCfg.Mode)
 	if shared.ServiceCfg.Mode == shared.TESTMODE {
-		initChainSynker()
-		go initOTAIndexingService()
+		chainsynker.InitChainSynker()
+		go otaindexer.InitOTAIndexingService()
 	}
 
 	if shared.ServiceCfg.Mode == shared.CHAINSYNCMODE {
-		initChainSynker()
+		chainsynker.InitChainSynker()
 	}
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
 		if shared.ServiceCfg.IndexerBucketID == 0 {
-			go startBucketAssigner()
+			go otaindexer.StartBucketAssigner()
 		}
-		go initOTAIndexingService()
+		go otaindexer.InitOTAIndexingService()
 	}
 	go startGinService()
 	if shared.ENABLE_PROFILER {
