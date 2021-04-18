@@ -21,7 +21,7 @@ import (
 // @BasePath /t
 func main() {
 	shared.ReadConfigAndArg()
-	err := database.ConnectDB(&shared.ServiceCfg)
+	err := database.ConnectDB(shared.ServiceCfg.MongoDB, shared.ServiceCfg.MongoAddress)
 	if err != nil {
 		panic(err)
 	}

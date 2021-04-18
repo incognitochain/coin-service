@@ -13,8 +13,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func ConnectDB(cfg *shared.Config) error {
-	err := mgm.SetDefaultConfig(nil, cfg.MongoDB, options.Client().ApplyURI(cfg.MongoAddress))
+func ConnectDB(dbName string, mongoAddr string) error {
+	err := mgm.SetDefaultConfig(nil, dbName, options.Client().ApplyURI(mongoAddr))
 	if err != nil {
 		return err
 	}
