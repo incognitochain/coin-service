@@ -1,4 +1,4 @@
-package main
+package apiservice
 
 import (
 	"context"
@@ -32,7 +32,7 @@ import (
 	stats "github.com/semihalev/gin-stats"
 )
 
-func startGinService() {
+func StartGinService() {
 	log.Println("initiating api-service...")
 
 	r := gin.Default()

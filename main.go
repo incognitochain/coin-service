@@ -5,15 +5,12 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	"github.com/incognitochain/coin-service/apiservice"
 	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
-
-	jsoniter "github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // @title Swagger Coinservice API
 // @version 1.0
@@ -43,7 +40,7 @@ func main() {
 		}
 		go otaindexer.InitOTAIndexingService()
 	}
-	go startGinService()
+	go apiservice.StartGinService()
 	if shared.ENABLE_PROFILER {
 		http.ListenAndServe("localhost:8091", nil)
 	}
