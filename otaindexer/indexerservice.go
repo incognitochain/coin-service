@@ -1,7 +1,6 @@
 package otaindexer
 
 import (
-	"context"
 	"errors"
 	"log"
 	"sort"
@@ -15,19 +14,10 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
-	"github.com/kamva/mgm/v3"
-	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 //manage submitted otakey
-type OTAkeyInfo struct {
-	ShardID int
-	Pubkey  string
-	OTAKey  string
-	keyset  *incognitokey.KeySet
-	KeyInfo *shared.KeyInfoData
-}
 
 var Submitted_OTAKey = struct {
 	sync.RWMutex
@@ -92,15 +82,10 @@ func updateSubmittedOTAKey() error {
 		}
 	}
 	for idx, doc := range docs {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(docs)+1)*shared.DB_OPERATION_TIMEOUT)
-		filter := bson.M{"otasecret": bson.M{operator.Eq: KeyInfoList[idx].OTAKey}}
-		result, err := mgm.Coll(&shared.KeyInfoDataV2{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
+		err := database.DBUpdateKeyInfoV2(doc, KeyInfoList[idx])
 		if err != nil {
 			Submitted_OTAKey.Unlock()
 			return err
-		}
-		if result.UpsertedID != nil {
-			KeyInfoList[idx].SetID(result.UpsertedID)
 		}
 	}
 	Submitted_OTAKey.Unlock()
@@ -151,7 +136,6 @@ func InitOTAIndexingService() {
 				if d, ok := keyData.KeyInfo.CoinIndex[common.PRVCoinID.String()]; ok {
 					if d.LastScanned < lastPRVIndex[shardID] {
 						d.LastScanned = lastPRVIndex[shardID]
-						// d.LastScanned = 0
 						keyData.KeyInfo.CoinIndex[common.PRVCoinID.String()] = d
 					}
 				} else {
@@ -163,7 +147,6 @@ func InitOTAIndexingService() {
 				if d, ok := keyData.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]; ok {
 					if d.LastScanned < lastTokenIndex[shardID] {
 						d.LastScanned = lastTokenIndex[keyData.ShardID]
-						// d.LastScanned = 0
 						keyData.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()] = d
 					}
 				} else {
@@ -437,14 +420,11 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 	return result
 }
 
-type OTAAssignRequest struct {
-	Key     *shared.SubmittedOTAKeyData
-	Respond chan error
-}
-
 var OTAAssignChn chan OTAAssignRequest
+var maxBucketSize uint64
 
-func StartBucketAssigner() {
+func StartBucketAssigner(maxSize uint64) {
+	maxBucketSize = maxSize
 	OTAAssignChn = make(chan OTAAssignRequest)
 	bucketInfo, err := database.DBGetBucketStats(5)
 	if err != nil {
@@ -467,8 +447,8 @@ func StartBucketAssigner() {
 		} else {
 			bucketInfo[leastOccupiedBucketID] += 1
 			request.Respond <- nil
-			if bucketInfo[leastOccupiedBucketID] > shared.MAX_BUCKET_SIZE {
-				log.Printf("Bucket %v has more than %v keys", leastOccupiedBucketID, shared.MAX_BUCKET_SIZE)
+			if bucketInfo[leastOccupiedBucketID] > maxBucketSize {
+				log.Printf("Bucket %v has more than %v keys", leastOccupiedBucketID, maxBucketSize)
 			}
 		}
 	}
