@@ -20,8 +20,9 @@ type Config struct {
 	MongoDB               string `json:"mongodb"`
 	ChainNetwork          string `json:"chainnetwork"`
 	Highway               string `json:"highway"`
-	IndexerBucketID       int    `json:"bucketid"`
 	NumOfShard            int    `json:"numberofshard"`
+	IndexerBucketID       int    `json:"bucketid"`
+	MaxBucketSize         int    `json:"maxbucketsize"`
 }
 
 func ReadConfigAndArg() {
@@ -69,6 +70,9 @@ func ReadConfigAndArg() {
 	}
 	if tempCfg.NumOfShard == 0 {
 		tempCfg.NumOfShard = DefaultNumOfShard
+	}
+	if tempCfg.MaxBucketSize == 0 {
+		tempCfg.MaxBucketSize = DefaultBucketSize
 	}
 	RESET_FLAG = *argResetDB
 	ENABLE_PROFILER = *argProfiler

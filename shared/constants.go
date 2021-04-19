@@ -24,15 +24,15 @@ const (
 	DefaultNetwork               = "testnet2"
 	DefaultHighway               = "74.207.247.250:9330"
 	DefaultNumOfShard            = 8
+	DefaultBucketSize            = 2000
 )
 
 const (
-	VERSION         = "1.0.0"
-	CHAINSYNCMODE   = "chainsync"
-	INDEXERMODE     = "indexer"
-	QUERYMODE       = "query"
-	TESTMODE        = "test"
-	MAX_BUCKET_SIZE = 1000
+	VERSION       = "1.0.0"
+	CHAINSYNCMODE = "chainsync"
+	INDEXERMODE   = "indexer"
+	QUERYMODE     = "query"
+	TESTMODE      = "test"
 )
 
 const (

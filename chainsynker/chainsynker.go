@@ -2,6 +2,7 @@ package chainsynker
 
 import (
 	"context"
+	"encoding/base64"
 	"os"
 
 	"github.com/incognitochain/coin-service/database"
@@ -196,7 +197,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			outs := tx.GetProof().GetOutputCoins()
 
 			for _, coin := range ins {
-				km := shared.NewKeyImageData(tokenID, txHash, base58.Base58Check{}.Encode(coin.GetKeyImage().ToBytesS(), 0), beaconHeight, shardID)
+				km := shared.NewKeyImageData(tokenID, txHash, base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS()), beaconHeight, shardID)
 				keyImageList = append(keyImageList, *km)
 			}
 			for _, coin := range outs {
@@ -250,7 +251,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
 				for _, coin := range tokenIns {
-					km := shared.NewKeyImageData(common.ConfidentialAssetID.String(), txHash, base58.Base58Check{}.Encode(coin.GetKeyImage().ToBytesS(), 0), beaconHeight, shardID)
+					km := shared.NewKeyImageData(common.ConfidentialAssetID.String(), txHash, base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS()), beaconHeight, shardID)
 					keyImageList = append(keyImageList, *km)
 				}
 				for _, coin := range tokenOuts {
@@ -302,8 +303,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				ins := tx.GetProof().GetInputCoins()
 				outs := tx.GetProof().GetOutputCoins()
 				for _, coin := range ins {
-
-					km := shared.NewKeyImageData(common.PRVCoinID.String(), txHash, base58.Base58Check{}.Encode(coin.GetKeyImage().ToBytesS(), 0), beaconHeight, shardID)
+					km := shared.NewKeyImageData(common.PRVCoinID.String(), txHash, base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS()), beaconHeight, shardID)
 					keyImageList = append(keyImageList, *km)
 				}
 				for _, coin := range outs {
@@ -393,7 +393,19 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 }
 
-func InitChainSynker() {
+var (
+	chainNetwork    string
+	highwayAddress  string
+	chainDataFolder string
+	fullnodeAddress string
+)
+
+func InitChainSynker(cfg shared.Config) {
+	chainNetwork = cfg.ChainNetwork
+	highwayAddress = cfg.Highway
+	chainDataFolder = cfg.ChainDataFolder
+	fullnodeAddress = cfg.FullnodeAddress
+
 	if shared.RESET_FLAG {
 		err := ResetMongoAndReSync()
 		if err != nil {
@@ -414,7 +426,7 @@ func InitChainSynker() {
 		panic(err)
 	}
 	var netw devframework.NetworkParam
-	switch shared.ServiceCfg.ChainNetwork {
+	switch chainNetwork {
 	case "testnet2":
 		netw = devframework.TestNet2Param
 	case "testnet":
@@ -424,8 +436,8 @@ func InitChainSynker() {
 	default:
 		panic("unknown network")
 	}
-	netw.HighwayAddress = shared.ServiceCfg.Highway
-	node := devframework.NewAppNode(shared.ServiceCfg.ChainDataFolder, netw, true, false, false)
+	netw.HighwayAddress = highwayAddress
+	node := devframework.NewAppNode(chainDataFolder, netw, true, false, false)
 	Localnode = node
 	log.Println("initiating chain-synker...")
 	if shared.RESET_FLAG {
@@ -461,12 +473,12 @@ func InitChainSynker() {
 	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
-	go mempoolWatcher(shared.ServiceCfg.FullnodeAddress)
-	go tokenListWatcher(shared.ServiceCfg.FullnodeAddress)
+	go mempoolWatcher()
+	go tokenListWatcher()
 }
-func mempoolWatcher(fullnode string) {
+func mempoolWatcher() {
 	interval := time.NewTicker(5 * time.Second)
-	rpcclient := devframework.NewRPCClient(fullnode)
+	rpcclient := devframework.NewRPCClient(fullnodeAddress)
 	for {
 		<-interval.C
 		mempoolTxs, err := rpcclient.API_GetRawMempool()
@@ -476,7 +488,7 @@ func mempoolWatcher(fullnode string) {
 		}
 		var pendingTxs []shared.CoinPendingData
 		for _, txHash := range mempoolTxs.TxHashes {
-			txDetail, err := shared.GetTxByHash(fullnode, txHash)
+			txDetail, err := shared.GetTxByHash(fullnodeAddress, txHash)
 			if err != nil {
 				log.Println(err)
 				continue
@@ -494,9 +506,9 @@ func mempoolWatcher(fullnode string) {
 		}
 	}
 }
-func tokenListWatcher(fullnode string) {
+func tokenListWatcher() {
 	interval := time.NewTicker(10 * time.Second)
-	rpcclient := devframework.NewRPCClient(fullnode)
+	rpcclient := devframework.NewRPCClient(fullnodeAddress)
 	for {
 		<-interval.C
 		tokenList, err := rpcclient.API_ListPrivacyCustomToken()
@@ -522,7 +534,7 @@ func syncUnfinalizedShard() {
 }
 
 func ResetMongoAndReSync() error {
-	dir := shared.ServiceCfg.ChainDataFolder + "/database"
+	dir := chainDataFolder + "/database"
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Println(err)

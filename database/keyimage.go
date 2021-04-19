@@ -2,12 +2,10 @@ package database
 
 import (
 	"context"
-	"encoding/base64"
 	"log"
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
-	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,20 +30,15 @@ func DBSaveUsedKeyimage(list []shared.KeyImageData) error {
 func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 	startTime := time.Now()
 	var result []bool
-	var listToCheck []string
 	var kmsdata []shared.KeyImageData
-	for _, v := range list {
-		a, _ := base64.StdEncoding.DecodeString(v)
-		listToCheck = append(listToCheck, base58.EncodeCheck(a))
-	}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(listToCheck)+1)*shared.DB_OPERATION_TIMEOUT)
-	filter := bson.M{"keyimage": bson.M{operator.In: listToCheck}, "shardid": bson.M{operator.Eq: shardID}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	filter := bson.M{"keyimage": bson.M{operator.In: list}, "shardid": bson.M{operator.Eq: shardID}}
 	err := mgm.Coll(&shared.KeyImageData{}).SimpleFindWithCtx(ctx, &kmsdata, filter)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
-	for _, km := range listToCheck {
+	for _, km := range list {
 		found := false
 		for _, rkm := range kmsdata {
 			if km == rkm.KeyImage {
@@ -55,6 +48,6 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 		}
 		result = append(result, found)
 	}
-	log.Printf("checked %v keyimages in %v", len(listToCheck), time.Since(startTime))
+	log.Printf("checked %v keyimages in %v", len(list), time.Since(startTime))
 	return result, nil
 }
