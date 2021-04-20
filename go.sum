@@ -60,6 +60,10 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20210408082730-9b6f0269b8b9 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210408082730-9b6f0269b8b9/go.mod h1:dH2hwOSIdEu+pCSlPnMTs4cSK/sVbqy+DOOlnYAk6u0=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210415021907-343dc806df20 h1:TAoqGgi9ii5n/prnunqcKRaPf+OoI5T133gIDQj/gmM=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210415021907-343dc806df20/go.mod h1:AXOHaBcIF4PSNirW4PrriQKzS7PP3ggyLWsAnxN1Dk8=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210419090500-1f968ca75815 h1:nJA2j1HbdUSGSbQdFjUHa7PPIQA8lqsEj1YqiwgHtEY=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210419090500-1f968ca75815/go.mod h1:gv538195yhiJOA3xb4CnSf5RQfxTPXWfQDxp+MzsJ8Y=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210419112709-c3e66a2e71e8 h1:etFcpSEVm59pKH8J3fOxAZr/Pj+aofsZkLfQWoSqorM=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210419112709-c3e66a2e71e8/go.mod h1:gv538195yhiJOA3xb4CnSf5RQfxTPXWfQDxp+MzsJ8Y=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
@@ -400,6 +404,8 @@ github.com/incognitochain/incognito-chain v0.0.0-20210414103254-a41f0909208b h1:
 github.com/incognitochain/incognito-chain v0.0.0-20210414103254-a41f0909208b/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/incognitochain/incognito-chain v0.0.0-20210415095204-fa41da277bca h1:OHCLj6WHXLeOhVt9ZnJ6Ym3eGm5DszjbGZvRKA4v9Us=
 github.com/incognitochain/incognito-chain v0.0.0-20210415095204-fa41da277bca/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
+github.com/incognitochain/incognito-chain v0.0.0-20210416134226-f020c3227b94 h1:Hm/8QKo2pabmEa97H3D99mFpGzF3qNOag7DrMc6XjW0=
+github.com/incognitochain/incognito-chain v0.0.0-20210416134226-f020c3227b94/go.mod h1:Cy9L+Dqn909zeGJ8JvdmhB4gvIcbhB85LEQuvaT9xfQ=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
