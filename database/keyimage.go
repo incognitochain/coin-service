@@ -52,10 +52,10 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 	return result, nil
 }
 
-func DBGetAllKeyImages(tokenID string) ([]shared.KeyImageData, error) {
+func DBGetAllKeyImages(tokenID string, shardID int) ([]shared.KeyImageData, error) {
 	var kmsdata []shared.KeyImageData
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(240)*shared.DB_OPERATION_TIMEOUT)
-	filter := bson.M{"tokenid": bson.M{operator.Eq: tokenID}}
+	filter := bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "shardid": bson.M{operator.Eq: shardID}}
 	err := mgm.Coll(&shared.KeyImageData{}).SimpleFindWithCtx(ctx, &kmsdata, filter)
 	if err != nil {
 		log.Println(err)
