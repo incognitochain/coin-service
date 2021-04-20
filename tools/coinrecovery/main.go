@@ -97,8 +97,8 @@ func convertToDBCoinV1Data(idxList map[string]uint64, list []coin.CoinV1, shardI
 	for _, coin := range list {
 		outCoin := shared.NewCoinData(0, idxList[coin.GetCommitment().String()], coin.Bytes(), tokenID, coin.GetPublicKey().String(), "", "", shardID, 1)
 		result = append(result, *outCoin)
-		return result, nil
 	}
+	return result, nil
 }
 
 func convertToCoinV1(list []shared.CoinData) ([]coin.CoinV1, error) {

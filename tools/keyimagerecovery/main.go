@@ -1,14 +1,12 @@
 package main
 
 import (
-	"encoding/base64"
 	"flag"
 
 	devframework "github.com/0xkumi/incognito-dev-framework"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
-	"github.com/incognitochain/incognito-chain/common/base58"
 )
 
 func main() {
@@ -61,11 +59,12 @@ func main() {
 func listToMap(list []shared.KeyImageData) map[string]int {
 	result := make(map[string]int)
 	for idx, v := range list {
-		kmBytes, err := base64.StdEncoding.DecodeString(v.KeyImage)
-		if err != nil {
-			panic(err)
-		}
-		kmB58 := base58.EncodeCheck(kmBytes)
+		// kmBytes, err := base64.StdEncoding.DecodeString(v.KeyImage)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// kmB58 := base58.EncodeCheck(kmBytes)
+		kmB58 := v.KeyImage // for version 1
 		result[kmB58] = idx
 	}
 	return result
@@ -74,11 +73,12 @@ func listToMap(list []shared.KeyImageData) map[string]int {
 func mapToKeyImageData(list map[string]struct{}, tokenID string, shardID int) ([]shared.KeyImageData, error) {
 	var result []shared.KeyImageData
 	for k, _ := range list {
-		kmBytes, _, err := base58.DecodeCheck(k)
-		if err != nil {
-			panic(err)
-		}
-		kmBase64 := base64.StdEncoding.EncodeToString(kmBytes)
+		// kmBytes, _, err := base58.DecodeCheck(k)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// kmBase64 := base64.StdEncoding.EncodeToString(kmBytes)
+		kmBase64 := k // for version 1
 		newKeyImage := shared.NewKeyImageData(tokenID, "", kmBase64, 0, shardID)
 		result = append(result, *newKeyImage)
 	}
