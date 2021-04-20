@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coinservice-synker-prod-beta
+spec:
+  selector:
+    matchLabels:
+      run: coinservice-synker-prod-beta
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: coinservice-synker-prod-beta
+    spec:
+      containers:
+        - name: coinservice-synker-prod-beta-container
+          image: incognitochain/coin-service-prod:15
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9001
+          volumeMounts:
+            - mountPath: /app/cfg.json
+              name: config-json-file
+            - mountPath: /app/keylist.json
+              name: keylist-json
+            - mountPath: /app/keylist-v2.json
+              name: keylist-v2-json
+            - mountPath: /app/chain-data
+              name: chain-data
+      volumes:
+        - name: config-json-file
+          hostPath:
+            path: /home/coin-service/config/prod-beta/cfg-synker-prod-beta.json
+            type: File
+        - name: keylist-json
+          hostPath:
+            path: /home/coin-service/config/prod-beta/keylist.json
+            type: File
+        - name: keylist-v2-json
+          hostPath:
+            path: /home/coin-service/config/prod-beta/keylist-v2.json
+            type: File
+        - name: chain-data
+          hostPath:
+            path: /home/coin-service/storage/prod-beta/chain-data
+            type: DirectoryOrCreate
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: coinservice-synker-prod-beta
+  labels:
+    run: coinservice-synker-prod-beta
+spec:
+  type: ClusterIP
+  clusterIP: 10.152.183.221
+  ports:
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: http
+  selector:
+    run: coinservice-synker-prod-beta
