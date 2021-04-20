@@ -51,3 +51,15 @@ func DBCheckKeyimagesUsed(list []string, shardID int) ([]bool, error) {
 	log.Printf("checked %v keyimages in %v", len(list), time.Since(startTime))
 	return result, nil
 }
+
+func DBGetAllKeyImages() ([]shared.KeyImageData, error) {
+	var kmsdata []shared.KeyImageData
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(240)*shared.DB_OPERATION_TIMEOUT)
+	filter := bson.M{}
+	err := mgm.Coll(&shared.KeyImageData{}).SimpleFindWithCtx(ctx, &kmsdata, filter)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return kmsdata, nil
+}
