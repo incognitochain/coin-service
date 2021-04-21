@@ -64,6 +64,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20210419090500-1f968ca75815 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210419090500-1f968ca75815/go.mod h1:gv538195yhiJOA3xb4CnSf5RQfxTPXWfQDxp+MzsJ8Y=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210419112709-c3e66a2e71e8 h1:etFcpSEVm59pKH8J3fOxAZr/Pj+aofsZkLfQWoSqorM=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210419112709-c3e66a2e71e8/go.mod h1:gv538195yhiJOA3xb4CnSf5RQfxTPXWfQDxp+MzsJ8Y=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210421093401-c7a0bd1ed750 h1:wCoyRSnXYRLCqH0Ms89SlofmQ2NiXrml5x3qrM2VHR0=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210421093401-c7a0bd1ed750/go.mod h1:gv538195yhiJOA3xb4CnSf5RQfxTPXWfQDxp+MzsJ8Y=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
