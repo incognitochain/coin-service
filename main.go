@@ -12,13 +12,6 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 )
 
-// @title Swagger Coinservice API
-// @version 1.0
-// @description coinservice api
-
-// @license.name MIT
-
-// @BasePath /t
 func main() {
 	shared.ReadConfigAndArg()
 	err := database.ConnectDB(shared.ServiceCfg.MongoDB, shared.ServiceCfg.MongoAddress)

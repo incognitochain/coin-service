@@ -156,13 +156,13 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 
 func DBGetCoinV2PubkeyInfo(key string) (*shared.KeyInfoData, error) {
 	var result shared.KeyInfoData
-	filter := bson.M{"otakey": bson.M{operator.Eq: key}}
+	filter := bson.M{"pubkey": bson.M{operator.Eq: key}}
 	err := mgm.Coll(&shared.KeyInfoDataV2{}).First(filter, &result)
 
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return &shared.KeyInfoData{
-				OTAKey: key,
+				Pubkey: key,
 			}, nil
 		}
 		return nil, err

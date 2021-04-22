@@ -49,10 +49,11 @@ func loadSubmittedOTAKey() {
 		ks := &incognitokey.KeySet{}
 		ks.OTAKey = otaKey
 		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-		data, err := database.DBGetCoinV2PubkeyInfo(key.OTAKey)
+		data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
 		if err != nil {
 			log.Fatalln(err)
 		}
+		data.OTAKey = key.OTAKey
 		k := OTAkeyInfo{
 			KeyInfo: data,
 			ShardID: int(shardID),
@@ -206,10 +207,11 @@ func InitOTAIndexingService() {
 			ks := &incognitokey.KeySet{}
 			ks.OTAKey = otaKey
 			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-			data, err := database.DBGetCoinV2PubkeyInfo(key.OTAKey)
+			data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
 			if err != nil {
 				log.Fatalln(err)
 			}
+			data.OTAKey = key.OTAKey
 			k := OTAkeyInfo{
 				KeyInfo: data,
 				ShardID: int(shardID),

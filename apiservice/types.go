@@ -1,32 +1,32 @@
 package apiservice
 
-type API_check_keyimages_request struct {
+type APICheckKeyImagesRequest struct {
 	Keyimages []string
 	ShardID   int
 }
 
-type API_check_tx_request struct {
+type APICheckTxRequest struct {
 	Txs     []string
 	ShardID int
 }
 
-type API_parse_tokenid_request struct {
+type APIParseTokenidRequest struct {
 	OTARandoms []string
 	AssetTags  []string
 	OTAKey     string
 }
-type API_get_txs_request struct {
+type APIGetTxsRequest struct {
 	Publickey string
 	Skip      int
 }
 
-type API_submit_otakey_request struct {
+type APISubmitOTAkeyRequest struct {
 	OTAKey       string
 	ShardID      int
 	BeaconHeight uint64
 }
 
-type API_get_random_commitment_request struct {
+type APIGetRandomCommitmentRequest struct {
 	Version int
 	ShardID int
 	TokenID string
@@ -36,7 +36,7 @@ type API_get_random_commitment_request struct {
 	Indexes []uint64
 }
 
-type API_respond struct {
+type APIRespond struct {
 	Result interface{}
 	Error  *string
 }

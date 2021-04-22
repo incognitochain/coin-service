@@ -42,25 +42,25 @@ func StartGinService() {
 	r.GET("/stats", func(c *gin.Context) {
 		c.JSON(http.StatusOK, stats.Report())
 	})
-	r.GET("/health", API_HealthCheck)
+	r.GET("/health", APIHealthCheck)
 	// if serviceCfg.Mode == QUERYMODE {
-	r.GET("/getcoinspending", API_GetCoinsPending)
-	r.GET("/getcoins", API_GetCoins)
-	r.GET("/getkeyinfo", API_GetKeyInfo)
-	r.POST("/checkkeyimages", API_CheckKeyImages)
-	r.POST("/getrandomcommitments", API_GetRandomCommitments)
-	r.POST("/checktxs", API_CheckTXs)
-	r.POST("/parsetokenid", API_ParseTokenID)
-	// r.POST("/gettxsbyreceiver", API_GetTxsByReceiver)
+	r.GET("/getcoinspending", APIGetCoinsPending)
+	r.GET("/getcoins", APIGetCoins)
+	r.GET("/getkeyinfo", APIGetKeyInfo)
+	r.POST("/checkkeyimages", APICheckKeyImages)
+	r.POST("/getrandomcommitments", APIGetRandomCommitments)
+	r.POST("/checktxs", APICheckTXs)
+	r.POST("/parsetokenid", APIParseTokenID)
+	// r.POST("/gettxsbyreceiver", APIGetTxsByReceiver)
 	// }
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
-		r.POST("/submitotakey", API_SubmitOTA)
+		r.POST("/submitotakey", APISubmitOTA)
 	}
 	r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
 }
 
-func API_GetCoins(c *gin.Context) {
+func APIGetCoins(c *gin.Context) {
 	version, _ := strconv.Atoi(c.Query("version"))
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
@@ -186,14 +186,14 @@ func API_GetCoins(c *gin.Context) {
 	rs := make(map[string]interface{})
 	rs["HighestIndex"] = highestIdx
 	rs["Outputs"] = map[string]interface{}{pubkey: result}
-	respond := API_respond{
+	respond := APIRespond{
 		Result: rs,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }
 
-func API_GetKeyInfo(c *gin.Context) {
+func APIGetKeyInfo(c *gin.Context) {
 	version, _ := strconv.Atoi(c.Query("version"))
 	if version != 1 && version != 2 {
 		version = 1
@@ -206,14 +206,13 @@ func API_GetKeyInfo(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
 			pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
 			result, err := database.DBGetCoinV1PubkeyInfo(pubkey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			respond := API_respond{
+			respond := APIRespond{
 				Result: result,
 				Error:  nil,
 			}
@@ -224,13 +223,14 @@ func API_GetKeyInfo(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			otakey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
-			result, err := database.DBGetCoinV2PubkeyInfo(otakey)
+			// otakey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
+			pubkey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+			result, err := database.DBGetCoinV2PubkeyInfo(pubkey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			respond := API_respond{
+			respond := APIRespond{
 				Result: result,
 				Error:  nil,
 			}
@@ -242,8 +242,8 @@ func API_GetKeyInfo(c *gin.Context) {
 	}
 }
 
-func API_CheckKeyImages(c *gin.Context) {
-	var req API_check_keyimages_request
+func APICheckKeyImages(c *gin.Context) {
+	var req APICheckKeyImagesRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -256,16 +256,16 @@ func API_CheckKeyImages(c *gin.Context) {
 		return
 	}
 
-	respond := API_respond{
+	respond := APIRespond{
 		Result: result,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }
 
-func API_GetRandomCommitments(c *gin.Context) {
+func APIGetRandomCommitments(c *gin.Context) {
 
-	var req API_get_random_commitment_request
+	var req APIGetRandomCommitmentRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -405,28 +405,28 @@ func API_GetRandomCommitments(c *gin.Context) {
 	rs["PublicKeys"] = publicKeys
 	rs["Commitments"] = commitments
 	rs["AssetTags"] = assetTags
-	respond := API_respond{
+	respond := APIRespond{
 		Result: rs,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }
 
-func API_GetCoinsPending(c *gin.Context) {
+func APIGetCoinsPending(c *gin.Context) {
 	result, err := database.DBGetPendingCoins()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
-	respond := API_respond{
+	respond := APIRespond{
 		Result: result,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }
 
-func API_SubmitOTA(c *gin.Context) {
-	var req API_submit_otakey_request
+func APISubmitOTA(c *gin.Context) {
+	var req APISubmitOTAkeyRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -456,15 +456,15 @@ func API_SubmitOTA(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	respond := API_respond{
+	respond := APIRespond{
 		Result: "ok",
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }
 
-func API_CheckTXs(c *gin.Context) {
-	var req API_check_tx_request
+func APICheckTXs(c *gin.Context) {
+	var req APICheckTxRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -477,36 +477,15 @@ func API_CheckTXs(c *gin.Context) {
 		return
 	}
 
-	respond := API_respond{
+	respond := APIRespond{
 		Result: result,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }
 
-// func API_GetTxsByReceiver(c *gin.Context) {
-// var req API_get_txs_request
-// err := c.ShouldBindJSON(&req)
-// if err != nil {
-// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-// 	return
-// }
-
-// result, err := database.DBCheckTxsExist(req.Txs, req.ShardID)
-// if err != nil {
-// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-// 	return
-// }
-
-// respond := API_respond{
-// 	Result: result,
-// 	Error:  nil,
-// }
-// c.JSON(http.StatusOK, respond)
-// }
-
-func API_ParseTokenID(c *gin.Context) {
-	var req API_parse_tokenid_request
+func APIParseTokenID(c *gin.Context) {
+	var req APIParseTokenidRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -596,14 +575,14 @@ func API_ParseTokenID(c *gin.Context) {
 			}
 		}
 	}
-	respond := API_respond{
+	respond := APIRespond{
 		Result: result,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }
 
-func API_HealthCheck(c *gin.Context) {
+func APIHealthCheck(c *gin.Context) {
 	//check block time
 	//ping pong vs mongo
 	status := shared.HEALTH_STATUS_OK
@@ -647,9 +626,9 @@ func API_HealthCheck(c *gin.Context) {
 	})
 }
 
-func buildGinErrorRespond(err error) *API_respond {
+func buildGinErrorRespond(err error) *APIRespond {
 	errStr := err.Error()
-	respond := API_respond{
+	respond := APIRespond{
 		Result: nil,
 		Error:  &errStr,
 	}
