@@ -209,3 +209,41 @@ func (model *SubmittedOTAKeyData) Saving() error {
 
 	return nil
 }
+
+type TxData struct {
+	mgm.DefaultModel `bson:",inline"`
+	PubKeySend       string   `json:"pubkeysend" bson:"pubkeysend"`
+	PubKeyReceivers  []string `json:"pubkeyreceivers" bson:"pubkeyreceivers"`
+	TxHash           string   `json:"txhash" bson:"txhash"`
+	TxVersion        int      `json:"txversion" bson:"txversion"`
+	TxType           string   `json:"txtype" bson:"txtype"`
+	TxDetail         string   `json:"txdetail" bson:"txdetail"`
+}
+
+func NewTxData(txVersion int, pubKeySend, txHash, txType, txDetail string, pubKeyReceivers []string) *TxData {
+	return &TxData{
+		TxVersion:       txVersion,
+		PubKeySend:      pubKeySend,
+		PubKeyReceivers: pubKeyReceivers,
+		TxHash:          txHash,
+		TxType:          txType,
+		TxDetail:        txDetail,
+	}
+}
+
+func (model *TxData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *TxData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
