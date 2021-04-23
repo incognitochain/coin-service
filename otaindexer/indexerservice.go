@@ -164,10 +164,12 @@ func InitOTAIndexingService() {
 		}
 		coinsToUpdate := []shared.CoinData{}
 
+		txToUpdate := make(map[string][]string)
 		for key, coins := range otaCoinList {
 			for _, coin := range coins {
 				coin.OTASecret = key
 				coinsToUpdate = append(coinsToUpdate, coin)
+				txToUpdate[key] = append(txToUpdate[key], coin.TxHash)
 			}
 
 		}
@@ -176,6 +178,13 @@ func InitOTAIndexingService() {
 			log.Println("len(coinsToUpdate)", len(coinsToUpdate))
 			log.Println("=========================================\n")
 			err := database.DBUpdateCoins(coinsToUpdate)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		for key, txHashs := range txToUpdate {
+			err := database.DBUpdateTxPubkeyReceiver(txHashs, key)
 			if err != nil {
 				panic(err)
 			}

@@ -51,7 +51,9 @@ func StartGinService() {
 	r.POST("/getrandomcommitments", APIGetRandomCommitments)
 	r.POST("/checktxs", APICheckTXs)
 	r.POST("/parsetokenid", APIParseTokenID)
+
 	// r.POST("/gettxsbyreceiver", APIGetTxsByReceiver)
+	// r.POST("/gettxsbykeyimages", APIGetTxsByReceiver)
 	// }
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {

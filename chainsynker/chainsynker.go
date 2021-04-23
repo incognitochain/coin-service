@@ -92,6 +92,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	beaconHeight := blk.Header.BeaconHeight
 	coinV1PubkeyInfo := make(map[string]map[string]shared.CoinInfo)
 
+	txDataList := []shared.TxData{}
+
 	for _, txs := range blk.Body.CrossTransactions {
 		for _, tx := range txs {
 			for _, prvout := range tx.OutputCoin {
@@ -187,8 +189,10 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 
 	for _, tx := range blk.Body.Transactions {
+		isCoinV2Output := false
 		txHash := tx.Hash().String()
 		tokenID := tx.GetTokenID().String()
+		txKeyImages := []string{}
 		if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType || tx.GetType() == common.TxRewardType || tx.GetType() == common.TxReturnStakingType {
 			if tx.GetProof() == nil {
 				continue
@@ -197,8 +201,10 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			outs := tx.GetProof().GetOutputCoins()
 
 			for _, coin := range ins {
-				km := shared.NewKeyImageData(tokenID, txHash, base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS()), beaconHeight, shardID)
-				keyImageList = append(keyImageList, *km)
+				kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+				txKeyImages = append(txKeyImages, kmString)
+				kmData := shared.NewKeyImageData(tokenID, txHash, kmString, beaconHeight, shardID)
+				keyImageList = append(keyImageList, *kmData)
 			}
 			for _, coin := range outs {
 				publicKeyBytes := coin.GetPublicKey().ToBytesS()
@@ -206,6 +212,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				if publicKeyShardID == byte(shardID) {
 					coinIdx := uint64(0)
 					if coin.GetVersion() == 2 {
+						isCoinV2Output = true
 						idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
 						if err != nil {
 							log.Println("len(outs))", len(outs), base58.Base58Check{}.Encode(publicKeyBytes, 0))
@@ -251,8 +258,10 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
 				for _, coin := range tokenIns {
-					km := shared.NewKeyImageData(common.ConfidentialAssetID.String(), txHash, base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS()), beaconHeight, shardID)
-					keyImageList = append(keyImageList, *km)
+					kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+					txKeyImages = append(txKeyImages, kmString)
+					kmData := shared.NewKeyImageData(common.ConfidentialAssetID.String(), txHash, kmString, beaconHeight, shardID)
+					keyImageList = append(keyImageList, *kmData)
 				}
 				for _, coin := range tokenOuts {
 					publicKeyBytes := coin.GetPublicKey().ToBytesS()
@@ -261,6 +270,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						coinIdx := uint64(0)
 						tokenStr := txToken.GetTokenID().String()
 						if coin.GetVersion() == 2 {
+							isCoinV2Output = true
 							idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], *tx.GetTokenID(), publicKeyBytes)
 							if err != nil {
 								panic(err)
@@ -350,8 +360,32 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				}
 			}
 		}
+
+		pubkeyReceivers := []string{}
+		if !isCoinV2Output {
+			receiverList, _ := tx.GetReceivers()
+			for _, v := range receiverList {
+				pubkeyReceivers = append(pubkeyReceivers, base58.EncodeCheck(v))
+			}
+		}
+		txData := shared.NewTxData(tx.GetLockTime(), int(tx.GetVersion()), tx.Hash().String(), tx.GetType(), tx.String(), txKeyImages, pubkeyReceivers)
+		txDataList = append(txDataList, *txData)
 	}
 	alreadyWriteToBD := false
+
+	if len(txDataList) > 0 {
+		err = database.DBSaveTXs(txDataList)
+		if err != nil {
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				log.Println(err)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			}
+		}
+	}
 	if len(outCoinList) > 0 {
 		err = database.DBSaveCoins(outCoinList)
 		if err != nil {
@@ -386,6 +420,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 	}
+
 	statePrefix := fmt.Sprintf("coin-processed-%v", blk.Header.ShardID)
 	err = Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
 	if err != nil {

@@ -212,22 +212,24 @@ func (model *SubmittedOTAKeyData) Saving() error {
 
 type TxData struct {
 	mgm.DefaultModel `bson:",inline"`
-	PubKeySend       string   `json:"pubkeysend" bson:"pubkeysend"`
+	KeyImages        []string `json:"keyimages" bson:"keyimages"`
 	PubKeyReceivers  []string `json:"pubkeyreceivers" bson:"pubkeyreceivers"`
 	TxHash           string   `json:"txhash" bson:"txhash"`
 	TxVersion        int      `json:"txversion" bson:"txversion"`
 	TxType           string   `json:"txtype" bson:"txtype"`
 	TxDetail         string   `json:"txdetail" bson:"txdetail"`
+	Locktime         int64    `json:"locktime" bson:"locktime"`
 }
 
-func NewTxData(txVersion int, pubKeySend, txHash, txType, txDetail string, pubKeyReceivers []string) *TxData {
+func NewTxData(locktime int64, txVersion int, txHash, txType, txDetail string, keyimages, pubKeyReceivers []string) *TxData {
 	return &TxData{
 		TxVersion:       txVersion,
-		PubKeySend:      pubKeySend,
+		KeyImages:       keyimages,
 		PubKeyReceivers: pubKeyReceivers,
 		TxHash:          txHash,
 		TxType:          txType,
 		TxDetail:        txDetail,
+		Locktime:        locktime,
 	}
 }
 
