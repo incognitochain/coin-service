@@ -313,8 +313,10 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				ins := tx.GetProof().GetInputCoins()
 				outs := tx.GetProof().GetOutputCoins()
 				for _, coin := range ins {
-					km := shared.NewKeyImageData(common.PRVCoinID.String(), txHash, base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS()), beaconHeight, shardID)
-					keyImageList = append(keyImageList, *km)
+					kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+					txKeyImages = append(txKeyImages, kmString)
+					kmData := shared.NewKeyImageData(common.PRVCoinID.String(), txHash, kmString, beaconHeight, shardID)
+					keyImageList = append(keyImageList, *kmData)
 				}
 				for _, coin := range outs {
 					publicKeyBytes := coin.GetPublicKey().ToBytesS()
