@@ -52,8 +52,7 @@ func StartGinService() {
 	r.POST("/checktxs", APICheckTXs)
 	r.POST("/parsetokenid", APIParseTokenID)
 
-	// r.POST("/gettxsbyreceiver", APIGetTxsByReceiver)
-	// r.POST("/gettxsbykeyimages", APIGetTxsByReceiver)
+	r.POST("/gettxshistory ", APIGetTxsHistory)
 	// }
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
@@ -626,6 +625,10 @@ func APIHealthCheck(c *gin.Context) {
 		"mongo":  mongoStatus,
 		"chain":  shardsHeight,
 	})
+}
+
+func APIGetTxsHistory(c *gin.Context) {
+
 }
 
 func buildGinErrorRespond(err error) *APIRespond {
