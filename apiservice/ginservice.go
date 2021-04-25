@@ -23,10 +23,12 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
+	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/privacy/operation"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
+	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
 	stats "github.com/semihalev/gin-stats"
@@ -265,7 +267,6 @@ func APICheckKeyImages(c *gin.Context) {
 }
 
 func APIGetRandomCommitments(c *gin.Context) {
-
 	var req APIGetRandomCommitmentRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
@@ -628,7 +629,55 @@ func APIHealthCheck(c *gin.Context) {
 }
 
 func APIGetTxsHistory(c *gin.Context) {
-
+	var req APIGetTxsRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(req.Publickey) == 0 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("Publickey cant be empty")))
+		return
+	}
+	var result jsonresult.ListReceivedTransactionV2
+	txDataList, err := database.DBGetReceiveTxByPubkey(req.Publickey, int64(req.Limit), int64(req.Skip))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	for _, txData := range txDataList {
+		var tx metadata.Transaction
+		var parseErr error
+		var txChoice *transaction.TxChoice
+		txChoice, parseErr = transaction.DeserializeTransactionJSON([]byte(txData.TxDetail))
+		if parseErr != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		tx = txChoice.ToTx()
+		if tx == nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		blockHeight, err := strconv.ParseUint(txData.BlockHeight, 0, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		txDetail, err := jsonresult.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txData.ShardID))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		txDetail.BlockHash = txData.BlockHash
+		txDetail.IsInBlock = true
+		result.ReceivedTransactions = append(result.ReceivedTransactions)
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func buildGinErrorRespond(err error) *APIRespond {

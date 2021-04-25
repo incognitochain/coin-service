@@ -49,7 +49,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		log.Println(err)
 		return
 	}
-
+	blockHash := blk.Hash().String()
+	blockHeight := fmt.Sprintf("%v", blk.GetHeight())
 	shardID := blk.GetShardID()
 
 	if len(blk.Body.Transactions) > 0 {
@@ -370,7 +371,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				pubkeyReceivers = append(pubkeyReceivers, base58.EncodeCheck(v))
 			}
 		}
-		txData := shared.NewTxData(tx.GetLockTime(), int(tx.GetVersion()), tx.Hash().String(), tx.GetType(), tx.String(), txKeyImages, pubkeyReceivers)
+		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, tx.Hash().String(), tx.GetType(), tx.String(), txKeyImages, pubkeyReceivers)
 		txDataList = append(txDataList, *txData)
 	}
 	alreadyWriteToBD := false

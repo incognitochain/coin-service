@@ -17,6 +17,7 @@ type APIParseTokenidRequest struct {
 }
 type APIGetTxsRequest struct {
 	Publickey string
+	Limit     int
 	Skip      int
 }
 
