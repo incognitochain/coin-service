@@ -31,7 +31,6 @@ import (
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
-	stats "github.com/semihalev/gin-stats"
 )
 
 func StartGinService() {
@@ -39,11 +38,11 @@ func StartGinService() {
 
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
-	r.Use(stats.RequestStats())
+	// r.Use(stats.RequestStats())
 
-	r.GET("/stats", func(c *gin.Context) {
-		c.JSON(http.StatusOK, stats.Report())
-	})
+	// r.GET("/stats", func(c *gin.Context) {
+	// 	c.JSON(http.StatusOK, stats.Report())
+	// })
 	r.GET("/health", APIHealthCheck)
 	// if serviceCfg.Mode == QUERYMODE {
 	r.GET("/getcoinspending", APIGetCoinsPending)
@@ -53,8 +52,7 @@ func StartGinService() {
 	r.POST("/getrandomcommitments", APIGetRandomCommitments)
 	r.POST("/checktxs", APICheckTXs)
 	r.POST("/parsetokenid", APIParseTokenID)
-
-	r.POST("/gettxshistory ", APIGetTxsHistory)
+	r.POST("/gettxshistory", APIGetTxsHistory)
 	// }
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
@@ -203,13 +201,23 @@ func APIGetKeyInfo(c *gin.Context) {
 	}
 	key := c.Query("key")
 	if key != "" {
+		wl, err := wallet.Base58CheckDeserialize(key)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+
+		pubkey := ""
+		if wl.KeySet.OTAKey.GetPublicSpend() != nil {
+			pubkey = base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+		}
+		if wl.KeySet.ReadonlyKey.GetPublicSpend() != nil {
+			pubkey = base58.EncodeCheck(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+		}
+		if wl.KeySet.PaymentAddress.GetPublicSpend() != nil {
+			pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
+		}
 		if version == 1 {
-			wl, err := wallet.Base58CheckDeserialize(key)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
 			result, err := database.DBGetCoinV1PubkeyInfo(pubkey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -221,13 +229,6 @@ func APIGetKeyInfo(c *gin.Context) {
 			}
 			c.JSON(http.StatusOK, respond)
 		} else {
-			wl, err := wallet.Base58CheckDeserialize(key)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			// otakey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
-			pubkey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 			result, err := database.DBGetCoinV2PubkeyInfo(pubkey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -651,7 +652,8 @@ func APIGetTxsHistory(c *gin.Context) {
 		var txChoice *transaction.TxChoice
 		txChoice, parseErr = transaction.DeserializeTransactionJSON([]byte(txData.TxDetail))
 		if parseErr != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			log.Println("TxDetail", txData.TxDetail)
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(parseErr))
 			return
 		}
 		tx = txChoice.ToTx()
@@ -671,7 +673,11 @@ func APIGetTxsHistory(c *gin.Context) {
 		}
 		txDetail.BlockHash = txData.BlockHash
 		txDetail.IsInBlock = true
-		result.ReceivedTransactions = append(result.ReceivedTransactions)
+		txReceive := jsonresult.ReceivedTransactionV2{
+			TxDetail:    txDetail,
+			FromShardID: txDetail.ShardID,
+		}
+		result.ReceivedTransactions = append(result.ReceivedTransactions, txReceive)
 	}
 	respond := APIRespond{
 		Result: result,
