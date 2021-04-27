@@ -1,10 +1,7 @@
 package shared
 
 import (
-	"sync"
 	"time"
-
-	"github.com/incognitochain/incognito-chain/common"
 )
 
 type CoinCache struct {
@@ -33,7 +30,7 @@ func (cc *CoinCache) Read() ([]CoinData, map[int]uint64, map[int]uint64) {
 	return cc.Coins, cc.PRVLastHeight, cc.TokenLastHeight
 }
 
-var LastTokenListCount int64
-var TokenListLock sync.Mutex
-var LastTokenIDHash []*common.Hash
-var LastTokenIDstr []string
+// var LastTokenListCount int64
+// var TokenListLock sync.Mutex
+// var LastTokenIDHash []*common.Hash
+// var LastTokenIDstr []string

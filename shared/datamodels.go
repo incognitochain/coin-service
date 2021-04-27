@@ -218,10 +218,14 @@ type TxData struct {
 	TxVersion        int      `json:"txversion" bson:"txversion"`
 	TxType           string   `json:"txtype" bson:"txtype"`
 	TxDetail         string   `json:"txdetail" bson:"txdetail"`
+	TokenID          string   `json:"tokenid" bson:"tokenid"`
+	BlockHash        string   `json:"blockhash" bson:"blockhash"`
+	BlockHeight      string   `json:"blockheight" bson:"blockheight"`
+	ShardID          int      `json:"shardid" bson:"shardid"`
 	Locktime         int64    `json:"locktime" bson:"locktime"`
 }
 
-func NewTxData(locktime int64, txVersion int, txHash, txType, txDetail string, keyimages, pubKeyReceivers []string) *TxData {
+func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, tokenID, txHash, txType, txDetail string, keyimages, pubKeyReceivers []string) *TxData {
 	return &TxData{
 		TxVersion:       txVersion,
 		KeyImages:       keyimages,
@@ -229,6 +233,10 @@ func NewTxData(locktime int64, txVersion int, txHash, txType, txDetail string, k
 		TxHash:          txHash,
 		TxType:          txType,
 		TxDetail:        txDetail,
+		TokenID:         tokenID,
+		ShardID:         shardID,
+		BlockHash:       blockHash,
+		BlockHeight:     blockHeight,
 		Locktime:        locktime,
 	}
 }

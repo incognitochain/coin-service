@@ -15,10 +15,6 @@ type APIParseTokenidRequest struct {
 	AssetTags  []string
 	OTAKey     string
 }
-type APIGetTxsRequest struct {
-	Publickey string
-	Skip      int
-}
 
 type APISubmitOTAkeyRequest struct {
 	OTAKey       string
