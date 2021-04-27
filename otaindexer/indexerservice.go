@@ -193,7 +193,10 @@ func InitOTAIndexingService() {
 
 	for {
 		<-interval.C
-
+		err := retrieveTokenIDList()
+		if err != nil {
+			panic(err)
+		}
 		keys, err := database.DBGetSubmittedOTAKeys(shared.ServiceCfg.IndexerBucketID, int64(Submitted_OTAKey.TotalKeys))
 		if err != nil {
 			log.Fatalln(err)
@@ -295,6 +298,7 @@ func InitOTAIndexingService() {
 func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinData, []shared.CoinData, map[int]uint64, map[int]uint64, error) {
 	lastPRVIndex := make(map[int]uint64)
 	lastTokenIndex := make(map[int]uint64)
+	tokenListLock.RLock()
 	if len(Submitted_OTAKey.Keys) > 0 {
 		otaCoins := make(map[string][]shared.CoinData)
 		var otherCoins []shared.CoinData
@@ -311,14 +315,16 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 					panic(err)
 				}
 				pass := false
+				tokenID := ""
 				for _, keyData := range Submitted_OTAKey.Keys[cn.ShardID] {
 					if _, ok := keyData.KeyInfo.CoinIndex[cn.TokenID]; ok {
 						if cn.CoinIndex < keyData.KeyInfo.CoinIndex[cn.TokenID].LastScanned {
 							continue
 						}
 					}
-					pass, _ = newCoin.DoesCoinBelongToKeySet(keyData.keyset)
+					pass, tokenID, _ = doesCoinBelongToKeySet(newCoin, keyData.keyset, lastTokenIDMap)
 					if pass {
+						cn.RealTokenID = tokenID
 						tempOTACoinsCh <- map[string]shared.CoinData{keyData.OTAKey: cn}
 						break
 					}
@@ -367,6 +373,7 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 		log.Println("len(otaCoins)", len(otaCoins))
 		log.Printf("filtered %v coins with %v keys in %v", len(coinList), Submitted_OTAKey.TotalKeys, time.Since(startTime))
 		log.Println("lastPRVIndex", lastPRVIndex, lastTokenIndex)
+		tokenListLock.RUnlock()
 		return otaCoins, otherCoins, lastPRVIndex, lastTokenIndex, nil
 	}
 	return nil, nil, nil, nil, errors.New("no key to scan")
