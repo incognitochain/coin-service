@@ -2,6 +2,7 @@ package apiservice
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -45,7 +46,7 @@ func StartGinService() {
 	r.POST("/getrandomcommitments", APIGetRandomCommitments)
 	r.POST("/checktxs", APICheckTXs)
 
-	r.GET("/gettxshistory ", APIGetTxsHistory)
+	r.GET("/gettxshistory", APIGetTxsHistory)
 	// }
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
@@ -182,6 +183,7 @@ func APIGetCoins(c *gin.Context) {
 				}
 			} else {
 				cn := shared.NewOutCoinV1(coinV1)
+				cn.CoinDetailsEncrypted = base64.StdEncoding.EncodeToString(coinV1.GetCoinDetailEncrypted())
 				result = append(result, cn)
 			}
 		}
