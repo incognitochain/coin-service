@@ -17,7 +17,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
-	github.com/ugorji/go/codec v1.2.5 // indirect
+	github.com/ugorji/go v1.2.5 // indirect
 	go.mongodb.org/mongo-driver v1.5.0
 	golang.org/x/crypto v0.0.0-20210415154028-4f45737414dc // indirect
 	golang.org/x/net v0.0.0-20210415231046-e915ea6b2b7d // indirect

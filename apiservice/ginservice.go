@@ -45,7 +45,7 @@ func StartGinService() {
 	r.POST("/getrandomcommitments", APIGetRandomCommitments)
 	r.POST("/checktxs", APICheckTXs)
 
-	r.POST("/gettxshistory ", APIGetTxsHistory)
+	r.GET("/gettxshistory ", APIGetTxsHistory)
 	// }
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
@@ -633,27 +633,28 @@ func APIHealthCheck(c *gin.Context) {
 }
 
 func APIGetTxsHistory(c *gin.Context) {
-	var req APIGetTxsRequest
-	err := c.ShouldBindJSON(&req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
+	paymentkey := c.Query("paymentkey")
+	otakey := c.Query("otakey")
+	tokenid := c.Query("tokenid")
+
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+
 	pubKeyStr := ""
 	pubKeyBytes := []byte{}
-	if req.OTAKey != "" {
-		wl, err := wallet.Base58CheckDeserialize(req.OTAKey)
+	if otakey != "" {
+		wl, err := wallet.Base58CheckDeserialize(otakey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
 		pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
 	} else {
-		if req.PaymentKey == "" {
+		if paymentkey == "" {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
 			return
 		}
-		wl, err := wallet.Base58CheckDeserialize(req.PaymentKey)
+		wl, err := wallet.Base58CheckDeserialize(paymentkey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -663,7 +664,7 @@ func APIGetTxsHistory(c *gin.Context) {
 
 	shardID := common.GetShardIDFromLastByte(pubKeyBytes[len(pubKeyBytes)-1])
 	var result jsonresult.ListReceivedTransactionV2
-	txDataList, err := database.DBGetReceiveTxByPubkey(int(shardID), pubKeyStr, req.TokenID, int64(req.Limit), int64(req.Skip))
+	txDataList, err := database.DBGetReceiveTxByPubkey(int(shardID), pubKeyStr, tokenid, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

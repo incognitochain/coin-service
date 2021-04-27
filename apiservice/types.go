@@ -15,13 +15,6 @@ type APIParseTokenidRequest struct {
 	AssetTags  []string
 	OTAKey     string
 }
-type APIGetTxsRequest struct {
-	PaymentKey string
-	OTAKey     string
-	TokenID    string
-	Limit      int
-	Skip       int
-}
 
 type APISubmitOTAkeyRequest struct {
 	OTAKey       string
