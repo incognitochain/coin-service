@@ -124,3 +124,22 @@ func DBCreateKeyimageIndex() error {
 	log.Printf("success index keyimages in %v", time.Since(startTime))
 	return nil
 }
+
+func DBCreateKeyTxIndex() error {
+	startTime := time.Now()
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	txMdl := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	indexName, err := mgm.Coll(&shared.TxData{}).Indexes().CreateMany(ctx, txMdl)
+	if err != nil {
+		log.Printf("failed to index coins in %v", time.Since(startTime))
+		return err
+	}
+	log.Println("indexName", indexName)
+	log.Printf("success index keyimages in %v", time.Since(startTime))
+	return nil
+}

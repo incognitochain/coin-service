@@ -2,7 +2,6 @@ package apiservice
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -37,11 +36,6 @@ func StartGinService() {
 
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
-	// r.Use(stats.RequestStats())
-
-	// r.GET("/stats", func(c *gin.Context) {
-	// 	c.JSON(http.StatusOK, stats.Report())
-	// })
 	r.GET("/health", APIHealthCheck)
 	// if serviceCfg.Mode == QUERYMODE {
 	r.GET("/getcoinspending", APIGetCoinsPending)
@@ -50,7 +44,6 @@ func StartGinService() {
 	r.POST("/checkkeyimages", APICheckKeyImages)
 	r.POST("/getrandomcommitments", APIGetRandomCommitments)
 	r.POST("/checktxs", APICheckTXs)
-	// r.POST("/parsetokenid", APIParseTokenID)
 
 	r.POST("/gettxshistory ", APIGetTxsHistory)
 	// }
@@ -65,6 +58,7 @@ func APIGetCoins(c *gin.Context) {
 	version, _ := strconv.Atoi(c.Query("version"))
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
+	paymentkey := c.Query("paymentkey")
 	viewkey := c.Query("viewkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
@@ -96,7 +90,7 @@ func APIGetCoins(c *gin.Context) {
 			if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
 				tokenidv2 = common.ConfidentialAssetID.String()
 			}
-			coinList, err := database.DBGetCoinsByOTAKey(int(shardID), tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
+			coinList, err := database.DBGetCoinsByOTAKey(int(shardID), tokenidv2, pubkey, int64(offset), int64(limit))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 				return
@@ -121,23 +115,32 @@ func APIGetCoins(c *gin.Context) {
 	}
 	if version == 1 {
 		var viewKeySet *incognitokey.KeySet
-		if viewkey == "" {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("viewkey cant be empty")))
-			return
+		if viewkey != "" {
+			wl, err := wallet.Base58CheckDeserialize(viewkey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			if wl.KeySet.ReadonlyKey.Rk == nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid viewkey")))
+				return
+			}
+			pubkey = base58.EncodeCheck(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+			viewKeySet = &wl.KeySet
+		} else {
+			if paymentkey == "" {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("paymentkey cant be empty")))
+				return
+			}
+			wl, err := wallet.Base58CheckDeserialize(paymentkey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
 		}
-		wl, err := wallet.Base58CheckDeserialize(viewkey)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		if wl.KeySet.ReadonlyKey.Rk == nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid viewkey")))
-			return
-		}
-		pubkey = base58.EncodeCheck(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
-		wl.KeySet.PaymentAddress.Pk = wl.KeySet.ReadonlyKey.Pk
-		viewKeySet = &wl.KeySet
-		coinListV1, err := database.DBGetCoinV1ByPubkey(tokenid, hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS()), int64(offset), int64(limit))
+
+		coinListV1, err := database.DBGetCoinV1ByPubkey(tokenid, pubkey, int64(offset), int64(limit))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
@@ -636,12 +639,31 @@ func APIGetTxsHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	if len(req.Publickey) == 0 {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("Publickey cant be empty")))
-		return
+	pubKeyStr := ""
+	pubKeyBytes := []byte{}
+	if req.OTAKey != "" {
+		wl, err := wallet.Base58CheckDeserialize(req.OTAKey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
+	} else {
+		if req.PaymentKey == "" {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
+			return
+		}
+		wl, err := wallet.Base58CheckDeserialize(req.PaymentKey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
 	}
+
+	shardID := common.GetShardIDFromLastByte(pubKeyBytes[len(pubKeyBytes)-1])
 	var result jsonresult.ListReceivedTransactionV2
-	txDataList, err := database.DBGetReceiveTxByPubkey(req.Publickey, int64(req.Limit), int64(req.Skip))
+	txDataList, err := database.DBGetReceiveTxByPubkey(int(shardID), pubKeyStr, req.TokenID, int64(req.Limit), int64(req.Skip))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

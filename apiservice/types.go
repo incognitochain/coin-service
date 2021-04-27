@@ -16,9 +16,11 @@ type APIParseTokenidRequest struct {
 	OTAKey     string
 }
 type APIGetTxsRequest struct {
-	Publickey string
-	Limit     int
-	Skip      int
+	PaymentKey string
+	OTAKey     string
+	TokenID    string
+	Limit      int
+	Skip       int
 }
 
 type APISubmitOTAkeyRequest struct {
