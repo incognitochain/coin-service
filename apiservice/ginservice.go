@@ -663,7 +663,7 @@ func APIGetTxsHistory(c *gin.Context) {
 		}
 		pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
 	}
-
+	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 	shardID := common.GetShardIDFromLastByte(pubKeyBytes[len(pubKeyBytes)-1])
 	var result jsonresult.ListReceivedTransactionV2
 	txDataList, err := database.DBGetReceiveTxByPubkey(int(shardID), pubKeyStr, tokenid, int64(limit), int64(offset))
