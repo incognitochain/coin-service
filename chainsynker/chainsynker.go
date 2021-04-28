@@ -472,6 +472,11 @@ func InitChainSynker(cfg shared.Config) {
 	if err != nil {
 		panic(err)
 	}
+	err = database.DBCreateKeyTxIndex()
+	if err != nil {
+		panic(err)
+	}
+
 	var netw devframework.NetworkParam
 	switch chainNetwork {
 	case "testnet2":
