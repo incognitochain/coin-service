@@ -36,8 +36,9 @@ func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey string) error {
 		docs = append(docs, update)
 	}
 	for idx, doc := range docs {
+		filter := bson.M{"txhash": bson.M{operator.Eq: txHashes[idx]}}
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(1)*shared.DB_OPERATION_TIMEOUT)
-		_, err := mgm.Coll(&shared.TxData{}).UpdateOne(ctx, txHashes[idx], doc)
+		_, err := mgm.Coll(&shared.TxData{}).UpdateOne(ctx, filter, doc)
 		if err != nil {
 			return err
 		}

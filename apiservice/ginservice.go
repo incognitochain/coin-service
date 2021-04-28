@@ -650,7 +650,7 @@ func APIGetTxsHistory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
+		pubKeyBytes = wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()
 	} else {
 		if paymentkey == "" {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
