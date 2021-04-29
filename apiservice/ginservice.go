@@ -492,104 +492,6 @@ func APICheckTXs(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-// func APIParseTokenID(c *gin.Context) {
-// 	var req APIParseTokenidRequest
-// 	err := c.ShouldBindJSON(&req)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-// 		return
-// 	}
-// 	if len(req.AssetTags) != len(req.OTARandoms) {
-// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.AssetTags) != len(req.ShardSecrets)")))
-// 		return
-// 	}
-// 	assetTags, err := shared.AssetTagStringToPoint(req.AssetTags)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-// 		return
-// 	}
-
-// 	sharedSecrets, err := shared.CalculateSharedSecret(req.OTARandoms, req.OTAKey)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-// 		return
-// 	}
-// 	tokenCount, err := database.DBGetTokenCount()
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-// 		return
-// 	}
-// 	tokenIDs := []*common.Hash{}
-// 	tokenIDstrs := []string{}
-// 	log.Println("tokenCount", tokenCount)
-// 	if tokenCount != shared.LastTokenListCount {
-// 		tokenInfos, err := database.DBGetTokenInfo()
-// 		if err != nil {
-// 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-// 			return
-// 		}
-// 		for _, tokenInfo := range tokenInfos {
-// 			tokenID, err := new(common.Hash).NewHashFromStr(tokenInfo.TokenID)
-// 			if err != nil {
-// 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-// 				return
-// 			}
-// 			tokenIDs = append(tokenIDs, tokenID)
-// 			tokenIDstrs = append(tokenIDstrs, tokenInfo.TokenID)
-// 		}
-// 		shared.TokenListLock.Lock()
-// 		shared.LastTokenListCount = tokenCount
-// 		shared.LastTokenIDHash = make([]*common.Hash, len(tokenIDs))
-// 		copy(shared.LastTokenIDHash, tokenIDs)
-// 		shared.LastTokenIDstr = make([]string, len(tokenIDstrs))
-// 		copy(shared.LastTokenIDstr, tokenIDstrs)
-// 		shared.TokenListLock.Unlock()
-// 	} else {
-// 		shared.TokenListLock.Lock()
-// 		tokenIDs = make([]*common.Hash, len(shared.LastTokenIDHash))
-// 		copy(tokenIDs, shared.LastTokenIDHash)
-// 		tokenIDstrs = make([]string, len(shared.LastTokenIDstr))
-// 		copy(tokenIDstrs, shared.LastTokenIDstr)
-// 		shared.TokenListLock.Unlock()
-// 	}
-// 	var wg sync.WaitGroup
-// 	tempIDCheckCh := make(chan map[int]int, 10)
-// 	result := make([]string, len(sharedSecrets))
-// 	for idx, sharedSecret := range sharedSecrets {
-// 		wg.Add(1)
-// 		go func(i int, sc *operation.Point) {
-// 			var ok bool
-// 			var tokenIDidx int
-// 			for ti, tokenID := range tokenIDs {
-// 				if ok, _ = shared.CheckTokenIDWithOTA(sc, assetTags[i], tokenID); ok {
-// 					tokenIDidx = ti
-// 					break
-// 				}
-// 			}
-// 			tempIDCheckCh <- map[int]int{i: tokenIDidx}
-// 			wg.Done()
-// 		}(idx, sharedSecret)
-
-// 		if (idx+1)%10 == 0 || idx+1 == len(sharedSecrets) {
-// 			wg.Wait()
-// 			close(tempIDCheckCh)
-// 			for k := range tempIDCheckCh {
-// 				for coinIdx, tokenIdx := range k {
-// 					result[coinIdx] = tokenIDstrs[tokenIdx]
-// 				}
-// 			}
-// 			if idx+1 != len(sharedSecrets) {
-// 				tempIDCheckCh = make(chan map[int]int, 10)
-// 			}
-// 		}
-// 	}
-// 	respond := APIRespond{
-// 		Result: result,
-// 		Error:  nil,
-// 	}
-// 	c.JSON(http.StatusOK, respond)
-// }
-
 func APIHealthCheck(c *gin.Context) {
 	//check block time
 	//ping pong vs mongo
@@ -666,48 +568,67 @@ func APIGetTxsHistory(c *gin.Context) {
 	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 	shardID := common.GetShardIDFromLastByte(pubKeyBytes[len(pubKeyBytes)-1])
 	var result jsonresult.ListReceivedTransactionV2
+	startTime := time.Now()
 	txDataList, err := database.DBGetReceiveTxByPubkey(int(shardID), pubKeyStr, tokenid, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	for _, txData := range txDataList {
-		var tx metadata.Transaction
-		var parseErr error
-		var txChoice *transaction.TxChoice
-		txChoice, parseErr = transaction.DeserializeTransactionJSON([]byte(txData.TxDetail))
-		if parseErr != nil {
-			log.Println("TxDetail", txData.TxDetail)
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(parseErr))
-			return
+	var wg sync.WaitGroup
+	collectCh := make(chan jsonresult.ReceivedTransactionV2, 200)
+	jsonCount := 0
+	for idx, txData := range txDataList {
+		wg.Add(1)
+		go func(txd shared.TxData) {
+			var tx metadata.Transaction
+			var parseErr error
+			var txChoice *transaction.TxChoice
+			txChoice, parseErr = shared.DeserializeTransactionJSON([]byte(txd.TxDetail))
+			if parseErr != nil {
+				log.Println("TxDetail", txd.TxDetail)
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(parseErr))
+				return
+			}
+			tx = txChoice.ToTx()
+			if tx == nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			blockHeight, err := strconv.ParseUint(txd.BlockHeight, 0, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			txDetail, err := jsonresult.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txd.ShardID))
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			txDetail.BlockHash = txd.BlockHash
+			txDetail.IsInBlock = true
+			txDetail.Proof = nil
+			txDetail.Sig = ""
+			txReceive := jsonresult.ReceivedTransactionV2{
+				TxDetail:    txDetail,
+				FromShardID: txDetail.ShardID,
+			}
+			collectCh <- txReceive
+			wg.Done()
+		}(txData)
+		if jsonCount%200 == 0 || idx+1 == len(txDataList) {
+			wg.Wait()
+			close(collectCh)
+			for txjson := range collectCh {
+				result.ReceivedTransactions = append(result.ReceivedTransactions, txjson)
+			}
+			collectCh = make(chan jsonresult.ReceivedTransactionV2, 200)
 		}
-		tx = txChoice.ToTx()
-		if tx == nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		blockHeight, err := strconv.ParseUint(txData.BlockHeight, 0, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		txDetail, err := jsonresult.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txData.ShardID))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		txDetail.BlockHash = txData.BlockHash
-		txDetail.IsInBlock = true
-		txReceive := jsonresult.ReceivedTransactionV2{
-			TxDetail:    txDetail,
-			FromShardID: txDetail.ShardID,
-		}
-		result.ReceivedTransactions = append(result.ReceivedTransactions, txReceive)
 	}
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
 	}
+	log.Println("txDataList time:", time.Since(startTime))
 	c.JSON(http.StatusOK, respond)
 }
 

@@ -3,11 +3,14 @@ package shared
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/privacy/operation"
+	"github.com/incognitochain/incognito-chain/transaction"
+	"github.com/incognitochain/incognito-chain/transaction/utils"
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
@@ -79,4 +82,63 @@ func CheckTokenIDWithOTA(sharedSecret, assetTag *operation.Point, tokenID *commo
 		return true, nil
 	}
 	return false, nil
+}
+
+// DeserializeTransactionJSON parses a transaction from raw JSON into a TxChoice object.
+// It covers all transaction types.
+func DeserializeTransactionJSON(data []byte) (*transaction.TxChoice, error) {
+	result := &transaction.TxChoice{}
+	holder := make(map[string]interface{})
+	err := json.Unmarshal(data, &holder)
+	if err != nil {
+		return nil, err
+	}
+
+	// Used to parse json
+	type txJsonDataVersion struct {
+		Version int8 `json:"Version"`
+		Type    string
+	}
+	_, isTokenTx := holder["TxTokenPrivacyData"]
+	_, hasVersionOutside := holder["Version"]
+	var verHolder txJsonDataVersion
+	json.Unmarshal(data, &verHolder)
+	if hasVersionOutside {
+		switch verHolder.Version {
+		case utils.TxVersion1Number:
+			if isTokenTx {
+				// token ver 1
+				result.TokenVersion1 = &transaction.TxTokenVersion1{}
+				err := json.Unmarshal(data, result.TokenVersion1)
+				return result, err
+			} else {
+				// tx ver 1
+				result.Version1 = &transaction.TxVersion1{}
+				err := json.Unmarshal(data, result.Version1)
+				return result, err
+			}
+		case utils.TxVersion2Number: // the same as utils.TxConversionVersion12Number
+			if isTokenTx {
+				// rejected
+				return nil, errors.New("Error unmarshalling TX from JSON : misplaced version")
+			} else {
+				// tx ver 2
+				result.Version2 = &transaction.TxVersion2{}
+				err := json.Unmarshal(data, result.Version2)
+				return result, err
+			}
+		default:
+			return nil, errors.New(fmt.Sprintf("Error unmarshalling TX from JSON : wrong version of %d", verHolder.Version))
+		}
+	} else {
+		if isTokenTx {
+			// token ver 2
+			result.TokenVersion2 = &transaction.TxTokenVersion2{}
+			err := json.Unmarshal(data, result.TokenVersion2)
+			return result, err
+		} else {
+			return nil, errors.New("Error unmarshalling TX from JSON")
+		}
+	}
+
 }

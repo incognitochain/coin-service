@@ -136,6 +136,9 @@ func DBCreateKeyTxIndex() error {
 			Keys:    bsonx.Doc{{Key: "txhash", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
+		// {
+		// 	Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "pubkeyreceivers", Value: bsonx.Int32(1)}},
+		// },
 	}
 	indexName, err := mgm.Coll(&shared.TxData{}).Indexes().CreateMany(ctx, txMdl)
 	if err != nil {
