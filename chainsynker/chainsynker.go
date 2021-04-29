@@ -22,6 +22,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 	"github.com/incognitochain/incognito-chain/transaction"
+	"github.com/incognitochain/incognito-chain/wire"
 	"github.com/kamva/mgm/v3"
 	"github.com/syndtr/goleveldb/leveldb"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,6 +30,7 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 var Localnode interface {
+	OnReceive(msgType int, f func(msg interface{}))
 	GetUserDatabase() *leveldb.DB
 	GetBlockchain() *blockchain.BlockChain
 	OnNewBlockFromParticularHeight(chainID int, blkHeight int64, isFinalized bool, f func(bc *blockchain.BlockChain, h common.Hash, height uint64))
@@ -525,38 +527,40 @@ func InitChainSynker(cfg shared.Config) {
 	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
-	go mempoolWatcher()
+	mempoolWatcher()
 	go tokenListWatcher()
 }
 func mempoolWatcher() {
-	interval := time.NewTicker(5 * time.Second)
-	rpcclient := devframework.NewRPCClient(fullnodeAddress)
-	for {
-		<-interval.C
-		mempoolTxs, err := rpcclient.API_GetRawMempool()
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		var pendingTxs []shared.CoinPendingData
-		for _, txHash := range mempoolTxs.TxHashes {
-			txDetail, err := shared.GetTxByHash(fullnodeAddress, txHash)
+	Localnode.OnReceive(devframework.MSG_TX, func(msg interface{}) {
+		msgData := msg.(*wire.MessageTx)
+		if msgData.Transaction.GetProof() != nil {
+			var sn []string
+			var pendingTxs []shared.CoinPendingData
+			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
+				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
+				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, msgData.Transaction.String()))
+			}
+			err := database.DBSavePendingTx(pendingTxs)
 			if err != nil {
 				log.Println(err)
-				continue
 			}
+		}
+	})
+	Localnode.OnReceive(devframework.MSG_TX_PRIVACYTOKEN, func(msg interface{}) {
+		msgData := msg.(*wire.MessageTxPrivacyToken)
+		if msgData.Transaction.GetProof() != nil {
 			var sn []string
-			for _, c := range txDetail.Result.ProofDetail.InputCoins {
-				sn = append(sn, c.CoinDetails.SerialNumber)
+			var pendingTxs []shared.CoinPendingData
+			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
+				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
+				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, msgData.Transaction.String()))
 			}
-			pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, txHash))
+			err := database.DBSavePendingTx(pendingTxs)
+			if err != nil {
+				log.Println(err)
+			}
 		}
-		err = database.DBSavePendingTx(pendingTxs)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-	}
+	})
 }
 func tokenListWatcher() {
 	interval := time.NewTicker(10 * time.Second)
