@@ -1,9 +1,0 @@
-{
-    "apiport":9001,
-	"fullnode":"http://1.2.3.4:9334",
-	"mode":"query",
-	"mongo":"mongodb://root:example@1.2.3.4:27017",
-	"mongodb":"",
-	"chainnetwork":"testnet2",
-	"highway":"1.2.3.4:9330"
-}

@@ -21,7 +21,9 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/transaction"
+	"github.com/incognitochain/incognito-chain/wire"
 	"github.com/kamva/mgm/v3"
 	"github.com/syndtr/goleveldb/leveldb"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,6 +31,7 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 var Localnode interface {
+	OnReceive(msgType int, f func(msg interface{}))
 	GetUserDatabase() *leveldb.DB
 	GetBlockchain() *blockchain.BlockChain
 	OnNewBlockFromParticularHeight(chainID int, blkHeight int64, isFinalized bool, f func(bc *blockchain.BlockChain, h common.Hash, height uint64))
@@ -444,14 +447,14 @@ var (
 	chainNetwork    string
 	highwayAddress  string
 	chainDataFolder string
-	fullnodeAddress string
+	// fullnodeAddress string
 )
 
 func InitChainSynker(cfg shared.Config) {
 	chainNetwork = cfg.ChainNetwork
 	highwayAddress = cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
-	fullnodeAddress = cfg.FullnodeAddress
+	// fullnodeAddress = cfg.FullnodeAddress
 
 	if shared.RESET_FLAG {
 		err := ResetMongoAndReSync()
@@ -472,7 +475,11 @@ func InitChainSynker(cfg shared.Config) {
 	if err != nil {
 		panic(err)
 	}
-	err = database.DBCreateKeyTxIndex()
+	err = database.DBCreateTxIndex()
+	if err != nil {
+		panic(err)
+	}
+	err = database.DBCreateTxPendingIndex()
 	if err != nil {
 		panic(err)
 	}
@@ -529,45 +536,136 @@ func InitChainSynker(cfg shared.Config) {
 	go tokenListWatcher()
 }
 func mempoolWatcher() {
-	interval := time.NewTicker(5 * time.Second)
-	rpcclient := devframework.NewRPCClient(fullnodeAddress)
+	Localnode.OnReceive(devframework.MSG_TX, func(msg interface{}) {
+		msgData := msg.(*wire.MessageTx)
+		if msgData.Transaction.GetProof() != nil {
+			var sn []string
+			var pendingTxs []shared.CoinPendingData
+			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
+				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
+				shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
+				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.String()))
+			}
+			err := database.DBSavePendingTx(pendingTxs)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	})
+	Localnode.OnReceive(devframework.MSG_TX_PRIVACYTOKEN, func(msg interface{}) {
+		msgData := msg.(*wire.MessageTxPrivacyToken)
+		if msgData.Transaction.GetProof() != nil {
+			var sn []string
+			var pendingTxs []shared.CoinPendingData
+			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
+				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
+				shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
+				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.String()))
+			}
+			err := database.DBSavePendingTx(pendingTxs)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	})
+	interval := time.NewTicker(10 * time.Second)
 	for {
 		<-interval.C
-		mempoolTxs, err := rpcclient.API_GetRawMempool()
+		txList, err := database.DBGetPendingTxs()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		var pendingTxs []shared.CoinPendingData
-		for _, txHash := range mempoolTxs.TxHashes {
-			txDetail, err := shared.GetTxByHash(fullnodeAddress, txHash)
+		txsToRemove := []string{}
+		for shardID, txHashes := range txList {
+			exist, err := database.DBCheckTxsExist(txHashes, shardID)
 			if err != nil {
 				log.Println(err)
 				continue
 			}
-			var sn []string
-			for _, c := range txDetail.Result.ProofDetail.InputCoins {
-				sn = append(sn, c.CoinDetails.SerialNumber)
+			for idx, v := range exist {
+				if v {
+					txsToRemove = append(txsToRemove, txHashes[idx])
+				}
 			}
-			pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, txHash))
 		}
-		err = database.DBSavePendingTx(pendingTxs)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+		database.DBDeletePendingTxs(txsToRemove)
 	}
 }
 func tokenListWatcher() {
 	interval := time.NewTicker(10 * time.Second)
-	rpcclient := devframework.NewRPCClient(fullnodeAddress)
 	for {
 		<-interval.C
-		tokenList, err := rpcclient.API_ListPrivacyCustomToken()
+
+		tokenStates := make(map[common.Hash]*statedb.TokenState)
+		for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
+			shardID := byte(i)
+			m := statedb.ListPrivacyToken(TransactionStateDB[shardID])
+			for newK, newV := range m {
+				if v, ok := tokenStates[newK]; !ok {
+					tokenStates[newK] = newV
+				} else {
+					if v.PropertyName() == "" && newV.PropertyName() != "" {
+						v.SetPropertyName(newV.PropertyName())
+					}
+					if v.PropertySymbol() == "" && newV.PropertySymbol() != "" {
+						v.SetPropertySymbol(newV.PropertySymbol())
+					}
+					v.AddTxs(newV.Txs())
+				}
+			}
+		}
+
+		tokenList := jsonresult.ListCustomToken{ListCustomToken: []jsonresult.CustomToken{}}
+		for _, tokenState := range tokenStates {
+			item := jsonresult.NewPrivacyToken(tokenState)
+			tokenList.ListCustomToken = append(tokenList.ListCustomToken, *item)
+		}
+
+		_, allBridgeTokens, err := Localnode.GetBlockchain().GetAllBridgeTokens()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
+
+		for _, bridgeToken := range allBridgeTokens {
+			if _, ok := tokenStates[*bridgeToken.TokenID]; ok {
+				continue
+			}
+			item := jsonresult.CustomToken{
+				ID:            bridgeToken.TokenID.String(),
+				IsPrivacy:     true,
+				IsBridgeToken: true,
+			}
+			if item.Name == "" {
+				for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
+					shardID := byte(i)
+					tokenState, has, err := statedb.GetPrivacyTokenState(TransactionStateDB[shardID], *bridgeToken.TokenID)
+					if err != nil {
+						log.Println(err)
+					}
+					if has {
+						item.Name = tokenState.PropertyName()
+						item.Symbol = tokenState.PropertySymbol()
+						break
+					}
+				}
+			}
+			tokenList.ListCustomToken = append(tokenList.ListCustomToken, item)
+		}
+
+		for index, _ := range tokenList.ListCustomToken {
+			tokenList.ListCustomToken[index].ListTxs = []string{}
+			tokenList.ListCustomToken[index].Image = common.Render([]byte(tokenList.ListCustomToken[index].ID))
+			for _, bridgeToken := range allBridgeTokens {
+				if tokenList.ListCustomToken[index].ID == bridgeToken.TokenID.String() {
+					tokenList.ListCustomToken[index].Amount = bridgeToken.Amount
+					tokenList.ListCustomToken[index].IsBridgeToken = true
+					break
+				}
+			}
+		}
+
 		var tokenInfoList []shared.TokenInfoData
 		for _, token := range tokenList.ListCustomToken {
 			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.Amount)
@@ -579,10 +677,6 @@ func tokenListWatcher() {
 			continue
 		}
 	}
-}
-
-func syncUnfinalizedShard() {
-
 }
 
 func ResetMongoAndReSync() error {

@@ -3,13 +3,13 @@ module github.com/incognitochain/coin-service
 go 1.13
 
 require (
-	github.com/0xkumi/incognito-dev-framework v0.0.0-20210421093401-c7a0bd1ed750
+	github.com/0xkumi/incognito-dev-framework v0.0.0-20210429044452-751b747ee4b2
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-playground/validator/v10 v10.5.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/incognitochain/incognito-chain v0.0.0-20210423081320-81fa80113782
+	github.com/incognitochain/incognito-chain v0.0.0-20210427090932-c4a733dd121b
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/kr/text v0.2.0 // indirect

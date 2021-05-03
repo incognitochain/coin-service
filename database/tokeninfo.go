@@ -12,21 +12,30 @@ import (
 
 func DBSaveTokenInfo(list []shared.TokenInfoData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&shared.TokenInfoData{}).Drop(ctx)
+	filter := bson.M{}
+	lengthTokens, err := mgm.Coll(&shared.TokenInfoData{}).CountDocuments(ctx, filter)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	if len(list) > 0 {
+	if lengthTokens != int64(len(list)) {
 		ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
-		docs := []interface{}{}
-		for _, token := range list {
-			docs = append(docs, token)
-		}
-		_, err = mgm.Coll(&shared.TokenInfoData{}).InsertMany(ctx, docs)
+		err = mgm.Coll(&shared.TokenInfoData{}).Drop(ctx)
 		if err != nil {
 			log.Println(err)
 			return err
+		}
+		if len(list) > 0 {
+			ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+			docs := []interface{}{}
+			for _, token := range list {
+				docs = append(docs, token)
+			}
+			_, err = mgm.Coll(&shared.TokenInfoData{}).InsertMany(ctx, docs)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 	}
 
