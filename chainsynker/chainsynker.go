@@ -21,6 +21,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/wire"
 	"github.com/kamva/mgm/v3"
@@ -446,14 +447,14 @@ var (
 	chainNetwork    string
 	highwayAddress  string
 	chainDataFolder string
-	fullnodeAddress string
+	// fullnodeAddress string
 )
 
 func InitChainSynker(cfg shared.Config) {
 	chainNetwork = cfg.ChainNetwork
 	highwayAddress = cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
-	fullnodeAddress = cfg.FullnodeAddress
+	// fullnodeAddress = cfg.FullnodeAddress
 
 	if shared.RESET_FLAG {
 		err := ResetMongoAndReSync()
@@ -593,14 +594,78 @@ func mempoolWatcher() {
 }
 func tokenListWatcher() {
 	interval := time.NewTicker(10 * time.Second)
-	rpcclient := devframework.NewRPCClient(fullnodeAddress)
 	for {
 		<-interval.C
-		tokenList, err := rpcclient.API_ListPrivacyCustomToken()
+
+		tokenStates := make(map[common.Hash]*statedb.TokenState)
+		for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
+			shardID := byte(i)
+			m := statedb.ListPrivacyToken(TransactionStateDB[shardID])
+			for newK, newV := range m {
+				if v, ok := tokenStates[newK]; !ok {
+					tokenStates[newK] = newV
+				} else {
+					if v.PropertyName() == "" && newV.PropertyName() != "" {
+						v.SetPropertyName(newV.PropertyName())
+					}
+					if v.PropertySymbol() == "" && newV.PropertySymbol() != "" {
+						v.SetPropertySymbol(newV.PropertySymbol())
+					}
+					v.AddTxs(newV.Txs())
+				}
+			}
+		}
+
+		tokenList := jsonresult.ListCustomToken{ListCustomToken: []jsonresult.CustomToken{}}
+		for _, tokenState := range tokenStates {
+			item := jsonresult.NewPrivacyToken(tokenState)
+			tokenList.ListCustomToken = append(tokenList.ListCustomToken, *item)
+		}
+
+		_, allBridgeTokens, err := Localnode.GetBlockchain().GetAllBridgeTokens()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
+
+		for _, bridgeToken := range allBridgeTokens {
+			if _, ok := tokenStates[*bridgeToken.TokenID]; ok {
+				continue
+			}
+			item := jsonresult.CustomToken{
+				ID:            bridgeToken.TokenID.String(),
+				IsPrivacy:     true,
+				IsBridgeToken: true,
+			}
+			if item.Name == "" {
+				for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
+					shardID := byte(i)
+					tokenState, has, err := statedb.GetPrivacyTokenState(TransactionStateDB[shardID], *bridgeToken.TokenID)
+					if err != nil {
+						log.Println(err)
+					}
+					if has {
+						item.Name = tokenState.PropertyName()
+						item.Symbol = tokenState.PropertySymbol()
+						break
+					}
+				}
+			}
+			tokenList.ListCustomToken = append(tokenList.ListCustomToken, item)
+		}
+
+		for index, _ := range tokenList.ListCustomToken {
+			tokenList.ListCustomToken[index].ListTxs = []string{}
+			tokenList.ListCustomToken[index].Image = common.Render([]byte(tokenList.ListCustomToken[index].ID))
+			for _, bridgeToken := range allBridgeTokens {
+				if tokenList.ListCustomToken[index].ID == bridgeToken.TokenID.String() {
+					tokenList.ListCustomToken[index].Amount = bridgeToken.Amount
+					tokenList.ListCustomToken[index].IsBridgeToken = true
+					break
+				}
+			}
+		}
+
 		var tokenInfoList []shared.TokenInfoData
 		for _, token := range tokenList.ListCustomToken {
 			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.Amount)
