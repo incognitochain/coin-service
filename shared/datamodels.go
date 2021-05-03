@@ -21,8 +21,6 @@ type CoinData struct {
 }
 
 type CoinDataV1 CoinData
-type CoinDataUnfinalized CoinData
-type CoinDataV1Unfinalized CoinData
 
 func NewCoinData(beaconHeight, idx uint64, coin []byte, tokenID, coinPubkey, OTASecret, txHash string, shardID, version int) *CoinData {
 	return &CoinData{
@@ -55,8 +53,6 @@ type KeyImageData struct {
 	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
 	ShardID          int    `json:"shardid" bson:"shardid"`
 }
-
-type KeyImageDataUnfinalized KeyImageData
 
 func NewKeyImageData(tokenID, txHash, keyimage string, beaconHeight uint64, shardID int) *KeyImageData {
 	return &KeyImageData{
@@ -121,12 +117,13 @@ func (model *KeyInfoData) Saving() error {
 type CoinPendingData struct {
 	mgm.DefaultModel `bson:",inline"`
 	SerialNumber     []string `json:"serialnum" bson:"serialnum"`
+	ShardID          int      `json:"shardid" bson:"shardid"`
 	TxHash           string   `json:"txhash" bson:"txhash"`
 }
 
-func NewCoinPendingData(SerialNumber []string, TxHash string) *CoinPendingData {
+func NewCoinPendingData(SerialNumber []string, shardID int, TxHash string) *CoinPendingData {
 	return &CoinPendingData{
-		SerialNumber: SerialNumber, TxHash: TxHash,
+		SerialNumber: SerialNumber, ShardID: shardID, TxHash: TxHash,
 	}
 }
 

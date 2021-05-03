@@ -474,7 +474,11 @@ func InitChainSynker(cfg shared.Config) {
 	if err != nil {
 		panic(err)
 	}
-	err = database.DBCreateKeyTxIndex()
+	err = database.DBCreateTxIndex()
+	if err != nil {
+		panic(err)
+	}
+	err = database.DBCreateTxPendingIndex()
 	if err != nil {
 		panic(err)
 	}
@@ -527,7 +531,7 @@ func InitChainSynker(cfg shared.Config) {
 	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
-	mempoolWatcher()
+	go mempoolWatcher()
 	go tokenListWatcher()
 }
 func mempoolWatcher() {
@@ -538,7 +542,8 @@ func mempoolWatcher() {
 			var pendingTxs []shared.CoinPendingData
 			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
 				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
-				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, msgData.Transaction.String()))
+				shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
+				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.String()))
 			}
 			err := database.DBSavePendingTx(pendingTxs)
 			if err != nil {
@@ -553,7 +558,8 @@ func mempoolWatcher() {
 			var pendingTxs []shared.CoinPendingData
 			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
 				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
-				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, msgData.Transaction.String()))
+				shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
+				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.String()))
 			}
 			err := database.DBSavePendingTx(pendingTxs)
 			if err != nil {
@@ -561,6 +567,29 @@ func mempoolWatcher() {
 			}
 		}
 	})
+	interval := time.NewTicker(10 * time.Second)
+	for {
+		<-interval.C
+		txList, err := database.DBGetPendingTxs()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		txsToRemove := []string{}
+		for shardID, txHashes := range txList {
+			exist, err := database.DBCheckTxsExist(txHashes, shardID)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			for idx, v := range exist {
+				if v {
+					txsToRemove = append(txsToRemove, txHashes[idx])
+				}
+			}
+		}
+		database.DBDeletePendingTxs(txsToRemove)
+	}
 }
 func tokenListWatcher() {
 	interval := time.NewTicker(10 * time.Second)
@@ -583,10 +612,6 @@ func tokenListWatcher() {
 			continue
 		}
 	}
-}
-
-func syncUnfinalizedShard() {
-
 }
 
 func ResetMongoAndReSync() error {
