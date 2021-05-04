@@ -34,7 +34,6 @@ func DBSaveSubmittedOTAKeys(keys []shared.SubmittedOTAKeyData) error {
 		docs := []interface{}{}
 		for _, key := range keys {
 			key.Creating()
-			key.Saving()
 			docs = append(docs, key)
 		}
 		_, err := mgm.Coll(&shared.SubmittedOTAKeyData{}).InsertMany(ctx, docs)

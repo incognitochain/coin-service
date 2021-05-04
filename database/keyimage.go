@@ -16,6 +16,7 @@ func DBSaveUsedKeyimage(list []shared.KeyImageData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, coin := range list {
+		coin.Creating()
 		docs = append(docs, coin)
 	}
 	_, err := mgm.Coll(&list[0]).InsertMany(ctx, docs)

@@ -29,6 +29,7 @@ func DBSaveTokenInfo(list []shared.TokenInfoData) error {
 			ctx, _ = context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 			docs := []interface{}{}
 			for _, token := range list {
+				token.Creating()
 				docs = append(docs, token)
 			}
 			_, err = mgm.Coll(&shared.TokenInfoData{}).InsertMany(ctx, docs)
