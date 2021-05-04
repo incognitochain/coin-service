@@ -127,6 +127,7 @@ func APIGetCoins(c *gin.Context) {
 				return
 			}
 			pubkey = base58.EncodeCheck(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+			wl.KeySet.PaymentAddress.Pk = wl.KeySet.ReadonlyKey.Pk
 			viewKeySet = &wl.KeySet
 		} else {
 			if paymentkey == "" {
@@ -148,7 +149,7 @@ func APIGetCoins(c *gin.Context) {
 		}
 		var wg sync.WaitGroup
 		collectCh := make(chan shared.OutCoinV1, shared.MAX_CONCURRENT_COIN_DECRYPT)
-		decryptCount := 0
+		// decryptCount := 0
 		for idx, cdata := range coinListV1 {
 			if cdata.CoinIndex > highestIdx {
 				highestIdx = cdata.CoinIndex
@@ -173,7 +174,7 @@ func APIGetCoins(c *gin.Context) {
 					collectCh <- cV1
 					wg.Done()
 				}(coinV1, cdata)
-				if decryptCount%shared.MAX_CONCURRENT_COIN_DECRYPT == 0 || idx+1 == len(coinListV1) {
+				if (idx+1)%shared.MAX_CONCURRENT_COIN_DECRYPT == 0 || idx+1 == len(coinListV1) {
 					wg.Wait()
 					close(collectCh)
 					for coin := range collectCh {
@@ -576,7 +577,7 @@ func APIGetTxsHistory(c *gin.Context) {
 	}
 	var wg sync.WaitGroup
 	collectCh := make(chan jsonresult.ReceivedTransactionV2, 200)
-	jsonCount := 0
+	// jsonCount := 0
 	for idx, txData := range txDataList {
 		wg.Add(1)
 		go func(txd shared.TxData) {
@@ -615,7 +616,7 @@ func APIGetTxsHistory(c *gin.Context) {
 			collectCh <- txReceive
 			wg.Done()
 		}(txData)
-		if jsonCount%200 == 0 || idx+1 == len(txDataList) {
+		if (idx+1)%200 == 0 || idx+1 == len(txDataList) {
 			wg.Wait()
 			close(collectCh)
 			for txjson := range collectCh {

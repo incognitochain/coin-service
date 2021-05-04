@@ -110,14 +110,14 @@ func InitOTAIndexingService() {
 				if cd, ok := otaCoinList[keyData.OTAKey]; ok {
 					sort.Slice(cd, func(i, j int) bool { return cd[i].CoinIndex < cd[j].CoinIndex })
 					for _, v := range cd {
-						if _, ok := keyData.KeyInfo.CoinIndex[v.TokenID]; !ok {
-							keyData.KeyInfo.CoinIndex[v.TokenID] = shared.CoinInfo{
+						if _, ok := keyData.KeyInfo.CoinIndex[v.RealTokenID]; !ok {
+							keyData.KeyInfo.CoinIndex[v.RealTokenID] = shared.CoinInfo{
 								Start: v.CoinIndex,
 								End:   v.CoinIndex,
 								Total: 1,
 							}
 						} else {
-							d := keyData.KeyInfo.CoinIndex[v.TokenID]
+							d := keyData.KeyInfo.CoinIndex[v.RealTokenID]
 							if d.Total == 0 {
 								d.Start = v.CoinIndex
 								d.End = v.CoinIndex
@@ -129,7 +129,7 @@ func InitOTAIndexingService() {
 								d.End = v.CoinIndex
 							}
 							d.Total += 1
-							keyData.KeyInfo.CoinIndex[v.TokenID] = d
+							keyData.KeyInfo.CoinIndex[v.RealTokenID] = d
 						}
 					}
 				}
