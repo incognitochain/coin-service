@@ -216,10 +216,10 @@ func APIGetKeyInfo(c *gin.Context) {
 		if wl.KeySet.OTAKey.GetPublicSpend() != nil {
 			pubkey = base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 		}
-		if wl.KeySet.ReadonlyKey.GetPublicSpend() != nil {
+		if wl.KeySet.ReadonlyKey.GetPublicSpend() != nil && pubkey == "" {
 			pubkey = base58.EncodeCheck(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
 		}
-		if wl.KeySet.PaymentAddress.GetPublicSpend() != nil {
+		if wl.KeySet.PaymentAddress.GetPublicSpend() != nil && pubkey == "" {
 			pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
 		}
 		if version == 1 {
