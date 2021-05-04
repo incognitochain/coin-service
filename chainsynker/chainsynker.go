@@ -674,6 +674,7 @@ func tokenListWatcher() {
 		var tokenInfoList []shared.TokenInfoData
 		for _, token := range tokenList.ListCustomToken {
 			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.Amount)
+			tokenInfo.Creating()
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
 		err = database.DBSaveTokenInfo(tokenInfoList)
