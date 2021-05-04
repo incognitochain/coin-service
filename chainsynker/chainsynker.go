@@ -596,11 +596,16 @@ func tokenListWatcher() {
 	interval := time.NewTicker(10 * time.Second)
 	for {
 		<-interval.C
+		shardStateDB := make(map[byte]*statedb.StateDB)
+		for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
+			shardID := byte(i)
+			shardStateDB[shardID] = TransactionStateDB[shardID].Copy()
+		}
 
 		tokenStates := make(map[common.Hash]*statedb.TokenState)
 		for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
 			shardID := byte(i)
-			m := statedb.ListPrivacyToken(TransactionStateDB[shardID])
+			m := statedb.ListPrivacyToken(shardStateDB[shardID])
 			for newK, newV := range m {
 				if v, ok := tokenStates[newK]; !ok {
 					tokenStates[newK] = newV
@@ -640,7 +645,7 @@ func tokenListWatcher() {
 			if item.Name == "" {
 				for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
 					shardID := byte(i)
-					tokenState, has, err := statedb.GetPrivacyTokenState(TransactionStateDB[shardID], *bridgeToken.TokenID)
+					tokenState, has, err := statedb.GetPrivacyTokenState(shardStateDB[shardID], *bridgeToken.TokenID)
 					if err != nil {
 						log.Println(err)
 					}
