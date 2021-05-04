@@ -33,6 +33,7 @@ func DBSaveCoins(list []shared.CoinData) error {
 	docs := []interface{}{}
 	docsV1 := []interface{}{}
 	for _, coin := range list {
+		coin.Creating()
 		if coin.CoinVersion == 2 {
 			docs = append(docs, coin)
 		} else {
@@ -63,6 +64,7 @@ func DBSavePendingTx(list []shared.CoinPendingData) error {
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
 		docs := []interface{}{}
 		for _, coin := range list {
+			coin.Creating()
 			docs = append(docs, coin)
 		}
 		_, err := mgm.Coll(&shared.CoinPendingData{}).InsertMany(ctx, docs)
