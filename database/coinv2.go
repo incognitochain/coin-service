@@ -126,6 +126,7 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToInsert)+10)*shared.DB_OPERATION_TIMEOUT)
 		docs := []interface{}{}
 		for _, key := range keysToInsert {
+			key.Creating()
 			docs = append(docs, key)
 		}
 		_, err = mgm.Coll(&shared.KeyInfoDataV2{}).InsertMany(ctx, docs)
@@ -136,6 +137,7 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 	if len(keysToUpdate) > 0 {
 		docs := []interface{}{}
 		for _, key := range keysToUpdate {
+			key.Saving()
 			update := bson.M{
 				"$set": key,
 			}

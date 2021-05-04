@@ -16,6 +16,7 @@ func DBSaveTXs(list []shared.TxData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
+		tx.Creating()
 		docs = append(docs, tx)
 	}
 	_, err := mgm.Coll(&shared.TxData{}).InsertMany(ctx, docs)
