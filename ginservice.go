@@ -59,6 +59,7 @@ func API_GetCoins(c *gin.Context) {
 	version, _ := strconv.Atoi(c.Query("version"))
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
+	paymentkey := c.Query("paymentkey")
 	viewkey := c.Query("viewkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
@@ -115,30 +116,39 @@ func API_GetCoins(c *gin.Context) {
 	}
 	if version == 1 {
 		var viewKeySet *incognitokey.KeySet
-		if viewkey == "" {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("viewkey cant be empty")))
-			return
+		if viewkey != "" {
+			wl, err := wallet.Base58CheckDeserialize(viewkey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			if wl.KeySet.ReadonlyKey.Rk == nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid viewkey")))
+				return
+			}
+			pubkey = hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+			wl.KeySet.PaymentAddress.Pk = wl.KeySet.ReadonlyKey.Pk
+			viewKeySet = &wl.KeySet
+		} else {
+			if paymentkey == "" {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("paymentkey cant be empty")))
+				return
+			}
+			wl, err := wallet.Base58CheckDeserialize(paymentkey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			pubkey = hex.EncodeToString(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
 		}
-		wl, err := wallet.Base58CheckDeserialize(viewkey)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		if wl.KeySet.ReadonlyKey.Rk == nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid viewkey")))
-			return
-		}
-		pubkey = base58.EncodeCheck(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
-		wl.KeySet.PaymentAddress.Pk = wl.KeySet.ReadonlyKey.Pk
-		viewKeySet = &wl.KeySet
-		coinListV1, err := DBGetCoinV1ByPubkey(tokenid, hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS()), int64(offset), int64(limit))
+
+		coinListV1, err := DBGetCoinV1ByPubkey(tokenid, pubkey, int64(offset), int64(limit))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
 		}
 		var wg sync.WaitGroup
 		collectCh := make(chan OutCoinV1, MAX_CONCURRENT_COIN_DECRYPT)
-		decryptCount := 0
 		for idx, cdata := range coinListV1 {
 			if cdata.CoinIndex > highestIdx {
 				highestIdx = cdata.CoinIndex
@@ -163,7 +173,7 @@ func API_GetCoins(c *gin.Context) {
 					collectCh <- cV1
 					wg.Done()
 				}(coinV1, cdata)
-				if decryptCount%MAX_CONCURRENT_COIN_DECRYPT == 0 || idx+1 == len(coinListV1) {
+				if (idx+1)%MAX_CONCURRENT_COIN_DECRYPT == 0 || idx+1 == len(coinListV1) {
 					wg.Wait()
 					close(collectCh)
 					for coin := range collectCh {
