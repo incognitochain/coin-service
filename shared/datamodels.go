@@ -116,14 +116,14 @@ func (model *KeyInfoData) Saving() error {
 
 type CoinPendingData struct {
 	mgm.DefaultModel `bson:",inline"`
-	SerialNumber     []string `json:"serialnum" bson:"serialnum"`
+	Keyimages        []string `json:"keyimage" bson:"keyimage"`
 	ShardID          int      `json:"shardid" bson:"shardid"`
 	TxHash           string   `json:"txhash" bson:"txhash"`
 }
 
-func NewCoinPendingData(SerialNumber []string, shardID int, TxHash string) *CoinPendingData {
+func NewCoinPendingData(keyimages []string, shardID int, TxHash string) *CoinPendingData {
 	return &CoinPendingData{
-		SerialNumber: SerialNumber, ShardID: shardID, TxHash: TxHash,
+		Keyimages: keyimages, ShardID: shardID, TxHash: TxHash,
 	}
 }
 
