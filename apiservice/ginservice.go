@@ -45,7 +45,6 @@ func StartGinService() {
 	r.POST("/checkkeyimages", APICheckKeyImages)
 	r.POST("/getrandomcommitments", APIGetRandomCommitments)
 	r.POST("/checktxs", APICheckTXs)
-
 	r.GET("/gettxshistory", APIGetTxsHistory)
 	// }
 
