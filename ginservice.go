@@ -211,7 +211,17 @@ func API_GetKeyInfo(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			pubkey := hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+			pubkey := ""
+			if wl.KeySet.OTAKey.GetPublicSpend() != nil {
+				pubkey = hex.EncodeToString(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+			}
+			if wl.KeySet.ReadonlyKey.GetPublicSpend() != nil && pubkey == "" {
+				pubkey = hex.EncodeToString(wl.KeySet.ReadonlyKey.GetPublicSpend().ToBytesS())
+			}
+			if wl.KeySet.PaymentAddress.GetPublicSpend() != nil && pubkey == "" {
+				pubkey = hex.EncodeToString(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
+			}
+
 			result, err := DBGetCoinV1PubkeyInfo(pubkey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
