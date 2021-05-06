@@ -7,10 +7,11 @@ const (
 )
 
 const (
-	txStatusSuccess = "success"
-	txStatusFailed  = "failed"
-	txStatusNew     = "new"
-	txStatusRetry   = "retry"
+	txStatusSuccess     = "success"
+	txStatusFailed      = "failed"
+	txStatusBroadcasted = "broadcast"
+	txStatusNew         = "new"
+	txStatusRetry       = "retrying"
 )
 
 const (

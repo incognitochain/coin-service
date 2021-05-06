@@ -73,13 +73,49 @@ func broadcastMode() {
 	ctx := context.Background()
 	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		log.Println(m.Data)
+		rawTxBytes, _, err := base58.Base58Check{}.Decode(string(m.Data))
+		if err != nil {
+			log.Println(err)
+			m.Ack()
+			return
+		}
+		// Unmarshal from json data to object tx
+		tx, err := transaction.NewTransactionFromJsonBytes(rawTxBytes)
+		if err != nil {
+			log.Println(err)
+			m.Ack()
+			return
+		}
 		errBrc := broadcastToFullNode(string(m.Data))
+		txStatus := txStatusBroadcasted
 		if errBrc != nil {
 			log.Println(errBrc)
+			// txStatus = txStatusRetry
+			txStatus = txStatusFailed
 			m.Nack()
 		} else {
 			m.Ack()
 		}
+		txdata := NewTxData(tx.Hash().String(), string(m.Data), txStatus, errBrc.Error())
+		err = saveTx(*txdata)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if txStatus == txStatusBroadcasted {
+			msg := &pubsub.Message{
+				Attributes: map[string]string{
+					"txhash": tx.Hash().String(),
+				},
+				Data: []byte(txStatus),
+			}
+			_, err = statusTopic.Publish(ctx, msg).Get(ctx)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+		}
+
 	})
 	if err != nil {
 		log.Println(err)
@@ -100,13 +136,26 @@ func statusMode() {
 	ctx := context.Background()
 	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		fmt.Println(m.Data)
-		errBrc := broadcastToFullNode(string(m.Data))
-		if errBrc != nil {
-			log.Println(errBrc)
-			m.Nack()
-		} else {
-			m.Ack()
+		if string(m.Data) == txStatusBroadcasted {
+			txhash := m.Attributes["txhash"]
+			inBlock, err := getTxStatusFullNode(txhash)
+			if err != nil {
+				log.Println(err)
+				time.Sleep(4 * time.Second)
+				m.Nack()
+			}
+			if inBlock {
+				err = updateTxStatus(txhash, txStatusSuccess, "")
+				if err != nil {
+					log.Println(err)
+					m.Nack()
+				}
+			} else {
+				time.Sleep(4 * time.Second)
+				m.Nack()
+			}
 		}
+		m.Ack()
 	})
 	if err != nil {
 		log.Println(err)
@@ -121,7 +170,7 @@ func statusMode() {
 			continue
 		}
 		log.Println(txList)
-		// notifyViaSlack()
+		// notifyViaSlack() or something
 	}
 }
 
@@ -131,6 +180,16 @@ func APIGetTxStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid txhash")))
 		return
 	}
+	txData, err := getTx(txhash)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: txData.Status,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func APIPushTx(c *gin.Context) {
@@ -161,15 +220,19 @@ func APIPushTx(c *gin.Context) {
 
 	ctx := context.Background()
 	msg := &pubsub.Message{
-		Attributes: make(map[string]string),
-		Data:       []byte(req.TxRaw),
+		Attributes: map[string]string{
+			"txhash": tx.Hash().String(),
+		},
+		Data: []byte(req.TxRaw),
 	}
-	msg.Attributes["txhash"] = tx.Hash().String()
-	if _, err := txTopic.Publish(ctx, msg).Get(ctx); err != nil {
+	msgID, err := txTopic.Publish(ctx, msg).Get(ctx)
+	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
+	log.Println("publish msgID:", msgID)
+
 	respond := APIRespond{
 		Result: "ok",
 		Error:  nil,
@@ -179,14 +242,23 @@ func APIPushTx(c *gin.Context) {
 
 func broadcastToFullNode(tx string) error {
 	rpc := devframework.NewRPCClient(FULLNODE)
-	if rpc == nil {
-		log.Fatalln("can't connect to fullnode")
-	}
 	_, err := rpc.API_SendRawTransaction(tx)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func getTxStatusFullNode(txhash string) (bool, error) {
+	rpc := devframework.NewRPCClient(FULLNODE)
+	result, err := rpc.API_GetTransactionHash(txhash)
+	if err != nil {
+		return false, err
+	}
+	if result.IsInBlock {
+		return true, nil
+	}
+	return false, nil
 }
 
 func buildGinErrorRespond(err error) *APIRespond {

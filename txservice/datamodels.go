@@ -7,11 +7,11 @@ type TxData struct {
 	Raw              string `json:"raw" bson:"raw"`
 	TxHash           string `json:"txhash" bson:"txhash"`
 	Status           string `json:"status" bson:"status"`
-	Error            string `json:"status" bson:"status"`
+	Error            string `json:"error" bson:"error"`
 }
 
-func NewTxData(txhash, raw, status string) *TxData {
-	return &TxData{TxHash: txhash, Raw: raw, Status: status}
+func NewTxData(txhash, raw, status, err string) *TxData {
+	return &TxData{TxHash: txhash, Raw: raw, Status: status, Error: err}
 }
 
 func (model *TxData) Creating() error {

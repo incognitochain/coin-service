@@ -35,6 +35,15 @@ func getAllFailedTx() ([]TxData, error) {
 	}
 	return result, nil
 }
+func getTx(txhash string) (*TxData, error) {
+	var result TxData
+	filter := bson.M{"txhash": bson.M{operator.Eq: txhash}}
+	err := mgm.Coll(&TxData{}).First(filter, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
 
 func saveTx(tx TxData) error {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
@@ -49,12 +58,12 @@ func saveTx(tx TxData) error {
 	return nil
 }
 
-func updateTxStatus(txhash, status string) error {
+func updateTxStatus(txhash, status, errData string) error {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	filter := bson.M{"txhash": bson.M{operator.Eq: txhash}}
 	var doc interface{}
 	update := bson.M{
-		"$set": bson.M{"status": status},
+		"$set": bson.M{"status": status, "error": errData},
 	}
 	doc = update
 	_, err := mgm.Coll(&TxData{}).UpdateOne(ctx, filter, doc)
