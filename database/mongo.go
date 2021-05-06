@@ -110,7 +110,7 @@ func DBGetPendingCoins() ([]string, error) {
 	}
 	var result []string
 	for _, v := range list {
-		result = append(result, v.SerialNumber...)
+		result = append(result, v.Keyimages...)
 	}
 	return result, nil
 }
