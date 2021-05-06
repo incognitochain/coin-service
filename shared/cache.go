@@ -29,8 +29,3 @@ func (cc *CoinCache) Update(coins []CoinData, PRVLastHeight, TokenLastHeight map
 func (cc *CoinCache) Read() ([]CoinData, map[int]uint64, map[int]uint64) {
 	return cc.Coins, cc.PRVLastHeight, cc.TokenLastHeight
 }
-
-// var LastTokenListCount int64
-// var TokenListLock sync.Mutex
-// var LastTokenIDHash []*common.Hash
-// var LastTokenIDstr []string
