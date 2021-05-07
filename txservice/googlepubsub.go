@@ -3,24 +3,24 @@ package main
 import (
 	"context"
 	"log"
-	"sync"
 
 	"cloud.google.com/go/pubsub"
+	"google.golang.org/api/option"
 )
 
 var (
 	psclient *pubsub.Client
 	// Messages received by this instance.
-	messagesMu sync.Mutex
-	messages   []string
+	// messagesMu sync.Mutex
+	// messages   []string
 )
 
-const maxMessages = 10
+// const maxMessages = 10
 
 func startPubsubClient() error {
 	ctx := context.Background()
 
-	client, err := pubsub.NewClient(ctx, GGC_PROJECT)
+	client, err := pubsub.NewClient(ctx, GGC_PROJECT, option.WithCredentialsFile(GGC_CRED))
 	if err != nil {
 		log.Fatal(err)
 	}

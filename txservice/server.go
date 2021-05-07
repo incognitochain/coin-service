@@ -61,15 +61,16 @@ func broadcastMode() {
 	if err != nil {
 		panic(err)
 	}
-	statusTopic, err = startPubsubTopic(TX_TOPIC + "_status")
+	statusTopic, err = startPubsubTopic(TXSTATUS_TOPIC)
 	if err != nil {
 		panic(err)
 	}
-	sub, err := psclient.CreateSubscription(context.Background(), "tx-broadcaster",
-		pubsub.SubscriptionConfig{Topic: txTopic})
-	if err != nil {
-		panic(err)
-	}
+	sub := psclient.Subscription(TX_SUBID)
+	// sub, err := psclient.CreateSubscription(context.Background(), TX_SUBID,
+	// 	pubsub.SubscriptionConfig{Topic: txTopic})
+	// if err != nil {
+	// 	panic(err)
+	// }
 	ctx := context.Background()
 	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		log.Println(m.Data)
@@ -124,15 +125,16 @@ func broadcastMode() {
 
 func statusMode() {
 	var err error
-	statusTopic, err = startPubsubTopic(TX_TOPIC + "_status")
+	statusTopic, err = startPubsubTopic(TXSTATUS_TOPIC)
 	if err != nil {
 		panic(err)
 	}
-	sub, err := psclient.CreateSubscription(context.Background(), "tx-status",
-		pubsub.SubscriptionConfig{Topic: statusTopic})
-	if err != nil {
-		panic(err)
-	}
+	sub := psclient.Subscription(TXSTATUS_SUBID)
+	// sub, err := psclient.CreateSubscription(context.Background(), TXSTATUS_SUBID,
+	// 	pubsub.SubscriptionConfig{Topic: statusTopic})
+	// if err != nil {
+	// 	panic(err)
+	// }
 	ctx := context.Background()
 	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		fmt.Println(m.Data)
