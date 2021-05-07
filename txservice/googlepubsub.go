@@ -20,7 +20,8 @@ var (
 func startPubsubClient() error {
 	ctx := context.Background()
 
-	client, err := pubsub.NewClient(ctx, GGC_PROJECT, option.WithCredentialsFile(GGC_CRED))
+	client, err := pubsub.NewClient(ctx, GGC_PROJECT, option.WithCredentialsFile(GGC_ACC))
+	// client, err := pubsub.NewClient(ctx, GGC_PROJECT)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,11 +37,11 @@ func startPubsubTopic(topicName string) (*pubsub.Topic, error) {
 	// Create the topic if it doesn't exist.
 	exists, err := topic.Exists(ctx)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	if !exists {
 		log.Printf("Topic %v doesn't exist - creating it", topicName)
-		_, err = psclient.CreateTopic(ctx, topicName)
+		topic, err = psclient.CreateTopic(ctx, topicName)
 		if err != nil {
 			log.Fatal(err)
 		}

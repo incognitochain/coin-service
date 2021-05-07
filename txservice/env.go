@@ -7,7 +7,7 @@ import (
 
 var (
 	GGC_PROJECT    = mustGetenv("GOOGLE_CLOUD_PROJECT")
-	GGC_CRED       = mustGetenv("GOOGLE_CLOUD_CRED")
+	GGC_ACC        = mustGetenv("GOOGLE_CLOUD_ACC")
 	TX_TOPIC       = mustGetenv("TX_TOPIC")
 	TXSTATUS_TOPIC = mustGetenv("TXSTATUS_TOPIC")
 	TX_SUBID       = mustGetenv("TX_SUBID")

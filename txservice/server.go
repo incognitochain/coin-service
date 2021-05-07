@@ -1,15 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	devframework "github.com/0xkumi/incognito-dev-framework"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/incognito-chain/common/base58"
@@ -40,16 +42,17 @@ func main() {
 }
 
 func pushMode() {
+	var err error
+	txTopic, err = startPubsubTopic(TX_TOPIC)
+	if err != nil {
+		panic(err)
+	}
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/gettxstatus", APIGetTxStatus)
 	r.POST("/pushtx", APIPushTx)
 
-	err := r.Run("0.0.0.0:" + PORT)
-	if err != nil {
-		panic(err)
-	}
-	txTopic, err = startPubsubTopic(TX_TOPIC)
+	err = r.Run("0.0.0.0:" + PORT)
 	if err != nil {
 		panic(err)
 	}
@@ -65,15 +68,17 @@ func broadcastMode() {
 	if err != nil {
 		panic(err)
 	}
-	sub := psclient.Subscription(TX_SUBID)
-	// sub, err := psclient.CreateSubscription(context.Background(), TX_SUBID,
-	// 	pubsub.SubscriptionConfig{Topic: txTopic})
-	// if err != nil {
-	// 	panic(err)
-	// }
+	// sub := psclient.Subscription(TX_SUBID)
+	var sub *pubsub.Subscription
+	sub, err = psclient.CreateSubscription(context.Background(), TX_SUBID,
+		pubsub.SubscriptionConfig{Topic: txTopic})
+	if err != nil {
+		sub = psclient.Subscription(TX_SUBID)
+	}
+	log.Println("sub.ID()", sub.ID())
 	ctx := context.Background()
 	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		log.Println(m.Data)
+		// log.Println(m.Data)
 		rawTxBytes, _, err := base58.Base58Check{}.Decode(string(m.Data))
 		if err != nil {
 			log.Println(err)
@@ -89,15 +94,18 @@ func broadcastMode() {
 		}
 		errBrc := broadcastToFullNode(string(m.Data))
 		txStatus := txStatusBroadcasted
-		if errBrc != nil {
-			log.Println(errBrc)
-			// txStatus = txStatusRetry
-			txStatus = txStatusFailed
-			m.Nack()
-		} else {
-			m.Ack()
-		}
-		txdata := NewTxData(tx.Hash().String(), string(m.Data), txStatus, errBrc.Error())
+		errBrcStr := ""
+		_ = errBrc
+		// if errBrc != nil {
+		// 	log.Println(errBrc)
+		// 	errBrcStr = errBrc.Error()
+		// 	// txStatus = txStatusRetry
+		// 	txStatus = txStatusFailed
+		// 	m.Nack()
+		// } else {
+		m.Ack()
+		// }
+		txdata := NewTxData(tx.Hash().String(), string(m.Data), txStatus, errBrcStr)
 		err = saveTx(*txdata)
 		if err != nil {
 			log.Println(err)
@@ -116,7 +124,7 @@ func broadcastMode() {
 				return
 			}
 		}
-
+		log.Println("Broadcast success")
 	})
 	if err != nil {
 		log.Println(err)
@@ -129,17 +137,19 @@ func statusMode() {
 	if err != nil {
 		panic(err)
 	}
-	sub := psclient.Subscription(TXSTATUS_SUBID)
-	// sub, err := psclient.CreateSubscription(context.Background(), TXSTATUS_SUBID,
-	// 	pubsub.SubscriptionConfig{Topic: statusTopic})
-	// if err != nil {
-	// 	panic(err)
-	// }
+	var sub *pubsub.Subscription
+	sub, err = psclient.CreateSubscription(context.Background(), TXSTATUS_SUBID,
+		pubsub.SubscriptionConfig{Topic: statusTopic})
+	if err != nil {
+		log.Println(err)
+		sub = psclient.Subscription(TXSTATUS_SUBID)
+	}
 	ctx := context.Background()
 	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		fmt.Println(m.Data)
 		if string(m.Data) == txStatusBroadcasted {
 			txhash := m.Attributes["txhash"]
+			log.Println(txhash, m.Attributes)
 			inBlock, err := getTxStatusFullNode(txhash)
 			if err != nil {
 				log.Println(err)
@@ -213,7 +223,7 @@ func APIPushTx(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid txhash")))
 		return
 	}
-	// Unmarshal from json data to object tx
+	// Unmarshal from json data to object tx))
 	tx, err := transaction.NewTransactionFromJsonBytes(rawTxBytes)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -243,8 +253,35 @@ func APIPushTx(c *gin.Context) {
 }
 
 func broadcastToFullNode(tx string) error {
-	rpc := devframework.NewRPCClient(FULLNODE)
-	_, err := rpc.API_SendRawTransaction(tx)
+	requestBody, err := json.Marshal(map[string]interface{}{
+		"jsonrpc": "1.0",
+		"method":  "sendtransaction",
+		"params":  []interface{}{tx},
+		"id":      1,
+	})
+	if err != nil {
+		return err
+	}
+	body, err := sendRequest(requestBody)
+	if err != nil {
+		return err
+	}
+	type ErrMsg struct {
+		Code       int
+		Message    string
+		StackTrace string
+	}
+
+	resp := struct {
+		Result map[string]interface{}
+		Error  *ErrMsg
+	}{}
+	err = json.Unmarshal(body, &resp)
+
+	if resp.Error != nil && resp.Error.StackTrace != "" {
+		return errors.New(resp.Error.StackTrace)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -252,15 +289,54 @@ func broadcastToFullNode(tx string) error {
 }
 
 func getTxStatusFullNode(txhash string) (bool, error) {
-	rpc := devframework.NewRPCClient(FULLNODE)
-	result, err := rpc.API_GetTransactionHash(txhash)
+	requestBody, err := json.Marshal(map[string]interface{}{
+		"jsonrpc": "1.0",
+		"method":  "gettransactionbyhash",
+		"params":  []interface{}{txhash},
+		"id":      1,
+	})
 	if err != nil {
 		return false, err
 	}
-	if result.IsInBlock {
-		return true, nil
+	body, err := sendRequest(requestBody)
+	if err != nil {
+		return false, err
 	}
-	return false, nil
+	type ErrMsg struct {
+		Code       int
+		Message    string
+		StackTrace string
+	}
+
+	resp := struct {
+		Result map[string]interface{}
+		Error  *ErrMsg
+	}{}
+	err = json.Unmarshal(body, &resp)
+
+	if resp.Error != nil && resp.Error.StackTrace != "" {
+		return false, errors.New(resp.Error.StackTrace)
+	}
+
+	if err != nil {
+		return false, err
+	}
+	isInBlock := resp.Result["IsInBlock"].(bool)
+	return isInBlock, nil
+
+}
+func sendRequest(requestBody []byte) ([]byte, error) {
+	resp, err := http.Post(FULLNODE, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
 }
 
 func buildGinErrorRespond(err error) *APIRespond {
