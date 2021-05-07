@@ -86,12 +86,15 @@ func broadcastMode() {
 			return
 		}
 		// Unmarshal from json data to object tx
-		tx, err := transaction.NewTransactionFromJsonBytes(rawTxBytes)
-		if err != nil {
-			log.Println(err)
-			m.Ack()
-			return
-		}
+		var tx transaction.Tx
+		err = json.Unmarshal(rawTxBytes, &tx)
+		// tx, err := transaction.NewTransactionFromJsonBytes(rawTxBytes)
+		// if err != nil {
+		// 	log.Println(err)
+		// 	m.Ack()
+		// 	return
+		// }
+
 		errBrc := broadcastToFullNode(string(m.Data))
 		txStatus := txStatusBroadcasted
 		errBrcStr := ""
@@ -224,7 +227,9 @@ func APIPushTx(c *gin.Context) {
 		return
 	}
 	// Unmarshal from json data to object tx))
-	tx, err := transaction.NewTransactionFromJsonBytes(rawTxBytes)
+	// tx, err := transaction.NewTransactionFromJsonBytes(rawTxBytes)
+	var tx transaction.Tx
+	err = json.Unmarshal(rawTxBytes, &tx)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
