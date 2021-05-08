@@ -89,25 +89,25 @@ func broadcastMode() {
 		var tx transaction.Tx
 		err = json.Unmarshal(rawTxBytes, &tx)
 		// tx, err := transaction.NewTransactionFromJsonBytes(rawTxBytes)
-		// if err != nil {
-		// 	log.Println(err)
-		// 	m.Ack()
-		// 	return
-		// }
+		if err != nil {
+			log.Println(err)
+			m.Ack()
+			return
+		}
 
 		errBrc := broadcastToFullNode(string(m.Data))
 		txStatus := txStatusBroadcasted
 		errBrcStr := ""
-		_ = errBrc
-		// if errBrc != nil {
-		// 	log.Println(errBrc)
-		// 	errBrcStr = errBrc.Error()
-		// 	// txStatus = txStatusRetry
-		// 	txStatus = txStatusFailed
-		// 	m.Nack()
-		// } else {
-		m.Ack()
-		// }
+		// _ = errBrc
+		if errBrc != nil {
+			// log.Println(errBrc)
+			errBrcStr = errBrc.Error()
+			// txStatus = txStatusRetry
+			txStatus = txStatusFailed
+			m.Nack()
+		} else {
+			m.Ack()
+		}
 		txdata := NewTxData(tx.Hash().String(), string(m.Data), txStatus, errBrcStr)
 		err = saveTx(*txdata)
 		if err != nil {
@@ -130,7 +130,7 @@ func broadcastMode() {
 		log.Println("Broadcast success")
 	})
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 }
 
@@ -158,22 +158,33 @@ func statusMode() {
 				log.Println(err)
 				time.Sleep(4 * time.Second)
 				m.Nack()
+				return
 			}
 			if inBlock {
 				err = updateTxStatus(txhash, txStatusSuccess, "")
 				if err != nil {
 					log.Println(err)
 					m.Nack()
+					return
 				}
 			} else {
+				if time.Since(m.PublishTime) > 30*time.Minute {
+					err = updateTxStatus(txhash, txStatusFailed, "")
+					if err != nil {
+						log.Println(err)
+					}
+					m.Nack()
+					return
+				}
 				time.Sleep(4 * time.Second)
 				m.Nack()
+				return
 			}
 		}
 		m.Ack()
 	})
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 
 	interval := time.NewTicker(40 * time.Second)
