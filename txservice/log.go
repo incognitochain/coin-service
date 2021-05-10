@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/jrick/logrotate/rotator"
 )
@@ -39,8 +40,8 @@ func (logWriter) Write(p []byte) (n int, err error) {
 
 func init() {
 	transaction.Logger.Init(transactionLogger)
-	// privacy.LoggerV1.Init(privacyV1Logger)
-	// privacy.LoggerV2.Init(privacyV2Logger)
+	privacy.LoggerV1.Init(privacyV1Logger)
+	privacy.LoggerV2.Init(privacyV2Logger)
 }
 
 // subsystemLoggers maps each subsystem identifier to its associated logger.
