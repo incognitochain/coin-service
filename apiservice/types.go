@@ -30,6 +30,7 @@ type APIGetRandomCommitmentRequest struct {
 	Limit int
 	//coinV1 only
 	Indexes []uint64
+	Base58  bool
 }
 
 type APIRespond struct {

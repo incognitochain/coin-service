@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
@@ -137,4 +138,27 @@ func DBCheckTxsExist(txList []string, shardID int) ([]bool, error) {
 	}
 	log.Printf("checked %v keyimages in %v", len(txList), time.Since(startTime))
 	return result, nil
+}
+
+func DBGetCoinInfo() (int64, int64, int64, int64, error) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
+	prvFilter := bson.M{"tokenid": bson.M{operator.Eq: common.PRVCoinID.String()}}
+	prvV2, err := mgm.Coll(&shared.CoinData{}).CountDocuments(ctx, prvFilter)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	prvV1, err := mgm.Coll(&shared.CoinDataV1{}).CountDocuments(ctx, prvFilter)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	tokenFilter := bson.M{"tokenid": bson.M{operator.Ne: common.PRVCoinID.String()}}
+	tokenV2, err := mgm.Coll(&shared.CoinData{}).CountDocuments(ctx, tokenFilter)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	tokenV1, err := mgm.Coll(&shared.CoinDataV1{}).CountDocuments(ctx, tokenFilter)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	return prvV1, prvV2, tokenV1, tokenV2, nil
 }
