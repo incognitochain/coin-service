@@ -17,6 +17,7 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -543,11 +544,13 @@ func APISubmitOTA(c *gin.Context) {
 	}
 	err = <-resp
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+		if !mongo.IsDuplicateKeyError(err) {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
 	respond := APIRespond{
-		Result: "ok",
+		Result: "true",
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
