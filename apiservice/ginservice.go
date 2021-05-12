@@ -622,6 +622,10 @@ func APIGetTxsHistory(c *gin.Context) {
 	paymentkey := c.Query("paymentkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
+	isBase58 := false
+	if c.Query("base58") == "true" {
+		isBase58 = true
+	}
 
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
@@ -681,7 +685,7 @@ func APIGetTxsHistory(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			txDetail, err := jsonresult.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txd.ShardID))
+			txDetail, err := shared.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txd.ShardID), isBase58)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return

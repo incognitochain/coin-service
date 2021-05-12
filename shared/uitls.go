@@ -1,14 +1,19 @@
 package shared
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/common/base58"
+	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/privacy/operation"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/transaction/utils"
 	"github.com/incognitochain/incognito-chain/wallet"
@@ -141,4 +146,129 @@ func DeserializeTransactionJSON(data []byte) (*transaction.TxChoice, error) {
 		}
 	}
 
+}
+
+func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, blockHeight uint64, index int, shardID byte, base58Fmt bool) (*jsonresult.TransactionDetail, error) {
+	var result *jsonresult.TransactionDetail
+	blockHashStr := ""
+	if blockHash != nil {
+		blockHashStr = blockHash.String()
+	}
+	switch tx.GetType() {
+	case common.TxNormalType, common.TxRewardType, common.TxReturnStakingType, common.TxConversionType:
+		{
+			var sigPubKeyStr string
+			txVersion := tx.GetVersion()
+			if txVersion == 1 {
+				sigPubKeyStr = base58.Base58Check{}.Encode(tx.GetSigPubKey(), 0x0)
+			} else {
+				sigPubKey := new(transaction.TxSigPubKeyVer2)
+				if err := sigPubKey.SetBytes(tx.GetSigPubKey()); err != nil {
+					sigPubKeyStr = "[]"
+				} else {
+					if temp, err := json.Marshal(sigPubKey); err != nil {
+						sigPubKeyStr = "[]"
+					} else {
+						sigPubKeyStr = string(temp)
+					}
+				}
+			}
+
+			result = &jsonresult.TransactionDetail{
+				BlockHash:   blockHashStr,
+				BlockHeight: blockHeight,
+				Index:       uint64(index),
+				TxSize:      tx.GetTxActualSize(),
+				ShardID:     shardID,
+				Hash:        tx.Hash().String(),
+				Version:     tx.GetVersion(),
+				Type:        tx.GetType(),
+				LockTime:    time.Unix(tx.GetLockTime(), 0).Format(common.DateOutputFormat),
+				Fee:         tx.GetTxFee(),
+				IsPrivacy:   tx.IsPrivacy(),
+				Proof:       tx.GetProof(),
+				SigPubKey:   sigPubKeyStr,
+				Sig:         base58.Base58Check{}.Encode(tx.GetSig(), 0x0),
+				Info:        string(tx.GetInfo()),
+			}
+			if result.Proof != nil {
+				inputCoins := result.Proof.GetInputCoins()
+				if len(inputCoins) > 0 && inputCoins[0].GetPublicKey() != nil {
+					if base58Fmt {
+						result.InputCoinPubKey = base58.Base58Check{}.Encode(inputCoins[0].GetPublicKey().ToBytesS(), common.ZeroByte)
+					} else {
+						result.InputCoinPubKey = base64.StdEncoding.EncodeToString(inputCoins[0].GetPublicKey().ToBytesS())
+					}
+
+				}
+			}
+			meta := tx.GetMetadata()
+			if meta != nil {
+				metaData, _ := json.MarshalIndent(meta, "", "\t")
+				result.Metadata = string(metaData)
+			}
+			if result.Proof != nil {
+				result.ProofDetail.ConvertFromProof(result.Proof)
+			}
+		}
+	case common.TxCustomTokenPrivacyType, common.TxTokenConversionType:
+		{
+			txToken, ok := tx.(transaction.TransactionToken)
+			if !ok {
+				return nil, errors.New("cannot detect transaction type")
+			}
+			txTokenData := transaction.GetTxTokenDataFromTransaction(tx)
+			result = &jsonresult.TransactionDetail{
+				BlockHash:                blockHashStr,
+				BlockHeight:              blockHeight,
+				Index:                    uint64(index),
+				TxSize:                   tx.GetTxActualSize(),
+				ShardID:                  shardID,
+				Hash:                     tx.Hash().String(),
+				Version:                  tx.GetVersion(),
+				Type:                     tx.GetType(),
+				LockTime:                 time.Unix(tx.GetLockTime(), 0).Format(common.DateOutputFormat),
+				Fee:                      tx.GetTxFee(),
+				Proof:                    txToken.GetTxBase().GetProof(),
+				SigPubKey:                base58.Base58Check{}.Encode(tx.GetSigPubKey(), 0x0),
+				Sig:                      base58.Base58Check{}.Encode(tx.GetSig(), 0x0),
+				Info:                     string(tx.GetInfo()),
+				IsPrivacy:                tx.IsPrivacy(),
+				PrivacyCustomTokenSymbol: txTokenData.PropertySymbol,
+				PrivacyCustomTokenName:   txTokenData.PropertyName,
+				PrivacyCustomTokenID:     txTokenData.PropertyID.String(),
+				PrivacyCustomTokenFee:    txTokenData.TxNormal.GetTxFee(),
+			}
+
+			if result.Proof != nil {
+				inputCoins := result.Proof.GetInputCoins()
+				if len(inputCoins) > 0 && inputCoins[0].GetPublicKey() != nil {
+					if base58Fmt {
+						result.InputCoinPubKey = base58.Base58Check{}.Encode(inputCoins[0].GetPublicKey().ToBytesS(), common.ZeroByte)
+					} else {
+						result.InputCoinPubKey = base64.StdEncoding.EncodeToString(inputCoins[0].GetPublicKey().ToBytesS())
+					}
+				}
+			}
+
+			tokenData, _ := json.MarshalIndent(txTokenData, "", "\t")
+			result.PrivacyCustomTokenData = string(tokenData)
+			if tx.GetMetadata() != nil {
+				metaData, _ := json.MarshalIndent(tx.GetMetadata(), "", "\t")
+				result.Metadata = string(metaData)
+			}
+			if result.Proof != nil {
+				result.ProofDetail.ConvertFromProof(result.Proof)
+			}
+			result.PrivacyCustomTokenIsPrivacy = txTokenData.TxNormal.IsPrivacy()
+			if txTokenData.TxNormal.GetProof() != nil {
+				result.PrivacyCustomTokenProofDetail.ConvertFromProof(txTokenData.TxNormal.GetProof())
+			}
+		}
+	default:
+		{
+			return nil, errors.New("Tx type is invalid")
+		}
+	}
+	return result, nil
 }
