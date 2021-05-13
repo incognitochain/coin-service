@@ -29,7 +29,7 @@ func main() {
 	}
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
 		if shared.ServiceCfg.IndexerBucketID == 0 {
-			go otaindexer.StartBucketAssigner(uint64(shared.ServiceCfg.MaxBucketSize))
+			go otaindexer.StartBucketAssigner(uint64(shared.ServiceCfg.MaxBucketSize), shared.ServiceCfg.MaxBucketNum)
 		}
 		go otaindexer.InitOTAIndexingService()
 	}
