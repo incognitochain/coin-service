@@ -441,10 +441,10 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 var OTAAssignChn chan OTAAssignRequest
 var maxBucketSize uint64
 
-func StartBucketAssigner(maxSize uint64) {
+func StartBucketAssigner(maxSize uint64, maxBucketNum int) {
 	maxBucketSize = maxSize
 	OTAAssignChn = make(chan OTAAssignRequest)
-	bucketInfo, err := database.DBGetBucketStats(5)
+	bucketInfo, err := database.DBGetBucketStats(maxBucketNum)
 	if err != nil {
 		panic(err)
 	}

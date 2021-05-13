@@ -11,9 +11,8 @@ var RESET_FLAG bool
 var ServiceCfg Config
 
 type Config struct {
-	APIPort         int    `json:"apiport"`
-	ChainDataFolder string `json:"chaindata"`
-	// FullnodeAddress       string `json:"fullnode"`
+	APIPort               int    `json:"apiport"`
+	ChainDataFolder       string `json:"chaindata"`
 	MaxConcurrentOTACheck int    `json:"concurrentotacheck"`
 	Mode                  string `json:"mode"`
 	MongoAddress          string `json:"mongo"`
@@ -23,6 +22,7 @@ type Config struct {
 	NumOfShard            int    `json:"numberofshard"`
 	IndexerBucketID       int    `json:"bucketid"`
 	MaxBucketSize         int    `json:"maxbucketsize"`
+	MaxBucketNum          int    `json:"maxbucketnum"`
 }
 
 func ReadConfigAndArg() {
@@ -47,9 +47,9 @@ func ReadConfigAndArg() {
 	if tempCfg.ChainDataFolder == "" {
 		tempCfg.ChainDataFolder = DefaultChainFolder
 	}
-	// if tempCfg.FullnodeAddress == "" {
-	// 	tempCfg.FullnodeAddress = DefaultFullnode
-	// }
+	if tempCfg.MaxBucketNum == 0 {
+		tempCfg.MaxBucketNum = DefaultMaxBucketNum
+	}
 	if tempCfg.MaxConcurrentOTACheck == 0 {
 		tempCfg.MaxConcurrentOTACheck = DefaultMaxConcurrentOTACheck
 	}
