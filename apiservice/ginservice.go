@@ -424,8 +424,8 @@ func APIGetRandomCommitments(c *gin.Context) {
 			log.Println("getRandomCommitmentsHandler", lenOTA, idx.Int64())
 			coinData, err := database.DBGetCoinsByIndex(int(idx.Int64()), req.ShardID, req.TokenID)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
+				i--
+				continue
 			}
 			coinV2 := new(coin.CoinV2)
 			err = coinV2.SetBytes(coinData.Coin)
@@ -461,12 +461,19 @@ func APIGetRandomCommitments(c *gin.Context) {
 
 	}
 
-	rs := make(map[string]interface{})
-	rs["CommitmentIndices"] = commitmentIndices
-	rs["MyIndices"] = myIndices
-	rs["PublicKeys"] = publicKeys
-	rs["Commitments"] = commitments
-	rs["AssetTags"] = assetTags
+	rs := struct {
+		CommitmentIndices []uint64
+		MyIndices         []uint64
+		PublicKeys        []string
+		Commitments       []string
+		AssetTags         []string
+	}{
+		CommitmentIndices: commitmentIndices,
+		MyIndices:         myIndices,
+		PublicKeys:        publicKeys,
+		Commitments:       commitments,
+		AssetTags:         assetTags,
+	}
 	respond := APIRespond{
 		Result: rs,
 		Error:  nil,
