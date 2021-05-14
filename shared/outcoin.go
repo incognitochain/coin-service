@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"encoding/base64"
 	"errors"
 	"log"
 	"math/big"
@@ -82,98 +83,167 @@ func NewOutcoinV1FromInterface(data interface{}) (*OutCoinV1, error) {
 	return &outcoin, nil
 }
 
-func NewOutCoinV2(outCoin ICoinInfo) OutCoinV2 {
+func NewOutCoinV2(outCoin ICoinInfo, base58Fmt bool) OutCoinV2 {
 	keyImage := ""
 	if outCoin.GetKeyImage() != nil && !outCoin.GetKeyImage().IsIdentity() {
-		keyImage = base58.Base58Check{}.Encode(outCoin.GetKeyImage().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			keyImage = base58.Base58Check{}.Encode(outCoin.GetKeyImage().ToBytesS(), common.ZeroByte)
+		} else {
+			keyImage = base64.StdEncoding.EncodeToString(outCoin.GetKeyImage().ToBytesS())
+		}
 	}
 
 	publicKey := ""
 	if outCoin.GetPublicKey() != nil {
-		publicKey = base58.Base58Check{}.Encode(outCoin.GetPublicKey().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			publicKey = base58.Base58Check{}.Encode(outCoin.GetPublicKey().ToBytesS(), common.ZeroByte)
+		} else {
+			publicKey = base64.StdEncoding.EncodeToString(outCoin.GetPublicKey().ToBytesS())
+		}
 	}
 
 	commitment := ""
 	if outCoin.GetCommitment() != nil {
-		commitment = base58.Base58Check{}.Encode(outCoin.GetCommitment().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			commitment = base58.Base58Check{}.Encode(outCoin.GetCommitment().ToBytesS(), common.ZeroByte)
+		} else {
+			commitment = base64.StdEncoding.EncodeToString(outCoin.GetCommitment().ToBytesS())
+		}
 	}
 
 	snd := ""
 	if outCoin.GetSNDerivator() != nil {
-		snd = base58.Base58Check{}.Encode(outCoin.GetSNDerivator().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			snd = base58.Base58Check{}.Encode(outCoin.GetSNDerivator().ToBytesS(), common.ZeroByte)
+		} else {
+			snd = base64.StdEncoding.EncodeToString(outCoin.GetSNDerivator().ToBytesS())
+		}
 	}
 
 	randomness := ""
 	if outCoin.GetRandomness() != nil {
-		randomness = base58.Base58Check{}.Encode(outCoin.GetRandomness().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			randomness = base58.Base58Check{}.Encode(outCoin.GetRandomness().ToBytesS(), common.ZeroByte)
+		} else {
+			randomness = base64.StdEncoding.EncodeToString(outCoin.GetRandomness().ToBytesS())
+		}
 	}
 
 	result := OutCoinV2{
 		Version:     strconv.FormatUint(uint64(outCoin.GetVersion()), 10),
 		PublicKey:   publicKey,
 		Value:       strconv.FormatUint(outCoin.GetValue(), 10),
-		Info:        base58.Base58Check{}.Encode(outCoin.GetInfo(), 0x0),
 		Commitment:  commitment,
 		SNDerivator: snd,
 		KeyImage:    keyImage,
 		Randomness:  randomness,
 	}
 
+	if base58Fmt {
+		result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
+	} else {
+		result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+	}
+
 	if outCoin.GetCoinDetailEncrypted() != nil {
-		result.CoinDetailsEncrypted = base58.Base58Check{}.Encode(outCoin.GetCoinDetailEncrypted(), common.ZeroByte)
+		if base58Fmt {
+			result.CoinDetailsEncrypted = base58.Base58Check{}.Encode(outCoin.GetCoinDetailEncrypted(), common.ZeroByte)
+		} else {
+			result.CoinDetailsEncrypted = base64.StdEncoding.EncodeToString(outCoin.GetCoinDetailEncrypted())
+		}
 	}
 
 	if outCoin.GetSharedRandom() != nil {
-		result.SharedRandom = base58.Base58Check{}.Encode(outCoin.GetSharedRandom().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			result.SharedRandom = base58.Base58Check{}.Encode(outCoin.GetSharedRandom().ToBytesS(), common.ZeroByte)
+		} else {
+			result.SharedRandom = base64.StdEncoding.EncodeToString(outCoin.GetSharedRandom().ToBytesS())
+		}
 	}
 	if outCoin.GetSharedConcealRandom() != nil {
-		result.SharedRandom = base58.Base58Check{}.Encode(outCoin.GetSharedConcealRandom().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			result.SharedRandom = base58.Base58Check{}.Encode(outCoin.GetSharedConcealRandom().ToBytesS(), common.ZeroByte)
+		} else {
+			result.SharedRandom = base64.StdEncoding.EncodeToString(outCoin.GetSharedConcealRandom().ToBytesS())
+		}
 	}
 	if outCoin.GetTxRandom() != nil {
-		result.TxRandom = base58.Base58Check{}.Encode(outCoin.GetTxRandom().Bytes(), common.ZeroByte)
+		if base58Fmt {
+			result.TxRandom = base58.Base58Check{}.Encode(outCoin.GetTxRandom().Bytes(), common.ZeroByte)
+		} else {
+			result.TxRandom = base64.StdEncoding.EncodeToString(outCoin.GetTxRandom().Bytes())
+		}
 	}
 	if outCoin.GetAssetTag() != nil {
-		result.AssetTag = base58.Base58Check{}.Encode(outCoin.GetAssetTag().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			result.AssetTag = base58.Base58Check{}.Encode(outCoin.GetAssetTag().ToBytesS(), common.ZeroByte)
+		} else {
+			result.TxRandom = base64.StdEncoding.EncodeToString(outCoin.GetTxRandom().Bytes())
+		}
 	}
 
 	return result
 }
 
-func NewOutCoinV1(outCoin ICoinInfo) OutCoinV1 {
+func NewOutCoinV1(outCoin ICoinInfo, base58Fmt bool) OutCoinV1 {
 	keyImage := ""
 	if outCoin.GetKeyImage() != nil && !outCoin.GetKeyImage().IsIdentity() {
-		keyImage = base58.Base58Check{}.Encode(outCoin.GetKeyImage().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			keyImage = base58.Base58Check{}.Encode(outCoin.GetKeyImage().ToBytesS(), common.ZeroByte)
+		} else {
+			keyImage = base64.StdEncoding.EncodeToString(outCoin.GetKeyImage().ToBytesS())
+		}
 	}
 
 	publicKey := ""
 	if outCoin.GetPublicKey() != nil {
-		publicKey = base58.Base58Check{}.Encode(outCoin.GetPublicKey().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			publicKey = base58.Base58Check{}.Encode(outCoin.GetPublicKey().ToBytesS(), common.ZeroByte)
+		} else {
+			publicKey = base64.StdEncoding.EncodeToString(outCoin.GetPublicKey().ToBytesS())
+		}
 	}
 
 	commitment := ""
 	if outCoin.GetCommitment() != nil {
-		commitment = base58.Base58Check{}.Encode(outCoin.GetCommitment().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			commitment = base58.Base58Check{}.Encode(outCoin.GetCommitment().ToBytesS(), common.ZeroByte)
+		} else {
+			commitment = base64.StdEncoding.EncodeToString(outCoin.GetCommitment().ToBytesS())
+		}
 	}
 
 	snd := ""
 	if outCoin.GetSNDerivator() != nil {
-		snd = base58.Base58Check{}.Encode(outCoin.GetSNDerivator().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			snd = base58.Base58Check{}.Encode(outCoin.GetSNDerivator().ToBytesS(), common.ZeroByte)
+		} else {
+			snd = base64.StdEncoding.EncodeToString(outCoin.GetSNDerivator().ToBytesS())
+		}
 	}
 
 	randomness := ""
 	if outCoin.GetRandomness() != nil {
-		randomness = base58.Base58Check{}.Encode(outCoin.GetRandomness().ToBytesS(), common.ZeroByte)
+		if base58Fmt {
+			randomness = base58.Base58Check{}.Encode(outCoin.GetRandomness().ToBytesS(), common.ZeroByte)
+		} else {
+			randomness = base64.StdEncoding.EncodeToString(outCoin.GetRandomness().ToBytesS())
+		}
 	}
 
 	result := OutCoinV1{
 		Version:     strconv.FormatUint(uint64(outCoin.GetVersion()), 10),
 		PublicKey:   publicKey,
 		Value:       strconv.FormatUint(outCoin.GetValue(), 10),
-		Info:        base58.Base58Check{}.Encode(outCoin.GetInfo(), 0x0),
 		Commitment:  commitment,
 		SNDerivator: snd,
 		KeyImage:    keyImage,
 		Randomness:  randomness,
+	}
+	if base58Fmt {
+		result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
+	} else {
+		result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
 	}
 	return result
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,7 @@ func StartGinService() {
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/health", APIHealthCheck)
 	// if serviceCfg.Mode == QUERYMODE {
+	r.GET("/getcoininfo", APIGetCoinInfo)
 	r.GET("/getcoinspending", APIGetCoinsPending)
 	r.GET("/getcoins", APIGetCoins)
 	r.GET("/getkeyinfo", APIGetKeyInfo)
@@ -62,9 +64,13 @@ func APIGetCoins(c *gin.Context) {
 	viewkey := c.Query("viewkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
+	base58Format := false
 	log.Println("tokenid", tokenid, common.PRVCoinID.String())
 	if tokenid == "" {
 		tokenid = common.PRVCoinID.String()
+	}
+	if c.Query("base58") == "true" {
+		base58Format = true
 	}
 	if version != 1 && version != 2 {
 		version = 1
@@ -107,8 +113,15 @@ func APIGetCoins(c *gin.Context) {
 					return
 				}
 				idx := new(big.Int).SetUint64(cn.CoinIndex)
-				cV2 := jsonresult.NewOutCoin(coinV2)
-				cV2.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+				var cV2 shared.OutCoinV2
+				if base58Format {
+					cV2 = shared.NewOutCoinV2(coinV2, true)
+					cV2.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+				} else {
+					cV2 = shared.NewOutCoinV2(coinV2, false)
+					cV2.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
+				}
+
 				result = append(result, cV2)
 			}
 		}
@@ -167,9 +180,17 @@ func APIGetCoins(c *gin.Context) {
 						c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 						return
 					}
-					cV1 := shared.NewOutCoinV1(plainCoin)
+					// cV1 := shared.NewOutCoinV1(plainCoin)
+
 					idx := new(big.Int).SetUint64(cData.CoinIndex)
-					cV1.Index = base58.EncodeCheck(idx.Bytes())
+					var cV1 shared.OutCoinV1
+					if base58Format {
+						cV1 = shared.NewOutCoinV1(plainCoin, true)
+						cV1.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+					} else {
+						cV1 = shared.NewOutCoinV1(plainCoin, false)
+						cV1.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
+					}
 					collectCh <- cV1
 					wg.Done()
 				}(coinV1, cdata)
@@ -182,9 +203,19 @@ func APIGetCoins(c *gin.Context) {
 					collectCh = make(chan shared.OutCoinV1, shared.MAX_CONCURRENT_COIN_DECRYPT)
 				}
 			} else {
-				cn := shared.NewOutCoinV1(coinV1)
-				cn.CoinDetailsEncrypted = base64.StdEncoding.EncodeToString(coinV1.GetCoinDetailEncrypted())
-				result = append(result, cn)
+
+				idx := new(big.Int).SetUint64(cdata.CoinIndex)
+				var cV1 shared.OutCoinV1
+				if base58Format {
+					cV1 = shared.NewOutCoinV1(coinV1, true)
+					cV1.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+					cV1.CoinDetailsEncrypted = base58.Base58Check{}.Encode(coinV1.GetCoinDetailEncrypted(), common.ZeroByte)
+				} else {
+					cV1 = shared.NewOutCoinV1(coinV1, false)
+					cV1.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
+					cV1.CoinDetailsEncrypted = base64.StdEncoding.EncodeToString(coinV1.GetCoinDetailEncrypted())
+				}
+				result = append(result, cV1)
 			}
 		}
 	}
@@ -301,7 +332,10 @@ func APIGetRandomCommitments(c *gin.Context) {
 		usableInputCoins := []*coin.CoinV1{}
 		for i, c := range result {
 			coinV1 := new(coin.CoinV1)
-			coinV1.SetBytes(c.Coin)
+			err := coinV1.SetBytes(c.Coin)
+			if err != nil {
+				panic(err)
+			}
 			usableInputCoins = append(usableInputCoins, coinV1)
 			usableCommitment := coinV1.GetCommitment().ToBytesS()
 			commitmentInHash := common.HashH(usableCommitment)
@@ -350,9 +384,16 @@ func APIGetRandomCommitments(c *gin.Context) {
 			}
 			for _, c := range coinList {
 				coinV1 := new(coin.CoinV1)
-				coinV1.SetBytes(c.Coin)
+				err := coinV1.SetBytes(c.Coin)
+				if err != nil {
+					panic(err)
+				}
 				commitmentIndices = append(commitmentIndices, c.CoinIndex)
-				commitments = append(commitments, base58.EncodeCheck(coinV1.GetCommitment().ToBytesS()))
+				if req.Base58 {
+					commitments = append(commitments, base58.EncodeCheck(coinV1.GetCommitment().ToBytesS()))
+				} else {
+					commitments = append(commitments, base64.StdEncoding.EncodeToString(coinV1.GetCommitment().ToBytesS()))
+				}
 			}
 		}
 		// loop to insert usable commitments into commitmentIndexs for every group
@@ -363,11 +404,13 @@ func APIGetRandomCommitments(c *gin.Context) {
 			randInt := rand.Intn(privacy.CommitmentRingSize)
 			i := (j * privacy.CommitmentRingSize) + randInt
 			commitmentIndices = append(commitmentIndices[:i], append([]uint64{index.Uint64()}, commitmentIndices[i:]...)...)
+			if !req.Base58 {
+				commitmentValue = base64.StdEncoding.EncodeToString(listUsableCommitments[commitmentInHash])
+			}
 			commitments = append(commitments[:i], append([]string{commitmentValue}, commitments[i:]...)...)
 			myIndices = append(myIndices, uint64(i)) // create myCommitmentIndexs
 			j++
 		}
-
 	}
 	if req.Version == 2 && req.Limit > 0 {
 		if req.TokenID != common.PRVCoinID.String() {
@@ -380,8 +423,8 @@ func APIGetRandomCommitments(c *gin.Context) {
 			log.Println("getRandomCommitmentsHandler", lenOTA, idx.Int64())
 			coinData, err := database.DBGetCoinsByIndex(int(idx.Int64()), req.ShardID, req.TokenID)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
+				i--
+				continue
 			}
 			coinV2 := new(coin.CoinV2)
 			err = coinV2.SetBytes(coinData.Coin)
@@ -393,13 +436,22 @@ func APIGetRandomCommitments(c *gin.Context) {
 			commitment := coinV2.GetCommitment()
 
 			commitmentIndices = append(commitmentIndices, idx.Uint64())
-			publicKeys = append(publicKeys, base58.EncodeCheck(publicKey.ToBytesS()))
-			commitments = append(commitments, base58.EncodeCheck(commitment.ToBytesS()))
+			if req.Base58 {
+				publicKeys = append(publicKeys, base58.EncodeCheck(publicKey.ToBytesS()))
+				commitments = append(commitments, base58.EncodeCheck(commitment.ToBytesS()))
+			} else {
+				publicKeys = append(publicKeys, base64.StdEncoding.EncodeToString(publicKey.ToBytesS()))
+				commitments = append(commitments, base64.StdEncoding.EncodeToString(commitment.ToBytesS()))
+			}
 
 			if hasAssetTags {
 				assetTag := coinV2.GetAssetTag()
 				if assetTag != nil {
-					assetTags = append(assetTags, base58.EncodeCheck(assetTag.ToBytesS()))
+					if req.Base58 {
+						assetTags = append(assetTags, base58.EncodeCheck(assetTag.ToBytesS()))
+					} else {
+						assetTags = append(assetTags, base64.StdEncoding.EncodeToString(assetTag.ToBytesS()))
+					}
 				} else {
 					hasAssetTags = false
 				}
@@ -408,12 +460,19 @@ func APIGetRandomCommitments(c *gin.Context) {
 
 	}
 
-	rs := make(map[string]interface{})
-	rs["CommitmentIndices"] = commitmentIndices
-	rs["MyIndices"] = myIndices
-	rs["PublicKeys"] = publicKeys
-	rs["Commitments"] = commitments
-	rs["AssetTags"] = assetTags
+	rs := struct {
+		CommitmentIndices []uint64
+		MyIndices         []uint64
+		PublicKeys        []string
+		Commitments       []string
+		AssetTags         []string
+	}{
+		CommitmentIndices: commitmentIndices,
+		MyIndices:         myIndices,
+		PublicKeys:        publicKeys,
+		Commitments:       commitments,
+		AssetTags:         assetTags,
+	}
 	respond := APIRespond{
 		Result: rs,
 		Error:  nil,
@@ -421,11 +480,40 @@ func APIGetRandomCommitments(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
+func APIGetCoinInfo(c *gin.Context) {
+	prvV1, prvV2, tokenV1, tokenV2, err := database.DBGetCoinInfo()
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+	result := struct {
+		TotalPRVV1   int64
+		TotalPRVV2   int64
+		TotalTokenV1 int64
+		TotalTokenV2 int64
+	}{prvV1, prvV2, tokenV1, tokenV2}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
 func APIGetCoinsPending(c *gin.Context) {
+	base58Fmt := c.Query("base58")
 	result, err := database.DBGetPendingCoins()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
+	}
+	if base58Fmt == "true" {
+		resultB58 := []string{}
+		for _, v := range result {
+			vBytes, _, _ := base58.DecodeCheck(v)
+			resultB58 = append(resultB58, base64.StdEncoding.EncodeToString(vBytes))
+		}
+		result = resultB58
 	}
 	respond := APIRespond{
 		Result: result,
@@ -462,11 +550,13 @@ func APISubmitOTA(c *gin.Context) {
 	}
 	err = <-resp
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+		if !mongo.IsDuplicateKeyError(err) {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
 	respond := APIRespond{
-		Result: "ok",
+		Result: "true",
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
@@ -541,6 +631,10 @@ func APIGetTxsHistory(c *gin.Context) {
 	paymentkey := c.Query("paymentkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
+	isBase58 := false
+	if c.Query("base58") == "true" {
+		isBase58 = true
+	}
 
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
@@ -600,7 +694,7 @@ func APIGetTxsHistory(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			txDetail, err := jsonresult.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txd.ShardID))
+			txDetail, err := shared.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txd.ShardID), isBase58)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
