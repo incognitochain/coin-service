@@ -292,6 +292,16 @@ func APICheckKeyImages(c *gin.Context) {
 		return
 	}
 
+	if req.Base58 {
+		newList := []string{}
+		for _, v := range req.Keyimages {
+			d, _ := base64.StdEncoding.DecodeString(v)
+			s := base58.EncodeCheck(d)
+			newList = append(newList, s)
+		}
+		req.Keyimages = newList
+	}
+
 	result, err := database.DBCheckKeyimagesUsed(req.Keyimages, req.ShardID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))

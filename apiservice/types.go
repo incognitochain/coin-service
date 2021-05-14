@@ -3,6 +3,7 @@ package apiservice
 type APICheckKeyImagesRequest struct {
 	Keyimages []string
 	ShardID   int
+	Base58    bool
 }
 
 type APICheckTxRequest struct {
