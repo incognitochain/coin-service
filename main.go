@@ -5,34 +5,36 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/incognitochain/coin-service/apiservice"
+	"github.com/incognitochain/coin-service/chainsynker"
+	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/otaindexer"
+	"github.com/incognitochain/coin-service/shared"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
 func main() {
-	readConfigAndArg()
-	err := connectDB()
+	shared.ReadConfigAndArg()
+	err := database.ConnectDB(shared.ServiceCfg.MongoDB, shared.ServiceCfg.MongoAddress)
 	if err != nil {
 		panic(err)
 	}
-	log.Println("service mode:", serviceCfg.Mode)
-	if serviceCfg.Mode == TESTMODE {
-		initChainSynker()
-		go initOTAIndexingService()
+	log.Println("service mode:", shared.ServiceCfg.Mode)
+	if shared.ServiceCfg.Mode == shared.TESTMODE {
+		chainsynker.InitChainSynker(shared.ServiceCfg)
+		go otaindexer.InitOTAIndexingService()
 	}
 
-	if serviceCfg.Mode == CHAINSYNCMODE {
-		initChainSynker()
+	if shared.ServiceCfg.Mode == shared.CHAINSYNCMODE {
+		chainsynker.InitChainSynker(shared.ServiceCfg)
 	}
-	if serviceCfg.Mode == INDEXERMODE {
-		if serviceCfg.IndexerBucketID == 0 {
-			go startBucketAssigner()
+	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
+		if shared.ServiceCfg.IndexerBucketID == 0 {
+			go otaindexer.StartBucketAssigner(uint64(shared.ServiceCfg.MaxBucketSize), shared.ServiceCfg.MaxBucketNum)
 		}
-		go initOTAIndexingService()
+		go otaindexer.InitOTAIndexingService()
 	}
-	go startGinService()
-	if ENABLE_PROFILER {
+	go apiservice.StartGinService()
+	if shared.ENABLE_PROFILER {
 		http.ListenAndServe("localhost:8091", nil)
 	}
 	select {}
