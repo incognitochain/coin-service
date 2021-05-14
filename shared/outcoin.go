@@ -178,7 +178,7 @@ func NewOutCoinV2(outCoin ICoinInfo, base58Fmt bool) OutCoinV2 {
 		if base58Fmt {
 			result.AssetTag = base58.Base58Check{}.Encode(outCoin.GetAssetTag().ToBytesS(), common.ZeroByte)
 		} else {
-			result.TxRandom = base64.StdEncoding.EncodeToString(outCoin.GetTxRandom().Bytes())
+			result.AssetTag = base64.StdEncoding.EncodeToString(outCoin.GetAssetTag().ToBytesS())
 		}
 	}
 
