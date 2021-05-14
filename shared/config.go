@@ -13,6 +13,7 @@ var ServiceCfg Config
 type Config struct {
 	APIPort               int    `json:"apiport"`
 	ChainDataFolder       string `json:"chaindata"`
+	EnableChainLog        bool   `json:"chainlog"`
 	MaxConcurrentOTACheck int    `json:"concurrentotacheck"`
 	Mode                  string `json:"mode"`
 	MongoAddress          string `json:"mongo"`
