@@ -17,6 +17,7 @@ var (
 	FULLNODE       = mustGetenv("FULLNODE")
 	MODE           = mustGetenv("MODE")
 	PORT           = mustGetenv("PORT")
+	SLACKHOOK      = mustGetenv("SLACKHOOK")
 )
 
 func mustGetenv(k string) string {
