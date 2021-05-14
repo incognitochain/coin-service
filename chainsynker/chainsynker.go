@@ -496,7 +496,7 @@ func InitChainSynker(cfg shared.Config) {
 		panic("unknown network")
 	}
 	netw.HighwayAddress = highwayAddress
-	node := devframework.NewAppNode(chainDataFolder, netw, true, false, false)
+	node := devframework.NewAppNode(chainDataFolder, netw, true, false, false, true)
 	Localnode = node
 	log.Println("initiating chain-synker...")
 	if shared.RESET_FLAG {
