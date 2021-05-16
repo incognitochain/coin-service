@@ -38,3 +38,11 @@ type APIRespond struct {
 	Result interface{}
 	Error  *string
 }
+
+type APILatestTxRespond struct {
+	ShardID int
+	Time    int
+	Height  uint64
+	Hash    string
+	Type    int
+}

@@ -49,6 +49,7 @@ func StartGinService() {
 	r.POST("/checktxs", APICheckTXs)
 
 	r.GET("/gettxshistory", APIGetTxsHistory)
+	r.GET("/getlatesttx", APIGetLatestTxs)
 	// }
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
@@ -736,6 +737,10 @@ func APIGetTxsHistory(c *gin.Context) {
 	}
 	log.Println("txDataList time:", time.Since(startTime))
 	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetLatestTxs(c *gin.Context) {
+
 }
 
 func buildGinErrorRespond(err error) *APIRespond {
