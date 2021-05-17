@@ -438,6 +438,10 @@ func APIGetRandomCommitments(c *gin.Context) {
 				i--
 				continue
 			}
+			if coinData.CoinPubkey == "1y4gnYS1Ns2K7BjQTjgfZ5nTR8JZMkMJ3CTGMj2Pk7CQkSTFgA" {
+				i--
+				continue
+			}
 			coinV2 := new(coin.CoinV2)
 			err = coinV2.SetBytes(coinData.Coin)
 			if err != nil {
