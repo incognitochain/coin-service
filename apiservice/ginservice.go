@@ -17,6 +17,7 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
+	jsoniter "github.com/json-iterator/go"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/gzip"
@@ -33,6 +34,8 @@ import (
 	"github.com/kamva/mgm/v3"
 )
 
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
 func StartGinService() {
 	log.Println("initiating api-service...")
 
@@ -48,8 +51,12 @@ func StartGinService() {
 	r.POST("/getrandomcommitments", APIGetRandomCommitments)
 	r.POST("/checktxs", APICheckTXs)
 
-	r.GET("/gettxshistory", APIGetTxsHistory)
+	r.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
+	r.POST("/gettxsbysender", APIGetTxsBySender)
+
 	r.GET("/getlatesttx", APIGetLatestTxs)
+	r.GET("/gettradehistory", APIGetTradeHistory)
+	r.GET("/getpdestate", APIPDEState)
 	// }
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
@@ -642,8 +649,39 @@ func APIHealthCheck(c *gin.Context) {
 		"chain":  shardsHeight,
 	})
 }
+func APIGetTxsBySender(c *gin.Context) {
+	startTime := time.Now()
+	var req APIGetTxsBySenderRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(req.Keyimages) == 0 {
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.Keyimages) == 0")))
+			return
+		}
+	}
+	txDataList, err := database.DBGetSendTxByKeyImages(req.Keyimages)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	result, err := buildTxDetailRespond(txDataList, req.Base58)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	log.Println("APIGetTxsBySender time:", time.Since(startTime))
+	c.JSON(http.StatusOK, respond)
+}
 
-func APIGetTxsHistory(c *gin.Context) {
+func APIGetTxsByReceiver(c *gin.Context) {
 	paymentkey := c.Query("paymentkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
@@ -678,16 +716,125 @@ func APIGetTxsHistory(c *gin.Context) {
 	}
 	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 	shardID := common.GetShardIDFromLastByte(pubKeyBytes[len(pubKeyBytes)-1])
-	var result jsonresult.ListReceivedTransactionV2
 	startTime := time.Now()
 	txDataList, err := database.DBGetReceiveTxByPubkey(int(shardID), pubKeyStr, tokenid, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	result, err := buildTxDetailRespond(txDataList, isBase58)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	log.Println("APIGetTxsByReceiver time:", time.Since(startTime))
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetLatestTxs(c *gin.Context) {
+
+}
+
+func APIGetTradeHistory(c *gin.Context) {
+	startTime := time.Now()
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	otakey := c.Query("otakey")
+	paymentkey := c.Query("paymentkey")
+
+	pubKeyStr := ""
+	pubKeyBytes := []byte{}
+	if otakey != "" {
+		wl, err := wallet.Base58CheckDeserialize(otakey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		pubKeyBytes = wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()
+	} else {
+		if paymentkey == "" {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
+			return
+		}
+		wl, err := wallet.Base58CheckDeserialize(paymentkey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+	}
+	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
+
+	list, err := database.DBGetTxTradeRespond(pubKeyStr, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(list) == 0 {
+		respond := APIRespond{
+			Result: nil,
+			Error:  nil,
+		}
+		log.Println("APIGetTradeHistory time:", time.Since(startTime))
+		c.JSON(http.StatusOK, respond)
+	}
+
+	respList := []string{}
+	for _, v := range list {
+		respList = append(respList, v.TxHash)
+	}
+
+	txTradePairlist, err := database.DBGetTxTrade(respList)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	respond := APIRespond{
+		Result: txTradePairlist,
+		Error:  nil,
+	}
+	log.Println("APIGetTradeHistory time:", time.Since(startTime))
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIPDEState(c *gin.Context) {
+	state, err := database.DBGetPDEState()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	pdeState := jsonresult.CurrentPDEState{}
+	err = json.UnmarshalFromString(state, &pdeState)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: pdeState,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func buildGinErrorRespond(err error) *APIRespond {
+	errStr := err.Error()
+	respond := APIRespond{
+		Result: nil,
+		Error:  &errStr,
+	}
+	return &respond
+}
+
+func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]jsonresult.ReceivedTransactionV2, error) {
 	var wg sync.WaitGroup
 	collectCh := make(chan jsonresult.ReceivedTransactionV2, 200)
-	// jsonCount := 0
+	var result []jsonresult.ReceivedTransactionV2
+	var errD error
 	for idx, txData := range txDataList {
 		wg.Add(1)
 		go func(txd shared.TxData) {
@@ -696,23 +843,22 @@ func APIGetTxsHistory(c *gin.Context) {
 			var txChoice *transaction.TxChoice
 			txChoice, parseErr = shared.DeserializeTransactionJSON([]byte(txd.TxDetail))
 			if parseErr != nil {
-				log.Println("TxDetail", txd.TxDetail)
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(parseErr))
+				errD = parseErr
 				return
 			}
 			tx = txChoice.ToTx()
 			if tx == nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				errD = errors.New("invalid tx detected")
 				return
 			}
 			blockHeight, err := strconv.ParseUint(txd.BlockHeight, 0, 64)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				errD = err
 				return
 			}
 			txDetail, err := shared.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txd.ShardID), isBase58)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				errD = err
 				return
 			}
 			txDetail.BlockHash = txd.BlockHash
@@ -730,28 +876,10 @@ func APIGetTxsHistory(c *gin.Context) {
 			wg.Wait()
 			close(collectCh)
 			for txjson := range collectCh {
-				result.ReceivedTransactions = append(result.ReceivedTransactions, txjson)
+				result = append(result, txjson)
 			}
 			collectCh = make(chan jsonresult.ReceivedTransactionV2, 200)
 		}
 	}
-	respond := APIRespond{
-		Result: result,
-		Error:  nil,
-	}
-	log.Println("txDataList time:", time.Since(startTime))
-	c.JSON(http.StatusOK, respond)
-}
-
-func APIGetLatestTxs(c *gin.Context) {
-
-}
-
-func buildGinErrorRespond(err error) *APIRespond {
-	errStr := err.Error()
-	respond := APIRespond{
-		Result: nil,
-		Error:  &errStr,
-	}
-	return &respond
+	return result, errD
 }

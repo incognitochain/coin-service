@@ -47,17 +47,12 @@ func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey string) error {
 	return nil
 }
 
-func DBGetSendTxByKeyImages(keyimages []string, limit int64, offset int64) ([]shared.TxData, error) {
+func DBGetSendTxByKeyImages(keyimages []string) ([]shared.TxData, error) {
 	var result []shared.TxData
-	if limit == 0 {
-		limit = int64(10000)
-	}
 	filter := bson.M{"keyimages": bson.M{operator.In: keyimages}}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keyimages))*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"locktime", 1}},
-		Skip:  &offset,
-		Limit: &limit,
+		Sort: bson.D{{"locktime", -1}},
 	})
 	if err != nil {
 		return nil, err
@@ -73,7 +68,7 @@ func DBGetReceiveTxByPubkey(shardID int, pubkey string, tokenID string, limit in
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"locktime", 1}},
+		Sort:  bson.D{{"locktime", -1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})

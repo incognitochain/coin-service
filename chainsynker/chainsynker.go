@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"os"
+	"sync"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
@@ -21,6 +22,9 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
+	"github.com/incognitochain/incognito-chain/metadata"
+	"github.com/incognitochain/incognito-chain/privacy/coin"
+	"github.com/incognitochain/incognito-chain/privacy/operation"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/wire"
@@ -40,6 +44,8 @@ var Localnode interface {
 
 var ShardProcessedState map[byte]uint64
 var TransactionStateDB map[byte]*statedb.StateDB
+var lastTokenIDMap map[string]string
+var lastTokenIDLock sync.RWMutex
 
 func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	var blk types.ShardBlock
@@ -97,7 +103,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	coinV1PubkeyInfo := make(map[string]map[string]shared.CoinInfo)
 
 	txDataList := []shared.TxData{}
-
+	tradeRespondList := []shared.TradeData{}
 	for _, txs := range blk.Body.CrossTransactions {
 		for _, tx := range txs {
 			for _, prvout := range tx.OutputCoin {
@@ -383,7 +389,46 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			panic(err)
 		}
-		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, tx.Hash().String(), tx.GetType(), string(txBytes), txKeyImages, pubkeyReceivers)
+		metaDataType := tx.GetMetadataType()
+		if metaDataType == metadata.PDECrossPoolTradeResponseMeta || metaDataType == metadata.PDETradeResponseMeta {
+			requestTx := ""
+			status := ""
+			switch metaDataType {
+			case metadata.PDECrossPoolTradeResponseMeta:
+				requestTx = tx.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
+				status = tx.GetMetadata().(*metadata.PDECrossPoolTradeResponse).TradeStatus
+			case metadata.PDETradeResponseMeta:
+				requestTx = tx.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
+				status = tx.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
+			}
+			outs := []coin.Coin{}
+			tokenIDStr := tx.GetTokenID().String()
+			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
+				txToken := tx.(transaction.TransactionToken)
+				outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+				if isCoinV2Output {
+				retry:
+					if len(lastTokenIDMap) == 0 {
+						time.Sleep(10 * time.Second)
+						goto retry
+					}
+					lastTokenIDLock.RLock()
+					var ok bool
+					tokenIDStr, ok = lastTokenIDMap[outs[0].GetAssetTag().String()]
+					if !ok {
+						time.Sleep(10 * time.Second)
+						lastTokenIDLock.RUnlock()
+						goto retry
+					}
+					lastTokenIDLock.RUnlock()
+				}
+			} else {
+				outs = tx.GetProof().GetOutputCoins()
+			}
+			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue())
+			tradeRespondList = append(tradeRespondList, *trade)
+		}
+		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, tx.Hash().String(), tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), txKeyImages, pubkeyReceivers)
 		txDataList = append(txDataList, *txData)
 	}
 	alreadyWriteToBD := false
@@ -429,13 +474,18 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 		}
 	}
+	if len(tradeRespondList) > 0 {
+		err = database.DBSaveTxTrade(tradeRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
 	if len(coinV1PubkeyInfo) > 0 && !alreadyWriteToBD {
 		err = database.DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
 		if err != nil {
 			panic(err)
 		}
 	}
-
 	statePrefix := fmt.Sprintf("coin-processed-%v", blk.Header.ShardID)
 	err = Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
 	if err != nil {
@@ -451,6 +501,7 @@ var (
 )
 
 func InitChainSynker(cfg shared.Config) {
+	lastTokenIDMap = make(map[string]string)
 	chainNetwork = cfg.ChainNetwork
 	highwayAddress = cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
@@ -532,9 +583,41 @@ func InitChainSynker(cfg shared.Config) {
 	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
+	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetBestViewHeight()), true, updatePDEState)
 	go mempoolWatcher()
 	go tokenListWatcher()
+
 }
+
+func updatePDEState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
+	beaconBestState, _ := Localnode.GetBlockchain().GetClonedBeaconBestState()
+	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
+
+	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
+	if err != nil {
+		log.Println(err)
+	}
+	pdeState, err := blockchain.InitCurrentPDEStateFromDB(beaconFeatureStateDB, nil, beaconBestState.BeaconHeight)
+	if err != nil {
+		log.Println(err)
+	}
+	pdeStateJSON := jsonresult.CurrentPDEState{
+		BeaconTimeStamp:         beaconBestState.BestBlock.Header.Timestamp,
+		PDEPoolPairs:            pdeState.PDEPoolPairs,
+		PDEShares:               pdeState.PDEShares,
+		WaitingPDEContributions: pdeState.WaitingPDEContributions,
+		PDETradingFees:          pdeState.PDETradingFees,
+	}
+	pdeStr, err := json.MarshalToString(pdeStateJSON)
+	if err != nil {
+		log.Println(err)
+	}
+	err = database.DBSavePDEState(pdeStr)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 func mempoolWatcher() {
 	Localnode.OnReceive(devframework.MSG_TX, func(msg interface{}) {
 		msgData := msg.(*wire.MessageTx)
@@ -681,6 +764,21 @@ func tokenListWatcher() {
 			log.Println(err)
 			continue
 		}
+		lastTokenIDLock.Lock()
+
+		if len(lastTokenIDMap) < len(tokenInfoList) {
+			for _, tokenInfo := range tokenInfoList {
+				tokenID, err := new(common.Hash).NewHashFromStr(tokenInfo.TokenID)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				recomputedAssetTag := operation.HashToPoint(tokenID[:])
+				lastTokenIDMap[recomputedAssetTag.String()] = tokenInfo.TokenID
+			}
+		}
+
+		lastTokenIDLock.Unlock()
 	}
 }
 

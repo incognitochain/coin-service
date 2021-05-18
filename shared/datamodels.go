@@ -220,9 +220,10 @@ type TxData struct {
 	BlockHeight      string   `json:"blockheight" bson:"blockheight"`
 	ShardID          int      `json:"shardid" bson:"shardid"`
 	Locktime         int64    `json:"locktime" bson:"locktime"`
+	Metatype         string   `json:"metatype" bson:"metatype"`
 }
 
-func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, tokenID, txHash, txType, txDetail string, keyimages, pubKeyReceivers []string) *TxData {
+func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, tokenID, txHash, txType, txDetail, metatype string, keyimages, pubKeyReceivers []string) *TxData {
 	return &TxData{
 		TxVersion:       txVersion,
 		KeyImages:       keyimages,
@@ -235,6 +236,7 @@ func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, t
 		BlockHash:       blockHash,
 		BlockHeight:     blockHeight,
 		Locktime:        locktime,
+		Metatype:        metatype,
 	}
 }
 
@@ -253,4 +255,64 @@ func (model *TxData) Saving() error {
 	}
 
 	return nil
+}
+
+type TradeData struct {
+	mgm.DefaultModel `bson:",inline"`
+	RequestTx        string `json:"requesttx" bson:"requesttx"`
+	RespondTx        string `json:"respondtx" bson:"respondtx"`
+	Status           string `json:"status" bson:"status"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	Amount           uint64 `json:"amount" bson:"amount"`
+}
+
+func NewTradeData(requestTx, respondTx, status, tokenID string, amount uint64) *TradeData {
+	return &TradeData{
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID: tokenID, Amount: amount,
+	}
+}
+
+func (model *TradeData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *TradeData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PDEStateData struct {
+	mgm.DefaultModel `bson:",inline"`
+	State            string `json:"state" bson:"state"`
+}
+
+func (model *PDEStateData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PDEStateData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func NewPDEStateData(state string) *PDEStateData {
+	return &PDEStateData{
+		State: state,
+	}
 }

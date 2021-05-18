@@ -11,12 +11,6 @@ type APICheckTxRequest struct {
 	ShardID int
 }
 
-type APIParseTokenidRequest struct {
-	OTARandoms []string
-	AssetTags  []string
-	OTAKey     string
-}
-
 type APISubmitOTAkeyRequest struct {
 	OTAKey       string
 	ShardID      int
@@ -45,4 +39,9 @@ type APILatestTxRespond struct {
 	Height  uint64
 	Hash    string
 	Type    int
+}
+
+type APIGetTxsBySenderRequest struct {
+	Keyimages []string
+	Base58    bool
 }
