@@ -80,11 +80,21 @@ func DBGetReceiveTxByPubkey(shardID int, pubkey string, tokenID string, limit in
 
 func DBGetTxByHash(txHashes []string) ([]shared.TxData, error) {
 	var result []shared.TxData
+	var resultFn []shared.TxData
 	filter := bson.M{"txhash": bson.M{operator.In: txHashes}}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(txHashes))*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(txHashes)+1)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter)
 	if err != nil {
 		return nil, err
 	}
-	return result, nil
+	for _, hash := range txHashes {
+		for _, v := range result {
+			if v.TxHash == hash {
+				resultFn = append(resultFn, v)
+				break
+			}
+		}
+	}
+
+	return resultFn, nil
 }

@@ -390,6 +390,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 		metaDataType := tx.GetMetadataType()
+
 		if metaDataType == metadata.PDECrossPoolTradeResponseMeta || metaDataType == metadata.PDETradeResponseMeta {
 			requestTx := ""
 			status := ""
@@ -428,7 +429,15 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue())
 			tradeRespondList = append(tradeRespondList, *trade)
 		}
-		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, tx.Hash().String(), tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), txKeyImages, pubkeyReceivers)
+		mtd := ""
+		if tx.GetMetadata() != nil {
+			mtdBytes, err := json.Marshal(tx.GetMetadata())
+			if err != nil {
+				panic(err)
+			}
+			mtd = string(mtdBytes)
+		}
+		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, tx.Hash().String(), tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers)
 		txDataList = append(txDataList, *txData)
 	}
 	alreadyWriteToBD := false

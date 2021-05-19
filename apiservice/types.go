@@ -45,3 +45,19 @@ type APIGetTxsBySenderRequest struct {
 	Keyimages []string
 	Base58    bool
 }
+
+type TxTradeDetail struct {
+	RequestTx string   `json:"requesttx"`
+	RespondTx []string `json:"respondtx"`
+	Status    string   `json:"status"`
+	BuyToken  string   `json:"buytoken"`
+	SellToken string   `json:"selltoken"`
+	//from respondtx
+	ReceiveAmount map[string]uint64 `json:"receive"`
+	//from requesttx
+	SellAmount uint64 `json:"sell"`
+	Fee        uint64 `json:"fee"`
+}
+
+type APIGetTxTradeRespond struct {
+}

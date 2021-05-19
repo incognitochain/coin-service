@@ -754,7 +754,7 @@ func APIGetTradeHistory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		pubKeyBytes = wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()
+		pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
 	} else {
 		if paymentkey == "" {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
@@ -775,12 +775,13 @@ func APIGetTradeHistory(c *gin.Context) {
 		return
 	}
 	if len(list) == 0 {
+		err := errors.New("len(list) == 0").Error()
 		respond := APIRespond{
 			Result: nil,
-			Error:  nil,
+			Error:  &err,
 		}
-		log.Println("APIGetTradeHistory time:", time.Since(startTime))
 		c.JSON(http.StatusOK, respond)
+		return
 	}
 
 	respList := []string{}
@@ -793,9 +794,64 @@ func APIGetTradeHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	var result []*TxTradeDetail
+	txsMap := make(map[string]int)
+	txsRequest := []string{}
+	for _, v := range txTradePairlist {
+		if idx, ok := txsMap[v.RequestTx]; !ok {
+			newTxDetail := TxTradeDetail{
+				RequestTx:     v.RequestTx,
+				RespondTx:     []string{v.RespondTx},
+				Status:        v.Status,
+				ReceiveAmount: make(map[string]uint64),
+			}
+			newTxDetail.ReceiveAmount[v.TokenID] = v.Amount
+			txsMap[v.RequestTx] = len(result)
+			result = append(result, &newTxDetail)
+			txsRequest = append(txsRequest, v.RequestTx)
+		} else {
+			txdetail := result[idx]
+			txdetail.RespondTx = append(txdetail.RespondTx, v.RespondTx)
+			txdetail.ReceiveAmount[v.TokenID] = v.Amount
+		}
+	}
+
+	txsReqData, err := database.DBGetTxByHash(txsRequest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+
+	for idx, tx := range txsReqData {
+		txDetail := result[idx]
+		switch tx.Metatype {
+		case strconv.Itoa(metadata.PDETradeRequestMeta):
+			meta := metadata.PDETradeRequest{}
+			err := json.Unmarshal([]byte(tx.Metadata), &meta)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				return
+			}
+			txDetail.BuyToken = meta.TokenIDToBuyStr
+			txDetail.SellToken = meta.TokenIDToSellStr
+			txDetail.SellAmount = meta.SellAmount
+			txDetail.Fee = meta.TradingFee
+		case strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta):
+			meta := metadata.PDECrossPoolTradeRequest{}
+			err := json.Unmarshal([]byte(tx.Metadata), &meta)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				return
+			}
+			txDetail.BuyToken = meta.TokenIDToBuyStr
+			txDetail.SellToken = meta.TokenIDToSellStr
+			txDetail.SellAmount = meta.SellAmount
+			txDetail.Fee = meta.TradingFee
+		}
+	}
 
 	respond := APIRespond{
-		Result: txTradePairlist,
+		Result: result,
 		Error:  nil,
 	}
 	log.Println("APIGetTradeHistory time:", time.Since(startTime))
