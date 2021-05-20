@@ -99,8 +99,12 @@ func broadcastMode() {
 		// err = json.Unmarshal(rawTxBytes, &tx)
 		if err != nil {
 			log.Println(err)
-			m.Ack()
-			return
+			tx, err = transaction.NewTransactionTokenFromJsonBytes(rawTxBytes)
+			if err != nil {
+				log.Println(err)
+				m.Ack()
+				return
+			}
 		}
 
 		errBrc := broadcastToFullNode(string(m.Data))
@@ -263,8 +267,11 @@ func APIPushTx(c *gin.Context) {
 	// var tx transaction.Tx
 	// err = json.Unmarshal(rawTxBytes, &tx)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+		tx, err = transaction.NewTransactionTokenFromJsonBytes(rawTxBytes)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
 
 	ctx := context.Background()
