@@ -55,8 +55,9 @@ type TxTradeDetail struct {
 	//from respondtx
 	ReceiveAmount map[string]uint64 `json:"receive"`
 	//from requesttx
-	SellAmount uint64 `json:"sell"`
-	Fee        uint64 `json:"fee"`
+	SellAmount  uint64 `json:"sell"`
+	Fee         uint64 `json:"fee"`
+	RequestTime int64  `json:"requesttime"`
 }
 
 type APIGetTxTradeRespond struct {

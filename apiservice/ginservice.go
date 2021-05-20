@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"math/rand"
 	"net/http"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -836,6 +837,7 @@ func APIGetTradeHistory(c *gin.Context) {
 			txDetail.SellToken = meta.TokenIDToSellStr
 			txDetail.SellAmount = meta.SellAmount
 			txDetail.Fee = meta.TradingFee
+			txDetail.RequestTime = tx.Locktime
 		case strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta):
 			meta := metadata.PDECrossPoolTradeRequest{}
 			err := json.Unmarshal([]byte(tx.Metadata), &meta)
@@ -847,8 +849,11 @@ func APIGetTradeHistory(c *gin.Context) {
 			txDetail.SellToken = meta.TokenIDToSellStr
 			txDetail.SellAmount = meta.SellAmount
 			txDetail.Fee = meta.TradingFee
+			txDetail.RequestTime = tx.Locktime
 		}
 	}
+
+	reverseAny(result)
 
 	respond := APIRespond{
 		Result: result,
@@ -856,6 +861,14 @@ func APIGetTradeHistory(c *gin.Context) {
 	}
 	log.Println("APIGetTradeHistory time:", time.Since(startTime))
 	c.JSON(http.StatusOK, respond)
+}
+
+func reverseAny(s interface{}) {
+	n := reflect.ValueOf(s).Len()
+	swap := reflect.Swapper(s)
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		swap(i, j)
+	}
 }
 
 func APIPDEState(c *gin.Context) {
