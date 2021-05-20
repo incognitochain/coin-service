@@ -40,7 +40,14 @@ func getTx(txhash string) (*TxData, error) {
 	filter := bson.M{"txhash": bson.M{operator.Eq: txhash}}
 	err := mgm.Coll(&TxData{}).First(filter, &result)
 	if err != nil {
-		return nil, err
+		log.Println(err)
+		status, err := getTxStatusFullNode(txhash)
+		if err != nil {
+			return nil, err
+		}
+		if status {
+			result.Status = txStatusSuccess
+		}
 	}
 	return &result, nil
 }

@@ -17,3 +17,10 @@ const (
 const (
 	maxTxRetryTime = 30
 )
+
+const (
+	TXSTATUS_UNKNOWN = iota
+	TXSTATUS_FAILED
+	TXSTATUS_PENDING
+	TXSTATUS_SUCCESS
+)

@@ -22,6 +22,13 @@ var txTopic *pubsub.Topic
 var statusTopic *pubsub.Topic
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in f", r)
+		}
+		time.Sleep(5 * time.Second)
+		main()
+	}()
 	log.Println("initiating tx-service...")
 	if err := ConnectDB(); err != nil {
 		panic(err)
@@ -48,6 +55,7 @@ func pushMode() {
 		panic(err)
 	}
 	r := gin.Default()
+
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/gettxstatus", APIGetTxStatus)
 	r.POST("/pushtx", APIPushTx)
@@ -104,10 +112,8 @@ func broadcastMode() {
 			errBrcStr = errBrc.Error()
 			// txStatus = txStatusRetry
 			txStatus = txStatusFailed
-			m.Nack()
-		} else {
-			m.Ack()
 		}
+		m.Ack()
 		txdata := NewTxData(tx.Hash().String(), string(m.Data), txStatus, errBrcStr)
 		err = saveTx(*txdata)
 		if err != nil {
@@ -208,11 +214,26 @@ func APIGetTxStatus(c *gin.Context) {
 	}
 	txData, err := getTx(txhash)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		errStr := err.Error()
+		respond := APIRespond{
+			Result: TXSTATUS_UNKNOWN,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
 		return
 	}
+
+	status := TXSTATUS_UNKNOWN
+	switch txData.Status {
+	case txStatusSuccess:
+		status = TXSTATUS_SUCCESS
+	case txStatusFailed:
+		status = TXSTATUS_FAILED
+	case txStatusBroadcasted, txStatusRetry:
+		status = TXSTATUS_PENDING
+	}
 	respond := APIRespond{
-		Result: txData.Status,
+		Result: status,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
