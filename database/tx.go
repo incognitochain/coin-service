@@ -60,12 +60,12 @@ func DBGetSendTxByKeyImages(keyimages []string) ([]shared.TxData, error) {
 	return result, nil
 }
 
-func DBGetReceiveTxByPubkey(shardID int, pubkey string, tokenID string, limit int64, offset int64) ([]shared.TxData, error) {
+func DBGetReceiveTxByPubkey(pubkey string, tokenID string, limit int64, offset int64) ([]shared.TxData, error) {
 	var result []shared.TxData
 	if limit == 0 {
 		limit = int64(10000)
 	}
-	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}}
+	filter := bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", -1}},
