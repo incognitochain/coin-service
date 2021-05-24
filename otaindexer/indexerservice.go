@@ -101,9 +101,11 @@ func InitOTAIndexingService() {
 	var coinList []shared.CoinData
 	// var lastScannedKeys int
 	updateState := func(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTokenIndex map[int]uint64) {
+		pubkeys := make(map[string]string)
 		Submitted_OTAKey.Lock()
 		for shardID, keyDatas := range Submitted_OTAKey.Keys {
 			for _, keyData := range keyDatas {
+				pubkeys[keyData.OTAKey] = keyData.Pubkey
 				if len(keyData.KeyInfo.CoinIndex) == 0 {
 					keyData.KeyInfo.CoinIndex = make(map[string]shared.CoinInfo)
 				}
@@ -184,7 +186,7 @@ func InitOTAIndexingService() {
 		}
 
 		for key, txHashs := range txToUpdate {
-			err := database.DBUpdateTxPubkeyReceiver(txHashs, key)
+			err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key])
 			if err != nil {
 				panic(err)
 			}

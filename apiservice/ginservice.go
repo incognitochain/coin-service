@@ -686,6 +686,7 @@ func APIGetTxsByReceiver(c *gin.Context) {
 	paymentkey := c.Query("paymentkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
+	txversion := 1
 	isBase58 := false
 	if c.Query("base58") == "true" {
 		isBase58 = true
@@ -697,6 +698,7 @@ func APIGetTxsByReceiver(c *gin.Context) {
 	pubKeyStr := ""
 	pubKeyBytes := []byte{}
 	if otakey != "" {
+		txversion = 2
 		wl, err := wallet.Base58CheckDeserialize(otakey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -717,7 +719,7 @@ func APIGetTxsByReceiver(c *gin.Context) {
 	}
 	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 	startTime := time.Now()
-	txDataList, err := database.DBGetReceiveTxByPubkey(pubKeyStr, tokenid, int64(limit), int64(offset))
+	txDataList, err := database.DBGetReceiveTxByPubkey(pubKeyStr, tokenid, txversion, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

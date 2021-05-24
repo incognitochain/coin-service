@@ -204,7 +204,7 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 			}
 			meta := tx.GetMetadata()
 			if meta != nil {
-				metaData, _ := json.MarshalIndent(meta, "", "\t")
+				metaData, _ := json.Marshal(meta)
 				result.Metadata = string(metaData)
 			}
 			if result.Proof != nil {
@@ -251,10 +251,10 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 				}
 			}
 
-			tokenData, _ := json.MarshalIndent(txTokenData, "", "\t")
+			tokenData, _ := json.Marshal(txTokenData)
 			result.PrivacyCustomTokenData = string(tokenData)
 			if tx.GetMetadata() != nil {
-				metaData, _ := json.MarshalIndent(tx.GetMetadata(), "", "\t")
+				metaData, _ := json.Marshal(tx.GetMetadata())
 				result.Metadata = string(metaData)
 			}
 			if result.Proof != nil {
