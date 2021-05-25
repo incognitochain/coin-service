@@ -21,9 +21,8 @@ type Config struct {
 	ChainNetwork          string `json:"chainnetwork"`
 	Highway               string `json:"highway"`
 	NumOfShard            int    `json:"numberofshard"`
-	IndexerBucketID       int    `json:"bucketid"`
-	MaxBucketSize         int    `json:"maxbucketsize"`
-	MaxBucketNum          int    `json:"maxbucketnum"`
+	IndexerID             int    `json:"indexerid"`
+	MasterIndexerAddr     string `json:"masterindexer"`
 }
 
 func ReadConfigAndArg() {
@@ -48,9 +47,6 @@ func ReadConfigAndArg() {
 	if tempCfg.ChainDataFolder == "" {
 		tempCfg.ChainDataFolder = DefaultChainFolder
 	}
-	if tempCfg.MaxBucketNum == 0 {
-		tempCfg.MaxBucketNum = DefaultMaxBucketNum
-	}
 	if tempCfg.MaxConcurrentOTACheck == 0 {
 		tempCfg.MaxConcurrentOTACheck = DefaultMaxConcurrentOTACheck
 	}
@@ -71,9 +67,6 @@ func ReadConfigAndArg() {
 	}
 	if tempCfg.NumOfShard == 0 {
 		tempCfg.NumOfShard = DefaultNumOfShard
-	}
-	if tempCfg.MaxBucketSize == 0 {
-		tempCfg.MaxBucketSize = DefaultBucketSize
 	}
 	RESET_FLAG = *argResetDB
 	ENABLE_PROFILER = *argProfiler

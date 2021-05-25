@@ -21,17 +21,17 @@ func main() {
 	log.Println("service mode:", shared.ServiceCfg.Mode)
 	if shared.ServiceCfg.Mode == shared.TESTMODE {
 		chainsynker.InitChainSynker(shared.ServiceCfg)
-		go otaindexer.InitOTAIndexingService()
+		// go otaindexer.InitOTAIndexingService()
 	}
 
 	if shared.ServiceCfg.Mode == shared.CHAINSYNCMODE {
 		chainsynker.InitChainSynker(shared.ServiceCfg)
 	}
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
-		if shared.ServiceCfg.IndexerBucketID == 0 {
-			go otaindexer.StartBucketAssigner(uint64(shared.ServiceCfg.MaxBucketSize), shared.ServiceCfg.MaxBucketNum)
-		}
-		go otaindexer.InitOTAIndexingService()
+		go otaindexer.StartWorkerAssigner()
+	}
+	if shared.ServiceCfg.Mode == shared.WORKERMODE {
+		go otaindexer.StartOTAIndexing()
 	}
 	go apiservice.StartGinService()
 	if shared.ENABLE_PROFILER {

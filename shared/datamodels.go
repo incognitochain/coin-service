@@ -181,12 +181,12 @@ type SubmittedOTAKeyData struct {
 	mgm.DefaultModel `bson:",inline"`
 	OTAKey           string `json:"otakey" bson:"otakey"`
 	Pubkey           string `json:"pubkey" bson:"pubkey"`
-	BucketID         int    `json:"bucketid" bson:"bucketid"`
+	IndexerID        int    `json:"indexerid" bson:"indexerid"`
 }
 
-func NewSubmittedOTAKeyData(OTAkey, pubkey string, bucketID int) *SubmittedOTAKeyData {
+func NewSubmittedOTAKeyData(OTAkey, pubkey string, indexerID int) *SubmittedOTAKeyData {
 	return &SubmittedOTAKeyData{
-		OTAKey: OTAkey, Pubkey: pubkey, BucketID: bucketID,
+		OTAKey: OTAkey, Pubkey: pubkey, IndexerID: indexerID,
 	}
 }
 

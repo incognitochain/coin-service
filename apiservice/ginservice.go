@@ -60,8 +60,9 @@ func StartGinService() {
 	r.GET("/getpdestate", APIPDEState)
 	// }
 
-	if shared.ServiceCfg.Mode == shared.INDEXERMODE && shared.ServiceCfg.IndexerBucketID == 0 {
+	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
 		r.POST("/submitotakey", APISubmitOTA)
+		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
 	}
 	r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
 }

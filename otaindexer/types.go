@@ -17,3 +17,11 @@ type OTAAssignRequest struct {
 	Key     *shared.SubmittedOTAKeyData
 	Respond chan error
 }
+
+type worker struct {
+	ID          string
+	Heartbeat   int64
+	OTAAssigned int
+	readCh      chan []byte
+	writeCh     chan []byte
+}

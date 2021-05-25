@@ -45,20 +45,15 @@ func DBSaveSubmittedOTAKeys(keys []shared.SubmittedOTAKeyData) error {
 	return nil
 }
 
-func DBGetBucketStats(bucketSize int) (map[int]uint64, error) {
-	result := make(map[int]uint64)
+func DBGetIndexerStats(indexerID int) (uint64, error) {
 	d := mgm.Coll(&shared.SubmittedOTAKeyData{})
-	for i := 0; i < bucketSize; i++ {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
-		filter := bson.M{"bucketid": bson.M{operator.Eq: i}}
-		count, err := d.CountDocuments(ctx, filter)
-		if err != nil {
-			return nil, err
-		}
-		result[i] = uint64(count)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
+	filter := bson.M{"indexerid": bson.M{operator.Eq: indexerID}}
+	count, err := d.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, err
 	}
-
-	return result, nil
+	return uint64(count), nil
 }
 
 func DBUpdateKeyInfoV2(doc interface{}, key *shared.KeyInfoData) error {

@@ -73,7 +73,7 @@ func DBCreateCoinV2Index() error {
 	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	otaMdl := []mongo.IndexModel{
 		{
-			Keys: bsonx.Doc{{Key: "bucketid", Value: bsonx.Int32(1)}},
+			Keys: bsonx.Doc{{Key: "indexerid", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}, {Key: "pubkey", Value: bsonx.Int32(1)}},
