@@ -97,6 +97,7 @@ func broadcastMode() {
 		// var tx transaction.Tx
 		tx, err := transaction.NewTransactionFromJsonBytes(rawTxBytes)
 		// err = json.Unmarshal(rawTxBytes, &tx)
+		isToken := false
 		if err != nil {
 			log.Println(err)
 			tx, err = transaction.NewTransactionTokenFromJsonBytes(rawTxBytes)
@@ -105,9 +106,10 @@ func broadcastMode() {
 				m.Ack()
 				return
 			}
+			isToken = true
 		}
 
-		errBrc := broadcastToFullNode(string(m.Data))
+		errBrc := broadcastToFullNode(string(m.Data), isToken)
 		txStatus := txStatusBroadcasted
 		errBrcStr := ""
 		// _ = errBrc
@@ -296,10 +298,14 @@ func APIPushTx(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func broadcastToFullNode(tx string) error {
+func broadcastToFullNode(tx string, isToken bool) error {
+	methodName := "sendtransaction"
+	if isToken {
+		methodName = "sendrawprivacycustomtokentransaction"
+	}
 	requestBody, err := json.Marshal(map[string]interface{}{
 		"jsonrpc": "1.0",
-		"method":  "sendtransaction",
+		"method":  methodName,
 		"params":  []interface{}{tx},
 		"id":      1,
 	})
