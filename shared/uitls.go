@@ -13,7 +13,6 @@ import (
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/privacy/operation"
-	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/transaction/utils"
 	"github.com/incognitochain/incognito-chain/wallet"
@@ -148,8 +147,8 @@ func DeserializeTransactionJSON(data []byte) (*transaction.TxChoice, error) {
 
 }
 
-func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, blockHeight uint64, index int, shardID byte, base58Fmt bool) (*jsonresult.TransactionDetail, error) {
-	var result *jsonresult.TransactionDetail
+func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, blockHeight uint64, index int, shardID byte, base58Fmt bool) (*TransactionDetail, error) {
+	var result *TransactionDetail
 	blockHashStr := ""
 	if blockHash != nil {
 		blockHashStr = blockHash.String()
@@ -174,7 +173,7 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 				}
 			}
 
-			result = &jsonresult.TransactionDetail{
+			result = &TransactionDetail{
 				BlockHash:   blockHashStr,
 				BlockHeight: blockHeight,
 				Index:       uint64(index),
@@ -193,13 +192,22 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 			}
 			if result.Proof != nil {
 				inputCoins := result.Proof.GetInputCoins()
+				outputCoins := result.Proof.GetOutputCoins()
 				if len(inputCoins) > 0 && inputCoins[0].GetPublicKey() != nil {
 					if base58Fmt {
 						result.InputCoinPubKey = base58.Base58Check{}.Encode(inputCoins[0].GetPublicKey().ToBytesS(), common.ZeroByte)
 					} else {
 						result.InputCoinPubKey = base64.StdEncoding.EncodeToString(inputCoins[0].GetPublicKey().ToBytesS())
 					}
-
+				}
+				if len(outputCoins) > 0 {
+					for _, coin := range outputCoins {
+						if base58Fmt {
+							result.OutputCoinPubKey = append(result.OutputCoinPubKey, base58.Base58Check{}.Encode(coin.GetPublicKey().ToBytesS(), common.ZeroByte))
+						} else {
+							result.OutputCoinPubKey = append(result.OutputCoinPubKey, base64.StdEncoding.EncodeToString(coin.GetPublicKey().ToBytesS()))
+						}
+					}
 				}
 			}
 			meta := tx.GetMetadata()
@@ -218,7 +226,7 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 				return nil, errors.New("cannot detect transaction type")
 			}
 			txTokenData := transaction.GetTxTokenDataFromTransaction(tx)
-			result = &jsonresult.TransactionDetail{
+			result = &TransactionDetail{
 				BlockHash:                blockHashStr,
 				BlockHeight:              blockHeight,
 				Index:                    uint64(index),
@@ -242,11 +250,21 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 
 			if result.Proof != nil {
 				inputCoins := result.Proof.GetInputCoins()
+				outputCoins := result.Proof.GetOutputCoins()
 				if len(inputCoins) > 0 && inputCoins[0].GetPublicKey() != nil {
 					if base58Fmt {
 						result.InputCoinPubKey = base58.Base58Check{}.Encode(inputCoins[0].GetPublicKey().ToBytesS(), common.ZeroByte)
 					} else {
 						result.InputCoinPubKey = base64.StdEncoding.EncodeToString(inputCoins[0].GetPublicKey().ToBytesS())
+					}
+				}
+				if len(outputCoins) > 0 {
+					for _, coin := range outputCoins {
+						if base58Fmt {
+							result.OutputCoinPubKey = append(result.OutputCoinPubKey, base58.Base58Check{}.Encode(coin.GetPublicKey().ToBytesS(), common.ZeroByte))
+						} else {
+							result.OutputCoinPubKey = append(result.OutputCoinPubKey, base64.StdEncoding.EncodeToString(coin.GetPublicKey().ToBytesS()))
+						}
 					}
 				}
 			}

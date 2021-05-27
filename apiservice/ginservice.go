@@ -901,10 +901,10 @@ func buildGinErrorRespond(err error) *APIRespond {
 	return &respond
 }
 
-func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]jsonresult.ReceivedTransactionV2, error) {
+func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]ReceivedTransactionV2, error) {
 	var wg sync.WaitGroup
-	collectCh := make(chan jsonresult.ReceivedTransactionV2, 200)
-	var result []jsonresult.ReceivedTransactionV2
+	collectCh := make(chan ReceivedTransactionV2, 200)
+	var result []ReceivedTransactionV2
 	var errD error
 	for idx, txData := range txDataList {
 		wg.Add(1)
@@ -936,7 +936,7 @@ func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]jsonresu
 			txDetail.IsInBlock = true
 			txDetail.Proof = nil
 			txDetail.Sig = ""
-			txReceive := jsonresult.ReceivedTransactionV2{
+			txReceive := ReceivedTransactionV2{
 				TxDetail:    txDetail,
 				FromShardID: txDetail.ShardID,
 			}
@@ -949,7 +949,7 @@ func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]jsonresu
 			for txjson := range collectCh {
 				result = append(result, txjson)
 			}
-			collectCh = make(chan jsonresult.ReceivedTransactionV2, 200)
+			collectCh = make(chan ReceivedTransactionV2, 200)
 		}
 	}
 	return result, errD

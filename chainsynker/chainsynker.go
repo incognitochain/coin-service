@@ -3,11 +3,13 @@ package chainsynker
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"os"
 	"sync"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/privacy"
 	jsoniter "github.com/json-iterator/go"
 
 	"fmt"
@@ -96,6 +98,25 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		panic(err)
 	}
 
+	crossShardCoinMap := make(map[string]string)
+	for _, txlist := range blk.Body.CrossTransactions {
+		for _, tx := range txlist {
+			var crsblk types.ShardBlock
+		retryGetBlock:
+			blkBytes, err := Localnode.GetUserDatabase().Get(tx.BlockHash.Bytes(), nil)
+			if err != nil {
+				log.Println(err)
+				time.Sleep(5 * time.Second)
+				goto retryGetBlock
+			}
+			if err := json.Unmarshal(blkBytes, &crsblk); err != nil {
+				log.Println(err)
+				return
+			}
+			getCrossShardData(crossShardCoinMap, crsblk.Body.Transactions, byte(shardID))
+		}
+	}
+
 	//store output-coin and keyimage on db
 	keyImageList := []shared.KeyImageData{}
 	outCoinList := []shared.CoinData{}
@@ -146,7 +167,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							coinV1PubkeyInfo[publicKeyStr][common.PRVCoinID.String()] = newCoinInfo
 						}
 					}
-					outCoin := shared.NewCoinData(beaconHeight, coinIdx, prvout.Bytes(), common.PRVCoinID.String(), publicKeyStr, "", tx.Hash().String(), shardID, int(prvout.GetVersion()))
+					outCoin := shared.NewCoinData(beaconHeight, coinIdx, prvout.Bytes(), common.PRVCoinID.String(), publicKeyStr, "", crossShardCoinMap[prvout.GetCommitment().String()], shardID, int(prvout.GetVersion()))
 					outCoinList = append(outCoinList, *outCoin)
 				}
 			}
@@ -192,7 +213,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 								coinV1PubkeyInfo[publicKeyStr][tokenStr] = newCoinInfo
 							}
 						}
-						outCoin := shared.NewCoinData(beaconHeight, coinIdx, tkout.Bytes(), tokenStr, publicKeyStr, "", tx.Hash().String(), shardID, int(tkout.GetVersion()))
+						outCoin := shared.NewCoinData(beaconHeight, coinIdx, tkout.Bytes(), tokenStr, publicKeyStr, "", crossShardCoinMap[tkout.GetCommitment().String()], shardID, int(tkout.GetVersion()))
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}
@@ -589,17 +610,18 @@ func InitChainSynker(cfg shared.Config) {
 		}
 		TransactionStateDB[byte(i)] = Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
 	}
+	go mempoolWatcher()
+	go tokenListWatcher()
+	time.Sleep(2 * time.Second)
 	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
-	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetBestViewHeight()), true, updatePDEState)
-	go mempoolWatcher()
-	go tokenListWatcher()
+	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetFinalViewHeight()), true, updatePDEState)
 
 }
 
 func updatePDEState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
-	beaconBestState, _ := Localnode.GetBlockchain().GetClonedBeaconBestState()
+	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
 
 	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
@@ -815,5 +837,41 @@ func ResetMongoAndReSync() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func getCrossShardData(result map[string]string, txList []metadata.Transaction, shardID byte) error {
+	for _, tx := range txList {
+		var prvProof privacy.Proof
+		txHash := tx.Hash().String()
+		if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
+			customTokenPrivacyTx, ok := tx.(transaction.TransactionToken)
+			if !ok {
+				return errors.New("Cannot cast transaction")
+			}
+			prvProof = customTokenPrivacyTx.GetTxBase().GetProof()
+			txTokenData := customTokenPrivacyTx.GetTxTokenData()
+			txTokenProof := txTokenData.TxNormal.GetProof()
+			if txTokenProof != nil {
+				for _, outCoin := range txTokenProof.GetOutputCoins() {
+					coinShardID, err := outCoin.GetShardID()
+					if err == nil && coinShardID == shardID {
+						result[outCoin.GetCommitment().String()] = txHash
+					}
+				}
+			}
+		} else {
+			prvProof = tx.GetProof()
+		}
+		if prvProof != nil {
+			for _, outCoin := range prvProof.GetOutputCoins() {
+				coinShardID, err := outCoin.GetShardID()
+				if err == nil && coinShardID == shardID {
+					result[outCoin.GetCommitment().String()] = txHash
+				}
+			}
+		}
+	}
+
 	return nil
 }

@@ -1,6 +1,7 @@
 package otaindexer
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -32,6 +33,11 @@ var Submitted_OTAKey = struct {
 	TotalKeys   int
 }{}
 
+func init() {
+	assignedOTAKeys.Keys = make(map[int][]*OTAkeyInfo)
+	workers = make(map[string]*worker)
+	OTAAssignChn = make(chan OTAAssignRequest)
+}
 func WorkerRegisterHandler(c *gin.Context) {
 	ws, err := upGrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -41,33 +47,47 @@ func WorkerRegisterHandler(c *gin.Context) {
 	defer ws.Close()
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
-	workerID := c.Query("id")
-	go func() {
-		for {
-			_, msg, err := ws.ReadMessage()
-			if err != nil {
-				log.Println("error read json")
-				log.Fatal(err)
-			}
-			readCh <- msg
-		}
-	}()
+	workerID := c.Request.Header.Values("id")[0]
 
 	newWorker := new(worker)
 	newWorker.ID = workerID
 	newWorker.readCh = readCh
 	newWorker.writeCh = writeCh
+	newWorker.Heartbeat = time.Now().Unix()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			_, msg, err := ws.ReadMessage()
+			if err != nil {
+				log.Println(err)
+				newWorker.Heartbeat = 0
+				return
+			}
+			if len(msg) == 1 && msg[0] == 1 {
+				newWorker.Heartbeat = time.Now().Unix()
+				continue
+			}
+			// readCh <- msg
+		}
+	}()
+
 	err = registerWorker(newWorker)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	for {
-		msg := <-writeCh
-		err := ws.WriteMessage(websocket.TextMessage, msg)
-		if err != nil {
-			log.Println("write:", err)
+		select {
+		case <-done:
 			return
+		case msg := <-writeCh:
+			err := ws.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				log.Println("write:", err)
+				return
+			}
 		}
 	}
 }
@@ -79,6 +99,7 @@ func registerWorker(w *worker) error {
 	}
 	workers[w.ID] = w
 	workerLock.Unlock()
+	log.Printf("register worker %v success\n", w.ID)
 	return nil
 }
 
@@ -86,20 +107,30 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
-	OTAAssignChn = make(chan OTAAssignRequest)
 	go func() {
 		for {
 			request := <-OTAAssignChn
 			request.Key.IndexerID = shared.ServiceCfg.IndexerID
-			err := database.DBSaveSubmittedOTAKeys([]shared.SubmittedOTAKeyData{*request.Key})
+			err := addKeys([]shared.SubmittedOTAKeyData{*request.Key})
 			if err != nil {
 				go func() {
 					request.Respond <- err
 				}()
+				continue
 			}
+			err = database.DBSaveSubmittedOTAKeys([]shared.SubmittedOTAKeyData{*request.Key})
+			if err != nil {
+				go func() {
+					request.Respond <- err
+				}()
+				continue
+			}
+			go func() {
+				request.Respond <- nil
+			}()
 		}
 	}()
-	timer := time.NewTicker(20 * time.Second)
+	timer := time.NewTicker(10 * time.Second)
 	for {
 		<-timer.C
 		Submitted_OTAKey.Lock()
@@ -112,8 +143,32 @@ func StartWorkerAssigner() {
 				}
 				w.OTAAssigned++
 				Submitted_OTAKey.AssignedKey[key] = w
+				log.Printf("assign %v to worker %v", key, w.ID)
+				keyBytes, err := json.Marshal(Submitted_OTAKey.Keys[key])
+				if err != nil {
+					log.Fatalln(err)
+				}
+				w.writeCh <- keyBytes
 			} else {
-
+				if worker.Heartbeat == 0 {
+					keyinfo, err := database.DBGetCoinV2PubkeyInfo(Submitted_OTAKey.Keys[key].Pubkey)
+					if err != nil {
+						log.Fatalln(err)
+					}
+					Submitted_OTAKey.Keys[key].KeyInfo = keyinfo
+					w, err := chooseWorker()
+					if err != nil {
+						log.Println(err)
+						break
+					}
+					w.OTAAssigned++
+					Submitted_OTAKey.AssignedKey[key] = w
+					keyBytes, err := json.Marshal(Submitted_OTAKey.Keys[key])
+					if err != nil {
+						log.Fatalln(err)
+					}
+					w.writeCh <- keyBytes
+				}
 			}
 		}
 		Submitted_OTAKey.Unlock()
@@ -129,7 +184,7 @@ func chooseWorker() (*worker, error) {
 	leastOccupiedWorkerKeys := 0
 
 	for _, worker := range workers {
-		if time.Since(time.Unix(worker.Heartbeat, 0)) < 40*time.Second {
+		if time.Since(time.Unix(worker.Heartbeat, 0)) <= 40*time.Second {
 			if leastOccupiedWorkerKeys == 0 {
 				leastOccupiedWorker = worker
 				leastOccupiedWorkerKeys = worker.OTAAssigned
@@ -154,19 +209,27 @@ func loadSubmittedOTAKey() {
 	}
 	Submitted_OTAKey.Keys = make(map[string]*OTAkeyInfo)
 	Submitted_OTAKey.AssignedKey = make(map[string]*worker)
+	err = addKeys(keys)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("Loaded %v keys\n", len(keys))
+}
+
+func addKeys(keys []shared.SubmittedOTAKeyData) error {
 	Submitted_OTAKey.Lock()
 	for _, key := range keys {
 		pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
 		if err != nil {
-			log.Fatalln(err)
+			return err
 		}
 		keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
 		if err != nil {
-			log.Fatalln(err)
+			return err
 		}
 		keyBytes = append(keyBytes, pubkey...)
 		if len(keyBytes) != 64 {
-			log.Fatalln(errors.New("keyBytes length isn't 64"))
+			return errors.New("keyBytes length isn't 64")
 		}
 		otaKey := shared.OTAKeyFromRaw(keyBytes)
 		ks := &incognitokey.KeySet{}
@@ -174,7 +237,7 @@ func loadSubmittedOTAKey() {
 		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
 		data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
 		if err != nil {
-			log.Fatalln(err)
+			return err
 		}
 		data.OTAKey = key.OTAKey
 		k := OTAkeyInfo{
@@ -184,9 +247,10 @@ func loadSubmittedOTAKey() {
 			Pubkey:  key.Pubkey,
 			keyset:  ks,
 		}
+		Submitted_OTAKey.AssignedKey[key.Pubkey] = nil
 		Submitted_OTAKey.Keys[key.Pubkey] = &k
 		Submitted_OTAKey.TotalKeys += 1
 	}
 	Submitted_OTAKey.Unlock()
-	log.Printf("Loaded %v keys\n", len(keys))
+	return nil
 }

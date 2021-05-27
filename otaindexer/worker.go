@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"net/http"
 	"net/url"
 	"sort"
 	"sync"
@@ -31,7 +32,9 @@ retry:
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/indexworker"}
 	log.Printf("connecting to %s", u.String())
 
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), http.Header{
+		"id": []string{id},
+	})
 	if err != nil {
 		log.Println(err)
 		goto retry
@@ -48,18 +51,29 @@ retry:
 				log.Println("read:", err)
 				return
 			}
-			// log.Printf("recv: %s", message)
+			log.Printf("recv: %s", message)
 			readCh <- message
 		}
 	}()
 
+	t := time.NewTicker(5 * time.Second)
 	for {
-		msg := <-writeCh
-		err := c.WriteMessage(websocket.TextMessage, msg)
-		if err != nil {
-			log.Println("write:", err)
-			return
+		select {
+		case <-done:
+			cleanAssignedOTA()
+			goto retry
+		case msg := <-writeCh:
+			err := c.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				log.Println("write:", err)
+				return
+			}
+		case <-t.C:
+			go func() {
+				writeCh <- []byte{1}
+			}()
 		}
+
 	}
 }
 
@@ -104,6 +118,7 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 		assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
 		assignedOTAKeys.TotalKeys += 1
 		assignedOTAKeys.Unlock()
+		log.Printf("success added key %v for indexing", key.Pubkey)
 	}
 }
 
@@ -113,7 +128,6 @@ func StartOTAIndexing() {
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
-	common.MaxShardNumber = shared.ServiceCfg.NumOfShard
 	interval := time.NewTicker(10 * time.Second)
 	var coinList []shared.CoinData
 	go processMsgFromMaster(readCh, writeCh)
@@ -124,7 +138,6 @@ func StartOTAIndexing() {
 			panic(err)
 		}
 
-		assignedOTAKeys.Lock()
 		log.Println("scanning coins...")
 		if len(assignedOTAKeys.Keys) == 0 {
 			log.Println("len(assignedOTAKeys.Keys) == 0")
@@ -132,6 +145,7 @@ func StartOTAIndexing() {
 		}
 		startTime := time.Now()
 
+		assignedOTAKeys.Lock()
 		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex()
 		for {
 			filteredCoins := make(map[string][]shared.CoinData)
@@ -150,15 +164,69 @@ func StartOTAIndexing() {
 	}
 }
 
+func cleanAssignedOTA() {
+	assignedOTAKeys.Lock()
+	assignedOTAKeys.Keys = make(map[int][]*OTAkeyInfo)
+	assignedOTAKeys.Unlock()
+}
+
 func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTokenIndex map[int]uint64) {
 	pubkeys := make(map[string]string)
+
+	coinsToUpdate := []shared.CoinData{}
+	txToUpdate := make(map[string][]string)
+	totalTxs := make(map[string]map[string]map[string]struct{})
+
+	for key, coins := range otaCoinList {
+		for _, coin := range coins {
+			coin.OTASecret = key
+			coinsToUpdate = append(coinsToUpdate, coin)
+			txToUpdate[key] = append(txToUpdate[key], coin.TxHash)
+			if len(totalTxs[key]) == 0 {
+				totalTxs[key] = make(map[string]map[string]struct{})
+			}
+			if len(totalTxs[key][coin.RealTokenID]) == 0 {
+				totalTxs[key][coin.RealTokenID] = make(map[string]struct{})
+			}
+			totalTxs[key][coin.RealTokenID][coin.TxHash] = struct{}{}
+		}
+	}
+
+	tokenTxs := []string{}
+
+	for _, txs := range totalTxs {
+		for tokenID, txsHash := range txs {
+			if tokenID == common.PRVCoinID.String() {
+				continue
+			}
+			for txHash := range txsHash {
+				tokenTxs = append(tokenTxs, txHash)
+			}
+		}
+	}
+	for key, txs := range totalTxs {
+		if txsHash, ok := txs[common.PRVCoinID.String()]; ok {
+			for _, hash := range tokenTxs {
+				delete(txsHash, hash)
+			}
+			totalTxs[key][common.PRVCoinID.String()] = txsHash
+		}
+	}
+
 	for shardID, keyDatas := range assignedOTAKeys.Keys {
 		for _, keyData := range keyDatas {
 			pubkeys[keyData.OTAKey] = keyData.Pubkey
 			if len(keyData.KeyInfo.CoinIndex) == 0 {
 				keyData.KeyInfo.CoinIndex = make(map[string]shared.CoinInfo)
 			}
+			if len(keyData.KeyInfo.TotalReceiveTxs) == 0 {
+				keyData.KeyInfo.TotalReceiveTxs = make(map[string]uint64)
+			}
+
 			if cd, ok := otaCoinList[keyData.OTAKey]; ok {
+				for tokenID, txs := range totalTxs[keyData.OTAKey] {
+					keyData.KeyInfo.TotalReceiveTxs[tokenID] += uint64(len(txs))
+				}
 				sort.Slice(cd, func(i, j int) bool { return cd[i].CoinIndex < cd[j].CoinIndex })
 				for _, v := range cd {
 					if _, ok := keyData.KeyInfo.CoinIndex[v.RealTokenID]; !ok {
@@ -211,17 +279,6 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 	err := updateSubmittedOTAKey()
 	if err != nil {
 		panic(err)
-	}
-	coinsToUpdate := []shared.CoinData{}
-
-	txToUpdate := make(map[string][]string)
-	for key, coins := range otaCoinList {
-		for _, coin := range coins {
-			coin.OTASecret = key
-			coinsToUpdate = append(coinsToUpdate, coin)
-			txToUpdate[key] = append(txToUpdate[key], coin.TxHash)
-		}
-
 	}
 	if len(coinsToUpdate) > 0 {
 		log.Println("\n=========================================")

@@ -87,6 +87,7 @@ type KeyInfoData struct {
 	Pubkey           string              `json:"pubkey" bson:"pubkey"`
 	OTAKey           string              `json:"otakey" bson:"otakey"`
 	CoinIndex        map[string]CoinInfo `json:"coinindex" bson:"coinindex"`
+	TotalReceiveTxs  map[string]uint64   `json:"receivetxs" bson:"receivetxs"`
 }
 
 type KeyInfoDataV2 KeyInfoData

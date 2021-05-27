@@ -1,5 +1,7 @@
 package apiservice
 
+import "github.com/incognitochain/coin-service/shared"
+
 type APICheckKeyImagesRequest struct {
 	Keyimages []string
 	ShardID   int
@@ -61,4 +63,8 @@ type TxTradeDetail struct {
 }
 
 type APIGetTxTradeRespond struct {
+}
+type ReceivedTransactionV2 struct {
+	TxDetail    *shared.TransactionDetail
+	FromShardID byte `json:"FromShardID"`
 }

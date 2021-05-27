@@ -12,10 +12,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func DBGetSubmittedOTAKeys(bucketID int, offset int64) ([]shared.SubmittedOTAKeyData, error) {
+func DBGetSubmittedOTAKeys(indexerID int, offset int64) ([]shared.SubmittedOTAKeyData, error) {
 	var result []shared.SubmittedOTAKeyData
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
-	filter := bson.M{"bucketid": bson.M{operator.Eq: bucketID}}
+	filter := bson.M{"indexerid": bson.M{operator.Eq: indexerID}}
 	err := mgm.Coll(&shared.SubmittedOTAKeyData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort: bson.D{{"created_at", 1}},
 		Skip: &offset,
