@@ -275,11 +275,11 @@ func APIPushTx(c *gin.Context) {
 			return
 		}
 	}
-
+	txHash := tx.Hash().String()
 	ctx := context.Background()
 	msg := &pubsub.Message{
 		Attributes: map[string]string{
-			"txhash": tx.Hash().String(),
+			"txhash": txHash,
 		},
 		Data: []byte(req.TxRaw),
 	}
@@ -292,7 +292,7 @@ func APIPushTx(c *gin.Context) {
 	log.Println("publish msgID:", msgID)
 
 	respond := APIRespond{
-		Result: "ok",
+		Result: txHash,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
