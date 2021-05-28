@@ -47,6 +47,8 @@ func getTx(txhash string) (*TxData, error) {
 		}
 		if status {
 			result.Status = txStatusSuccess
+		} else {
+			result.Status = txStatusRetry
 		}
 	}
 	return &result, nil
