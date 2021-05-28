@@ -3,6 +3,7 @@ package otaindexer
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -219,6 +220,9 @@ func loadSubmittedOTAKey() {
 func addKeys(keys []shared.SubmittedOTAKeyData) error {
 	Submitted_OTAKey.Lock()
 	for _, key := range keys {
+		if _, ok := Submitted_OTAKey.Keys[key.Pubkey]; ok {
+			return fmt.Errorf("key %v already exist", key.Pubkey)
+		}
 		pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
 		if err != nil {
 			return err
