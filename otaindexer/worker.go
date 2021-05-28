@@ -290,10 +290,16 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 		}
 	}
 
-	for key, txHashs := range txToUpdate {
-		err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key])
-		if err != nil {
-			panic(err)
+	for key, tokenTxs := range totalTxs {
+		for tokenID, txList := range tokenTxs {
+			txHashs := []string{}
+			for txHash := range txList {
+				txHashs = append(txHashs, txHash)
+			}
+			err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key], tokenID)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }

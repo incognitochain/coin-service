@@ -19,7 +19,6 @@ import (
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -132,7 +131,7 @@ func APIGetCoins(c *gin.Context) {
 					cV2 = shared.NewOutCoinV2(coinV2, false)
 					cV2.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
 				}
-
+				cV2.TxHash = cn.TxHash
 				result = append(result, cV2)
 			}
 		}
@@ -202,6 +201,7 @@ func APIGetCoins(c *gin.Context) {
 						cV1 = shared.NewOutCoinV1(plainCoin, false)
 						cV1.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
 					}
+					cV1.TxHash = cData.TxHash
 					collectCh <- cV1
 					wg.Done()
 				}(coinV1, cdata)
@@ -214,7 +214,6 @@ func APIGetCoins(c *gin.Context) {
 					collectCh = make(chan shared.OutCoinV1, shared.MAX_CONCURRENT_COIN_DECRYPT)
 				}
 			} else {
-
 				idx := new(big.Int).SetUint64(cdata.CoinIndex)
 				var cV1 shared.OutCoinV1
 				if base58Format {
@@ -226,6 +225,7 @@ func APIGetCoins(c *gin.Context) {
 					cV1.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
 					cV1.CoinDetailsEncrypted = base64.StdEncoding.EncodeToString(coinV1.GetCoinDetailEncrypted())
 				}
+				cV1.TxHash = cdata.TxHash
 				result = append(result, cV1)
 			}
 		}
@@ -574,15 +574,17 @@ func APISubmitOTA(c *gin.Context) {
 		Respond: resp,
 	}
 	err = <-resp
+	errStr := ""
 	if err != nil {
-		if !mongo.IsDuplicateKeyError(err) {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
+		// if !mongo.IsDuplicateKeyError(err) {
+		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		// 	return
+		// }
+		errStr = err.Error()
 	}
 	respond := APIRespond{
 		Result: "true",
-		Error:  nil,
+		Error:  &errStr,
 	}
 	c.JSON(http.StatusOK, respond)
 }

@@ -28,11 +28,12 @@ func DBSaveTXs(list []shared.TxData) error {
 	return nil
 }
 
-func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey string) error {
+func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey string, tokenID string) error {
 	docs := []interface{}{}
 	for _ = range txHashes {
 		update := bson.M{
 			"$addToSet": bson.M{"pubkeyreceivers": pubKey},
+			"$set":      bson.M{"realtokenid": tokenID},
 		}
 		docs = append(docs, update)
 	}
@@ -65,7 +66,13 @@ func DBGetReceiveTxByPubkey(pubkey string, tokenID string, txversion int, limit 
 	if limit == 0 {
 		limit = int64(10000)
 	}
-	filter := bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
+	filter := bson.M{}
+	if txversion == 1 {
+		filter = bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
+	} else {
+
+		filter = bson.M{"realtokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", -1}},

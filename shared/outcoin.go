@@ -48,6 +48,7 @@ type OutCoinV2 struct {
 	TxRandom             string `json:"TxRandom"`
 	CoinDetailsEncrypted string `json:"CoinDetailsEncrypted"`
 	AssetTag             string `json:"AssetTag"`
+	TxHash               string `json:"TxHash"`
 }
 
 type OutCoinV1 struct {
@@ -65,6 +66,7 @@ type OutCoinV1 struct {
 	// TxRandom             string `json:"TxRandom"`
 	CoinDetailsEncrypted string `json:"CoinDetailsEncrypted"`
 	// AssetTag             string `json:"AssetTag"`
+	TxHash string `json:"TxHash"`
 }
 
 func NewOutcoinV1FromInterface(data interface{}) (*OutCoinV1, error) {

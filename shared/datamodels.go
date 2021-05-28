@@ -217,6 +217,7 @@ type TxData struct {
 	TxType           string   `json:"txtype" bson:"txtype"`
 	TxDetail         string   `json:"txdetail" bson:"txdetail"`
 	TokenID          string   `json:"tokenid" bson:"tokenid"`
+	RealTokenID      string   `json:"realtokenid" bson:"realtokenid"`
 	BlockHash        string   `json:"blockhash" bson:"blockhash"`
 	BlockHeight      string   `json:"blockheight" bson:"blockheight"`
 	ShardID          int      `json:"shardid" bson:"shardid"`

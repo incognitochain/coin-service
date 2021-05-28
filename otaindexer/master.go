@@ -111,15 +111,25 @@ func StartWorkerAssigner() {
 	go func() {
 		for {
 			request := <-OTAAssignChn
+			Submitted_OTAKey.RLock()
+			if _, ok := Submitted_OTAKey.Keys[request.Key.Pubkey]; ok {
+				go func() {
+					request.Respond <- fmt.Errorf("key %v already exist", request.Key.Pubkey)
+				}()
+				Submitted_OTAKey.RUnlock()
+				continue
+			}
+			Submitted_OTAKey.RUnlock()
+
 			request.Key.IndexerID = shared.ServiceCfg.IndexerID
-			err := addKeys([]shared.SubmittedOTAKeyData{*request.Key})
+			err := database.DBSaveSubmittedOTAKeys([]shared.SubmittedOTAKeyData{*request.Key})
 			if err != nil {
 				go func() {
 					request.Respond <- err
 				}()
 				continue
 			}
-			err = database.DBSaveSubmittedOTAKeys([]shared.SubmittedOTAKeyData{*request.Key})
+			err = addKeys([]shared.SubmittedOTAKeyData{*request.Key})
 			if err != nil {
 				go func() {
 					request.Respond <- err
@@ -219,10 +229,8 @@ func loadSubmittedOTAKey() {
 
 func addKeys(keys []shared.SubmittedOTAKeyData) error {
 	Submitted_OTAKey.Lock()
+	defer Submitted_OTAKey.Unlock()
 	for _, key := range keys {
-		if _, ok := Submitted_OTAKey.Keys[key.Pubkey]; ok {
-			return fmt.Errorf("key %v already exist", key.Pubkey)
-		}
 		pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
 		if err != nil {
 			return err
@@ -255,6 +263,5 @@ func addKeys(keys []shared.SubmittedOTAKeyData) error {
 		Submitted_OTAKey.Keys[key.Pubkey] = &k
 		Submitted_OTAKey.TotalKeys += 1
 	}
-	Submitted_OTAKey.Unlock()
 	return nil
 }
