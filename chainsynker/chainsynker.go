@@ -125,6 +125,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 
 	txDataList := []shared.TxData{}
 	tradeRespondList := []shared.TradeData{}
+	bridgeShieldRespondList := []shared.ShieldData{}
+	bridgeUnshieldRespondList := []shared.ShieldData{}
 	for _, txs := range blk.Body.CrossTransactions {
 		for _, tx := range txs {
 			for _, prvout := range tx.OutputCoin {
@@ -429,20 +431,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				txToken := tx.(transaction.TransactionToken)
 				outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
 				if isCoinV2Output {
-				retry:
-					if len(lastTokenIDMap) == 0 {
-						time.Sleep(10 * time.Second)
-						goto retry
-					}
-					lastTokenIDLock.RLock()
-					var ok bool
-					tokenIDStr, ok = lastTokenIDMap[outs[0].GetAssetTag().String()]
-					if !ok {
-						time.Sleep(10 * time.Second)
-						lastTokenIDLock.RUnlock()
-						goto retry
-					}
-					lastTokenIDLock.RUnlock()
+					tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
 				}
 			} else {
 				outs = tx.GetProof().GetOutputCoins()
@@ -450,6 +439,39 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue())
 			tradeRespondList = append(tradeRespondList, *trade)
 		}
+
+		if metaDataType == metadata.IssuingResponseMeta || metaDataType == metadata.IssuingETHResponseMeta {
+			requestTx := ""
+			shieldType := "shield"
+			bridge := ""
+			isDecentralized := false
+			switch metaDataType {
+			case metadata.IssuingResponseMeta:
+				requestTx = tx.GetMetadata().(*metadata.IssuingResponse).RequestedTxID.String()
+				bridge = "centralized"
+			case metadata.IssuingETHResponseMeta:
+				requestTx = tx.GetMetadata().(*metadata.IssuingETHResponse).RequestedTxID.String()
+				bridge = "eth"
+			}
+			outs := []coin.Coin{}
+			tokenIDStr := tx.GetTokenID().String()
+			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
+				txToken := tx.(transaction.TransactionToken)
+				outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+				if isCoinV2Output {
+					tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
+				}
+			} else {
+				outs = tx.GetProof().GetOutputCoins()
+			}
+			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, isDecentralized, outs[0].GetValue())
+			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
+		}
+
+		if metaDataType == metadata.BurningRequestMeta || metaDataType == metadata.BurningRequestMetaV2 || metaDataType == metadata.BurningConfirmMeta || metaDataType == metadata.BurningConfirmMetaV2 {
+
+		}
+
 		mtd := ""
 		if tx.GetMetadata() != nil {
 			mtdBytes, err := json.Marshal(tx.GetMetadata())
@@ -510,6 +532,20 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 	}
+	if len(bridgeShieldRespondList) > 0 {
+		err = database.DBSaveTxShield(bridgeShieldRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if len(bridgeUnshieldRespondList) > 0 {
+		err = database.DBSaveTxUnShield(bridgeUnshieldRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	if len(coinV1PubkeyInfo) > 0 && !alreadyWriteToBD {
 		err = database.DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
 		if err != nil {
@@ -874,4 +910,21 @@ func getCrossShardData(result map[string]string, txList []metadata.Transaction, 
 	}
 
 	return nil
+}
+
+func getTokenID(assetTag string) string {
+retry:
+	if len(lastTokenIDMap) == 0 {
+		time.Sleep(10 * time.Second)
+		goto retry
+	}
+	lastTokenIDLock.RLock()
+	tokenIDStr, ok := lastTokenIDMap[assetTag]
+	if !ok {
+		time.Sleep(10 * time.Second)
+		lastTokenIDLock.RUnlock()
+		goto retry
+	}
+	lastTokenIDLock.RUnlock()
+	return tokenIDStr
 }

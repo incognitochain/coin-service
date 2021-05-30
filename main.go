@@ -21,7 +21,7 @@ func main() {
 		panic(err)
 	}
 	log.Println("service mode:", shared.ServiceCfg.Mode)
-	if shared.ServiceCfg.Mode == shared.TESTMODE {
+	if shared.ServiceCfg.Mode == shared.FULLMODE {
 		chainsynker.InitChainSynker(shared.ServiceCfg)
 		// go otaindexer.InitOTAIndexingService()
 	}

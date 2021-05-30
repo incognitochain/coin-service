@@ -42,28 +42,33 @@ func StartGinService() {
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/health", APIHealthCheck)
-	// if serviceCfg.Mode == QUERYMODE {
-	r.GET("/getcoininfo", APIGetCoinInfo)
-	r.GET("/getcoinspending", APIGetCoinsPending)
-	r.GET("/getcoins", APIGetCoins)
-	r.GET("/getkeyinfo", APIGetKeyInfo)
-	r.POST("/checkkeyimages", APICheckKeyImages)
-	r.POST("/getrandomcommitments", APIGetRandomCommitments)
-	r.POST("/checktxs", APICheckTXs)
 
-	r.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
-	r.POST("/gettxsbysender", APIGetTxsBySender)
+	if shared.ServiceCfg.Mode == shared.QUERYMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
+		r.GET("/getcoininfo", APIGetCoinInfo)
+		r.GET("/getcoinspending", APIGetCoinsPending)
+		r.GET("/getcoins", APIGetCoins)
+		r.GET("/getkeyinfo", APIGetKeyInfo)
+		r.POST("/checkkeyimages", APICheckKeyImages)
+		r.POST("/getrandomcommitments", APIGetRandomCommitments)
+		r.POST("/checktxs", APICheckTXs)
 
-	r.GET("/getlatesttx", APIGetLatestTxs)
-	r.GET("/gettradehistory", APIGetTradeHistory)
-	r.GET("/getpdestate", APIPDEState)
-	// }
+		r.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
+		r.POST("/gettxsbysender", APIGetTxsBySender)
 
-	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
+		r.GET("/getlatesttx", APIGetLatestTxs)
+		r.GET("/gettradehistory", APIGetTradeHistory)
+		r.GET("/getpdestate", APIPDEState)
+		r.GET("/getbridgehistory", APIGetBridgeHistory)
+	}
+
+	if shared.ServiceCfg.Mode == shared.INDEXERMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
 		r.POST("/submitotakey", APISubmitOTA)
 		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
 	}
-	r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
+	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func APIGetCoins(c *gin.Context) {
@@ -744,6 +749,80 @@ func APIGetLatestTxs(c *gin.Context) {
 
 }
 
+func APIGetBridgeHistory(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	otakey := c.Query("otakey")
+	paymentkey := c.Query("paymentkey")
+
+	pubKeyStr := ""
+	pubKeyBytes := []byte{}
+	if otakey != "" {
+		wl, err := wallet.Base58CheckDeserialize(otakey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
+	} else {
+		if paymentkey == "" {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
+			return
+		}
+		wl, err := wallet.Base58CheckDeserialize(paymentkey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+	}
+	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
+
+	list, err := database.DBGetTxShieldRespond(pubKeyStr, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(list) == 0 {
+		err := errors.New("len(list) == 0").Error()
+		respond := APIRespond{
+			Result: nil,
+			Error:  &err,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+
+	respList := []string{}
+	for _, v := range list {
+		respList = append(respList, v.TxHash)
+	}
+
+	txShieldPairlist, err := database.DBGetTxShield(respList)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	var result []*TxBridgeDetail
+	for _, v := range txShieldPairlist {
+		result = append(result, &TxBridgeDetail{
+			Bridge:          v.Bridge,
+			TokenID:         v.TokenID,
+			Amount:          v.Amount,
+			RespondTx:       v.RespondTx,
+			RequestTx:       v.RequestTx,
+			ShieldType:      v.ShieldType,
+			IsDecentralized: v.IsDecentralized,
+		})
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+
+	c.JSON(http.StatusOK, respond)
+}
+
 func APIGetTradeHistory(c *gin.Context) {
 	startTime := time.Now()
 	offset, _ := strconv.Atoi(c.Query("offset"))
@@ -856,7 +935,6 @@ func APIGetTradeHistory(c *gin.Context) {
 			txDetail.RequestTime = tx.Locktime
 		}
 	}
-
 	reverseAny(result)
 
 	respond := APIRespond{
