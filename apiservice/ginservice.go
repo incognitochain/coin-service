@@ -55,6 +55,7 @@ func StartGinService() {
 	r.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
 	r.POST("/gettxsbysender", APIGetTxsBySender)
 	r.GET("/gettxdetail", APIGetTxDetail)
+	r.POST("/gettxsbypubkey", APIGetTxsByPubkey)
 
 	r.GET("/getlatesttx", APIGetLatestTxs)
 	r.GET("/gettradehistory", APIGetTradeHistory)
@@ -655,6 +656,61 @@ func APIHealthCheck(c *gin.Context) {
 		"chain":  shardsHeight,
 	})
 }
+
+func APIGetTxsByPubkey(c *gin.Context) {
+	var req APIGetTxsByPubkeyRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(req.Pubkeys) == 0 {
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.Pubkeys) == 0")))
+			return
+		}
+	}
+	if !req.Base58 {
+		newList := []string{}
+		for _, v := range req.Pubkeys {
+			d, _ := base64.StdEncoding.DecodeString(v)
+			s := base58.EncodeCheck(d)
+			newList = append(newList, s)
+		}
+		req.Pubkeys = newList
+	}
+	txDataList, txsPubkey, err := database.DBGetTxV2ByPubkey(req.Pubkeys)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	txDetailList, err := buildTxDetailRespond(txDataList, req.Base58)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	result := []*ReceivedTransactionV2{}
+	for _, txPubkey := range txsPubkey {
+		var tx *ReceivedTransactionV2
+		if txPubkey != "" {
+			for _, txDetail := range txDetailList {
+				if txDetail.TxDetail.Hash == txPubkey {
+					tx = &txDetail
+					break
+				}
+			}
+		}
+		result = append(result, tx)
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
 func APIGetTxsBySender(c *gin.Context) {
 	startTime := time.Now()
 	var req APIGetTxsBySenderRequest
@@ -668,6 +724,15 @@ func APIGetTxsBySender(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.Keyimages) == 0")))
 			return
 		}
+	}
+	if req.Base58 {
+		newList := []string{}
+		for _, v := range req.Keyimages {
+			d, _ := base64.StdEncoding.DecodeString(v)
+			s := base58.EncodeCheck(d)
+			newList = append(newList, s)
+		}
+		req.Keyimages = newList
 	}
 	txDataList, err := database.DBGetSendTxByKeyImages(req.Keyimages)
 	if err != nil {
@@ -684,10 +749,12 @@ func APIGetTxsBySender(c *gin.Context) {
 	}
 	for _, txMatch := range matchTxList {
 		var tx *ReceivedTransactionV2
-		for _, txDetail := range txDetailList {
-			if txDetail.TxDetail.Hash == txMatch.TxHash {
-				tx = &txDetail
-				break
+		if txMatch != nil {
+			for _, txDetail := range txDetailList {
+				if txDetail.TxDetail.Hash == txMatch.TxHash {
+					tx = &txDetail
+					break
+				}
 			}
 		}
 		result = append(result, tx)
