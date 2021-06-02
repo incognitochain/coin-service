@@ -230,17 +230,20 @@ func APIGetTxStatus(c *gin.Context) {
 	}
 
 	status := TXSTATUS_UNKNOWN
+	var errStr *string
 	switch txData.Status {
 	case txStatusSuccess:
 		status = TXSTATUS_SUCCESS
 	case txStatusFailed:
 		status = TXSTATUS_FAILED
+		errStr = &txData.Error
 	case txStatusBroadcasted, txStatusRetry:
 		status = TXSTATUS_PENDING
 	}
+
 	respond := APIRespond{
 		Result: status,
-		Error:  nil,
+		Error:  errStr,
 	}
 	c.JSON(http.StatusOK, respond)
 }
