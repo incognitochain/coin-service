@@ -52,8 +52,8 @@ func StartGinService() {
 		r.POST("/checkkeyimages", APICheckKeyImages)
 		r.POST("/getrandomcommitments", APIGetRandomCommitments)
 		r.POST("/checktxs", APICheckTXs)
-	r.GET("/gettxdetail", APIGetTxDetail)
-	r.POST("/gettxsbypubkey", APIGetTxsByPubkey)
+		r.GET("/gettxdetail", APIGetTxDetail)
+		r.POST("/gettxsbypubkey", APIGetTxsByPubkey)
 
 		r.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
 		r.POST("/gettxsbysender", APIGetTxsBySender)
@@ -61,7 +61,7 @@ func StartGinService() {
 		r.GET("/getlatesttx", APIGetLatestTxs)
 		r.GET("/gettradehistory", APIGetTradeHistory)
 		r.GET("/getpdestate", APIPDEState)
-		r.GET("/getbridgehistory", APIGetBridgeHistory)
+		r.GET("/getshieldhistory", APIGetShieldHistory)
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
@@ -847,7 +847,7 @@ func APIGetLatestTxs(c *gin.Context) {
 
 }
 
-func APIGetBridgeHistory(c *gin.Context) {
+func APIGetShieldHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	otakey := c.Query("otakey")
