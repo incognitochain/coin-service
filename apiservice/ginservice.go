@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,6 +52,8 @@ func StartGinService() {
 		r.POST("/checkkeyimages", APICheckKeyImages)
 		r.POST("/getrandomcommitments", APIGetRandomCommitments)
 		r.POST("/checktxs", APICheckTXs)
+	r.GET("/gettxdetail", APIGetTxDetail)
+	r.POST("/gettxsbypubkey", APIGetTxsByPubkey)
 
 		r.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
 		r.POST("/gettxsbysender", APIGetTxsBySender)
@@ -658,6 +661,61 @@ func APIHealthCheck(c *gin.Context) {
 		"chain":  shardsHeight,
 	})
 }
+
+func APIGetTxsByPubkey(c *gin.Context) {
+	var req APIGetTxsByPubkeyRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(req.Pubkeys) == 0 {
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("len(req.Pubkeys) == 0")))
+			return
+		}
+	}
+	if !req.Base58 {
+		newList := []string{}
+		for _, v := range req.Pubkeys {
+			d, _ := base64.StdEncoding.DecodeString(v)
+			s := base58.EncodeCheck(d)
+			newList = append(newList, s)
+		}
+		req.Pubkeys = newList
+	}
+	txDataList, txsPubkey, err := database.DBGetTxV2ByPubkey(req.Pubkeys)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	txDetailList, err := buildTxDetailRespond(txDataList, req.Base58)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	result := []*ReceivedTransactionV2{}
+	for _, txPubkey := range txsPubkey {
+		var tx *ReceivedTransactionV2
+		if txPubkey != "" {
+			for _, txDetail := range txDetailList {
+				if txDetail.TxDetail.Hash == txPubkey {
+					tx = &txDetail
+					break
+				}
+			}
+		}
+		result = append(result, tx)
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
 func APIGetTxsBySender(c *gin.Context) {
 	startTime := time.Now()
 	var req APIGetTxsBySenderRequest
@@ -672,15 +730,39 @@ func APIGetTxsBySender(c *gin.Context) {
 			return
 		}
 	}
+	if req.Base58 {
+		newList := []string{}
+		for _, v := range req.Keyimages {
+			d, _ := base64.StdEncoding.DecodeString(v)
+			s := base58.EncodeCheck(d)
+			newList = append(newList, s)
+		}
+		req.Keyimages = newList
+	}
 	txDataList, err := database.DBGetSendTxByKeyImages(req.Keyimages)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	result, err := buildTxDetailRespond(txDataList, req.Base58)
+	result := []*ReceivedTransactionV2{}
+	matchTxList := matchTxDataWithKeyimage(req.Keyimages, txDataList)
+
+	txDetailList, err := buildTxDetailRespond(txDataList, req.Base58)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
+	}
+	for _, txMatch := range matchTxList {
+		var tx *ReceivedTransactionV2
+		if txMatch != nil {
+			for _, txDetail := range txDetailList {
+				if txDetail.TxDetail.Hash == txMatch.TxHash {
+					tx = &txDetail
+					break
+				}
+			}
+		}
+		result = append(result, tx)
 	}
 	respond := APIRespond{
 		Result: result,
@@ -688,6 +770,22 @@ func APIGetTxsBySender(c *gin.Context) {
 	}
 	log.Println("APIGetTxsBySender time:", time.Since(startTime))
 	c.JSON(http.StatusOK, respond)
+}
+
+func matchTxDataWithKeyimage(keyImages []string, txList []shared.TxData) []*shared.TxData {
+	var result []*shared.TxData
+	for _, km := range keyImages {
+		var matchTx *shared.TxData
+		for _, tx := range txList {
+			txkm := strings.Join(tx.KeyImages, ",")
+			if strings.Contains(txkm, km) {
+				matchTx = &tx
+				break
+			}
+		}
+		result = append(result, matchTx)
+	}
+	return result
 }
 
 func APIGetTxsByReceiver(c *gin.Context) {
@@ -967,6 +1065,33 @@ func APIPDEState(c *gin.Context) {
 	}
 	respond := APIRespond{
 		Result: pdeState,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetTxDetail(c *gin.Context) {
+	txhash := c.Query("txhash")
+	if txhash == "" {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid txhash")))
+		return
+	}
+	isBase58 := false
+	if c.Query("base58") == "true" {
+		isBase58 = true
+	}
+	txDataList, err := database.DBGetTxByHash([]string{txhash})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	result, err := buildTxDetailRespond(txDataList, isBase58)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

@@ -48,6 +48,11 @@ type APIGetTxsBySenderRequest struct {
 	Base58    bool
 }
 
+type APIGetTxsByPubkeyRequest struct {
+	Pubkeys []string
+	Base58  bool
+}
+
 type TxTradeDetail struct {
 	RequestTx string   `json:"requesttx"`
 	RespondTx []string `json:"respondtx"`
