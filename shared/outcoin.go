@@ -141,10 +141,12 @@ func NewOutCoinV2(outCoin ICoinInfo, base58Fmt bool) OutCoinV2 {
 		Randomness:  randomness,
 	}
 
-	if base58Fmt {
-		result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
-	} else {
-		result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+	if len(outCoin.GetInfo()) != 0 {
+		if base58Fmt {
+			result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
+		} else {
+			result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+		}
 	}
 
 	if outCoin.GetCoinDetailEncrypted() != nil {
@@ -242,11 +244,15 @@ func NewOutCoinV1(outCoin ICoinInfo, base58Fmt bool) OutCoinV1 {
 		KeyImage:    keyImage,
 		Randomness:  randomness,
 	}
-	if base58Fmt {
-		result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
-	} else {
-		result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+
+	if len(outCoin.GetInfo()) != 0 {
+		if base58Fmt {
+			result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
+		} else {
+			result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+		}
 	}
+
 	return result
 }
 
