@@ -308,9 +308,14 @@ func APICheckKeyImages(c *gin.Context) {
 	if req.Base58 {
 		newList := []string{}
 		for _, v := range req.Keyimages {
-			d, _ := base64.StdEncoding.DecodeString(v)
-			s := base58.EncodeCheck(d)
-			newList = append(newList, s)
+			s, _, err := base58.DecodeCheck(v)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+
+			d := base64.StdEncoding.EncodeToString(s)
+			newList = append(newList, d)
 		}
 		req.Keyimages = newList
 	}
