@@ -126,7 +126,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	txDataList := []shared.TxData{}
 	tradeRespondList := []shared.TradeData{}
 	bridgeShieldRespondList := []shared.ShieldData{}
-	bridgeUnshieldRespondList := []shared.ShieldData{}
 	for _, txs := range blk.Body.CrossTransactions {
 		for _, tx := range txs {
 			for _, prvout := range tx.OutputCoin {
@@ -451,7 +450,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				bridge = "centralized"
 			case metadata.IssuingETHResponseMeta:
 				requestTx = tx.GetMetadata().(*metadata.IssuingETHResponse).RequestedTxID.String()
-				bridge = "eth"
+				bridge = "centralized"
 			}
 			outs := []coin.Coin{}
 			tokenIDStr := tx.GetTokenID().String()
@@ -464,12 +463,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			} else {
 				outs = tx.GetProof().GetOutputCoins()
 			}
-			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, isDecentralized, outs[0].GetValue())
+			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue())
 			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
-		}
-
-		if metaDataType == metadata.BurningRequestMeta || metaDataType == metadata.BurningRequestMetaV2 || metaDataType == metadata.BurningConfirmMeta || metaDataType == metadata.BurningConfirmMetaV2 {
-
 		}
 
 		mtd := ""
@@ -534,13 +529,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 	if len(bridgeShieldRespondList) > 0 {
 		err = database.DBSaveTxShield(bridgeShieldRespondList)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if len(bridgeUnshieldRespondList) > 0 {
-		err = database.DBSaveTxUnShield(bridgeUnshieldRespondList)
 		if err != nil {
 			panic(err)
 		}
@@ -652,18 +640,18 @@ func InitChainSynker(cfg shared.Config) {
 	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
-	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetFinalViewHeight()), true, updatePDEState)
+	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetFinalViewHeight()), true, updateBeaconState)
 
 }
 
-func updatePDEState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
+func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
-
 	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
 	if err != nil {
 		log.Println(err)
 	}
+	// PDEstate
 	pdeState, err := blockchain.InitCurrentPDEStateFromDB(beaconFeatureStateDB, nil, beaconBestState.BeaconHeight)
 	if err != nil {
 		log.Println(err)
@@ -683,6 +671,68 @@ func updatePDEState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		log.Println(err)
 	}
+
+	bridgeUnshieldRespondList := []shared.ShieldData{}
+
+	// unshield
+	for _, inst := range beaconBestState.BestBlock.GetInstructions() {
+
+		metaType, err := strconv.Atoi(inst[0])
+		if err != nil {
+			continue
+		}
+		tokenID := ""
+		txHash := ""
+		bridge := "centralized"
+		amount := uint64(0)
+		pubkey := ""
+		isDecentralized := false
+		switch metaType {
+		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2:
+			var burningReqAction blockchain.BurningReqAction
+			contentBytes, err := base64.StdEncoding.DecodeString(inst[1])
+			if err != nil {
+				panic(err)
+			}
+			err = json.Unmarshal(contentBytes, &burningReqAction)
+			if err != nil {
+				panic(err)
+			}
+			md := burningReqAction.Meta
+			txHash = burningReqAction.RequestedTxID.String()
+			tokenID = base58.Base58Check{}.Encode(md.TokenID[:], 0x00)
+			amount = md.BurningAmount
+			pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
+			bridge = "decentralized"
+			isDecentralized = true
+		case metadata.ContractingRequestMeta:
+			contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
+			if err != nil {
+				panic(err)
+			}
+			var contractingReqAction metadata.ContractingReqAction
+			err = json.Unmarshal(contentBytes, &contractingReqAction)
+			if err != nil {
+				panic(err)
+			}
+			md := contractingReqAction.Meta
+			txHash = contractingReqAction.TxReqID.String()
+			tokenID = md.TokenID.String()
+			amount = md.BurnedAmount
+			pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
+		}
+		unshieldData := shared.NewShieldData(txHash, "", tokenID, "unshield", bridge, pubkey, isDecentralized, amount)
+		bridgeUnshieldRespondList = append(bridgeUnshieldRespondList, *unshieldData)
+	}
+	if len(bridgeUnshieldRespondList) > 0 {
+		err = database.DBSaveTxUnShield(bridgeUnshieldRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// liquidity
+
 }
 
 func mempoolWatcher() {
@@ -739,7 +789,11 @@ func mempoolWatcher() {
 				}
 			}
 		}
-		database.DBDeletePendingTxs(txsToRemove)
+		err = database.DBDeletePendingTxs(txsToRemove)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 	}
 }
 func tokenListWatcher() {

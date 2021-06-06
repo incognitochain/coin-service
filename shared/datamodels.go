@@ -330,9 +330,10 @@ type ShieldData struct {
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
 	ShieldType       string `json:"shieldtype" bson:"shieldtype"`
 	IsDecentralized  bool   `json:"isdecentralized" bson:"isdecentralized"`
+	Pubkey           string `json:"pubkey" bson:"pubkey"`
 }
 
-func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge string, isDecentralized bool, amount uint64) *ShieldData {
+func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge, pubkey string, isDecentralized bool, amount uint64) *ShieldData {
 	return &ShieldData{
 		RespondTx:       respondTx,
 		RequestTx:       requestTx,
@@ -341,6 +342,7 @@ func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge string, isD
 		TokenID:         tokenID,
 		Amount:          amount,
 		IsDecentralized: isDecentralized,
+		Pubkey:          pubkey,
 	}
 }
 
