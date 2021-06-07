@@ -605,7 +605,7 @@ func InitChainSynker(cfg shared.Config) {
 	Localnode = node
 	log.Println("initiating chain-synker...")
 	if shared.RESET_FLAG {
-		for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+		for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
 			err := Localnode.GetUserDatabase().Delete([]byte(statePrefix), nil)
 			if err != nil {
@@ -619,7 +619,7 @@ func InitChainSynker(cfg shared.Config) {
 	ShardProcessedState = make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
 
-	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		statePrefix := fmt.Sprintf("coin-processed-%v", i)
 		v, err := Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 		if err != nil {
@@ -637,7 +637,7 @@ func InitChainSynker(cfg shared.Config) {
 	go mempoolWatcher()
 	go tokenListWatcher()
 	time.Sleep(2 * time.Second)
-	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
 	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetFinalViewHeight()), true, updateBeaconState)

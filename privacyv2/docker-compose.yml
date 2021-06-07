@@ -10,6 +10,9 @@ services:
       INDEXERID: 10
       MODE: "chainsync"
       PORT: 9001
+      INCOGNITO_NETWORK_KEY: "local"
+      INCOGNITO_CONFIG_MODE_KEY: "file"
+      INCOGNITO_CONFIG_DIR_KEY: "/home/config"
     depends_on:
       - mongov3
 
