@@ -125,6 +125,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 
 	txDataList := []shared.TxData{}
 	tradeRespondList := []shared.TradeData{}
+	bridgeShieldRespondList := []shared.ShieldData{}
 	for _, txs := range blk.Body.CrossTransactions {
 		for _, tx := range txs {
 			for _, prvout := range tx.OutputCoin {
@@ -429,20 +430,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				txToken := tx.(transaction.TransactionToken)
 				outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
 				if isCoinV2Output {
-				retry:
-					if len(lastTokenIDMap) == 0 {
-						time.Sleep(10 * time.Second)
-						goto retry
-					}
-					lastTokenIDLock.RLock()
-					var ok bool
-					tokenIDStr, ok = lastTokenIDMap[outs[0].GetAssetTag().String()]
-					if !ok {
-						time.Sleep(10 * time.Second)
-						lastTokenIDLock.RUnlock()
-						goto retry
-					}
-					lastTokenIDLock.RUnlock()
+					tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
 				}
 			} else {
 				outs = tx.GetProof().GetOutputCoins()
@@ -450,6 +438,35 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue())
 			tradeRespondList = append(tradeRespondList, *trade)
 		}
+
+		if metaDataType == metadata.IssuingResponseMeta || metaDataType == metadata.IssuingETHResponseMeta {
+			requestTx := ""
+			shieldType := "shield"
+			bridge := ""
+			isDecentralized := false
+			switch metaDataType {
+			case metadata.IssuingResponseMeta:
+				requestTx = tx.GetMetadata().(*metadata.IssuingResponse).RequestedTxID.String()
+				bridge = "centralized"
+			case metadata.IssuingETHResponseMeta:
+				requestTx = tx.GetMetadata().(*metadata.IssuingETHResponse).RequestedTxID.String()
+				bridge = "centralized"
+			}
+			outs := []coin.Coin{}
+			tokenIDStr := tx.GetTokenID().String()
+			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
+				txToken := tx.(transaction.TransactionToken)
+				outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+				if isCoinV2Output {
+					tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
+				}
+			} else {
+				outs = tx.GetProof().GetOutputCoins()
+			}
+			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue())
+			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
+		}
+
 		mtd := ""
 		if tx.GetMetadata() != nil {
 			mtdBytes, err := json.Marshal(tx.GetMetadata())
@@ -510,6 +527,13 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 	}
+	if len(bridgeShieldRespondList) > 0 {
+		err = database.DBSaveTxShield(bridgeShieldRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	if len(coinV1PubkeyInfo) > 0 && !alreadyWriteToBD {
 		err = database.DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
 		if err != nil {
@@ -581,7 +605,7 @@ func InitChainSynker(cfg shared.Config) {
 	Localnode = node
 	log.Println("initiating chain-synker...")
 	if shared.RESET_FLAG {
-		for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+		for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
 			err := Localnode.GetUserDatabase().Delete([]byte(statePrefix), nil)
 			if err != nil {
@@ -595,7 +619,7 @@ func InitChainSynker(cfg shared.Config) {
 	ShardProcessedState = make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
 
-	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		statePrefix := fmt.Sprintf("coin-processed-%v", i)
 		v, err := Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 		if err != nil {
@@ -613,21 +637,21 @@ func InitChainSynker(cfg shared.Config) {
 	go mempoolWatcher()
 	go tokenListWatcher()
 	time.Sleep(2 * time.Second)
-	for i := 0; i < Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
-	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetFinalViewHeight()), true, updatePDEState)
+	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetFinalViewHeight()), true, updateBeaconState)
 
 }
 
-func updatePDEState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
+func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
-
 	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
 	if err != nil {
 		log.Println(err)
 	}
+	// PDEstate
 	pdeState, err := blockchain.InitCurrentPDEStateFromDB(beaconFeatureStateDB, nil, beaconBestState.BeaconHeight)
 	if err != nil {
 		log.Println(err)
@@ -647,6 +671,68 @@ func updatePDEState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		log.Println(err)
 	}
+
+	bridgeUnshieldRespondList := []shared.ShieldData{}
+
+	// unshield
+	for _, inst := range beaconBestState.BestBlock.GetInstructions() {
+
+		metaType, err := strconv.Atoi(inst[0])
+		if err != nil {
+			continue
+		}
+		tokenID := ""
+		txHash := ""
+		bridge := "centralized"
+		amount := uint64(0)
+		pubkey := ""
+		isDecentralized := false
+		switch metaType {
+		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2:
+			var burningReqAction blockchain.BurningReqAction
+			contentBytes, err := base64.StdEncoding.DecodeString(inst[1])
+			if err != nil {
+				panic(err)
+			}
+			err = json.Unmarshal(contentBytes, &burningReqAction)
+			if err != nil {
+				panic(err)
+			}
+			md := burningReqAction.Meta
+			txHash = burningReqAction.RequestedTxID.String()
+			tokenID = base58.Base58Check{}.Encode(md.TokenID[:], 0x00)
+			amount = md.BurningAmount
+			pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
+			bridge = "decentralized"
+			isDecentralized = true
+		case metadata.ContractingRequestMeta:
+			contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
+			if err != nil {
+				panic(err)
+			}
+			var contractingReqAction metadata.ContractingReqAction
+			err = json.Unmarshal(contentBytes, &contractingReqAction)
+			if err != nil {
+				panic(err)
+			}
+			md := contractingReqAction.Meta
+			txHash = contractingReqAction.TxReqID.String()
+			tokenID = md.TokenID.String()
+			amount = md.BurnedAmount
+			pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
+		}
+		unshieldData := shared.NewShieldData(txHash, "", tokenID, "unshield", bridge, pubkey, isDecentralized, amount)
+		bridgeUnshieldRespondList = append(bridgeUnshieldRespondList, *unshieldData)
+	}
+	if len(bridgeUnshieldRespondList) > 0 {
+		err = database.DBSaveTxUnShield(bridgeUnshieldRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// liquidity
+
 }
 
 func mempoolWatcher() {
@@ -703,7 +789,11 @@ func mempoolWatcher() {
 				}
 			}
 		}
-		database.DBDeletePendingTxs(txsToRemove)
+		err = database.DBDeletePendingTxs(txsToRemove)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 	}
 }
 func tokenListWatcher() {
@@ -874,4 +964,21 @@ func getCrossShardData(result map[string]string, txList []metadata.Transaction, 
 	}
 
 	return nil
+}
+
+func getTokenID(assetTag string) string {
+retry:
+	if len(lastTokenIDMap) == 0 {
+		time.Sleep(10 * time.Second)
+		goto retry
+	}
+	lastTokenIDLock.RLock()
+	tokenIDStr, ok := lastTokenIDMap[assetTag]
+	if !ok {
+		time.Sleep(10 * time.Second)
+		lastTokenIDLock.RUnlock()
+		goto retry
+	}
+	lastTokenIDLock.RUnlock()
+	return tokenIDStr
 }

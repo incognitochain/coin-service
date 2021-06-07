@@ -320,3 +320,43 @@ func NewPDEStateData(state string) *PDEStateData {
 		State: state,
 	}
 }
+
+type ShieldData struct {
+	mgm.DefaultModel `bson:",inline"`
+	Bridge           string `json:"bridge" bson:"bridge"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	Amount           uint64 `json:"amount" bson:"amount"`
+	RespondTx        string `json:"respondtx" bson:"respondtx"`
+	RequestTx        string `json:"requesttx" bson:"requesttx"`
+	ShieldType       string `json:"shieldtype" bson:"shieldtype"`
+	IsDecentralized  bool   `json:"isdecentralized" bson:"isdecentralized"`
+	Pubkey           string `json:"pubkey" bson:"pubkey"`
+}
+
+func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge, pubkey string, isDecentralized bool, amount uint64) *ShieldData {
+	return &ShieldData{
+		RespondTx:       respondTx,
+		RequestTx:       requestTx,
+		ShieldType:      shieldType,
+		Bridge:          bridge,
+		TokenID:         tokenID,
+		Amount:          amount,
+		IsDecentralized: isDecentralized,
+		Pubkey:          pubkey,
+	}
+}
+
+func (model *ShieldData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+	return nil
+}
+func (model *ShieldData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+	return nil
+}

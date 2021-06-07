@@ -67,6 +67,16 @@ type TxTradeDetail struct {
 	RequestTime int64  `json:"requesttime"`
 }
 
+type TxBridgeDetail struct {
+	Bridge          string `json:"bridge"`
+	TokenID         string `json:"tokenid"`
+	Amount          uint64 `json:"amount"`
+	RespondTx       string `json:"respondtx"`
+	RequestTx       string `json:"requesttx"`
+	ShieldType      string `json:"shieldtype"`
+	IsDecentralized bool   `json:"isdecentralized"`
+}
+
 type APIGetTxTradeRespond struct {
 }
 type ReceivedTransactionV2 struct {
