@@ -111,3 +111,64 @@ func DBGetTxTradeRespond(pubkey string, limit int64, offset int64) ([]shared.TxD
 
 	return result, nil
 }
+
+func DBSavePDEContribute(list []shared.ContributionData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, tx := range list {
+		tx.Creating()
+		docs = append(docs, tx)
+	}
+	_, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DBGetPDEContributeRespond(address, pairID string, limit int64, offset int64) ([]shared.ContributionData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	var result []shared.ContributionData
+	filter := bson.M{"ContributorAddressStr": bson.M{operator.Eq: address}, "pairid": bson.M{operator.Eq: pairID}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"respondtime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func DBSavePDEWithdraw(list []shared.ContributionData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, tx := range list {
+		tx.Creating()
+		docs = append(docs, tx)
+	}
+	_, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DBSavePDEWithdrawFee(list []shared.ContributionData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, tx := range list {
+		tx.Creating()
+		docs = append(docs, tx)
+	}
+	_, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs)
+	if err != nil {
+		return err
+	}
+	return nil
+}

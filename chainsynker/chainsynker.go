@@ -126,6 +126,10 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	txDataList := []shared.TxData{}
 	tradeRespondList := []shared.TradeData{}
 	bridgeShieldRespondList := []shared.ShieldData{}
+	contributionRespondMap := make(map[string]struct {
+		TxID     string
+		Locktime int64
+	})
 	contributionRespondList := []shared.ContributionData{}
 	contributionWithdrawRepsondList := []shared.WithdrawContributionData{}
 	contributionFeeWithdrawRepsondList := []shared.WithdrawContributionFeeData{}
@@ -468,16 +472,15 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue())
 			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
 		case metadata.PDEContributionResponseMeta:
-			meta := tx.GetMetadata().(*metadata.PDEContributionResponse)
-			status := meta.ContributionStatus
-
-			contrbData := shared.NewContributionData(meta.RequestedTxID.String(), tx.Hash().String(), status)
+			contributionRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()] = struct {
+				TxID     string
+				Locktime int64
+			}{txHash, tx.GetLockTime()}
 		case metadata.PDEWithdrawalResponseMeta:
-			status := ""
+			// status := ""
 
 		case metadata.PDEFeeWithdrawalResponseMeta:
-			status := ""
-
+			// status := ""
 		}
 
 		mtd := ""
@@ -488,8 +491,55 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			mtd = string(mtdBytes)
 		}
-		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, tx.Hash().String(), tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers)
+		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, txHash, tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers)
 		txDataList = append(txDataList, *txData)
+	}
+
+	for _, inst := range blk.Body.Instructions {
+		metaType, err := strconv.Atoi(inst[0])
+		if err != nil {
+			continue
+		}
+		switch metaType {
+		case metadata.PDEContributionMeta, metadata.PDEPRVRequiredContributionRequestMeta:
+			status := inst[2]
+			contentBytes := []byte(inst[3])
+			var contrData *shared.ContributionData
+			if inst[2] == common.PDEContributionRefundChainStatus {
+				var refundContribution metadata.PDERefundContribution
+				err := json.Unmarshal(contentBytes, &refundContribution)
+				if err != nil {
+					panic(err)
+				}
+				reqTxID := refundContribution.TxReqID.String()
+				if refundContribution.ShardID != byte(shardID) {
+					log.Println("refundContribution.ShardID != shardID")
+					continue
+				}
+				contrData = shared.NewContributionData(reqTxID, contributionRespondMap[reqTxID].TxID, status, refundContribution.PDEContributionPairID, refundContribution.TokenIDStr, refundContribution.ContributorAddressStr, refundContribution.ContributedAmount, contributionRespondMap[reqTxID].Locktime)
+			} else if inst[2] == common.PDEContributionMatchedNReturnedChainStatus {
+				var matchedNReturnedContribution metadata.PDEMatchedNReturnedContribution
+				err := json.Unmarshal(contentBytes, &matchedNReturnedContribution)
+				if err != nil {
+					panic(err)
+				}
+				if matchedNReturnedContribution.ShardID != byte(shardID) {
+					log.Println("matchedNReturnedContribution.ShardID != byte(shardID)")
+					continue
+				}
+				if matchedNReturnedContribution.ReturnedContributedAmount == 0 {
+					log.Println("matchedNReturnedContribution.ReturnedContributedAmount == 0")
+					continue
+				}
+				reqTxID := matchedNReturnedContribution.TxReqID.String()
+				contrData = shared.NewContributionData(reqTxID, contributionRespondMap[reqTxID].TxID, status, matchedNReturnedContribution.PDEContributionPairID, matchedNReturnedContribution.TokenIDStr, matchedNReturnedContribution.ContributorAddressStr, matchedNReturnedContribution.ReturnedContributedAmount, contributionRespondMap[reqTxID].Locktime)
+			}
+			contributionRespondList = append(contributionRespondList, *contrData)
+		case metadata.PDEWithdrawalResponseMeta:
+
+		case metadata.PDEFeeWithdrawalResponseMeta:
+
+		}
 	}
 	alreadyWriteToBD := false
 
@@ -542,6 +592,26 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 	if len(bridgeShieldRespondList) > 0 {
 		err = database.DBSaveTxShield(bridgeShieldRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if len(contributionRespondList) > 0 {
+		err = database.DBSavePDEContribute(contributionRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if len(contributionWithdrawRepsondList) > 0 {
+		err = database.DBSavePDEContribute(contributionRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if len(contributionFeeWithdrawRepsondList) > 0 {
+		err = database.DBSavePDEContribute(contributionRespondList)
 		if err != nil {
 			panic(err)
 		}
@@ -743,9 +813,6 @@ func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) 
 			panic(err)
 		}
 	}
-
-	// liquidity
-
 }
 
 func mempoolWatcher() {
