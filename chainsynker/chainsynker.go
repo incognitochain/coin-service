@@ -126,6 +126,10 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	txDataList := []shared.TxData{}
 	tradeRespondList := []shared.TradeData{}
 	bridgeShieldRespondList := []shared.ShieldData{}
+	contributionRespondList := []shared.ContributionData{}
+	contributionWithdrawRepsondList := []shared.WithdrawContributionData{}
+	contributionFeeWithdrawRepsondList := []shared.WithdrawContributionFeeData{}
+
 	for _, txs := range blk.Body.CrossTransactions {
 		for _, tx := range txs {
 			for _, prvout := range tx.OutputCoin {
@@ -412,8 +416,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 		metaDataType := tx.GetMetadataType()
-
-		if metaDataType == metadata.PDECrossPoolTradeResponseMeta || metaDataType == metadata.PDETradeResponseMeta {
+		switch metaDataType {
+		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta:
 			requestTx := ""
 			status := ""
 			switch metaDataType {
@@ -437,9 +441,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue())
 			tradeRespondList = append(tradeRespondList, *trade)
-		}
-
-		if metaDataType == metadata.IssuingResponseMeta || metaDataType == metadata.IssuingETHResponseMeta {
+		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta:
 			requestTx := ""
 			shieldType := "shield"
 			bridge := ""
@@ -465,6 +467,17 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue())
 			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
+		case metadata.PDEContributionResponseMeta:
+			meta := tx.GetMetadata().(*metadata.PDEContributionResponse)
+			status := meta.ContributionStatus
+
+			contrbData := shared.NewContributionData(meta.RequestedTxID.String(), tx.Hash().String(), status)
+		case metadata.PDEWithdrawalResponseMeta:
+			status := ""
+
+		case metadata.PDEFeeWithdrawalResponseMeta:
+			status := ""
+
 		}
 
 		mtd := ""
