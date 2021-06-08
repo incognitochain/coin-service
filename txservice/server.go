@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/transaction"
 )
@@ -37,6 +38,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	common.MaxShardNumber = 2
 	switch MODE {
 	case PUSHMODE:
 		pushMode()
