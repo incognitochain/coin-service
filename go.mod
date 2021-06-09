@@ -3,14 +3,14 @@ module github.com/incognitochain/coin-service
 go 1.13
 
 require (
-	github.com/0xkumi/incognito-dev-framework v0.0.0-20210607043825-54d09c099ef3
+	github.com/0xkumi/incognito-dev-framework v0.0.0-20210609030620-5f05ddd49502
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-playground/validator/v10 v10.5.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/incognitochain/incognito-chain v0.0.0-20210607015823-c657967cb35e
+	github.com/incognitochain/incognito-chain v0.0.0-20210608092804-07bda7c17923
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/kr/text v0.2.0 // indirect
@@ -28,4 +28,8 @@ require (
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+)
+
+replace (
+	github.com/0xkumi/incognito-dev-framework => /Users/truonglamchau/go/src/github.com/0xkumi/incognito-dev-framework
 )

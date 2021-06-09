@@ -15,7 +15,7 @@ import (
 )
 
 func DBSavePDEState(state string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.PDEStateData{}).Drop(context.Background())
 	if err != nil {
 		log.Println(err)
@@ -33,7 +33,7 @@ func DBSavePDEState(state string) error {
 }
 
 func DBGetPDEState() (string, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
 	var result shared.PDEStateData
 	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{}, &result)
 	if err != nil {
@@ -44,7 +44,7 @@ func DBGetPDEState() (string, error) {
 }
 
 func DBSaveTxTrade(list []shared.TradeData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
 		tx.Creating()
@@ -80,7 +80,7 @@ func DBSaveTxTrade(list []shared.TradeData) error {
 // }
 
 func DBGetTxTrade(respondList []string) ([]shared.TradeData, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondList)+1)*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondList)+10)*shared.DB_OPERATION_TIMEOUT)
 	result := []shared.TradeData{}
 
 	filter := bson.M{"respondtx": bson.M{operator.In: respondList}}
@@ -113,7 +113,7 @@ func DBGetTxTradeRespond(pubkey string, limit int64, offset int64) ([]shared.TxD
 }
 
 func DBSavePDEContribute(list []shared.ContributionData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
 		tx.Creating()
@@ -145,30 +145,67 @@ func DBGetPDEContributeRespond(address, pairID string, limit int64, offset int64
 	return result, nil
 }
 
-func DBSavePDEWithdraw(list []shared.ContributionData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+func DBSavePDEWithdraw(list []shared.WithdrawContributionData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&shared.WithdrawContributionData{}).InsertMany(ctx, docs)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func DBSavePDEWithdrawFee(list []shared.ContributionData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+func DBGetPDEWithdrawRespond(address, tokenID1 string, tokenID2 string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	var result []shared.WithdrawContributionData
+	filter := bson.M{"ContributorAddressStr": bson.M{operator.Eq: address}, "tokenid1": bson.M{operator.Eq: tokenID1}, "tokenid2": bson.M{operator.Eq: tokenID2}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"respondtime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBSavePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&shared.WithdrawContributionFeeData{}).InsertMany(ctx, docs)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func DBGetPDEWithdrawFeeRespond(address, tokenID1 string, tokenID2 string, limit int64, offset int64) ([]shared.WithdrawContributionFeeData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	var result []shared.WithdrawContributionFeeData
+	filter := bson.M{"ContributorAddressStr": bson.M{operator.Eq: address}, "tokenid1": bson.M{operator.Eq: tokenID1}, "tokenid2": bson.M{operator.Eq: tokenID2}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.WithdrawContributionFeeData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"respondtime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

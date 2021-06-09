@@ -403,13 +403,15 @@ type WithdrawContributionData struct {
 	Status                string   `json:"status" bson:"status"`
 	TokenID1              string   `json:"tokenid1" bson:"tokenid1"`
 	TokenID2              string   `json:"tokenid2" bson:"tokenid2"`
-	Amount                uint64   `json:"amount" bson:"amount"`
+	Amount1               uint64   `json:"amount1" bson:"amount1"`
+	Amount2               uint64   `json:"amount2" bson:"amount2"`
 	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
+	RespondTime           int64    `json:"respondtime" bson:"respondtime"`
 }
 
-func NewWithdrawContributionData(requestTx, status, tokenID1, tokenID2, contributorAddressStr string, amount uint64) *WithdrawContributionData {
+func NewWithdrawContributionData(requestTx, status, tokenID1, tokenID2, contributorAddressStr string, respondTx []string, amount1, amount2 uint64, respondTime int64) *WithdrawContributionData {
 	return &WithdrawContributionData{
-		RequestTx: requestTx, Status: status, TokenID1: tokenID1, TokenID2: tokenID2, Amount: amount, ContributorAddressStr: contributorAddressStr,
+		RequestTx: requestTx, Status: status, RespondTx: respondTx, TokenID1: tokenID1, TokenID2: tokenID2, Amount1: amount1, Amount2: amount2, ContributorAddressStr: contributorAddressStr, RespondTime: respondTime,
 	}
 }
 
@@ -439,11 +441,12 @@ type WithdrawContributionFeeData struct {
 	TokenID2              string `json:"tokenid2" bson:"tokenid2"`
 	Amount                uint64 `json:"amount" bson:"amount"`
 	ContributorAddressStr string `json:"contributor" bson:"contributor"`
+	RespondTime           int64  `json:"respondtime" bson:"respondtime"`
 }
 
-func NewWithdrawContributionFeeData(requestTx, respondTx, status, tokenID1, tokenID2, contributorAddressStr string, amount uint64) *WithdrawContributionFeeData {
+func NewWithdrawContributionFeeData(requestTx, respondTx, status, tokenID1, tokenID2, contributorAddressStr string, amount uint64, respondTime int64) *WithdrawContributionFeeData {
 	return &WithdrawContributionFeeData{
-		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID1: tokenID1, TokenID2: tokenID2, Amount: amount, ContributorAddressStr: contributorAddressStr,
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID1: tokenID1, TokenID2: tokenID2, Amount: amount, ContributorAddressStr: contributorAddressStr, RespondTime: respondTime,
 	}
 }
 

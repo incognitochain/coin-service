@@ -15,7 +15,7 @@ import (
 )
 
 func DBSaveTxShield(list []shared.ShieldData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
 		tx.Creating()
@@ -29,7 +29,7 @@ func DBSaveTxShield(list []shared.ShieldData) error {
 }
 
 func DBSaveTxUnShield(list []shared.ShieldData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
 		tx.Creating()
@@ -63,7 +63,7 @@ func DBGetTxShieldRespond(pubkey string, limit int64, offset int64) ([]shared.Tx
 }
 
 func DBGetTxShield(respondList []string) ([]shared.ShieldData, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondList)+1)*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondList)+10)*shared.DB_OPERATION_TIMEOUT)
 	result := []shared.ShieldData{}
 
 	filter := bson.M{"respondtx": bson.M{operator.In: respondList}}

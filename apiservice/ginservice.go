@@ -62,6 +62,9 @@ func StartGinService() {
 		r.GET("/gettradehistory", APIGetTradeHistory)
 		r.GET("/getpdestate", APIPDEState)
 		r.GET("/getshieldhistory", APIGetShieldHistory)
+		r.GET("/getcontributehistory", APIGetContributeHistory)
+		r.GET("/getwithdrawhistory", APIGetWithdrawHistory)
+		r.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
@@ -852,6 +855,59 @@ func APIGetLatestTxs(c *gin.Context) {
 
 }
 
+func APIGetWithdrawHistory(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	paymentkey := c.Query("paymentkey")
+	tokenID1 := c.Query("tokenid1")
+	tokenID2 := c.Query("tokenid2")
+
+	result, err := database.DBGetPDEWithdrawRespond(paymentkey, tokenID1, tokenID2, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetWithdrawFeeHistory(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	paymentkey := c.Query("paymentkey")
+	tokenID1 := c.Query("tokenid1")
+	tokenID2 := c.Query("tokenid2")
+
+	result, err := database.DBGetPDEWithdrawFeeRespond(paymentkey, tokenID1, tokenID2, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetContributeHistory(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	paymentkey := c.Query("paymentkey")
+	pairID := c.Query("pairid")
+
+	result, err := database.DBGetPDEContributeRespond(paymentkey, pairID, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
+
+}
 func APIGetShieldHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
