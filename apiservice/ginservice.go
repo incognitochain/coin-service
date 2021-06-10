@@ -62,6 +62,7 @@ func StartGinService() {
 		r.GET("/gettradehistory", APIGetTradeHistory)
 		r.GET("/getpdestate", APIPDEState)
 		r.GET("/getshieldhistory", APIGetShieldHistory)
+		r.GET("/getunshieldhistory", APIGetUnshieldHistory)
 		r.GET("/getcontributehistory", APIGetContributeHistory)
 		r.GET("/getwithdrawhistory", APIGetWithdrawHistory)
 		r.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
@@ -908,6 +909,51 @@ func APIGetContributeHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 
 }
+
+func APIGetUnshieldHistory(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	otakey := c.Query("otakey")
+	paymentkey := c.Query("paymentkey")
+
+	pubKeyStr := ""
+	pubKeyBytes := []byte{}
+	if otakey != "" {
+		wl, err := wallet.Base58CheckDeserialize(otakey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
+	} else {
+		if paymentkey == "" {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
+			return
+		}
+		wl, err := wallet.Base58CheckDeserialize(paymentkey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+	}
+	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
+
+	result, err := database.DBGetTxUnshield(pubKeyStr, int64(limit), int64(offset))
+	if err != nil {
+		errStr := err.Error()
+		respond := APIRespond{
+			Error: &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+
+	c.JSON(http.StatusOK, respond)
+}
+
 func APIGetShieldHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))

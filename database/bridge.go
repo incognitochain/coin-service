@@ -74,3 +74,22 @@ func DBGetTxShield(respondList []string) ([]shared.ShieldData, error) {
 	}
 	return result, nil
 }
+
+func DBGetTxUnshield(pubkey string, limit, offset int64) ([]shared.ShieldData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	var result []shared.ShieldData
+	filter := bson.M{"pubkey": bson.M{operator.Eq: pubkey}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.ShieldData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"height", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}

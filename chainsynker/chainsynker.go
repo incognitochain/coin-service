@@ -463,30 +463,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				requestTx = tx.GetMetadata().(*metadata.IssuingETHResponse).RequestedTxID.String()
 				bridge = "centralized"
 			}
-			// outs := []coin.Coin{}
-			// tokenIDStr := tx.GetTokenID().String()
-			// if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
-			// 	txToken := tx.(transaction.TransactionToken)
-			// 	outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
-			// 	if isCoinV2Output {
-			// 		tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
-			// 	}
-			// } else {
-			// 	outs = tx.GetProof().GetOutputCoins()
-			// }
-			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue())
+			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue(), beaconHeight)
 			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
 		case metadata.PDEContributionResponseMeta:
-			// outs := []coin.Coin{}
-			// if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
-			// 	txToken := tx.(transaction.TransactionToken)
-			// 	outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
-			// 	if isCoinV2Output {
-			// 		tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
-			// 	}
-			// } else {
-			// 	outs = tx.GetProof().GetOutputCoins()
-			// }
 			txRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()] = append(txRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()], struct {
 				Amount   uint64
 				TxID     string
@@ -826,14 +805,14 @@ func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) 
 		if err != nil {
 			continue
 		}
-		tokenID := ""
-		txHash := ""
-		bridge := "centralized"
-		amount := uint64(0)
-		pubkey := ""
-		isDecentralized := false
 		switch metaType {
 		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2:
+			tokenID := ""
+			txHash := ""
+			bridge := "centralized"
+			amount := uint64(0)
+			pubkey := ""
+			isDecentralized := false
 			var burningReqAction blockchain.BurningReqAction
 			contentBytes, err := base64.StdEncoding.DecodeString(inst[1])
 			if err != nil {
@@ -850,7 +829,15 @@ func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) 
 			pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
 			bridge = "decentralized"
 			isDecentralized = true
+			unshieldData := shared.NewShieldData(txHash, "", tokenID, "unshield", bridge, pubkey, isDecentralized, amount, beaconBestState.BeaconHeight)
+			bridgeUnshieldRespondList = append(bridgeUnshieldRespondList, *unshieldData)
 		case metadata.ContractingRequestMeta:
+			tokenID := ""
+			txHash := ""
+			bridge := "centralized"
+			amount := uint64(0)
+			pubkey := ""
+			isDecentralized := false
 			contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
 			if err != nil {
 				panic(err)
@@ -865,9 +852,10 @@ func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) 
 			tokenID = md.TokenID.String()
 			amount = md.BurnedAmount
 			pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
+			unshieldData := shared.NewShieldData(txHash, "", tokenID, "unshield", bridge, pubkey, isDecentralized, amount, beaconBestState.BeaconHeight)
+			bridgeUnshieldRespondList = append(bridgeUnshieldRespondList, *unshieldData)
 		}
-		unshieldData := shared.NewShieldData(txHash, "", tokenID, "unshield", bridge, pubkey, isDecentralized, amount)
-		bridgeUnshieldRespondList = append(bridgeUnshieldRespondList, *unshieldData)
+
 	}
 	if len(bridgeUnshieldRespondList) > 0 {
 		err = database.DBSaveTxUnShield(bridgeUnshieldRespondList)
