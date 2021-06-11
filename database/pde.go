@@ -126,12 +126,12 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 	return nil
 }
 
-func DBGetPDEContributeRespond(address, pairID string, limit int64, offset int64) ([]shared.ContributionData, error) {
+func DBGetPDEContributeRespond(address string, limit int64, offset int64) ([]shared.ContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.ContributionData
-	filter := bson.M{"ContributorAddressStr": bson.M{operator.Eq: address}, "pairid": bson.M{operator.Eq: pairID}}
+	filter := bson.M{"contributor": bson.M{operator.Eq: address}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"respondtime", -1}},
@@ -159,12 +159,12 @@ func DBSavePDEWithdraw(list []shared.WithdrawContributionData) error {
 	return nil
 }
 
-func DBGetPDEWithdrawRespond(address, tokenID1 string, tokenID2 string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
+func DBGetPDEWithdrawRespond(address string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.WithdrawContributionData
-	filter := bson.M{"ContributorAddressStr": bson.M{operator.Eq: address}, "tokenid1": bson.M{operator.Eq: tokenID1}, "tokenid2": bson.M{operator.Eq: tokenID2}}
+	filter := bson.M{"contributor": bson.M{operator.Eq: address}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"respondtime", -1}},
@@ -191,12 +191,12 @@ func DBSavePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
 	return nil
 }
 
-func DBGetPDEWithdrawFeeRespond(address, tokenID1 string, tokenID2 string, limit int64, offset int64) ([]shared.WithdrawContributionFeeData, error) {
+func DBGetPDEWithdrawFeeRespond(address string, limit int64, offset int64) ([]shared.WithdrawContributionFeeData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.WithdrawContributionFeeData
-	filter := bson.M{"ContributorAddressStr": bson.M{operator.Eq: address}, "tokenid1": bson.M{operator.Eq: tokenID1}, "tokenid2": bson.M{operator.Eq: tokenID2}}
+	filter := bson.M{"contributor": bson.M{operator.Eq: address}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.WithdrawContributionFeeData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"respondtime", -1}},

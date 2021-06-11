@@ -42,13 +42,13 @@ func DBSaveTxUnShield(list []shared.ShieldData) error {
 	return nil
 }
 
-func DBGetTxShieldRespond(pubkey string, limit int64, offset int64) ([]shared.TxData, error) {
+func DBGetTxShieldRespond(pubkey, tokenID string, limit int64, offset int64) ([]shared.TxData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	metas := []string{strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta)}
 	var result []shared.TxData
-	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.In: metas}}
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.In: metas}, "realtokenid": bson.M{operator.Eq: tokenID}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", -1}},
@@ -75,15 +75,16 @@ func DBGetTxShield(respondList []string) ([]shared.ShieldData, error) {
 	return result, nil
 }
 
-func DBGetTxUnshield(pubkey string, limit, offset int64) ([]shared.ShieldData, error) {
+func DBGetTxUnshield(pubkey, tokenID string, limit int64, offset int64) ([]shared.TxData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
-	var result []shared.ShieldData
-	filter := bson.M{"pubkey": bson.M{operator.Eq: pubkey}}
+	metas := []string{strconv.Itoa(metadata.BurningRequestMeta), strconv.Itoa(metadata.BurningRequestMetaV2), strconv.Itoa(metadata.BurningForDepositToSCRequestMeta), strconv.Itoa(metadata.BurningForDepositToSCRequestMetaV2), strconv.Itoa(metadata.ContractingRequestMeta)}
+	var result []shared.TxData
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "realtokenid": bson.M{operator.Eq: tokenID}, "metatype": bson.M{operator.In: metas}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&shared.ShieldData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"height", -1}},
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})

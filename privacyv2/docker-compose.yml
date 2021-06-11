@@ -101,6 +101,17 @@ services:
       - queryv3
       - indexer0v3
 
+  watcher:
+    image: alpine
+    volumes:
+      - .:/home
+    entrypoint: [/home/servicewatcher]
+    environment:
+      CSVSYNCKER: "http://chainsyncv3:9001"
+      FULLNODE: "http://51.161.119.66:9334"
+    depends_on:
+      - chainsyncv3
+
   mongov3:
     image: mongo
     restart: always
