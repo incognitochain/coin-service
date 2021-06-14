@@ -162,3 +162,69 @@ func DBCreateTxPendingIndex() error {
 	log.Println("indexName", indexName)
 	return nil
 }
+
+func DBCreateTradeIndex() error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	model := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondtx", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}},
+		},
+	}
+	indexName, err := mgm.Coll(&shared.TradeData{}).Indexes().CreateMany(ctx, model)
+	if err != nil {
+		return err
+	}
+	log.Println("indexName", indexName)
+	return nil
+}
+
+func DBCreateShieldIndex() error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	model := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "respondtx", Value: bsonx.Int32(1)}, {Key: "height", Value: bsonx.Int32(-1)}},
+		},
+	}
+	indexName, err := mgm.Coll(&shared.ShieldData{}).Indexes().CreateMany(ctx, model)
+	if err != nil {
+		return err
+	}
+	log.Println("indexName", indexName)
+	return nil
+}
+
+func DBCreatePDEIndex() error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	ctrbModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondtime", Value: bsonx.Int32(-1)}},
+		},
+	}
+	_, err := mgm.Coll(&shared.ContributionData{}).Indexes().CreateMany(ctx, ctrbModel)
+	if err != nil {
+		return err
+	}
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	wdCtrbModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}, {Key: "respondtime", Value: bsonx.Int32(-1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.WithdrawContributionData{}).Indexes().CreateMany(ctx, wdCtrbModel)
+	if err != nil {
+		return err
+	}
+
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	wdFeeCtrbModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}, {Key: "respondtime", Value: bsonx.Int32(-1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.WithdrawContributionFeeData{}).Indexes().CreateMany(ctx, wdFeeCtrbModel)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

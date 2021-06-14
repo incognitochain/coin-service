@@ -247,7 +247,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			outs := tx.GetProof().GetOutputCoins()
 
 			for _, coin := range ins {
-				kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+				kmString := base58.EncodeCheck(coin.GetKeyImage().ToBytesS())
 				txKeyImages = append(txKeyImages, kmString)
 				kmData := shared.NewKeyImageData(tokenID, txHash, kmString, beaconHeight, shardID)
 				keyImageList = append(keyImageList, *kmData)
@@ -305,7 +305,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
 				for _, coin := range tokenIns {
-					kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+					kmString := base58.EncodeCheck(coin.GetKeyImage().ToBytesS())
 					txKeyImages = append(txKeyImages, kmString)
 					kmData := shared.NewKeyImageData(common.ConfidentialAssetID.String(), txHash, kmString, beaconHeight, shardID)
 					keyImageList = append(keyImageList, *kmData)
@@ -361,7 +361,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				ins := tx.GetProof().GetInputCoins()
 				outs := tx.GetProof().GetOutputCoins()
 				for _, coin := range ins {
-					kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+					kmString := base58.EncodeCheck(coin.GetKeyImage().ToBytesS())
 					txKeyImages = append(txKeyImages, kmString)
 					kmData := shared.NewKeyImageData(common.PRVCoinID.String(), txHash, kmString, beaconHeight, shardID)
 					keyImageList = append(keyImageList, *kmData)
@@ -736,6 +736,21 @@ func InitChainSynker(cfg shared.Config) {
 		panic(err)
 	}
 
+	err = database.DBCreateShieldIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreateTradeIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreatePDEIndex()
+	if err != nil {
+		panic(err)
+	}
+
 	var netw devframework.NetworkParam
 	switch chainNetwork {
 	case "testnet2":
@@ -818,79 +833,6 @@ func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) 
 	if err != nil {
 		log.Println(err)
 	}
-
-	// bridgeUnshieldRespondList := []shared.ShieldData{}
-
-	// // unshield
-	// for _, inst := range beaconBestState.BestBlock.GetInstructions() {
-
-	// 	metaType, err := strconv.Atoi(inst[0])
-	// 	if err != nil {
-	// 		continue
-	// 	}
-	// 	switch metaType {
-	// 	case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2:
-	// 		tokenID := ""
-	// 		txHash := ""
-	// 		bridge := "centralized"
-	// 		amount := uint64(0)
-	// 		pubkey := ""
-	// 		isDecentralized := false
-	// 		var burningReqAction blockchain.BurningReqAction
-
-	// 		contentBytes, err := base64.StdEncoding.DecodeString(inst[1])
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		err = json.Unmarshal(contentBytes, &burningReqAction)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		md := burningReqAction.Meta
-	// 		txHash = burningReqAction.RequestedTxID.String()
-	// 		tokenID = base58.Base58Check{}.Encode(md.TokenID[:], 0x00)
-	// 		amount = md.BurningAmount
-	// 		pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
-	// 		bridge = "decentralized"
-	// 		isDecentralized = true
-	// 		unshieldData := shared.NewShieldData(txHash, "", tokenID, "unshield", bridge, pubkey, isDecentralized, amount, beaconBestState.BeaconHeight)
-	// 		bridgeUnshieldRespondList = append(bridgeUnshieldRespondList, *unshieldData)
-	// 	case metadata.ContractingRequestMeta:
-	// 		tokenID := ""
-	// 		txHash := ""
-	// 		bridge := "centralized"
-	// 		amount := uint64(0)
-	// 		pubkey := ""
-	// 		isDecentralized := false
-	// 		if inst[2] == "rejected" {
-	// 			log.Println(err)
-	// 			continue
-	// 		}
-	// 		contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		var contractingReqAction metadata.ContractingReqAction
-	// 		err = json.Unmarshal(contentBytes, &contractingReqAction)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		md := contractingReqAction.Meta
-	// 		txHash = inst[6]
-	// 		tokenID = md.TokenID.String()
-	// 		amount = md.BurnedAmount
-	// 		pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
-	// 		unshieldData := shared.NewShieldData(txHash, "", tokenID, "unshield", bridge, pubkey, isDecentralized, amount, beaconBestState.BeaconHeight)
-	// 		bridgeUnshieldRespondList = append(bridgeUnshieldRespondList, *unshieldData)
-	// 	}
-
-	// }
-	// if len(bridgeUnshieldRespondList) > 0 {
-	// 	err = database.DBSaveTxUnShield(bridgeUnshieldRespondList)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
 }
 
 func mempoolWatcher() {

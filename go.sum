@@ -16,6 +16,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20210607043825-54d09c099ef3 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210607043825-54d09c099ef3/go.mod h1:RWcIEQHtd1miU2mH0G2P74uMFaTy2xFFSrchB2Cx/UU=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210609030620-5f05ddd49502 h1:0Em5U3X4Ck3S8B+16vZqHYPuYlg/xNbKjL7f+FGUfHg=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210609030620-5f05ddd49502/go.mod h1:RWcIEQHtd1miU2mH0G2P74uMFaTy2xFFSrchB2Cx/UU=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210609043431-d148d868ea8f h1:PtsEZyQq6yGLQaooe16LkMiRGA3bfjN47jxalpeRpz4=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210609043431-d148d868ea8f/go.mod h1:RWcIEQHtd1miU2mH0G2P74uMFaTy2xFFSrchB2Cx/UU=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
@@ -23,8 +25,6 @@ github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9/go.mod h1:bOv
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/Kubuxu/go-os-helper v0.0.1/go.mod h1:N8B+I7vPCT80IcP58r50u4+gEEcsZETFUpAzWW2ep1Y=
-github.com/LampardNguyen234/go-incognito v0.0.0-20210422031537-9ac231cf4560 h1:xLPO3s10ZzpyEi+HnBUWvQ547KOS8dLVqMVAKJjx5hg=
-github.com/LampardNguyen234/go-incognito v0.0.0-20210422031537-9ac231cf4560/go.mod h1:/mCpDJaFe8kjyaxqjViWnj2a0YlxFGye834xMmhWMYU=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/VividCortex/gohistogram v1.0.0 h1:6+hBz+qvs0JOrrNhhmR7lFxo5sINxBCGXrdtl/UvroE=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
