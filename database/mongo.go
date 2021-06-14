@@ -30,7 +30,6 @@ func ConnectDB(dbName string, mongoAddr string) error {
 
 func DBSaveCoins(list []shared.CoinData) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	docsV1 := []interface{}{}
 	for _, coin := range list {
@@ -42,6 +41,7 @@ func DBSaveCoins(list []shared.CoinData) error {
 		}
 	}
 	if len(docs) > 0 {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 		_, err := mgm.Coll(&shared.CoinData{}).InsertMany(ctx, docs)
 		if err != nil {
 			log.Printf("failed to insert %v coins in %v", len(docs), time.Since(startTime))
@@ -50,6 +50,7 @@ func DBSaveCoins(list []shared.CoinData) error {
 		log.Printf("inserted %v v2coins in %v", len(docs), time.Since(startTime))
 	}
 	if len(docsV1) > 0 {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 		_, err := mgm.Coll(&shared.CoinDataV1{}).InsertMany(ctx, docsV1)
 		if err != nil {
 			log.Printf("failed to insert %v coins in %v", len(docsV1), time.Since(startTime))
@@ -78,7 +79,7 @@ func DBSavePendingTx(list []shared.CoinPendingData) error {
 }
 
 func DBDeletePendingTxs(list []string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+10)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"txhash": bson.M{operator.In: list}}
 	_, err := mgm.Coll(&shared.CoinPendingData{}).DeleteMany(ctx, filter)
 	if err != nil {

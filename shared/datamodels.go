@@ -331,9 +331,10 @@ type ShieldData struct {
 	ShieldType       string `json:"shieldtype" bson:"shieldtype"`
 	IsDecentralized  bool   `json:"isdecentralized" bson:"isdecentralized"`
 	Pubkey           string `json:"pubkey" bson:"pubkey"`
+	BeaconHeight     uint64 `json:"height" bson:"height"`
 }
 
-func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge, pubkey string, isDecentralized bool, amount uint64) *ShieldData {
+func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge, pubkey string, isDecentralized bool, amount, height uint64) *ShieldData {
 	return &ShieldData{
 		RespondTx:       respondTx,
 		RequestTx:       requestTx,
@@ -343,6 +344,7 @@ func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge, pubkey str
 		Amount:          amount,
 		IsDecentralized: isDecentralized,
 		Pubkey:          pubkey,
+		BeaconHeight:    height,
 	}
 }
 
@@ -358,5 +360,111 @@ func (model *ShieldData) Saving() error {
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err
 	}
+	return nil
+}
+
+type ContributionData struct {
+	mgm.DefaultModel      `bson:",inline"`
+	RequestTx             string `json:"requesttx" bson:"requesttx"`
+	RespondTx             string `json:"respondtx" bson:"respondtx"`
+	Status                string `json:"status" bson:"status"`
+	PairID                string `json:"pairid" bson:"pairid"`
+	TokenID               string `json:"tokenid" bson:"tokenid"`
+	Amount                uint64 `json:"amount" bson:"amount"`
+	ContributorAddressStr string `json:"contributor" bson:"contributor"`
+	Respondtime           int64  `json:"respondtime" bson:"respondtime"`
+}
+
+func NewContributionData(requestTx, respondTx, status, pairID, tokenID, contributorAddressStr string, amount uint64, respondTime int64) *ContributionData {
+	return &ContributionData{
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, PairID: pairID, TokenID: tokenID, Amount: amount, ContributorAddressStr: contributorAddressStr, Respondtime: respondTime,
+	}
+}
+
+func (model *ContributionData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *ContributionData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type WithdrawContributionData struct {
+	mgm.DefaultModel      `bson:",inline"`
+	RequestTx             string   `json:"requesttx" bson:"requesttx"`
+	RespondTx             []string `json:"respondtx" bson:"respondtx"`
+	Status                string   `json:"status" bson:"status"`
+	TokenID1              string   `json:"tokenid1" bson:"tokenid1"`
+	TokenID2              string   `json:"tokenid2" bson:"tokenid2"`
+	Amount1               uint64   `json:"amount1" bson:"amount1"`
+	Amount2               uint64   `json:"amount2" bson:"amount2"`
+	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
+	RespondTime           int64    `json:"respondtime" bson:"respondtime"`
+}
+
+func NewWithdrawContributionData(requestTx, status, tokenID1, tokenID2, contributorAddressStr string, respondTx []string, amount1, amount2 uint64, respondTime int64) *WithdrawContributionData {
+	return &WithdrawContributionData{
+		RequestTx: requestTx, Status: status, RespondTx: respondTx, TokenID1: tokenID1, TokenID2: tokenID2, Amount1: amount1, Amount2: amount2, ContributorAddressStr: contributorAddressStr, RespondTime: respondTime,
+	}
+}
+
+func (model *WithdrawContributionData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *WithdrawContributionData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type WithdrawContributionFeeData struct {
+	mgm.DefaultModel      `bson:",inline"`
+	RequestTx             string `json:"requesttx" bson:"requesttx"`
+	RespondTx             string `json:"respondtx" bson:"respondtx"`
+	Status                string `json:"status" bson:"status"`
+	TokenID1              string `json:"tokenid1" bson:"tokenid1"`
+	TokenID2              string `json:"tokenid2" bson:"tokenid2"`
+	Amount                uint64 `json:"amount" bson:"amount"`
+	ContributorAddressStr string `json:"contributor" bson:"contributor"`
+	RespondTime           int64  `json:"respondtime" bson:"respondtime"`
+}
+
+func NewWithdrawContributionFeeData(requestTx, respondTx, status, tokenID1, tokenID2, contributorAddressStr string, amount uint64, respondTime int64) *WithdrawContributionFeeData {
+	return &WithdrawContributionFeeData{
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID1: tokenID1, TokenID2: tokenID2, Amount: amount, ContributorAddressStr: contributorAddressStr, RespondTime: respondTime,
+	}
+}
+
+func (model *WithdrawContributionFeeData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *WithdrawContributionFeeData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -53,12 +53,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	var blk types.ShardBlock
 	blkBytes, err := Localnode.GetUserDatabase().Get(h.Bytes(), nil)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("height", height, h.String())
+		panic(err)
 		return
 	}
 	if err := json.Unmarshal(blkBytes, &blk); err != nil {
-		log.Println(err)
-		return
+		panic(err)
 	}
 	blockHash := blk.Hash().String()
 	blockHeight := fmt.Sprintf("%v", blk.GetHeight())
@@ -93,7 +93,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		panic("Backup shard view error")
 	}
-
 	if err := batchData.Write(); err != nil {
 		panic(err)
 	}
@@ -110,10 +109,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				goto retryGetBlock
 			}
 			if err := json.Unmarshal(blkBytes, &crsblk); err != nil {
-				log.Println(err)
-				return
+				panic(err)
 			}
-			getCrossShardData(crossShardCoinMap, crsblk.Body.Transactions, byte(shardID))
+			err = getCrossShardData(crossShardCoinMap, crsblk.Body.Transactions, byte(shardID))
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
@@ -126,6 +127,15 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	txDataList := []shared.TxData{}
 	tradeRespondList := []shared.TradeData{}
 	bridgeShieldRespondList := []shared.ShieldData{}
+	txRespondMap := make(map[string][]struct {
+		Amount   uint64
+		TxID     string
+		Locktime int64
+	})
+	contributionRespondList := []shared.ContributionData{}
+	contributionWithdrawRepsondList := []shared.WithdrawContributionData{}
+	contributionFeeWithdrawRepsondList := []shared.WithdrawContributionFeeData{}
+
 	for _, txs := range blk.Body.CrossTransactions {
 		for _, tx := range txs {
 			for _, prvout := range tx.OutputCoin {
@@ -226,6 +236,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		isCoinV2Output := false
 		txHash := tx.Hash().String()
 		tokenID := tx.GetTokenID().String()
+		realTokenID := ""
+		pubkey := ""
 		txKeyImages := []string{}
 		if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType || tx.GetType() == common.TxRewardType || tx.GetType() == common.TxReturnStakingType {
 			if tx.GetProof() == nil {
@@ -235,7 +247,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			outs := tx.GetProof().GetOutputCoins()
 
 			for _, coin := range ins {
-				kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+				kmString := base58.EncodeCheck(coin.GetKeyImage().ToBytesS())
 				txKeyImages = append(txKeyImages, kmString)
 				kmData := shared.NewKeyImageData(tokenID, txHash, kmString, beaconHeight, shardID)
 				keyImageList = append(keyImageList, *kmData)
@@ -293,7 +305,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
 				for _, coin := range tokenIns {
-					kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+					kmString := base58.EncodeCheck(coin.GetKeyImage().ToBytesS())
 					txKeyImages = append(txKeyImages, kmString)
 					kmData := shared.NewKeyImageData(common.ConfidentialAssetID.String(), txHash, kmString, beaconHeight, shardID)
 					keyImageList = append(keyImageList, *kmData)
@@ -349,7 +361,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				ins := tx.GetProof().GetInputCoins()
 				outs := tx.GetProof().GetOutputCoins()
 				for _, coin := range ins {
-					kmString := base64.StdEncoding.EncodeToString(coin.GetKeyImage().ToBytesS())
+					kmString := base58.EncodeCheck(coin.GetKeyImage().ToBytesS())
 					txKeyImages = append(txKeyImages, kmString)
 					kmData := shared.NewKeyImageData(common.PRVCoinID.String(), txHash, kmString, beaconHeight, shardID)
 					keyImageList = append(keyImageList, *kmData)
@@ -407,13 +419,27 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				pubkeyReceivers = append(pubkeyReceivers, base58.EncodeCheck(v))
 			}
 		}
+
 		txBytes, err := json.Marshal(tx)
 		if err != nil {
 			panic(err)
 		}
-		metaDataType := tx.GetMetadataType()
 
-		if metaDataType == metadata.PDECrossPoolTradeResponseMeta || metaDataType == metadata.PDETradeResponseMeta {
+		var outs []coin.Coin
+		tokenIDStr := tx.GetTokenID().String()
+		if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
+			txToken := tx.(transaction.TransactionToken)
+			outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+			if isCoinV2Output && !tx.IsPrivacy() {
+				tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
+			}
+		} else {
+			outs = tx.GetProof().GetOutputCoins()
+		}
+
+		metaDataType := tx.GetMetadataType()
+		switch metaDataType {
+		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta:
 			requestTx := ""
 			status := ""
 			switch metaDataType {
@@ -424,22 +450,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				requestTx = tx.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
 				status = tx.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
 			}
-			outs := []coin.Coin{}
-			tokenIDStr := tx.GetTokenID().String()
-			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
-				txToken := tx.(transaction.TransactionToken)
-				outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
-				if isCoinV2Output {
-					tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
-				}
-			} else {
-				outs = tx.GetProof().GetOutputCoins()
-			}
 			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue())
 			tradeRespondList = append(tradeRespondList, *trade)
-		}
-
-		if metaDataType == metadata.IssuingResponseMeta || metaDataType == metadata.IssuingETHResponseMeta {
+		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta:
 			requestTx := ""
 			shieldType := "shield"
 			bridge := ""
@@ -452,19 +465,34 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				requestTx = tx.GetMetadata().(*metadata.IssuingETHResponse).RequestedTxID.String()
 				bridge = "centralized"
 			}
-			outs := []coin.Coin{}
-			tokenIDStr := tx.GetTokenID().String()
-			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
-				txToken := tx.(transaction.TransactionToken)
-				outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
-				if isCoinV2Output {
-					tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
-				}
-			} else {
-				outs = tx.GetProof().GetOutputCoins()
-			}
-			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue())
+			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue(), beaconHeight)
 			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
+		case metadata.PDEContributionResponseMeta:
+			txRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()] = append(txRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()], struct {
+				Amount   uint64
+				TxID     string
+				Locktime int64
+			}{outs[0].GetValue(), txHash, tx.GetLockTime()})
+		case metadata.PDEWithdrawalResponseMeta:
+			txRespondMap[tx.GetMetadata().(*metadata.PDEWithdrawalResponse).RequestedTxID.String()] = append(txRespondMap[tx.GetMetadata().(*metadata.PDEWithdrawalResponse).RequestedTxID.String()], struct {
+				Amount   uint64
+				TxID     string
+				Locktime int64
+			}{outs[0].GetValue(), txHash, tx.GetLockTime()})
+		case metadata.PDEFeeWithdrawalResponseMeta:
+			txRespondMap[tx.GetMetadata().(*metadata.PDEFeeWithdrawalResponse).RequestedTxID.String()] = append(txRespondMap[tx.GetMetadata().(*metadata.PDEFeeWithdrawalResponse).RequestedTxID.String()], struct {
+				Amount   uint64
+				TxID     string
+				Locktime int64
+			}{outs[0].GetValue(), txHash, tx.GetLockTime()})
+		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2:
+			burningReqAction := tx.GetMetadata().(*metadata.BurningRequest)
+			realTokenID = burningReqAction.TokenID.String()
+			pubkey = base58.EncodeCheck(burningReqAction.BurnerAddress.GetPublicSpend().ToBytesS())
+		case metadata.ContractingRequestMeta:
+			contractingReqAction := tx.GetMetadata().(*metadata.ContractingRequest)
+			realTokenID = contractingReqAction.TokenID.String()
+			pubkey = base58.EncodeCheck(contractingReqAction.BurnerAddress.GetPublicSpend().ToBytesS())
 		}
 
 		mtd := ""
@@ -475,8 +503,105 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			mtd = string(mtdBytes)
 		}
-		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, tx.Hash().String(), tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers)
+
+		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, txHash, tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers)
+		txData.RealTokenID = realTokenID
+		if tx.GetVersion() == 2 {
+			txData.PubKeyReceivers = append(txData.PubKeyReceivers, pubkey)
+		}
 		txDataList = append(txDataList, *txData)
+	}
+
+	beaconInsts := [][]string{}
+	if blk.Header.Height != 1 {
+		beaconInsts, err = extractInstructionFromBeaconBlocks(blk.Header.PreviousBlockHash.Bytes(), blk.Header.BeaconHeight)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	withdrawProcessed := make(map[string]struct{})
+	for _, inst := range beaconInsts {
+		metaType, err := strconv.Atoi(inst[0])
+		if err != nil {
+			continue
+		}
+		switch metaType {
+		case metadata.PDEContributionMeta, metadata.PDEPRVRequiredContributionRequestMeta:
+			status := inst[2]
+			contentBytes := []byte(inst[3])
+			var contrData *shared.ContributionData
+			if inst[2] == common.PDEContributionRefundChainStatus {
+				var refundContribution metadata.PDERefundContribution
+				err := json.Unmarshal(contentBytes, &refundContribution)
+				if err != nil {
+					panic(err)
+				}
+				reqTxID := refundContribution.TxReqID.String()
+				if refundContribution.ShardID != byte(shardID) {
+					log.Println("refundContribution.ShardID != shardID")
+					continue
+				}
+				contrData = shared.NewContributionData(reqTxID, txRespondMap[reqTxID][0].TxID, status, refundContribution.PDEContributionPairID, refundContribution.TokenIDStr, refundContribution.ContributorAddressStr, refundContribution.ContributedAmount, txRespondMap[reqTxID][0].Locktime)
+				contributionRespondList = append(contributionRespondList, *contrData)
+			} else if inst[2] == common.PDEContributionMatchedNReturnedChainStatus {
+				var matchedNReturnedContribution metadata.PDEMatchedNReturnedContribution
+				err := json.Unmarshal(contentBytes, &matchedNReturnedContribution)
+				if err != nil {
+					panic(err)
+				}
+				if matchedNReturnedContribution.ShardID != byte(shardID) {
+					log.Println("matchedNReturnedContribution.ShardID != byte(shardID)")
+					continue
+				}
+				if matchedNReturnedContribution.ReturnedContributedAmount == 0 {
+					log.Println("matchedNReturnedContribution.ReturnedContributedAmount == 0")
+					continue
+				}
+				reqTxID := matchedNReturnedContribution.TxReqID.String()
+				contrData = shared.NewContributionData(reqTxID, txRespondMap[reqTxID][0].TxID, status, matchedNReturnedContribution.PDEContributionPairID, matchedNReturnedContribution.TokenIDStr, matchedNReturnedContribution.ContributorAddressStr, matchedNReturnedContribution.ReturnedContributedAmount, txRespondMap[reqTxID][0].Locktime)
+				contributionRespondList = append(contributionRespondList, *contrData)
+			}
+		case metadata.PDEWithdrawalRequestMeta:
+			status := inst[2]
+			if inst[2] == common.PDEWithdrawalAcceptedChainStatus {
+				contentBytes := []byte(inst[3])
+				var wdAcceptedContent metadata.PDEWithdrawalAcceptedContent
+				err := json.Unmarshal(contentBytes, &wdAcceptedContent)
+				if err != nil {
+					panic(err)
+				}
+				if wdAcceptedContent.ShardID != byte(shardID) {
+					log.Println("wdAcceptedContent.ShardID != shardID")
+					continue
+				}
+				if _, ok := withdrawProcessed[wdAcceptedContent.TxReqID.String()]; ok {
+					continue
+				}
+				txRespond := []string{txRespondMap[wdAcceptedContent.TxReqID.String()][0].TxID, txRespondMap[wdAcceptedContent.TxReqID.String()][1].TxID}
+				wdData := shared.NewWithdrawContributionData(wdAcceptedContent.TxReqID.String(), status, wdAcceptedContent.PairToken1IDStr, wdAcceptedContent.PairToken2IDStr, wdAcceptedContent.WithdrawerAddressStr, txRespond, txRespondMap[wdAcceptedContent.TxReqID.String()][0].Amount, txRespondMap[wdAcceptedContent.TxReqID.String()][1].Amount, txRespondMap[wdAcceptedContent.TxReqID.String()][0].Locktime)
+				contributionWithdrawRepsondList = append(contributionWithdrawRepsondList, *wdData)
+				withdrawProcessed[wdAcceptedContent.TxReqID.String()] = struct{}{}
+			}
+		case metadata.PDEFeeWithdrawalRequestMeta:
+			if inst[2] == common.PDEFeeWithdrawalAcceptedChainStatus {
+				contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
+				if err != nil {
+					panic(err)
+				}
+				var pdeFeeWithdrawalRequestAction metadata.PDEFeeWithdrawalRequestAction
+				err = json.Unmarshal(contentBytes, &pdeFeeWithdrawalRequestAction)
+				if err != nil {
+					panic(err)
+				}
+				if pdeFeeWithdrawalRequestAction.ShardID != byte(shardID) {
+					log.Println("pdeFeeWithdrawalRequestAction.ShardID != shardID")
+					continue
+				}
+				wdData := shared.NewWithdrawContributionFeeData(pdeFeeWithdrawalRequestAction.TxReqID.String(), txRespondMap[pdeFeeWithdrawalRequestAction.TxReqID.String()][0].TxID, inst[2], pdeFeeWithdrawalRequestAction.Meta.WithdrawalToken1IDStr, pdeFeeWithdrawalRequestAction.Meta.WithdrawalToken2IDStr, pdeFeeWithdrawalRequestAction.Meta.WithdrawerAddressStr, pdeFeeWithdrawalRequestAction.Meta.WithdrawalFeeAmt, txRespondMap[pdeFeeWithdrawalRequestAction.TxReqID.String()][0].Locktime)
+				contributionFeeWithdrawRepsondList = append(contributionFeeWithdrawRepsondList, *wdData)
+			}
+		}
 	}
 	alreadyWriteToBD := false
 
@@ -527,8 +652,29 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 	}
+
 	if len(bridgeShieldRespondList) > 0 {
 		err = database.DBSaveTxShield(bridgeShieldRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if len(contributionRespondList) > 0 {
+		err = database.DBSavePDEContribute(contributionRespondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if len(contributionWithdrawRepsondList) > 0 {
+		err = database.DBSavePDEWithdraw(contributionWithdrawRepsondList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if len(contributionFeeWithdrawRepsondList) > 0 {
+		err = database.DBSavePDEWithdrawFee(contributionFeeWithdrawRepsondList)
 		if err != nil {
 			panic(err)
 		}
@@ -540,6 +686,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 	}
+
 	statePrefix := fmt.Sprintf("coin-processed-%v", blk.Header.ShardID)
 	err = Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
 	if err != nil {
@@ -585,6 +732,21 @@ func InitChainSynker(cfg shared.Config) {
 		panic(err)
 	}
 	err = database.DBCreateTxPendingIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreateShieldIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreateTradeIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreatePDEIndex()
 	if err != nil {
 		panic(err)
 	}
@@ -636,7 +798,7 @@ func InitChainSynker(cfg shared.Config) {
 	}
 	go mempoolWatcher()
 	go tokenListWatcher()
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
@@ -671,68 +833,6 @@ func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) 
 	if err != nil {
 		log.Println(err)
 	}
-
-	bridgeUnshieldRespondList := []shared.ShieldData{}
-
-	// unshield
-	for _, inst := range beaconBestState.BestBlock.GetInstructions() {
-
-		metaType, err := strconv.Atoi(inst[0])
-		if err != nil {
-			continue
-		}
-		tokenID := ""
-		txHash := ""
-		bridge := "centralized"
-		amount := uint64(0)
-		pubkey := ""
-		isDecentralized := false
-		switch metaType {
-		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2:
-			var burningReqAction blockchain.BurningReqAction
-			contentBytes, err := base64.StdEncoding.DecodeString(inst[1])
-			if err != nil {
-				panic(err)
-			}
-			err = json.Unmarshal(contentBytes, &burningReqAction)
-			if err != nil {
-				panic(err)
-			}
-			md := burningReqAction.Meta
-			txHash = burningReqAction.RequestedTxID.String()
-			tokenID = base58.Base58Check{}.Encode(md.TokenID[:], 0x00)
-			amount = md.BurningAmount
-			pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
-			bridge = "decentralized"
-			isDecentralized = true
-		case metadata.ContractingRequestMeta:
-			contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
-			if err != nil {
-				panic(err)
-			}
-			var contractingReqAction metadata.ContractingReqAction
-			err = json.Unmarshal(contentBytes, &contractingReqAction)
-			if err != nil {
-				panic(err)
-			}
-			md := contractingReqAction.Meta
-			txHash = contractingReqAction.TxReqID.String()
-			tokenID = md.TokenID.String()
-			amount = md.BurnedAmount
-			pubkey = base58.EncodeCheck(md.BurnerAddress.GetPublicSpend().ToBytesS())
-		}
-		unshieldData := shared.NewShieldData(txHash, "", tokenID, "unshield", bridge, pubkey, isDecentralized, amount)
-		bridgeUnshieldRespondList = append(bridgeUnshieldRespondList, *unshieldData)
-	}
-	if len(bridgeUnshieldRespondList) > 0 {
-		err = database.DBSaveTxUnShield(bridgeUnshieldRespondList)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// liquidity
-
 }
 
 func mempoolWatcher() {
@@ -791,23 +891,25 @@ func mempoolWatcher() {
 		}
 		err = database.DBDeletePendingTxs(txsToRemove)
 		if err != nil {
-			log.Println(err)
+			log.Println("hmm234", err)
 			continue
 		}
 	}
 }
 func tokenListWatcher() {
 	interval := time.NewTicker(10 * time.Second)
+	// activeShards := config.Param().ActiveShards
+	activeShards := 2
 	for {
 		<-interval.C
 		shardStateDB := make(map[byte]*statedb.StateDB)
-		for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
+		for i := 0; i < activeShards; i++ {
 			shardID := byte(i)
 			shardStateDB[shardID] = TransactionStateDB[shardID].Copy()
 		}
 
 		tokenStates := make(map[common.Hash]*statedb.TokenState)
-		for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
+		for i := 0; i < activeShards; i++ {
 			shardID := byte(i)
 			m := statedb.ListPrivacyToken(shardStateDB[shardID])
 			for newK, newV := range m {
@@ -847,7 +949,7 @@ func tokenListWatcher() {
 				IsBridgeToken: true,
 			}
 			if item.Name == "" {
-				for i := 0; i < Localnode.GetBlockchain().GetBeaconBestState().ActiveShards; i++ {
+				for i := 0; i < activeShards; i++ {
 					shardID := byte(i)
 					tokenState, has, err := statedb.GetPrivacyTokenState(shardStateDB[shardID], *bridgeToken.TokenID)
 					if err != nil {
@@ -891,11 +993,14 @@ func tokenListWatcher() {
 			for _, tokenInfo := range tokenInfoList {
 				tokenID, err := new(common.Hash).NewHashFromStr(tokenInfo.TokenID)
 				if err != nil {
-					log.Println(err)
+					panic(err)
 					continue
 				}
 				recomputedAssetTag := operation.HashToPoint(tokenID[:])
 				lastTokenIDMap[recomputedAssetTag.String()] = tokenInfo.TokenID
+				if recomputedAssetTag.String() == "9fa8022e7ddae011f9920999178d9b21fa37b04ee3674d76cfb259b1f7b619be" || recomputedAssetTag.String() == "51a7d1d127a3e8fc9f397fefe45a87f65837bc44541ee04b3797a7680e826c3e" {
+					panic(tokenInfo.TokenID)
+				}
 			}
 		}
 
@@ -969,16 +1074,36 @@ func getCrossShardData(result map[string]string, txList []metadata.Transaction, 
 func getTokenID(assetTag string) string {
 retry:
 	if len(lastTokenIDMap) == 0 {
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 		goto retry
 	}
 	lastTokenIDLock.RLock()
 	tokenIDStr, ok := lastTokenIDMap[assetTag]
 	if !ok {
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 		lastTokenIDLock.RUnlock()
 		goto retry
 	}
 	lastTokenIDLock.RUnlock()
 	return tokenIDStr
+}
+
+func extractInstructionFromBeaconBlocks(shardPrevBlkHash []byte, currentBeaconHeight uint64) ([][]string, error) {
+	var blk types.ShardBlock
+	blkBytes, err := Localnode.GetUserDatabase().Get(shardPrevBlkHash, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(blkBytes, &blk); err != nil {
+		panic(err)
+	}
+	var insts [][]string
+	for i := blk.Header.BeaconHeight + 1; i <= currentBeaconHeight; i++ {
+		bblk, err := Localnode.GetBlockchain().GetBeaconBlockByHeight(i)
+		if err != nil {
+			return nil, err
+		}
+		insts = append(insts, bblk[0].Body.Instructions...)
+	}
+	return insts, nil
 }
