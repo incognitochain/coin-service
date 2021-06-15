@@ -371,13 +371,14 @@ type ContributionData struct {
 	PairID                string `json:"pairid" bson:"pairid"`
 	TokenID               string `json:"tokenid" bson:"tokenid"`
 	Amount                uint64 `json:"amount" bson:"amount"`
+	ReturnAmount          uint64 `json:"returnamount" bson:"returnamount"`
 	ContributorAddressStr string `json:"contributor" bson:"contributor"`
-	Respondtime           int64  `json:"respondtime" bson:"respondtime"`
+	Respondblock          uint64 `json:"respondblock" bson:"respondblock"`
 }
 
-func NewContributionData(requestTx, respondTx, status, pairID, tokenID, contributorAddressStr string, amount uint64, respondTime int64) *ContributionData {
+func NewContributionData(requestTx, respondTx, status, pairID, tokenID, contributorAddressStr string, amount, returnamount uint64, respondBlock uint64) *ContributionData {
 	return &ContributionData{
-		RequestTx: requestTx, RespondTx: respondTx, Status: status, PairID: pairID, TokenID: tokenID, Amount: amount, ContributorAddressStr: contributorAddressStr, Respondtime: respondTime,
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, PairID: pairID, TokenID: tokenID, Amount: amount, ReturnAmount: returnamount, ContributorAddressStr: contributorAddressStr, Respondblock: respondBlock,
 	}
 }
 

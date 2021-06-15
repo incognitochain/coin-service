@@ -10,6 +10,7 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/privacy"
+	"github.com/incognitochain/incognito-chain/wallet"
 	jsoniter "github.com/json-iterator/go"
 
 	"fmt"
@@ -542,10 +543,11 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					log.Println("refundContribution.ShardID != shardID")
 					continue
 				}
-				contrData = shared.NewContributionData(reqTxID, txRespondMap[reqTxID][0].TxID, status, refundContribution.PDEContributionPairID, refundContribution.TokenIDStr, refundContribution.ContributorAddressStr, refundContribution.ContributedAmount, txRespondMap[reqTxID][0].Locktime)
+				contrData = shared.NewContributionData(reqTxID, txRespondMap[reqTxID][0].TxID, status, refundContribution.PDEContributionPairID, refundContribution.TokenIDStr, refundContribution.ContributorAddressStr, refundContribution.ContributedAmount, 0, blk.GetHeight())
 				contributionRespondList = append(contributionRespondList, *contrData)
 			} else if inst[2] == common.PDEContributionMatchedNReturnedChainStatus {
 				var matchedNReturnedContribution metadata.PDEMatchedNReturnedContribution
+				txRespond := ""
 				err := json.Unmarshal(contentBytes, &matchedNReturnedContribution)
 				if err != nil {
 					panic(err)
@@ -554,12 +556,50 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					log.Println("matchedNReturnedContribution.ShardID != byte(shardID)")
 					continue
 				}
+				reqTxID := matchedNReturnedContribution.TxReqID.String()
 				if matchedNReturnedContribution.ReturnedContributedAmount == 0 {
 					log.Println("matchedNReturnedContribution.ReturnedContributedAmount == 0")
+				} else {
+					txRespond = txRespondMap[reqTxID][0].TxID
+				}
+
+				contrData = shared.NewContributionData(reqTxID, txRespond, status, matchedNReturnedContribution.PDEContributionPairID, matchedNReturnedContribution.TokenIDStr, matchedNReturnedContribution.ContributorAddressStr, matchedNReturnedContribution.ActualContributedAmount, matchedNReturnedContribution.ReturnedContributedAmount, blk.GetHeight())
+				contributionRespondList = append(contributionRespondList, *contrData)
+			} else if inst[2] == common.PDEContributionMatchedChainStatus {
+				var matchedContribution metadata.PDEMatchedContribution
+				err := json.Unmarshal(contentBytes, &matchedContribution)
+				if err != nil {
+					panic(err)
+				}
+				wl, err := wallet.Base58CheckDeserialize(matchedContribution.ContributorAddressStr)
+				if err != nil {
+					panic(err)
+				}
+				pk := wl.KeySet.PaymentAddress.Pk
+				if common.GetShardIDFromLastByte(pk[len(pk)-1]) != byte(shardID) {
+					log.Println("matchedContribution.ShardID != byte(shardID)")
 					continue
 				}
-				reqTxID := matchedNReturnedContribution.TxReqID.String()
-				contrData = shared.NewContributionData(reqTxID, txRespondMap[reqTxID][0].TxID, status, matchedNReturnedContribution.PDEContributionPairID, matchedNReturnedContribution.TokenIDStr, matchedNReturnedContribution.ContributorAddressStr, matchedNReturnedContribution.ReturnedContributedAmount, txRespondMap[reqTxID][0].Locktime)
+				reqTxID := matchedContribution.TxReqID.String()
+				contrData = shared.NewContributionData(reqTxID, "", status, matchedContribution.PDEContributionPairID, matchedContribution.TokenIDStr, matchedContribution.ContributorAddressStr, matchedContribution.ContributedAmount, 0, blk.GetHeight())
+				contributionRespondList = append(contributionRespondList, *contrData)
+			} else if inst[2] == common.PDEContributionWaitingChainStatus {
+				var waitingContribution metadata.PDEWaitingContribution
+				err := json.Unmarshal(contentBytes, &waitingContribution)
+				if err != nil {
+					panic(err)
+				}
+				wl, err := wallet.Base58CheckDeserialize(waitingContribution.ContributorAddressStr)
+				if err != nil {
+					panic(err)
+				}
+				pk := wl.KeySet.PaymentAddress.Pk
+				if common.GetShardIDFromLastByte(pk[len(pk)-1]) != byte(shardID) {
+					log.Println("matchedContribution.ShardID != byte(shardID)")
+					continue
+				}
+				reqTxID := waitingContribution.TxReqID.String()
+				contrData = shared.NewContributionData(reqTxID, "", status, waitingContribution.PDEContributionPairID, waitingContribution.TokenIDStr, waitingContribution.ContributorAddressStr, waitingContribution.ContributedAmount, 0, blk.GetHeight())
 				contributionRespondList = append(contributionRespondList, *contrData)
 			}
 		case metadata.PDEWithdrawalRequestMeta:

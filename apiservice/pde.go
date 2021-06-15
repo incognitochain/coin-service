@@ -5,11 +5,14 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"sort"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
@@ -212,9 +215,72 @@ func APIGetContributeHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+
+	filterData := make(map[string][]shared.ContributionData)
+	for _, data := range result {
+		filterData[data.PairID] = append(filterData[data.PairID], data)
+	}
+	newListData := []shared.ContributionData{}
+	for _, dataList := range filterData {
+		fiteredList := []shared.ContributionData{}
+		waitData := make(map[string]*shared.ContributionData)
+		refundData := make(map[string][]shared.ContributionData)
+		for _, data := range dataList {
+			switch data.Status {
+			case common.PDEContributionMatchedChainStatus, common.PDEContributionMatchedNReturnedChainStatus:
+				fiteredList = append(fiteredList, data)
+			case common.PDEContributionWaitingChainStatus:
+				if d, ok := waitData[data.TokenID]; !ok {
+					waitData[data.TokenID] = &data
+				} else {
+					if d.Respondblock < data.Respondblock {
+						waitData[data.TokenID] = &data
+					}
+				}
+			case common.PDEContributionRefundChainStatus:
+				refundData[data.TokenID] = append(refundData[data.TokenID], data)
+			}
+		}
+		if len(refundData) == 0 {
+			if len(fiteredList) != 0 {
+				newListData = append(newListData, fiteredList...)
+				if len(newListData) == 1 {
+					for tokenID, data := range waitData {
+						if tokenID != newListData[0].TokenID {
+							newListData = append(newListData, *data)
+						}
+					}
+				}
+			} else {
+				for _, data := range waitData {
+					newListData = append(newListData, *data)
+				}
+			}
+		} else {
+			for _, data := range refundData {
+				newListData = append(newListData, data...)
+			}
+		}
+	}
+
+	sort.SliceStable(newListData, func(i, j int) bool {
+		return newListData[i].Respondblock > newListData[j].Respondblock
+	})
 	respond := APIRespond{
-		Result: result,
+		Result: checkDup(newListData),
 	}
 	c.JSON(http.StatusOK, respond)
 
+}
+
+func checkDup(list []shared.ContributionData) []shared.ContributionData {
+	checkVal := make(map[string]int)
+	newList := []shared.ContributionData{}
+	for _, v := range list {
+		if _, ok := checkVal[v.ID.Hex()]; !ok {
+			checkVal[v.ID.Hex()] = 1
+			newList = append(newList, v)
+		}
+	}
+	return newList
 }

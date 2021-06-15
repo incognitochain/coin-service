@@ -134,7 +134,7 @@ func DBGetPDEContributeRespond(address string, limit int64, offset int64) ([]sha
 	filter := bson.M{"contributor": bson.M{operator.Eq: address}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"respondtime", -1}},
+		Sort:  bson.D{{"respondblock", -1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})

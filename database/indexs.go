@@ -197,7 +197,7 @@ func DBCreatePDEIndex() error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	ctrbModel := []mongo.IndexModel{
 		{
-			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondtime", Value: bsonx.Int32(-1)}},
+			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondblock", Value: bsonx.Int32(-1)}},
 		},
 	}
 	_, err := mgm.Coll(&shared.ContributionData{}).Indexes().CreateMany(ctx, ctrbModel)
