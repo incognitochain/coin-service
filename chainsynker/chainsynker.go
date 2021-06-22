@@ -735,18 +735,13 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 }
 
 var (
-	chainNetwork    string
-	highwayAddress  string
 	chainDataFolder string
-	// fullnodeAddress string
 )
 
 func InitChainSynker(cfg shared.Config) {
 	lastTokenIDMap = make(map[string]string)
-	chainNetwork = cfg.ChainNetwork
-	highwayAddress = cfg.Highway
+	highwayAddress := cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
-	// fullnodeAddress = cfg.FullnodeAddress
 
 	if shared.RESET_FLAG {
 		err := ResetMongoAndReSync()
@@ -792,16 +787,6 @@ func InitChainSynker(cfg shared.Config) {
 	}
 
 	var netw devframework.NetworkParam
-	switch chainNetwork {
-	case "testnet2":
-		netw = devframework.TestNet2Param
-	case "testnet":
-		netw = devframework.TestNetParam
-	case "mainnet":
-		netw = devframework.MainNetParam
-	default:
-		panic("unknown network")
-	}
 	netw.HighwayAddress = highwayAddress
 	node := devframework.NewAppNode(chainDataFolder, netw, true, false, false, cfg.EnableChainLog)
 	Localnode = node

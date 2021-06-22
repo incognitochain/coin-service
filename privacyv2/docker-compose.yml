@@ -1,108 +1,60 @@
 version: "3.1"
 services:
-  chainsyncv3:
-    image: alpine
+  chainsync:
+    image: coinservice
+    build:
+      context: ./csv
+      dockerfile: Dockerfile
     volumes:
-      - .:/home
-      - ./chain:/chain
-    entrypoint: [/home/run.sh]
+      - ./data/chain:/home/chain
+    working_dir: /home
+    entrypoint: [./run.sh]
     environment:
-      INDEXERID: 10
+      INDEXERID: -1
       MODE: "chainsync"
-      PORT: 9001
-      NUMSHARDS: 8
-      HIGHWAY: "45.56.115.6:9330"
-      INCOGNITO_NETWORK_KEY: "testnet"
-      INCOGNITO_NETWORK_VERSION_KEY: "1"
-      INCOGNITO_CONFIG_MODE_KEY: "file"
-      INCOGNITO_CONFIG_DIR_KEY: "/home/config"
+    env_file:
+      - service.env
     depends_on:
-      - mongov3
+      - mongo
 
-  queryv3:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
+  query:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
     environment:
       INDEXERID: 0
       MODE: "query"
-      PORT: 9008
-      NUMSHARDS: 8
-      HIGHWAY: "45.56.115.6:9330"
+    env_file:
+      - service.env
     depends_on:
-      - chainsyncv3
+      - chainsync
 
-  indexer0v3:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
+  indexer:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
     environment:
       INDEXERID: 0
       MODE: "indexer"
-      PORT: 9009
-      NUMSHARDS: 8
-      HIGHWAY: "45.56.115.6:9330"
+    env_file:
+      - service.env
     depends_on:
-      - chainsyncv3
-      - mongov3
+      - chainsync
+      - mongo
 
-  worker1:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
+  worker:
+    image: coinservice
+    deploy:
+      replicas: 3
+    working_dir: /home
+    entrypoint: [./run.sh]
     environment:
-      INDEXERID: 1
+      INDEXERID: 0
       MODE: "indexworker"
-      PORT: 9001
-      NUMSHARDS: 8
-      HIGHWAY: "45.56.115.6:9330"
+    env_file:
+      - service.env
     depends_on:
-      - indexer0v3
-
-  worker2:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
-    environment:
-      INDEXERID: 2
-      MODE: "indexworker"
-      PORT: 9001
-      NUMSHARDS: 8
-      HIGHWAY: "45.56.115.6:9330"
-    depends_on:
-      - indexer0v3
-
-  worker3:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
-    environment:
-      INDEXERID: 3
-      MODE: "indexworker"
-      PORT: 9001
-      NUMSHARDS: 8
-      HIGHWAY: "45.56.115.6:9330"
-    depends_on:
-      - indexer0v3
-
-  worker4:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
-    environment:
-      INDEXERID: 4
-      MODE: "indexworker"
-      PORT: 9001
-      NUMSHARDS: 8
-      HIGHWAY: "45.56.115.6:9330"
-    depends_on:
-      - indexer0v3
+      - indexer
 
   nginx-server:
     image: nginx-load-balancer
@@ -113,8 +65,8 @@ services:
       - 9080:80
     restart: unless-stopped
     depends_on:
-      - queryv3
-      - indexer0v3
+      - query
+      - indexer
 
   # watcher:
   #   image: alpine
@@ -128,18 +80,16 @@ services:
   #   depends_on:
   #     - chainsyncv3
 
-  mongov3:
+  mongo:
     image: mongo
     restart: always
-    # ports:
-    #   - 27019:27017
     volumes:
-      - ./mongodb:/data/db
-      - ./mongodb_config:/data/configdb
+      - ./data/mongodb:/data/db
+      - ./data/mongodb_config:/data/configdb
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
-  mongo-expressv3:
+  mongo-express:
     image: mongo-express
     restart: always
     ports:
@@ -147,7 +97,7 @@ services:
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
-      ME_CONFIG_MONGODB_SERVER: mongov3
+      ME_CONFIG_MONGODB_SERVER: mongo
 # volumes:
 #   mongodb:
 #   mongodb_config:

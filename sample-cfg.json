@@ -6,9 +6,7 @@
 	"mongo":"mongodb://root:example@1.2.3.4:27017",
 	"mongodb":"",
 	"chainnetwork":"testnet2",
-	"highway":"74.207.247.250:9330",
 	"concurrentotacheck":10,
-	"bucketid":99,
-	"maxbucketsize":5,
-	"numberofshard":8
+	"indexerid":0,
+	"masterindexer":""
 }

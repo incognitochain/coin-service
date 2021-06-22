@@ -10,12 +10,10 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
-	"github.com/incognitochain/incognito-chain/common"
 )
 
 func main() {
 	shared.ReadConfigAndArg()
-	common.MaxShardNumber = shared.ServiceCfg.NumOfShard
 	err := database.ConnectDB(shared.ServiceCfg.MongoDB, shared.ServiceCfg.MongoAddress)
 	if err != nil {
 		panic(err)
