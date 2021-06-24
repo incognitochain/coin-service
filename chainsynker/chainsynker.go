@@ -425,17 +425,14 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			panic(err)
 		}
-
 		var outs []coin.Coin
 		tokenIDStr := tx.GetTokenID().String()
 		if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
 			txToken := tx.(transaction.TransactionToken)
 			outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
 			if isCoinV2Output && !tx.IsPrivacy() {
-				if shardID == 5 {
-					log.Println("ahaaaaaa", tx.GetType(), txHash, outs[0].GetAssetTag().String())
-				}
-				tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
+				txTokenData := transaction.GetTxTokenDataFromTransaction(tx)
+				tokenIDStr = txTokenData.PropertyID.String()
 			}
 		} else {
 			outs = tx.GetProof().GetOutputCoins()
@@ -1027,9 +1024,6 @@ func tokenListWatcher() {
 				}
 				recomputedAssetTag := operation.HashToPoint(tokenID[:])
 				lastTokenIDMap[recomputedAssetTag.String()] = tokenInfo.TokenID
-				if recomputedAssetTag.String() == "9fa8022e7ddae011f9920999178d9b21fa37b04ee3674d76cfb259b1f7b619be" || recomputedAssetTag.String() == "51a7d1d127a3e8fc9f397fefe45a87f65837bc44541ee04b3797a7680e826c3e" {
-					panic(tokenInfo.TokenID)
-				}
 			}
 		}
 
