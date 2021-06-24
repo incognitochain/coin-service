@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/config"
 )
 
@@ -120,4 +121,6 @@ func ReadConfigAndArg() {
 	ServiceCfg.NumOfShard = param.ActiveShards
 	ServiceCfg.IndexerID = tempCfg.IndexerID
 	ServiceCfg.MasterIndexerAddr = tempCfg.MasterIndexerAddr
+
+	common.MaxShardNumber = param.ActiveShards
 }
