@@ -56,7 +56,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		fmt.Println("height", height, h.String())
 		panic(err)
-		return
 	}
 	if err := json.Unmarshal(blkBytes, &blk); err != nil {
 		panic(err)
@@ -64,7 +63,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	blockHash := blk.Hash().String()
 	blockHeight := fmt.Sprintf("%v", blk.GetHeight())
 	shardID := blk.GetShardID()
-
+	log.Printf("start processing coin for block %v shard %v", blk.GetHeight(), shardID)
+	startTime := time.Now()
 	if len(blk.Body.Transactions) > 0 {
 		err = bc.CreateAndSaveTxViewPointFromBlock(&blk, TransactionStateDB[byte(shardID)])
 		if err != nil {
@@ -732,6 +732,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("finish processing coin for block %v shard %v in %v", blk.GetHeight(), shardID, time.Since(startTime))
 }
 
 var (
