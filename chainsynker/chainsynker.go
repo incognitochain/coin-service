@@ -432,6 +432,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			txToken := tx.(transaction.TransactionToken)
 			outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
 			if isCoinV2Output && !tx.IsPrivacy() {
+				if shardID == 5 {
+					log.Println("ahaaaaaa", tx.GetType(), txHash, outs[0].GetAssetTag().String())
+				}
 				tokenIDStr = getTokenID(outs[0].GetAssetTag().String())
 			}
 		} else {
@@ -686,34 +689,34 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 		}
 	}
-	if len(tradeRespondList) > 0 {
+	if len(tradeRespondList) > 0 && !alreadyWriteToBD {
 		err = database.DBSaveTxTrade(tradeRespondList)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	if len(bridgeShieldRespondList) > 0 {
+	if len(bridgeShieldRespondList) > 0 && !alreadyWriteToBD {
 		err = database.DBSaveTxShield(bridgeShieldRespondList)
 		if err != nil {
 			panic(err)
 		}
 	}
-	if len(contributionRespondList) > 0 {
+	if len(contributionRespondList) > 0 && !alreadyWriteToBD {
 		err = database.DBSavePDEContribute(contributionRespondList)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	if len(contributionWithdrawRepsondList) > 0 {
+	if len(contributionWithdrawRepsondList) > 0 && !alreadyWriteToBD {
 		err = database.DBSavePDEWithdraw(contributionWithdrawRepsondList)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	if len(contributionFeeWithdrawRepsondList) > 0 {
+	if len(contributionFeeWithdrawRepsondList) > 0 && !alreadyWriteToBD {
 		err = database.DBSavePDEWithdrawFee(contributionFeeWithdrawRepsondList)
 		if err != nil {
 			panic(err)
@@ -1101,12 +1104,14 @@ func getTokenID(assetTag string) string {
 retry:
 	if len(lastTokenIDMap) == 0 {
 		time.Sleep(5 * time.Second)
+		fmt.Println("ahaaaaaa could be stuck here 1")
 		goto retry
 	}
 	lastTokenIDLock.RLock()
 	tokenIDStr, ok := lastTokenIDMap[assetTag]
 	if !ok {
 		time.Sleep(5 * time.Second)
+		fmt.Println("ahaaaaaa could be stuck here 2")
 		lastTokenIDLock.RUnlock()
 		goto retry
 	}
