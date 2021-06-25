@@ -41,7 +41,7 @@ func DBSaveCoins(list []shared.CoinData) error {
 		}
 	}
 	if len(docs) > 0 {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+2)*shared.DB_OPERATION_TIMEOUT)
 		_, err := mgm.Coll(&shared.CoinData{}).InsertMany(ctx, docs)
 		if err != nil {
 			log.Printf("failed to insert %v coins in %v", len(docs), time.Since(startTime))
@@ -50,7 +50,7 @@ func DBSaveCoins(list []shared.CoinData) error {
 		log.Printf("inserted %v v2coins in %v", len(docs), time.Since(startTime))
 	}
 	if len(docsV1) > 0 {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+2)*shared.DB_OPERATION_TIMEOUT)
 		_, err := mgm.Coll(&shared.CoinDataV1{}).InsertMany(ctx, docsV1)
 		if err != nil {
 			log.Printf("failed to insert %v coins in %v", len(docsV1), time.Since(startTime))

@@ -453,7 +453,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue())
 			tradeRespondList = append(tradeRespondList, *trade)
-		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta:
+		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 			requestTx := ""
 			shieldType := "shield"
 			bridge := ""
@@ -461,10 +461,14 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			switch metaDataType {
 			case metadata.IssuingResponseMeta:
 				requestTx = tx.GetMetadata().(*metadata.IssuingResponse).RequestedTxID.String()
-				bridge = "centralized"
-			case metadata.IssuingETHResponseMeta:
-				requestTx = tx.GetMetadata().(*metadata.IssuingETHResponse).RequestedTxID.String()
-				bridge = "centralized"
+				bridge = "btc"
+			case metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
+				requestTx = tx.GetMetadata().(*metadata.IssuingEVMResponse).RequestedTxID.String()
+				if metaDataType == metadata.IssuingETHResponseMeta {
+					bridge = "eth"
+				} else {
+					bridge = "bsc"
+				}
 			}
 			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue(), beaconHeight)
 			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
@@ -486,7 +490,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				TxID     string
 				Locktime int64
 			}{outs[0].GetValue(), txHash, tx.GetLockTime()})
-		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2:
+		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2, metadata.BurningPBSCRequestMeta:
 			burningReqAction := tx.GetMetadata().(*metadata.BurningRequest)
 			realTokenID = burningReqAction.TokenID.String()
 			pubkey = base58.EncodeCheck(burningReqAction.BurnerAddress.GetPublicSpend().ToBytesS())
