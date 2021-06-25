@@ -874,7 +874,11 @@ func mempoolWatcher() {
 			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
 				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
 				shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
-				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.Hash().String()))
+				txBytes, err := json.Marshal(msgData.Transaction)
+				if err != nil {
+					panic(err)
+				}
+				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.Hash().String(), string(txBytes), msgData.Transaction.GetLockTime()))
 			}
 			err := database.DBSavePendingTx(pendingTxs)
 			if err != nil {
@@ -890,7 +894,11 @@ func mempoolWatcher() {
 			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
 				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
 				shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
-				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.Hash().String()))
+				txBytes, err := json.Marshal(msgData.Transaction)
+				if err != nil {
+					panic(err)
+				}
+				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.Hash().String(), string(txBytes), msgData.Transaction.GetLockTime()))
 			}
 			err := database.DBSavePendingTx(pendingTxs)
 			if err != nil {

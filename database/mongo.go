@@ -101,6 +101,29 @@ func DBGetPendingTxs() (map[int][]string, error) {
 	}
 	return result, nil
 }
+func DBGetPendingTxsData() ([]string, error) {
+	list := []shared.CoinPendingData{}
+	filter := bson.M{}
+	err := mgm.Coll(&shared.CoinPendingData{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	result := []string{}
+	for _, v := range list {
+		result = append(result, v.TxData)
+	}
+	return result, nil
+}
+
+func DBGetPendingTxDetail(txhash string) (string, error) {
+	list := []shared.CoinPendingData{}
+	filter := bson.M{"txhash": bson.M{operator.Eq: txhash}}
+	err := mgm.Coll(&shared.CoinPendingData{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return "", err
+	}
+	return list[0].TxData, nil
+}
 
 func DBGetPendingCoins() ([]string, error) {
 	list := []shared.CoinPendingData{}

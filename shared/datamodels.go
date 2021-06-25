@@ -119,12 +119,14 @@ type CoinPendingData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Keyimages        []string `json:"keyimage" bson:"keyimage"`
 	ShardID          int      `json:"shardid" bson:"shardid"`
+	Locktime         int64    `json:"locktime" bson:"locktime"`
+	TxData           string   `json:"txdata" bson:"txdata"`
 	TxHash           string   `json:"txhash" bson:"txhash"`
 }
 
-func NewCoinPendingData(keyimages []string, shardID int, TxHash string) *CoinPendingData {
+func NewCoinPendingData(keyimages []string, shardID int, txHash, txdata string, locktime int64) *CoinPendingData {
 	return &CoinPendingData{
-		Keyimages: keyimages, ShardID: shardID, TxHash: TxHash,
+		Keyimages: keyimages, ShardID: shardID, TxHash: txHash, TxData: txdata, Locktime: locktime,
 	}
 }
 

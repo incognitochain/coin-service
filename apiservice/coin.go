@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/privacy"
@@ -268,6 +269,67 @@ func APIGetCoinsPending(c *gin.Context) {
 	}
 	respond := APIRespond{
 		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetPendingTxs(c *gin.Context) {
+	base58Fmt := false
+
+	if c.Query("base58") == "true" {
+		base58Fmt = true
+	}
+
+	txdataStrs, err := database.DBGetPendingTxsData()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+	txDatas := []shared.TxData{}
+	for _, v := range txdataStrs {
+		txDatas = append(txDatas, shared.TxData{
+			TxDetail:    v,
+			BlockHeight: "0",
+		})
+	}
+	txDetails, err := buildTxDetailRespond(txDatas, base58Fmt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: txDetails,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func APICheckTxPending(c *gin.Context) {
+	txhash := c.Query("txhash")
+	base58Fmt := false
+
+	if c.Query("base58") == "true" {
+		base58Fmt = true
+	}
+
+	result, err := database.DBGetPendingTxDetail(txhash)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+
+	txdata := shared.TxData{
+		TxDetail:    result,
+		BlockHeight: "0",
+	}
+	txDetails, err := buildTxDetailRespond([]shared.TxData{txdata}, base58Fmt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: txDetails,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
