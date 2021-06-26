@@ -429,10 +429,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		tokenIDStr := tx.GetTokenID().String()
 		if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
 			txToken := tx.(transaction.TransactionToken)
-			outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
-			if isCoinV2Output && !tx.IsPrivacy() {
-				txTokenData := transaction.GetTxTokenDataFromTransaction(tx)
-				tokenIDStr = txTokenData.PropertyID.String()
+			if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
+				outs = txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+				if isCoinV2Output && !tx.IsPrivacy() {
+					txTokenData := transaction.GetTxTokenDataFromTransaction(tx)
+					tokenIDStr = txTokenData.PropertyID.String()
+				}
 			}
 		} else {
 			outs = tx.GetProof().GetOutputCoins()
