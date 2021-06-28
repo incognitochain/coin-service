@@ -104,7 +104,7 @@ func APIGetTxsBySender(c *gin.Context) {
 			return
 		}
 	}
-	if req.Base58 {
+	if !req.Base58 {
 		newList := []string{}
 		for _, v := range req.Keyimages {
 			d, _ := base64.StdEncoding.DecodeString(v)

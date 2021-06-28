@@ -27,7 +27,7 @@ func main() {
 		panic("unknown network")
 	}
 	netw.HighwayAddress = "127.0.0.1:1"
-	node := devframework.NewAppNode(chainData, netw, true, false, false)
+	node := devframework.NewAppNode(chainData, netw, true, false, false, false)
 
 	statePrefix := fmt.Sprintf("coin-processed-%v", *argShardID)
 	err := node.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", *argShardHeight)), nil)
