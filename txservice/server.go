@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"cloud.google.com/go/pubsub"
@@ -38,7 +39,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	common.MaxShardNumber = 2
+	common.MaxShardNumber, err = strconv.Atoi(SHARDNUMBER)
+	if err != nil {
+		panic(err)
+	}
 	switch MODE {
 	case PUSHMODE:
 		pushMode()

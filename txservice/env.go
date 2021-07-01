@@ -17,6 +17,7 @@ var (
 	MODE           = mustGetenv("MODE")
 	PORT           = mustGetenv("PORT")
 	SLACKHOOK      = mustGetenv("SLACKHOOK")
+	SHARDNUMBER    = mustGetenv("SHARDNUMBER")
 )
 
 func mustGetenv(k string) string {

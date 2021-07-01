@@ -12,7 +12,7 @@ import (
 )
 
 func ConnectDB() error {
-	err := mgm.SetDefaultConfig(nil, "main", options.Client().ApplyURI(MONGODB))
+	err := mgm.SetDefaultConfig(nil, DBNAME, options.Client().ApplyURI(MONGODB))
 	if err != nil {
 		return err
 	}

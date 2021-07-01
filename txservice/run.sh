@@ -8,6 +8,7 @@ export TXSTATUS_SUBID="txstatussub"
 export MONGO="mongodb://root:example@0.0.0.0:27019"
 export DBNAME="txservice"
 export FULLNODE="http://51.161.119.66:9334"
+export SHARDNUMBER="2"
 
 
 if [ "$1" == "push" ]; then
