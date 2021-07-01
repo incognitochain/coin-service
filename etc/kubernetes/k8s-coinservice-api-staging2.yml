@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coinservice-api-staging2
+spec:
+  selector:
+    matchLabels:
+      run: coinservice-api-staging2
+  replicas: 10
+  template:
+    metadata:
+      labels:
+        run: coinservice-api-staging2
+    spec:
+      containers:
+        - name: coinservice-api-staging2-container
+          image: incognito/coin-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9001
+          volumeMounts:
+            - mountPath: /app/cfg.json
+              name: config-json-file
+            - mountPath: /app/config
+              name: app-config
+      volumes:
+        - name: config-json-file
+          hostPath:
+            path: /home/coin-service/config/staging2/cfg-query-staging2.json
+            type: File
+        - name: app-config
+          hostPath:
+              path: /home/coin-service/config/staging2/app-config
+              type: DirectoryOrCreate
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: coinservice-api-staging2
+  labels:
+    run: coinservice-api-staging2
+spec:
+  type: ClusterIP
+  clusterIP: 10.152.183.153
+  ports:
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: http
+  selector:
+    run: coinservice-api-staging2

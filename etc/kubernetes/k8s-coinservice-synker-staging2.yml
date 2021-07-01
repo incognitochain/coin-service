@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coinservice-synker-staging2
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      run: coinservice-synker-staging2
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: coinservice-synker-staging2
+    spec:
+      containers:
+        - name: coinservice-synker-staging2-container
+          image: incognitochain/coin-service-staging2:18
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9001
+          volumeMounts:
+            - mountPath: /app/cfg.json
+              name: config-json-file
+            - mountPath: /app/keylist.json
+              name: keylist-json
+            - mountPath: /app/keylist-v2.json
+              name: keylist-v2-json
+            - mountPath: /app/config
+              name: app-config
+            - mountPath: /app/chain-data
+              name: chain-data
+      volumes:
+        - name: config-json-file
+          hostPath:
+            path: /home/coin-service/config/staging2/cfg-synker-staging2.json
+            type: File
+        - name: keylist-json
+          hostPath:
+            path: /home/coin-service/config/staging2/keylist.json
+            type: File
+        - name: keylist-v2-json
+          hostPath:
+            path: /home/coin-service/config/staging2/keylist-v2.json
+            type: File
+        - name: app-config
+          hostPath:
+              path: /home/coin-service/config/staging2/app-config
+              type: DirectoryOrCreate
+        - name: chain-data
+          hostPath:
+            path: /home/coin-service/storage/staging2/chain-data
+            type: DirectoryOrCreate
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: coinservice-synker-staging2
+  labels:
+    run: coinservice-synker-staging2
+spec:
+  type: ClusterIP
+  clusterIP: 10.152.183.154
+  ports:
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: http
+  selector:
+    run: coinservice-synker-staging2
