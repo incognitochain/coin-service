@@ -9,6 +9,7 @@ import (
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/config"
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/wallet"
 	jsoniter "github.com/json-iterator/go"
@@ -938,8 +939,7 @@ func mempoolWatcher() {
 }
 func tokenListWatcher() {
 	interval := time.NewTicker(10 * time.Second)
-	// activeShards := config.Param().ActiveShards
-	activeShards := 2
+	activeShards := config.Param().ActiveShards
 	for {
 		<-interval.C
 		shardStateDB := make(map[byte]*statedb.StateDB)
@@ -961,6 +961,9 @@ func tokenListWatcher() {
 					}
 					if v.PropertySymbol() == "" && newV.PropertySymbol() != "" {
 						v.SetPropertySymbol(newV.PropertySymbol())
+					}
+					if v.Amount() == 0 && newV.Amount() > 0 {
+						v.SetAmount(newV.Amount())
 					}
 					v.AddTxs(newV.Txs())
 				}
@@ -1019,13 +1022,12 @@ func tokenListWatcher() {
 
 		var tokenInfoList []shared.TokenInfoData
 		for _, token := range tokenList.ListCustomToken {
-			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.Amount)
+			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount)
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
 		err = database.DBSaveTokenInfo(tokenInfoList)
 		if err != nil {
-			log.Println(err)
-			continue
+			panic(err)
 		}
 		lastTokenIDLock.Lock()
 

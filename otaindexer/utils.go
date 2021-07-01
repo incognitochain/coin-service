@@ -33,6 +33,7 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
 	}
+retryCheckTokenID:
 	if assetTag != nil && len(tokenIDs) == 0 {
 		tokenListLock.RUnlock()
 	retryGetToken:
@@ -68,6 +69,9 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 				}
 			}
 		}
+	}
+	if tokenID == "" {
+		goto retryCheckTokenID
 	}
 
 	return pass, tokenID, rK

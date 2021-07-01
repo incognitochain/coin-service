@@ -65,9 +65,13 @@ func StartGinService() {
 		r.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 	}
 
-	if shared.ServiceCfg.Mode == shared.INDEXERMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
+	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
 		r.POST("/submitotakey", APISubmitOTA)
 		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
+	}
+
+	if shared.ServiceCfg.Mode == shared.FULLMODE {
+		r.POST("/submitotakey", APISubmitOTAFullmode)
 	}
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
 	if err != nil {
@@ -323,7 +327,49 @@ func APISubmitOTA(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, 0)
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
+	resp := make(chan error)
+	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
+		Key:     newSubmitRequest,
+		Respond: resp,
+	}
+	err = <-resp
+	errStr := ""
+	if err != nil {
+		// if !mongo.IsDuplicateKeyError(err) {
+		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		// 	return
+		// }
+		errStr = err.Error()
+	}
+	respond := APIRespond{
+		Result: "true",
+		Error:  &errStr,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func APISubmitOTAFullmode(c *gin.Context) {
+	var req APISubmitOTAkeyRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	wl, err := wallet.Base58CheckDeserialize(req.OTAKey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("OTASecretKey is invalid")))
+		return
+	}
+	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
+	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,

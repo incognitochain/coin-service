@@ -155,11 +155,12 @@ type TokenInfoData struct {
 	Image            string `json:"image" bson:"image"`
 	Amount           string `json:"amount" bson:"amount"`
 	IsPrivacy        bool   `json:"isprivacy" bson:"isprivacy"`
+	IsBridge         bool   `json:"isbridge" bson:"isbridge"`
 }
 
-func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy bool, amount uint64) *TokenInfoData {
+func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy, isbridge bool, amount uint64) *TokenInfoData {
 	return &TokenInfoData{
-		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, Amount: strconv.FormatUint(amount, 10),
+		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, IsBridge: isbridge, Amount: strconv.FormatUint(amount, 10),
 	}
 }
 
@@ -184,10 +185,11 @@ type SubmittedOTAKeyData struct {
 	mgm.DefaultModel `bson:",inline"`
 	OTAKey           string `json:"otakey" bson:"otakey"`
 	Pubkey           string `json:"pubkey" bson:"pubkey"`
+	Fullkey          string `json:"fullkey" bson:"fullkey"`
 	IndexerID        int    `json:"indexerid" bson:"indexerid"`
 }
 
-func NewSubmittedOTAKeyData(OTAkey, pubkey string, indexerID int) *SubmittedOTAKeyData {
+func NewSubmittedOTAKeyData(OTAkey, pubkey, fullkey string, indexerID int) *SubmittedOTAKeyData {
 	return &SubmittedOTAKeyData{
 		OTAKey: OTAkey, Pubkey: pubkey, IndexerID: indexerID,
 	}
