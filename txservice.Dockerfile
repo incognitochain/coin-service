@@ -8,8 +8,8 @@ RUN go mod download
 
 COPY . .
 
-RUN cd txservice && sh build.sh prod
-
+RUN cd txservice \
+    && go build -tags=jsoniter -ldflags "-linkmode external -extldflags -static" -o txservice
 
 FROM alpine
 
