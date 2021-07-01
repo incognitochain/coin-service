@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coinservice-txservice-staging2-secret
+data:
+  GOOGLE_CLOUD_PROJECT: "incognito-dev-xxxxxxxxx"
+  GOOGLE_CLOUD_ACC: "/app/google-service-account.json"
+  TX_TOPIC: "staging2-txd"
+  TXSTATUS_TOPIC: "staging2-txstatus"
+  TX_SUBID: "staging2-txsub"
+  TXSTATUS_SUBID: "staging2-txstatussub"
+  MONGO: "mongodb://username:password@localhost:27017"
+  DBNAME: "txservice-staging2"
+  FULLNODE: "http://123.123.123.123:9334"
+  SHARDNUMBER: "2"

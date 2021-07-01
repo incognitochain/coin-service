@@ -24,13 +24,13 @@ spec:
             - mountPath: /app/google-service-account.json
               name: google-service-account-json-file
           envFrom:
-            - secretRef:
-                name: coinservice-txservice-staging2-secret
+            - configMapRef:
+                name: coinservice-txservice-staging2-config-map
           env:
             - name: MODE
-              value: push
+              value: "push"
             - name: PORT
-              value: 8001
+              value: "8001"
       volumes:
         - name: google-service-account-json-file
           hostPath:
@@ -65,13 +65,13 @@ spec:
             - mountPath: /app/google-service-account.json
               name: google-service-account-json-file
           envFrom:
-            - secretRef:
-                name: coinservice-txservice-staging2-secret
+            - configMapRef:
+                name: coinservice-txservice-staging2-config-map
           env:
             - name: MODE
-              value: broadcast
+              value: "broadcast"
             - name: PORT
-              value: 8001
+              value: "8001"
       volumes:
         - name: google-service-account-json-file
           hostPath:
@@ -106,13 +106,13 @@ spec:
             - mountPath: /app/google-service-account.json
               name: google-service-account-json-file
           envFrom:
-            - secretRef:
-                name: coinservice-txservice-staging2-secret
+            - configMapRef:
+                name: coinservice-txservice-staging2-config-map
           env:
             - name: MODE
-              value: status
+              value: "status"
             - name: PORT
-              value: 8001
+              value: "8001"
       volumes:
         - name: google-service-account-json-file
           hostPath:
