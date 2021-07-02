@@ -596,7 +596,7 @@ func APIHealthCheck(c *gin.Context) {
 			status = shared.HEALTH_STATUS_NOK
 		}
 		shardsHeight[-1] = fmt.Sprintf("%v", chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
-		for i := 0; i < chainsynker.Localnode.GetBlockchain().GetChainParams().ActiveShards; i++ {
+		for i := 0; i < chainsynker.Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 			chainheight := chainsynker.Localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
 			height, _ := chainsynker.Localnode.GetShardState(i)
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
