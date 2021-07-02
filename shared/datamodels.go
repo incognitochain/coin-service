@@ -191,7 +191,7 @@ type SubmittedOTAKeyData struct {
 
 func NewSubmittedOTAKeyData(OTAkey, pubkey, fullkey string, indexerID int) *SubmittedOTAKeyData {
 	return &SubmittedOTAKeyData{
-		OTAKey: OTAkey, Pubkey: pubkey, IndexerID: indexerID,
+		OTAKey: OTAkey, Pubkey: pubkey, Fullkey: fullkey, IndexerID: indexerID,
 	}
 }
 

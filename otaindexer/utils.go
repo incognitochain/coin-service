@@ -35,7 +35,6 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	}
 retryCheckTokenID:
 	if assetTag != nil && len(tokenIDs) == 0 {
-		tokenListLock.RUnlock()
 	retryGetToken:
 		err := retrieveTokenIDList()
 		if err != nil {
@@ -44,8 +43,12 @@ retryCheckTokenID:
 		if len(lastTokenIDMap) == 0 {
 			goto retryGetToken
 		}
-		tokenIDs = lastTokenIDMap
 		tokenListLock.RLock()
+		tokenIDs = make(map[string]string)
+		for k, v := range lastTokenIDMap {
+			tokenIDs[k] = v
+		}
+		tokenListLock.RUnlock()
 	}
 	if pass && assetTag != nil && len(tokenIDs) != 0 {
 		if tk, ok := tokenIDs[assetTag.String()]; ok {
@@ -69,9 +72,9 @@ retryCheckTokenID:
 				}
 			}
 		}
-	}
-	if tokenID == "" {
-		goto retryCheckTokenID
+		if tokenID == "" {
+			goto retryCheckTokenID
+		}
 	}
 
 	return pass, tokenID, rK
