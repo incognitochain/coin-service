@@ -128,7 +128,7 @@ func StartOTAIndexing() {
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
-	interval := time.NewTicker(10 * time.Second)
+	interval := time.NewTicker(6 * time.Second)
 	var coinList []shared.CoinData
 	go processMsgFromMaster(readCh, writeCh)
 	for {
@@ -308,6 +308,11 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 	lastPRVIndex := make(map[int]uint64)
 	lastTokenIndex := make(map[int]uint64)
 	tokenListLock.RLock()
+	tokenIDMap := make(map[string]string)
+	for k, v := range lastTokenIDMap {
+		tokenIDMap[k] = v
+	}
+	tokenListLock.RUnlock()
 	if len(assignedOTAKeys.Keys) > 0 {
 		otaCoins := make(map[string][]shared.CoinData)
 		var otherCoins []shared.CoinData
@@ -331,7 +336,7 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 							continue
 						}
 					}
-					pass, tokenID, _ = doesCoinBelongToKeySet(newCoin, keyData.keyset, lastTokenIDMap)
+					pass, tokenID, _ = doesCoinBelongToKeySet(newCoin, keyData.keyset, tokenIDMap)
 					if pass {
 						cn.RealTokenID = tokenID
 						tempOTACoinsCh <- map[string]shared.CoinData{keyData.OTAKey: cn}
@@ -382,7 +387,6 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 		log.Println("len(otaCoins)", len(otaCoins))
 		log.Printf("filtered %v coins with %v keys in %v", len(coinList), assignedOTAKeys.TotalKeys, time.Since(startTime))
 		log.Println("lastPRVIndex", lastPRVIndex, lastTokenIndex)
-		tokenListLock.RUnlock()
 		return otaCoins, otherCoins, lastPRVIndex, lastTokenIndex, nil
 	}
 	return nil, nil, nil, nil, errors.New("no key to scan")

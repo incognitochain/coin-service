@@ -33,8 +33,8 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
 	}
+retryCheckTokenID:
 	if assetTag != nil && len(tokenIDs) == 0 {
-		tokenListLock.RUnlock()
 	retryGetToken:
 		err := retrieveTokenIDList()
 		if err != nil {
@@ -43,8 +43,12 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 		if len(lastTokenIDMap) == 0 {
 			goto retryGetToken
 		}
-		tokenIDs = lastTokenIDMap
 		tokenListLock.RLock()
+		tokenIDs = make(map[string]string)
+		for k, v := range lastTokenIDMap {
+			tokenIDs[k] = v
+		}
+		tokenListLock.RUnlock()
 	}
 	if pass && assetTag != nil && len(tokenIDs) != 0 {
 		if tk, ok := tokenIDs[assetTag.String()]; ok {
@@ -67,6 +71,9 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 					break
 				}
 			}
+		}
+		if tokenID == "" {
+			goto retryCheckTokenID
 		}
 	}
 
