@@ -48,6 +48,7 @@ type OutCoinV2 struct {
 	TxRandom             string `json:"TxRandom"`
 	CoinDetailsEncrypted string `json:"CoinDetailsEncrypted"`
 	AssetTag             string `json:"AssetTag"`
+	TxHash               string `json:"TxHash"`
 }
 
 type OutCoinV1 struct {
@@ -65,6 +66,7 @@ type OutCoinV1 struct {
 	// TxRandom             string `json:"TxRandom"`
 	CoinDetailsEncrypted string `json:"CoinDetailsEncrypted"`
 	// AssetTag             string `json:"AssetTag"`
+	TxHash string `json:"TxHash"`
 }
 
 func NewOutcoinV1FromInterface(data interface{}) (*OutCoinV1, error) {
@@ -139,10 +141,12 @@ func NewOutCoinV2(outCoin ICoinInfo, base58Fmt bool) OutCoinV2 {
 		Randomness:  randomness,
 	}
 
-	if base58Fmt {
-		result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
-	} else {
-		result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+	if len(outCoin.GetInfo()) != 0 {
+		if base58Fmt {
+			result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
+		} else {
+			result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+		}
 	}
 
 	if outCoin.GetCoinDetailEncrypted() != nil {
@@ -178,7 +182,7 @@ func NewOutCoinV2(outCoin ICoinInfo, base58Fmt bool) OutCoinV2 {
 		if base58Fmt {
 			result.AssetTag = base58.Base58Check{}.Encode(outCoin.GetAssetTag().ToBytesS(), common.ZeroByte)
 		} else {
-			result.TxRandom = base64.StdEncoding.EncodeToString(outCoin.GetTxRandom().Bytes())
+			result.AssetTag = base64.StdEncoding.EncodeToString(outCoin.GetAssetTag().ToBytesS())
 		}
 	}
 
@@ -240,11 +244,15 @@ func NewOutCoinV1(outCoin ICoinInfo, base58Fmt bool) OutCoinV1 {
 		KeyImage:    keyImage,
 		Randomness:  randomness,
 	}
-	if base58Fmt {
-		result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
-	} else {
-		result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+
+	if len(outCoin.GetInfo()) != 0 {
+		if base58Fmt {
+			result.Info = base58.Base58Check{}.Encode(outCoin.GetInfo(), common.ZeroByte)
+		} else {
+			result.Info = base64.StdEncoding.EncodeToString(outCoin.GetInfo())
+		}
 	}
+
 	return result
 }
 

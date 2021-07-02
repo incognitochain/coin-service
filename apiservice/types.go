@@ -1,19 +1,16 @@
 package apiservice
 
+import "github.com/incognitochain/coin-service/shared"
+
 type APICheckKeyImagesRequest struct {
 	Keyimages []string
 	ShardID   int
+	Base58    bool
 }
 
 type APICheckTxRequest struct {
 	Txs     []string
 	ShardID int
-}
-
-type APIParseTokenidRequest struct {
-	OTARandoms []string
-	AssetTags  []string
-	OTAKey     string
 }
 
 type APISubmitOTAkeyRequest struct {
@@ -36,4 +33,53 @@ type APIGetRandomCommitmentRequest struct {
 type APIRespond struct {
 	Result interface{}
 	Error  *string
+}
+
+type APILatestTxRespond struct {
+	ShardID int
+	Time    int
+	Height  uint64
+	Hash    string
+	Type    int
+}
+
+type APIGetTxsBySenderRequest struct {
+	Keyimages []string
+	Base58    bool
+}
+
+type APIGetTxsByPubkeyRequest struct {
+	Pubkeys []string
+	Base58  bool
+}
+
+type TxTradeDetail struct {
+	RequestTx string   `json:"requesttx"`
+	RespondTx []string `json:"respondtx"`
+	Status    string   `json:"status"`
+	BuyToken  string   `json:"buytoken"`
+	SellToken string   `json:"selltoken"`
+	//from respondtx
+	ReceiveAmount map[string]uint64 `json:"receive"`
+	//from requesttx
+	SellAmount  uint64 `json:"sell"`
+	Fee         uint64 `json:"fee"`
+	RequestTime int64  `json:"requesttime"`
+}
+
+type TxBridgeDetail struct {
+	Bridge          string `json:"bridge"`
+	TokenID         string `json:"tokenid"`
+	Amount          uint64 `json:"amount"`
+	RespondTx       string `json:"respondtx"`
+	RequestTx       string `json:"requesttx"`
+	ShieldType      string `json:"shieldtype"`
+	IsDecentralized bool   `json:"isdecentralized"`
+}
+
+type APIGetTxTradeRespond struct {
+}
+type ReceivedTransactionV2 struct {
+	TxDetail    *shared.TransactionDetail
+	FromShardID byte `json:"FromShardID"`
 }

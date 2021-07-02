@@ -1,115 +1,103 @@
-version: '3.1'
+version: "3.1"
 services:
   chainsync:
-    image: alpine
+    image: coinservice
+    build:
+      context: ./csv
+      dockerfile: Dockerfile
     volumes:
-      - .:/home
-      # - ./chain:/chain
-    entrypoint: [/home/run.sh]
+      - ./data/chain:/home/chain
+    working_dir: /home
+    entrypoint: [./run.sh]
     environment:
-      BUKCETID: 10
-      NUMBEROFBUCKET: 5
+      INDEXERID: -1
       MODE: "chainsync"
-      PORT: 9001
+    env_file:
+      - service.env
     depends_on:
-      - mongov2
+      - mongo
 
   query:
-    image: alpine
-    ports:
-      - 9008:9008
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
     environment:
-      BUKCETID: 0
+      INDEXERID: 0
       MODE: "query"
-      PORT: 9008
+    env_file:
+      - service.env
     depends_on:
       - chainsync
 
-  indexer0:
-    image: alpine
+  indexer:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "indexer"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
+  worker:
+    image: coinservice
+    deploy:
+      replicas: 3
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "indexworker"
+    env_file:
+      - service.env
+    depends_on:
+      - indexer
+
+  nginx-server:
+    image: nginx-load-balancer
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
-      - 9009:9009
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
-    environment:
-      BUKCETID: 0
-      MODE: "indexer"
-      PORT: 9009
+      - 8090:80
+    restart: unless-stopped
     depends_on:
-      - chainsync
+      - query
+      - indexer
 
-  indexer1:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
-    environment:
-      BUKCETID: 1
-      MODE: "indexer"
-      PORT: 9001
-    depends_on:
-      - chainsync
+  # watcher:
+  #   image: alpine
+  #   volumes:
+  #     - .:/home
+  #   entrypoint: [/home/servicewatcher]
+  #   environment:
+  #     SLACKHOOKCSV: ""
+  #     CSVSYNCKER: "http://chainsyncv3:9001"
+  #     FULLNODE: "http://51.161.119.66:9334"
+  #   depends_on:
+  #     - chainsyncv3
 
-  indexer2:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
-    environment:
-      BUKCETID: 2
-      MODE: "indexer"
-      PORT: 9001
-    depends_on:
-      - chainsync
-
-  indexer3:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
-    environment:
-      BUKCETID: 3
-      MODE: "indexer"
-      PORT: 9001
-    depends_on:
-      - chainsync
-
-  indexer4:
-    image: alpine
-    volumes:
-      - .:/home
-    entrypoint: [/home/run.sh]
-    environment:
-      BUKCETID: 4
-      MODE: "indexer" 
-      PORT: 9001
-    depends_on:
-      - chainsync   
-
-  mongov2:
+  mongo:
     image: mongo
     restart: always
-    ports:
-      - 27019:27017
     volumes:
-      - mongodb:/data/db
-      - mongodb_config:/data/configdb
+      - ./data/mongodb:/data/db
+      - ./data/mongodb_config:/data/configdb
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
-  mongo-expressv2:
+  mongo-express:
     image: mongo-express
     restart: always
     ports:
-      - 8084:8081
+      - 8029:8081
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
-      ME_CONFIG_MONGODB_SERVER: mongov2
-volumes:
-  mongodb:
-  mongodb_config:
+      ME_CONFIG_MONGODB_SERVER: mongo
+# volumes:
+#   mongodb:
+#   mongodb_config:

@@ -87,6 +87,7 @@ type KeyInfoData struct {
 	Pubkey           string              `json:"pubkey" bson:"pubkey"`
 	OTAKey           string              `json:"otakey" bson:"otakey"`
 	CoinIndex        map[string]CoinInfo `json:"coinindex" bson:"coinindex"`
+	TotalReceiveTxs  map[string]uint64   `json:"receivetxs" bson:"receivetxs"`
 }
 
 type KeyInfoDataV2 KeyInfoData
@@ -118,12 +119,14 @@ type CoinPendingData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Keyimages        []string `json:"keyimage" bson:"keyimage"`
 	ShardID          int      `json:"shardid" bson:"shardid"`
+	Locktime         int64    `json:"locktime" bson:"locktime"`
+	TxData           string   `json:"txdata" bson:"txdata"`
 	TxHash           string   `json:"txhash" bson:"txhash"`
 }
 
-func NewCoinPendingData(keyimages []string, shardID int, TxHash string) *CoinPendingData {
+func NewCoinPendingData(keyimages []string, shardID int, txHash, txdata string, locktime int64) *CoinPendingData {
 	return &CoinPendingData{
-		Keyimages: keyimages, ShardID: shardID, TxHash: TxHash,
+		Keyimages: keyimages, ShardID: shardID, TxHash: txHash, TxData: txdata, Locktime: locktime,
 	}
 }
 
@@ -152,11 +155,12 @@ type TokenInfoData struct {
 	Image            string `json:"image" bson:"image"`
 	Amount           string `json:"amount" bson:"amount"`
 	IsPrivacy        bool   `json:"isprivacy" bson:"isprivacy"`
+	IsBridge         bool   `json:"isbridge" bson:"isbridge"`
 }
 
-func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy bool, amount uint64) *TokenInfoData {
+func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy, isbridge bool, amount uint64) *TokenInfoData {
 	return &TokenInfoData{
-		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, Amount: strconv.FormatUint(amount, 10),
+		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, IsBridge: isbridge, Amount: strconv.FormatUint(amount, 10),
 	}
 }
 
@@ -181,12 +185,13 @@ type SubmittedOTAKeyData struct {
 	mgm.DefaultModel `bson:",inline"`
 	OTAKey           string `json:"otakey" bson:"otakey"`
 	Pubkey           string `json:"pubkey" bson:"pubkey"`
-	BucketID         int    `json:"bucketid" bson:"bucketid"`
+	Fullkey          string `json:"fullkey" bson:"fullkey"`
+	IndexerID        int    `json:"indexerid" bson:"indexerid"`
 }
 
-func NewSubmittedOTAKeyData(OTAkey, pubkey string, bucketID int) *SubmittedOTAKeyData {
+func NewSubmittedOTAKeyData(OTAkey, pubkey, fullkey string, indexerID int) *SubmittedOTAKeyData {
 	return &SubmittedOTAKeyData{
-		OTAKey: OTAkey, Pubkey: pubkey, BucketID: bucketID,
+		OTAKey: OTAkey, Pubkey: pubkey, Fullkey: fullkey, IndexerID: indexerID,
 	}
 }
 
@@ -216,13 +221,16 @@ type TxData struct {
 	TxType           string   `json:"txtype" bson:"txtype"`
 	TxDetail         string   `json:"txdetail" bson:"txdetail"`
 	TokenID          string   `json:"tokenid" bson:"tokenid"`
+	RealTokenID      string   `json:"realtokenid" bson:"realtokenid"`
 	BlockHash        string   `json:"blockhash" bson:"blockhash"`
 	BlockHeight      string   `json:"blockheight" bson:"blockheight"`
 	ShardID          int      `json:"shardid" bson:"shardid"`
 	Locktime         int64    `json:"locktime" bson:"locktime"`
+	Metatype         string   `json:"metatype" bson:"metatype"`
+	Metadata         string   `json:"metadata" bson:"metadata"`
 }
 
-func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, tokenID, txHash, txType, txDetail string, keyimages, pubKeyReceivers []string) *TxData {
+func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, tokenID, txHash, txType, txDetail, metatype, metadata string, keyimages, pubKeyReceivers []string) *TxData {
 	return &TxData{
 		TxVersion:       txVersion,
 		KeyImages:       keyimages,
@@ -235,6 +243,8 @@ func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, t
 		BlockHash:       blockHash,
 		BlockHeight:     blockHeight,
 		Locktime:        locktime,
+		Metatype:        metatype,
+		Metadata:        metadata,
 	}
 }
 
@@ -247,6 +257,215 @@ func (model *TxData) Creating() error {
 	return nil
 }
 func (model *TxData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type TradeData struct {
+	mgm.DefaultModel `bson:",inline"`
+	RequestTx        string `json:"requesttx" bson:"requesttx"`
+	RespondTx        string `json:"respondtx" bson:"respondtx"`
+	Status           string `json:"status" bson:"status"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	Amount           uint64 `json:"amount" bson:"amount"`
+}
+
+func NewTradeData(requestTx, respondTx, status, tokenID string, amount uint64) *TradeData {
+	return &TradeData{
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID: tokenID, Amount: amount,
+	}
+}
+
+func (model *TradeData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *TradeData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PDEStateData struct {
+	mgm.DefaultModel `bson:",inline"`
+	State            string `json:"state" bson:"state"`
+}
+
+func (model *PDEStateData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PDEStateData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func NewPDEStateData(state string) *PDEStateData {
+	return &PDEStateData{
+		State: state,
+	}
+}
+
+type ShieldData struct {
+	mgm.DefaultModel `bson:",inline"`
+	Bridge           string `json:"bridge" bson:"bridge"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	Amount           uint64 `json:"amount" bson:"amount"`
+	RespondTx        string `json:"respondtx" bson:"respondtx"`
+	RequestTx        string `json:"requesttx" bson:"requesttx"`
+	ShieldType       string `json:"shieldtype" bson:"shieldtype"`
+	IsDecentralized  bool   `json:"isdecentralized" bson:"isdecentralized"`
+	Pubkey           string `json:"pubkey" bson:"pubkey"`
+	BeaconHeight     uint64 `json:"height" bson:"height"`
+}
+
+func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge, pubkey string, isDecentralized bool, amount, height uint64) *ShieldData {
+	return &ShieldData{
+		RespondTx:       respondTx,
+		RequestTx:       requestTx,
+		ShieldType:      shieldType,
+		Bridge:          bridge,
+		TokenID:         tokenID,
+		Amount:          amount,
+		IsDecentralized: isDecentralized,
+		Pubkey:          pubkey,
+		BeaconHeight:    height,
+	}
+}
+
+func (model *ShieldData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+	return nil
+}
+func (model *ShieldData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+	return nil
+}
+
+type ContributionData struct {
+	mgm.DefaultModel      `bson:",inline"`
+	RequestTx             string `json:"requesttx" bson:"requesttx"`
+	RespondTx             string `json:"respondtx" bson:"respondtx"`
+	Status                string `json:"status" bson:"status"`
+	PairID                string `json:"pairid" bson:"pairid"`
+	TokenID               string `json:"tokenid" bson:"tokenid"`
+	Amount                uint64 `json:"amount" bson:"amount"`
+	ReturnAmount          uint64 `json:"returnamount" bson:"returnamount"`
+	ContributorAddressStr string `json:"contributor" bson:"contributor"`
+	Respondblock          uint64 `json:"respondblock" bson:"respondblock"`
+}
+
+func NewContributionData(requestTx, respondTx, status, pairID, tokenID, contributorAddressStr string, amount, returnamount uint64, respondBlock uint64) *ContributionData {
+	return &ContributionData{
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, PairID: pairID, TokenID: tokenID, Amount: amount, ReturnAmount: returnamount, ContributorAddressStr: contributorAddressStr, Respondblock: respondBlock,
+	}
+}
+
+func (model *ContributionData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *ContributionData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type WithdrawContributionData struct {
+	mgm.DefaultModel      `bson:",inline"`
+	RequestTx             string   `json:"requesttx" bson:"requesttx"`
+	RespondTx             []string `json:"respondtx" bson:"respondtx"`
+	Status                string   `json:"status" bson:"status"`
+	TokenID1              string   `json:"tokenid1" bson:"tokenid1"`
+	TokenID2              string   `json:"tokenid2" bson:"tokenid2"`
+	Amount1               uint64   `json:"amount1" bson:"amount1"`
+	Amount2               uint64   `json:"amount2" bson:"amount2"`
+	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
+	RespondTime           int64    `json:"respondtime" bson:"respondtime"`
+}
+
+func NewWithdrawContributionData(requestTx, status, tokenID1, tokenID2, contributorAddressStr string, respondTx []string, amount1, amount2 uint64, respondTime int64) *WithdrawContributionData {
+	return &WithdrawContributionData{
+		RequestTx: requestTx, Status: status, RespondTx: respondTx, TokenID1: tokenID1, TokenID2: tokenID2, Amount1: amount1, Amount2: amount2, ContributorAddressStr: contributorAddressStr, RespondTime: respondTime,
+	}
+}
+
+func (model *WithdrawContributionData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *WithdrawContributionData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type WithdrawContributionFeeData struct {
+	mgm.DefaultModel      `bson:",inline"`
+	RequestTx             string `json:"requesttx" bson:"requesttx"`
+	RespondTx             string `json:"respondtx" bson:"respondtx"`
+	Status                string `json:"status" bson:"status"`
+	TokenID1              string `json:"tokenid1" bson:"tokenid1"`
+	TokenID2              string `json:"tokenid2" bson:"tokenid2"`
+	Amount                uint64 `json:"amount" bson:"amount"`
+	ContributorAddressStr string `json:"contributor" bson:"contributor"`
+	RespondTime           int64  `json:"respondtime" bson:"respondtime"`
+}
+
+func NewWithdrawContributionFeeData(requestTx, respondTx, status, tokenID1, tokenID2, contributorAddressStr string, amount uint64, respondTime int64) *WithdrawContributionFeeData {
+	return &WithdrawContributionFeeData{
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID1: tokenID1, TokenID2: tokenID2, Amount: amount, ContributorAddressStr: contributorAddressStr, RespondTime: respondTime,
+	}
+}
+
+func (model *WithdrawContributionFeeData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *WithdrawContributionFeeData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

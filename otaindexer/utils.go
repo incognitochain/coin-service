@@ -33,26 +33,47 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
 	}
+retryCheckTokenID:
+	if assetTag != nil && len(tokenIDs) == 0 {
+	retryGetToken:
+		err := retrieveTokenIDList()
+		if err != nil {
+			panic(err)
+		}
+		if len(lastTokenIDMap) == 0 {
+			goto retryGetToken
+		}
+		tokenListLock.RLock()
+		tokenIDs = make(map[string]string)
+		for k, v := range lastTokenIDMap {
+			tokenIDs[k] = v
+		}
+		tokenListLock.RUnlock()
+	}
 	if pass && assetTag != nil && len(tokenIDs) != 0 {
 		if tk, ok := tokenIDs[assetTag.String()]; ok {
 			tokenID = tk
-		}
-		blinder, err := coin.ComputeAssetTagBlinder(rK)
-		if err != nil {
-			log.Println(err)
-			return false, "", nil
-		}
-		for tkStr, tkID := range tokenIDs {
-			recomputedAssetTag, err := new(operation.Point).UnmarshalText([]byte(tkStr))
+		} else {
+			blinder, err := coin.ComputeAssetTagBlinder(rK)
 			if err != nil {
 				log.Println(err)
 				return false, "", nil
 			}
-			recomputedAssetTag.Add(recomputedAssetTag, new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder))
-			if operation.IsPointEqual(recomputedAssetTag, assetTag) {
-				tokenID = tkID
-				break
+			for tkStr, tkID := range tokenIDs {
+				recomputedAssetTag, err := new(operation.Point).UnmarshalText([]byte(tkStr))
+				if err != nil {
+					log.Println(err)
+					return false, "", nil
+				}
+				recomputedAssetTag.Add(recomputedAssetTag, new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder))
+				if operation.IsPointEqual(recomputedAssetTag, assetTag) {
+					tokenID = tkID
+					break
+				}
 			}
+		}
+		if tokenID == "" {
+			goto retryCheckTokenID
 		}
 	}
 

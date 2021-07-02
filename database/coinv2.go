@@ -184,3 +184,41 @@ func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
 	}
 	return count
 }
+
+func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {
+	var result []shared.TxData
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(pubkeys)+1)*shared.DB_OPERATION_TIMEOUT)
+	coinDatas := []shared.CoinData{}
+	filter := bson.M{"coinpubkey": bson.M{operator.In: pubkeys}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFindWithCtx(ctx, &coinDatas, filter)
+	if err != nil {
+		log.Println(err)
+		return nil, nil, err
+	}
+
+	txToGet := []string{}
+	pubkeyTxs := []string{}
+	for _, coinData := range coinDatas {
+		txToGet = append(txToGet, coinData.TxHash)
+	}
+	for _, key := range pubkeys {
+		txHash := ""
+		for _, coin := range coinDatas {
+			if coin.CoinPubkey == key {
+				txHash = coin.TxHash
+				break
+			}
+		}
+		if txHash != "" {
+			txToGet = append(txToGet, txHash)
+		}
+		pubkeyTxs = append(pubkeyTxs, txHash)
+	}
+	result, err = DBGetTxByHash(txToGet)
+	if err != nil {
+		log.Println(err)
+		return nil, nil, err
+	}
+
+	return result, pubkeyTxs, nil
+}

@@ -20,12 +20,10 @@ const (
 	DefaultMaxConcurrentOTACheck = 100
 	DefaultChainFolder           = "chain"
 	DefaultFullnode              = ""
-	DefaultMode                  = TESTMODE
+	DefaultMode                  = FULLMODE
 	DefaultNetwork               = "testnet2"
 	DefaultHighway               = "74.207.247.250:9330"
 	DefaultNumOfShard            = 8
-	DefaultBucketSize            = 2000
-	DefaultMaxBucketNum          = 5
 )
 
 const (
@@ -33,7 +31,8 @@ const (
 	CHAINSYNCMODE = "chainsync"
 	INDEXERMODE   = "indexer"
 	QUERYMODE     = "query"
-	TESTMODE      = "test"
+	WORKERMODE    = "indexworker"
+	FULLMODE      = "full"
 )
 
 const (
