@@ -15,9 +15,11 @@ import (
 	"cloud.google.com/go/pubsub"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/transaction"
+	"github.com/kamva/mgm/v3"
 )
 
 var txTopic *pubsub.Topic
@@ -65,6 +67,8 @@ func pushMode() {
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/gettxstatus", APIGetTxStatus)
 	r.POST("/pushtx", APIPushTx)
+	r.GET("/retrievetx", APIRetrieveTx)
+	r.GET("/health", APIHealthCheck)
 
 	err = r.Run("0.0.0.0:" + PORT)
 	if err != nil {
@@ -73,7 +77,15 @@ func pushMode() {
 }
 
 func broadcastMode() {
-	var err error
+	r := gin.Default()
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	r.GET("/health", APIHealthCheck)
+
+	err := r.Run("0.0.0.0:" + PORT)
+	if err != nil {
+		panic(err)
+	}
+
 	txTopic, err = startPubsubTopic(TX_TOPIC)
 	if err != nil {
 		panic(err)
@@ -153,7 +165,15 @@ func broadcastMode() {
 }
 
 func statusMode() {
-	var err error
+	r := gin.Default()
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	r.GET("/health", APIHealthCheck)
+
+	err := r.Run("0.0.0.0:" + PORT)
+	if err != nil {
+		panic(err)
+	}
+
 	statusTopic, err = startPubsubTopic(TXSTATUS_TOPIC)
 	if err != nil {
 		panic(err)
@@ -305,6 +325,45 @@ func APIPushTx(c *gin.Context) {
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
+}
+
+func APIRetrieveTx(c *gin.Context) {
+	txhash := c.Query("txhash")
+	if txhash == "" {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid txhash")))
+		return
+	}
+	txData, err := getTx(txhash)
+	if err != nil {
+		errStr := err.Error()
+		respond := APIRespond{
+			Result: TXSTATUS_UNKNOWN,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+
+	respond := APIRespond{
+		Result: txData.Raw,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIHealthCheck(c *gin.Context) {
+	status := shared.HEALTH_STATUS_OK
+	mongoStatus := shared.MONGO_STATUS_OK
+	_, cd, _, _ := mgm.DefaultConfigs()
+	err := cd.Ping(context.Background(), nil)
+	if err != nil {
+		status = shared.HEALTH_STATUS_NOK
+		mongoStatus = shared.MONGO_STATUS_NOK
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status": status,
+		"mongo":  mongoStatus,
+	})
 }
 
 func broadcastToFullNode(tx string, isToken bool) error {
