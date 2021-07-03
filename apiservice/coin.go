@@ -232,6 +232,20 @@ func APIGetRandomCommitments(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
+func APIGetTokenList(c *gin.Context) {
+	datalist, err := database.DBGetTokenInfo()
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: datalist,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
 func APIGetCoinInfo(c *gin.Context) {
 	prvV1, prvV2, tokenV1, tokenV2, err := database.DBGetCoinInfo()
 	if err != nil {

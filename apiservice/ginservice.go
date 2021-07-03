@@ -51,6 +51,7 @@ func StartGinService() {
 		r.POST("/gettxsbypubkey", APIGetTxsByPubkey)
 		r.GET("/getpendingtxs", APIGetPendingTxs)
 		r.GET("/checkpendingtx", APICheckTxPending)
+		r.GET("/tokenlist", APIGetTokenList)
 
 		r.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
 		r.POST("/gettxsbysender", APIGetTxsBySender)
