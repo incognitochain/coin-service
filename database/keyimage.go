@@ -9,6 +9,8 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func DBSaveUsedKeyimage(list []shared.KeyImageData) error {
@@ -19,10 +21,35 @@ func DBSaveUsedKeyimage(list []shared.KeyImageData) error {
 		coin.Creating()
 		docs = append(docs, coin)
 	}
-	_, err := mgm.Coll(&list[0]).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&list[0]).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
-		log.Printf("failed to insert %v keyimages in %v", len(list), time.Since(startTime))
-		return err
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.KeyImageData{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.BulkWriteException)
+					if !ok {
+						panic(err)
+					}
+					er := writeErr.WriteErrors[0]
+					if er.WriteError.Code != 11000 {
+						panic(err)
+					}
+				}
+			}
+		}
 	}
 	log.Printf("inserted %v keyimages in %v", len(list), time.Since(startTime))
 	return nil

@@ -34,7 +34,6 @@ import (
 	"github.com/incognitochain/incognito-chain/wire"
 	"github.com/kamva/mgm/v3"
 	"github.com/syndtr/goleveldb/leveldb"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -650,84 +649,64 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 		}
 	}
-	alreadyWriteToBD := false
+	coinV1AlreadyWrite := []shared.CoinDataV1{}
 
 	if len(txDataList) > 0 {
 		err = database.DBSaveTXs(txDataList)
 		if err != nil {
-			writeErr, ok := err.(mongo.BulkWriteException)
-			if !ok {
-				log.Println(err)
-			}
-			er := writeErr.WriteErrors[0]
-			if er.WriteError.Code != 11000 {
-				panic(err)
-			}
+			panic(err)
 		}
 	}
 	if len(outCoinList) > 0 {
-		err = database.DBSaveCoins(outCoinList)
+		err, coinV1AlreadyWrite = database.DBSaveCoins(outCoinList)
 		if err != nil {
-			writeErr, ok := err.(mongo.BulkWriteException)
-			if !ok {
-				log.Println(err)
-			}
-			er := writeErr.WriteErrors[0]
-			if er.WriteError.Code != 11000 {
-				panic(err)
-			} else {
-				alreadyWriteToBD = true
-			}
+			panic(err)
 		}
 	}
 	if len(keyImageList) > 0 {
 		err = database.DBSaveUsedKeyimage(keyImageList)
 		if err != nil {
-			writeErr, ok := err.(mongo.BulkWriteException)
-			if !ok {
-				log.Println(err)
-			}
-			er := writeErr.WriteErrors[0]
-			if er.WriteError.Code != 11000 {
-				panic(err)
-			}
+			panic(err)
 		}
 	}
-	if len(tradeRespondList) > 0 && !alreadyWriteToBD {
+	if len(tradeRespondList) > 0 {
 		err = database.DBSaveTxTrade(tradeRespondList)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	if len(bridgeShieldRespondList) > 0 && !alreadyWriteToBD {
+	if len(bridgeShieldRespondList) > 0 {
 		err = database.DBSaveTxShield(bridgeShieldRespondList)
 		if err != nil {
 			panic(err)
 		}
 	}
-	if len(contributionRespondList) > 0 && !alreadyWriteToBD {
+	if len(contributionRespondList) > 0 {
 		err = database.DBSavePDEContribute(contributionRespondList)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	if len(contributionWithdrawRepsondList) > 0 && !alreadyWriteToBD {
+	if len(contributionWithdrawRepsondList) > 0 {
 		err = database.DBSavePDEWithdraw(contributionWithdrawRepsondList)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	if len(contributionFeeWithdrawRepsondList) > 0 && !alreadyWriteToBD {
+	if len(contributionFeeWithdrawRepsondList) > 0 {
 		err = database.DBSavePDEWithdrawFee(contributionFeeWithdrawRepsondList)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	if len(coinV1PubkeyInfo) > 0 && !alreadyWriteToBD {
+	if len(coinV1PubkeyInfo) > 0 {
+		if len(coinV1AlreadyWrite) > 0 {
+
+		}
 		err = database.DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
 		if err != nil {
 			panic(err)
@@ -938,7 +917,7 @@ func mempoolWatcher() {
 	}
 }
 func tokenListWatcher() {
-	interval := time.NewTicker(10 * time.Second)
+	interval := time.NewTicker(5 * time.Second)
 	activeShards := config.Param().ActiveShards
 	for {
 		<-interval.C
@@ -1036,7 +1015,6 @@ func tokenListWatcher() {
 				tokenID, err := new(common.Hash).NewHashFromStr(tokenInfo.TokenID)
 				if err != nil {
 					panic(err)
-					continue
 				}
 				recomputedAssetTag := operation.HashToPoint(tokenID[:])
 				lastTokenIDMap[recomputedAssetTag.String()] = tokenInfo.TokenID

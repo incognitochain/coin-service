@@ -11,6 +11,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -28,8 +29,9 @@ func ConnectDB(dbName string, mongoAddr string) error {
 	return nil
 }
 
-func DBSaveCoins(list []shared.CoinData) error {
+func DBSaveCoins(list []shared.CoinData) (error, []shared.CoinDataV1) {
 	startTime := time.Now()
+	coinV1AlreadyWrite := []shared.CoinDataV1{}
 	docs := []interface{}{}
 	docsV1 := []interface{}{}
 	for _, coin := range list {
@@ -42,23 +44,69 @@ func DBSaveCoins(list []shared.CoinData) error {
 	}
 	if len(docs) > 0 {
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+2)*shared.DB_OPERATION_TIMEOUT)
-		_, err := mgm.Coll(&shared.CoinData{}).InsertMany(ctx, docs)
+		_, err := mgm.Coll(&shared.CoinData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 		if err != nil {
-			log.Printf("failed to insert %v coins in %v", len(docs), time.Since(startTime))
-			return err
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				panic(err)
+			}
+			if ctx.Err() != nil {
+				t, k := ctx.Deadline()
+				log.Println("context error:", ctx.Err(), t, k)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			} else {
+				for _, v := range docs {
+					ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+					_, err = mgm.Coll(&shared.CoinData{}).InsertOne(ctx, v)
+					if err != nil {
+						writeErr, ok := err.(mongo.BulkWriteException)
+						if !ok {
+							panic(err)
+						}
+						er := writeErr.WriteErrors[0]
+						if er.WriteError.Code != 11000 {
+							panic(err)
+						}
+					}
+				}
+			}
 		}
 		log.Printf("inserted %v v2coins in %v", len(docs), time.Since(startTime))
 	}
 	if len(docsV1) > 0 {
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+2)*shared.DB_OPERATION_TIMEOUT)
-		_, err := mgm.Coll(&shared.CoinDataV1{}).InsertMany(ctx, docsV1)
+		_, err := mgm.Coll(&shared.CoinDataV1{}).InsertMany(ctx, docsV1, options.MergeInsertManyOptions().SetOrdered(true))
 		if err != nil {
-			log.Printf("failed to insert %v coins in %v", len(docsV1), time.Since(startTime))
-			return err
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				panic(err)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			} else {
+				for _, v := range docsV1 {
+					ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+					_, err = mgm.Coll(&shared.CoinDataV1{}).InsertOne(ctx, v)
+					if err != nil {
+						writeErr, ok := err.(mongo.BulkWriteException)
+						if !ok {
+							panic(err)
+						}
+						er := writeErr.WriteErrors[0]
+						if er.WriteError.Code != 11000 {
+							panic(err)
+						}
+					}
+				}
+			}
 		}
 		log.Printf("inserted %v v1coins in %v", len(docsV1), time.Since(startTime))
 	}
-	return nil
+	return nil, coinV1AlreadyWrite
 }
 
 func DBSavePendingTx(list []shared.CoinPendingData) error {

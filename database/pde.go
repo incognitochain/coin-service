@@ -11,6 +11,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -50,9 +51,35 @@ func DBSaveTxTrade(list []shared.TradeData) error {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.TradeData{}).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&shared.TradeData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
-		return err
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.TradeData{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.BulkWriteException)
+					if !ok {
+						panic(err)
+					}
+					er := writeErr.WriteErrors[0]
+					if er.WriteError.Code != 11000 {
+						panic(err)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -119,9 +146,35 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
-		return err
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.ContributionData{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.BulkWriteException)
+					if !ok {
+						panic(err)
+					}
+					er := writeErr.WriteErrors[0]
+					if er.WriteError.Code != 11000 {
+						panic(err)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -152,9 +205,35 @@ func DBSavePDEWithdraw(list []shared.WithdrawContributionData) error {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.WithdrawContributionData{}).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&shared.WithdrawContributionData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
-		return err
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.WithdrawContributionData{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.BulkWriteException)
+					if !ok {
+						panic(err)
+					}
+					er := writeErr.WriteErrors[0]
+					if er.WriteError.Code != 11000 {
+						panic(err)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -184,9 +263,35 @@ func DBSavePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.WithdrawContributionFeeData{}).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&shared.WithdrawContributionFeeData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
-		return err
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.WithdrawContributionFeeData{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.BulkWriteException)
+					if !ok {
+						panic(err)
+					}
+					er := writeErr.WriteErrors[0]
+					if er.WriteError.Code != 11000 {
+						panic(err)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }

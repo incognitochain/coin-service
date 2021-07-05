@@ -11,6 +11,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -21,9 +22,35 @@ func DBSaveTxShield(list []shared.ShieldData) error {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.ShieldData{}).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&shared.ShieldData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
-		return err
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.ShieldData{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.BulkWriteException)
+					if !ok {
+						panic(err)
+					}
+					er := writeErr.WriteErrors[0]
+					if er.WriteError.Code != 11000 {
+						panic(err)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -35,9 +62,35 @@ func DBSaveTxUnShield(list []shared.ShieldData) error {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.ShieldData{}).InsertMany(ctx, docs)
+	_, err := mgm.Coll(&shared.ShieldData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
-		return err
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.ShieldData{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.BulkWriteException)
+					if !ok {
+						panic(err)
+					}
+					er := writeErr.WriteErrors[0]
+					if er.WriteError.Code != 11000 {
+						panic(err)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
