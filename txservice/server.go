@@ -77,15 +77,17 @@ func pushMode() {
 }
 
 func broadcastMode() {
+
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/health", APIHealthCheck)
-
-	err := r.Run("0.0.0.0:" + PORT)
-	if err != nil {
-		panic(err)
-	}
-
+	go func() {
+		err := r.Run("0.0.0.0:" + PORT)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	var err error
 	txTopic, err = startPubsubTopic(TX_TOPIC)
 	if err != nil {
 		panic(err)
@@ -169,10 +171,13 @@ func statusMode() {
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/health", APIHealthCheck)
 
-	err := r.Run("0.0.0.0:" + PORT)
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		err := r.Run("0.0.0.0:" + PORT)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	var err error
 
 	statusTopic, err = startPubsubTopic(TXSTATUS_TOPIC)
 	if err != nil {
