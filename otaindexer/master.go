@@ -210,6 +210,9 @@ func chooseWorker() (*worker, error) {
 		}
 	}
 	workerLock.RUnlock()
+	if leastOccupiedWorker == nil {
+		return nil, errors.New("no worker available")
+	}
 	return leastOccupiedWorker, nil
 }
 
