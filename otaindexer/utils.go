@@ -41,6 +41,7 @@ retryCheckTokenID:
 			panic(err)
 		}
 		if len(lastTokenIDMap) == 0 {
+			log.Println("retryGetToken")
 			goto retryGetToken
 		}
 		tokenListLock.RLock()
@@ -73,6 +74,7 @@ retryCheckTokenID:
 			}
 		}
 		if tokenID == "" {
+			log.Println("retryCheckTokenID")
 			goto retryCheckTokenID
 		}
 	}
