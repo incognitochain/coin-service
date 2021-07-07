@@ -474,14 +474,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue(), beaconHeight)
 			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
-		case metadata.PortalV4ShieldingResponseMeta:
-			mtdata := tx.GetMetadata().(*metadata.PortalShieldingResponse)
-			requestTx := mtdata.ReqTxID.String()
-			shieldType := "shield"
-			bridge := "portal"
-			isDecentralized := true
-			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue(), beaconHeight)
-			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
 		case metadata.PDEContributionResponseMeta:
 			txRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()] = append(txRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()], struct {
 				Amount   uint64
@@ -500,10 +492,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				TxID     string
 				Locktime int64
 			}{outs[0].GetValue(), txHash, tx.GetLockTime()})
-		case metadata.PortalV4UnshieldingRequestMeta:
-			unshieldReqAction := tx.GetMetadata().(*metadata.PortalUnshieldRequest)
-			realTokenID = unshieldReqAction.TokenID
-			pubkey = "" // this is feature
 		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2, metadata.BurningPBSCRequestMeta:
 			burningReqAction := tx.GetMetadata().(*metadata.BurningRequest)
 			realTokenID = burningReqAction.TokenID.String()
@@ -661,7 +649,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 		}
 	}
-	coinV1MissingWrite := []shared.CoinDataV1{}
+	coinV1AlreadyWrite := []shared.CoinDataV1{}
 
 	if len(txDataList) > 0 {
 		err = database.DBSaveTXs(txDataList)
@@ -670,7 +658,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		}
 	}
 	if len(outCoinList) > 0 {
-		err, coinV1MissingWrite = database.DBSaveCoins(outCoinList)
+		err, coinV1AlreadyWrite = database.DBSaveCoins(outCoinList)
 		if err != nil {
 			panic(err)
 		}
@@ -716,33 +704,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 
 	if len(coinV1PubkeyInfo) > 0 {
-		if len(coinV1MissingWrite) > 0 {
-			coinV1PubkeyInfo = make(map[string]map[string]shared.CoinInfo)
-			for _, coinV1 := range coinV1MissingWrite {
-				cpubkey := coinV1.CoinPubkey
-				cTokenID := coinV1.TokenID
-				coinIdx := coinV1.CoinIndex
-				if _, ok := coinV1PubkeyInfo[cpubkey]; !ok {
-					coinV1PubkeyInfo[cpubkey] = make(map[string]shared.CoinInfo)
-				}
-				if _, ok := coinV1PubkeyInfo[cpubkey][cTokenID]; !ok {
-					coinV1PubkeyInfo[cpubkey][cTokenID] = shared.CoinInfo{
-						Start: coinIdx,
-						Total: 1,
-						End:   coinIdx,
-					}
-				} else {
-					newCoinInfo := coinV1PubkeyInfo[cpubkey][cTokenID]
-					newCoinInfo.Total = newCoinInfo.Total + 1
-					if coinIdx > newCoinInfo.End {
-						newCoinInfo.End = coinIdx
-					}
-					if coinIdx < newCoinInfo.Start {
-						newCoinInfo.Start = coinIdx
-					}
-					coinV1PubkeyInfo[cpubkey][cTokenID] = newCoinInfo
-				}
-			}
+		if len(coinV1AlreadyWrite) > 0 {
+
 		}
 		err = database.DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
 		if err != nil {

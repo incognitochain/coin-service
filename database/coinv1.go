@@ -50,8 +50,8 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 	keysToInsert := []shared.KeyInfoData{}
 	keysToUpdate := []shared.KeyInfoData{}
 	for _, keyInfo := range KeyInfoDatas {
-		newKeyInfo, ok := list[keyInfo.Pubkey]
-		for token, idx := range newKeyInfo {
+		ki, ok := list[keyInfo.Pubkey]
+		for token, idx := range ki {
 			if len(keyInfo.CoinIndex) == 0 {
 				keyInfo.CoinIndex = make(map[string]shared.CoinInfo)
 			}
@@ -59,12 +59,7 @@ func DBUpdateCoinV1PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 				keyInfo.CoinIndex[token] = idx
 			} else {
 				info := keyInfo.CoinIndex[token]
-				if info.Start > idx.Start {
-					info.Start = idx.Start
-				}
-				if info.End < idx.End {
-					info.End = idx.End
-				}
+				info.End = idx.End
 				info.Total = info.Total + idx.Total
 				keyInfo.CoinIndex[token] = info
 			}

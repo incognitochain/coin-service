@@ -34,7 +34,7 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 		tokenID = common.PRVCoinID.String()
 	}
 retryCheckTokenID:
-	if assetTag != nil && tokenID == "" {
+	if assetTag != nil && len(tokenIDs) == 0 {
 	retryGetToken:
 		err := retrieveTokenIDList()
 		if err != nil {
