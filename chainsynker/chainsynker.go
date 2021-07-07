@@ -501,10 +501,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				Locktime int64
 			}{outs[0].GetValue(), txHash, tx.GetLockTime()})
 		case metadata.PortalV4UnshieldingRequestMeta:
-			//TODO
 			unshieldReqAction := tx.GetMetadata().(*metadata.PortalUnshieldRequest)
 			realTokenID = unshieldReqAction.TokenID
-			// pubkey = base58.EncodeCheck(burningReqAction.BurnerAddress.GetPublicSpend().ToBytesS())
+			pubkey = "" // this is feature
 		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2, metadata.BurningPBSCRequestMeta:
 			burningReqAction := tx.GetMetadata().(*metadata.BurningRequest)
 			realTokenID = burningReqAction.TokenID.String()
