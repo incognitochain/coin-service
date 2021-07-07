@@ -132,7 +132,7 @@ func DBGetTxUnshield(pubkey, tokenID string, limit int64, offset int64) ([]share
 	if limit == 0 {
 		limit = int64(10000)
 	}
-	metas := []string{strconv.Itoa(metadata.BurningRequestMeta), strconv.Itoa(metadata.BurningRequestMetaV2), strconv.Itoa(metadata.BurningForDepositToSCRequestMeta), strconv.Itoa(metadata.BurningForDepositToSCRequestMetaV2), strconv.Itoa(metadata.ContractingRequestMeta), strconv.Itoa(metadata.BurningPBSCRequestMeta)}
+	metas := []string{strconv.Itoa(metadata.BurningRequestMeta), strconv.Itoa(metadata.BurningRequestMetaV2), strconv.Itoa(metadata.BurningForDepositToSCRequestMeta), strconv.Itoa(metadata.BurningForDepositToSCRequestMetaV2), strconv.Itoa(metadata.ContractingRequestMeta), strconv.Itoa(metadata.BurningPBSCRequestMeta), strconv.Itoa(metadata.PortalV4UnshieldingRequestMeta), strconv.Itoa(metadata.PortalV4UnshieldingResponseMeta)}
 	var result []shared.TxData
 	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "realtokenid": bson.M{operator.Eq: tokenID}, "metatype": bson.M{operator.In: metas}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
