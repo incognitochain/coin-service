@@ -853,16 +853,22 @@ func mempoolWatcher() {
 		if msgData.Transaction.GetProof() != nil {
 			var sn []string
 			var pendingTxs []shared.CoinPendingData
+			shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
+			txBytes, err := json.Marshal(msgData.Transaction)
+			if err != nil {
+				panic(err)
+			}
 			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
 				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
-				shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
-				txBytes, err := json.Marshal(msgData.Transaction)
-				if err != nil {
-					panic(err)
-				}
-				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.Hash().String(), string(txBytes), msgData.Transaction.GetLockTime()))
 			}
-			err := database.DBSavePendingTx(pendingTxs)
+			if _, ok := msgData.Transaction.(transaction.TransactionToken); ok {
+				txTokenData := msgData.Transaction.(transaction.TransactionToken).GetTxTokenData()
+				for _, c := range txTokenData.TxNormal.GetProof().GetInputCoins() {
+					sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
+				}
+			}
+			pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.Hash().String(), string(txBytes), msgData.Transaction.GetLockTime()))
+			err = database.DBSavePendingTx(pendingTxs)
 			if err != nil {
 				log.Println(err)
 			}
@@ -873,16 +879,20 @@ func mempoolWatcher() {
 		if msgData.Transaction.GetProof() != nil {
 			var sn []string
 			var pendingTxs []shared.CoinPendingData
+			shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
+			txBytes, err := json.Marshal(msgData.Transaction)
+			if err != nil {
+				panic(err)
+			}
 			for _, c := range msgData.Transaction.GetProof().GetInputCoins() {
 				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
-				shardID := common.GetShardIDFromLastByte(msgData.Transaction.GetSenderAddrLastByte())
-				txBytes, err := json.Marshal(msgData.Transaction)
-				if err != nil {
-					panic(err)
-				}
-				pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.Hash().String(), string(txBytes), msgData.Transaction.GetLockTime()))
 			}
-			err := database.DBSavePendingTx(pendingTxs)
+			txTokenData := msgData.Transaction.(transaction.TransactionToken).GetTxTokenData()
+			for _, c := range txTokenData.TxNormal.GetProof().GetInputCoins() {
+				sn = append(sn, base64.StdEncoding.EncodeToString(c.GetKeyImage().ToBytesS()))
+			}
+			pendingTxs = append(pendingTxs, *shared.NewCoinPendingData(sn, int(shardID), msgData.Transaction.Hash().String(), string(txBytes), msgData.Transaction.GetLockTime()))
+			err = database.DBSavePendingTx(pendingTxs)
 			if err != nil {
 				log.Println(err)
 			}
