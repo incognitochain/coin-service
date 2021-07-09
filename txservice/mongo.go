@@ -22,6 +22,11 @@ func ConnectDB() error {
 		return err
 	}
 	log.Println("Database Connected!")
+
+	err = DBCreateTxIndex()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
