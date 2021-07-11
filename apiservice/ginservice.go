@@ -480,6 +480,7 @@ func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]Received
 			txDetail.IsInBlock = true
 			txDetail.Proof = nil
 			txDetail.Sig = ""
+			txDetail.PrivacyCustomTokenID = txd.RealTokenID
 			txReceive := ReceivedTransactionV2{
 				TxDetail:    txDetail,
 				FromShardID: txDetail.ShardID,

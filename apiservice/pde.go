@@ -209,12 +209,27 @@ func APIGetContributeHistory(c *gin.Context) {
 	paymentkey := c.Query("paymentkey")
 	// pairID := c.Query("pairid")
 
-	result, err := database.DBGetPDEContributeRespond(paymentkey, int64(limit), int64(offset))
+	contrData, err := database.DBGetPDEContributeRespond(paymentkey, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-
+	contrDataNoDup := checkDup(contrData)
+	type ContributionDataWithLockTime struct {
+		shared.ContributionData
+		Locktime int64
+	}
+	var result []ContributionDataWithLockTime
+	for _, contr := range contrDataNoDup {
+		tx, err := database.DBGetTxByHash([]string{contr.RequestTx})
+		if err != nil {
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
+			return
+		}
+		result = append(result, ContributionDataWithLockTime{
+			contr, tx[0].Locktime,
+		})
+	}
 	// filterData := make(map[string][]shared.ContributionData)
 	// for _, data := range result {
 	// 	filterData[data.PairID] = append(filterData[data.PairID], data)
@@ -263,10 +278,10 @@ func APIGetContributeHistory(c *gin.Context) {
 	// }
 
 	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].Respondblock > result[j].Respondblock
+		return result[i].Locktime > result[j].Locktime
 	})
 	respond := APIRespond{
-		Result: checkDup(result),
+		Result: result,
 	}
 	c.JSON(http.StatusOK, respond)
 
