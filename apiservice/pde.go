@@ -174,11 +174,29 @@ func APIGetWithdrawHistory(c *gin.Context) {
 	// tokenID1 := c.Query("tokenid1")
 	// tokenID2 := c.Query("tokenid2")
 
-	result, err := database.DBGetPDEWithdrawRespond(paymentkey, int64(limit), int64(offset))
+	contrData, err := database.DBGetPDEWithdrawRespond(paymentkey, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+
+	type DataWithLockTime struct {
+		shared.WithdrawContributionData
+		Locktime int64
+	}
+
+	var result []DataWithLockTime
+	for _, contr := range contrData {
+		tx, err := database.DBGetTxByHash([]string{contr.RequestTx})
+		if err != nil {
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
+			return
+		}
+		result = append(result, DataWithLockTime{
+			contr, tx[0].Locktime,
+		})
+	}
+
 	respond := APIRespond{
 		Result: result,
 	}
@@ -192,11 +210,29 @@ func APIGetWithdrawFeeHistory(c *gin.Context) {
 	// tokenID1 := c.Query("tokenid1")
 	// tokenID2 := c.Query("tokenid2")
 
-	result, err := database.DBGetPDEWithdrawFeeRespond(paymentkey, int64(limit), int64(offset))
+	contrData, err := database.DBGetPDEWithdrawFeeRespond(paymentkey, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+
+	type DataWithLockTime struct {
+		shared.WithdrawContributionFeeData
+		Locktime int64
+	}
+
+	var result []DataWithLockTime
+	for _, contr := range contrData {
+		tx, err := database.DBGetTxByHash([]string{contr.RequestTx})
+		if err != nil {
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
+			return
+		}
+		result = append(result, DataWithLockTime{
+			contr, tx[0].Locktime,
+		})
+	}
+
 	respond := APIRespond{
 		Result: result,
 	}
@@ -215,18 +251,18 @@ func APIGetContributeHistory(c *gin.Context) {
 		return
 	}
 	contrDataNoDup := checkDup(contrData)
-	type ContributionDataWithLockTime struct {
+	type DataWithLockTime struct {
 		shared.ContributionData
 		Locktime int64
 	}
-	var result []ContributionDataWithLockTime
+	var result []DataWithLockTime
 	for _, contr := range contrDataNoDup {
 		tx, err := database.DBGetTxByHash([]string{contr.RequestTx})
 		if err != nil {
 			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
-		result = append(result, ContributionDataWithLockTime{
+		result = append(result, DataWithLockTime{
 			contr, tx[0].Locktime,
 		})
 	}

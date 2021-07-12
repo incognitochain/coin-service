@@ -22,7 +22,6 @@ func APIGetUnshieldHistory(c *gin.Context) {
 	paymentkey := c.Query("paymentkey")
 
 	pubKeyStr := ""
-	pubKeyBytes := []byte{}
 	if paymentkey == "" {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
 		return
@@ -32,7 +31,7 @@ func APIGetUnshieldHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+	pubKeyBytes := wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
 	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 	txDataList, err := database.DBGetTxUnshield(pubKeyStr, tokenID, int64(limit), int64(offset))
 	if err != nil {
@@ -63,7 +62,6 @@ func APIGetShieldHistory(c *gin.Context) {
 	paymentkey := c.Query("paymentkey")
 
 	pubKeyStr := ""
-	pubKeyBytes := []byte{}
 	// if otakey != "" {
 	// 	wl, err := wallet.Base58CheckDeserialize(otakey)
 	// 	if err != nil {
@@ -81,7 +79,7 @@ func APIGetShieldHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+	pubKeyBytes := wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
 	// }
 	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 
@@ -110,16 +108,30 @@ func APIGetShieldHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	var result []*TxBridgeDetail
+
+	type DataWithLockTime struct {
+		TxBridgeDetail
+		Locktime int64
+	}
+
+	var result []DataWithLockTime
 	for _, v := range txShieldPairlist {
-		result = append(result, &TxBridgeDetail{
-			Bridge:          v.Bridge,
-			TokenID:         v.TokenID,
-			Amount:          v.Amount,
-			RespondTx:       v.RespondTx,
-			RequestTx:       v.RequestTx,
-			ShieldType:      v.ShieldType,
-			IsDecentralized: v.IsDecentralized,
+		tx, err := database.DBGetTxByHash([]string{v.RequestTx})
+		if err != nil {
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
+			return
+		}
+		result = append(result, DataWithLockTime{
+			TxBridgeDetail: TxBridgeDetail{
+				Bridge:          v.Bridge,
+				TokenID:         v.TokenID,
+				Amount:          v.Amount,
+				RespondTx:       v.RespondTx,
+				RequestTx:       v.RequestTx,
+				ShieldType:      v.ShieldType,
+				IsDecentralized: v.IsDecentralized,
+			},
+			Locktime: tx[0].Locktime,
 		})
 	}
 	respond := APIRespond{

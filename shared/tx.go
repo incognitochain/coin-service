@@ -23,6 +23,7 @@ type TransactionDetail struct {
 	ProofDetail      jsonresult.ProofDetail `json:"ProofDetail"`
 	InputCoinPubKey  string                 `json:"InputCoinPubKey"`
 	OutputCoinPubKey []string               `json:"OutputCoinPubKey"`
+	OutputCoinSND    []string               `json:"OutputCoinSND"`
 	SigPubKey        string                 `json:"SigPubKey,omitempty"` // 64 bytes
 	Sig              string                 `json:"Sig,omitempty"`       // 64 bytes
 
