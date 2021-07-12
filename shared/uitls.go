@@ -204,10 +204,14 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 					for _, coin := range outputCoins {
 						if base58Fmt {
 							result.OutputCoinPubKey = append(result.OutputCoinPubKey, base58.Base58Check{}.Encode(coin.GetPublicKey().ToBytesS(), common.ZeroByte))
-							result.OutputCoinSND = append(result.OutputCoinSND, base58.Base58Check{}.Encode(coin.GetSNDerivator().ToBytesS(), common.ZeroByte))
+							if coin.GetVersion() == 1 {
+								result.OutputCoinSND = append(result.OutputCoinSND, base58.Base58Check{}.Encode(coin.GetSNDerivator().ToBytesS(), common.ZeroByte))
+							}
 						} else {
 							result.OutputCoinPubKey = append(result.OutputCoinPubKey, base64.StdEncoding.EncodeToString(coin.GetPublicKey().ToBytesS()))
-							result.OutputCoinSND = append(result.OutputCoinSND, base64.StdEncoding.EncodeToString(coin.GetSNDerivator().ToBytesS()))
+							if coin.GetVersion() == 1 {
+								result.OutputCoinSND = append(result.OutputCoinSND, base64.StdEncoding.EncodeToString(coin.GetSNDerivator().ToBytesS()))
+							}
 						}
 					}
 				}
@@ -264,10 +268,14 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 					for _, coin := range outputCoins {
 						if base58Fmt {
 							result.OutputCoinPubKey = append(result.OutputCoinPubKey, base58.Base58Check{}.Encode(coin.GetPublicKey().ToBytesS(), common.ZeroByte))
-							result.OutputCoinSND = append(result.OutputCoinSND, base58.Base58Check{}.Encode(coin.GetSNDerivator().ToBytesS(), common.ZeroByte))
+							if coin.GetVersion() == 1 {
+								result.OutputCoinSND = append(result.OutputCoinSND, base58.Base58Check{}.Encode(coin.GetSNDerivator().ToBytesS(), common.ZeroByte))
+							}
 						} else {
 							result.OutputCoinPubKey = append(result.OutputCoinPubKey, base64.StdEncoding.EncodeToString(coin.GetPublicKey().ToBytesS()))
-							result.OutputCoinSND = append(result.OutputCoinSND, base64.StdEncoding.EncodeToString(coin.GetSNDerivator().ToBytesS()))
+							if coin.GetVersion() == 1 {
+								result.OutputCoinSND = append(result.OutputCoinSND, base64.StdEncoding.EncodeToString(coin.GetSNDerivator().ToBytesS()))
+							}
 						}
 					}
 				}
