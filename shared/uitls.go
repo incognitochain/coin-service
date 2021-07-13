@@ -280,9 +280,35 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 					}
 				}
 			}
+			if txTokenData.TxNormal.GetProof() != nil {
+				inputCoins := txTokenData.TxNormal.GetProof().GetInputCoins()
+				outputCoins := txTokenData.TxNormal.GetProof().GetOutputCoins()
+				if len(inputCoins) > 0 && inputCoins[0].GetPublicKey() != nil {
+					if base58Fmt {
+						result.TokenInputCoinPubKey = base58.Base58Check{}.Encode(inputCoins[0].GetPublicKey().ToBytesS(), common.ZeroByte)
+					} else {
+						result.TokenInputCoinPubKey = base64.StdEncoding.EncodeToString(inputCoins[0].GetPublicKey().ToBytesS())
+					}
+				}
+				if len(outputCoins) > 0 {
+					for _, coin := range outputCoins {
+						if base58Fmt {
+							result.TokenOutputCoinPubKey = append(result.OutputCoinPubKey, base58.Base58Check{}.Encode(coin.GetPublicKey().ToBytesS(), common.ZeroByte))
+							if coin.GetVersion() == 1 {
+								result.TokenOutputCoinSND = append(result.OutputCoinSND, base58.Base58Check{}.Encode(coin.GetSNDerivator().ToBytesS(), common.ZeroByte))
+							}
+						} else {
+							result.TokenOutputCoinPubKey = append(result.OutputCoinPubKey, base64.StdEncoding.EncodeToString(coin.GetPublicKey().ToBytesS()))
+							if coin.GetVersion() == 1 {
+								result.TokenOutputCoinSND = append(result.OutputCoinSND, base64.StdEncoding.EncodeToString(coin.GetSNDerivator().ToBytesS()))
+							}
+						}
+					}
+				}
+			}
 
-			tokenData, _ := json.Marshal(txTokenData)
-			result.PrivacyCustomTokenData = string(tokenData)
+			// tokenData, _ := json.Marshal(txTokenData)
+			// result.PrivacyCustomTokenData = string(tokenData)
 			if tx.GetMetadata() != nil {
 				metaData, _ := json.Marshal(tx.GetMetadata())
 				result.Metadata = string(metaData)

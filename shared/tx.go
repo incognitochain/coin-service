@@ -21,11 +21,16 @@ type TransactionDetail struct {
 	IsPrivacy        bool                   `json:"IsPrivacy"`
 	Proof            privacy.Proof          `json:"Proof"`
 	ProofDetail      jsonresult.ProofDetail `json:"ProofDetail"`
-	InputCoinPubKey  string                 `json:"InputCoinPubKey"`
+	InputCoinPubKey  string                 `json:"InputCoinKeyImage"`
 	OutputCoinPubKey []string               `json:"OutputCoinPubKey"`
 	OutputCoinSND    []string               `json:"OutputCoinSND"`
-	SigPubKey        string                 `json:"SigPubKey,omitempty"` // 64 bytes
-	Sig              string                 `json:"Sig,omitempty"`       // 64 bytes
+
+	TokenInputCoinPubKey  string   `json:"TokenInputCoinKeyImage"`
+	TokenOutputCoinPubKey []string `json:"TokenOutputCoinPubKey"`
+	TokenOutputCoinSND    []string `json:"TokenOutputCoinSND"`
+
+	SigPubKey string `json:"SigPubKey,omitempty"` // 64 bytes
+	Sig       string `json:"Sig,omitempty"`       // 64 bytes
 
 	Metadata                      string                 `json:"Metadata"`
 	CustomTokenData               string                 `json:"CustomTokenData"`
