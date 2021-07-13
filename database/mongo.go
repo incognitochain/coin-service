@@ -62,12 +62,11 @@ func DBSaveCoins(list []shared.CoinData) (error, []shared.CoinDataV1) {
 					ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
 					_, err = mgm.Coll(&shared.CoinData{}).InsertOne(ctx, v)
 					if err != nil {
-						writeErr, ok := err.(mongo.BulkWriteException)
+						writeErr, ok := err.(mongo.WriteException)
 						if !ok {
 							panic(err)
 						}
-						er := writeErr.WriteErrors[0]
-						if er.WriteError.Code != 11000 {
+						if !writeErr.HasErrorCode(11000) {
 							panic(err)
 						}
 					}
