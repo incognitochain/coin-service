@@ -21,11 +21,11 @@ type TransactionDetail struct {
 	IsPrivacy        bool                   `json:"IsPrivacy"`
 	Proof            privacy.Proof          `json:"Proof"`
 	ProofDetail      jsonresult.ProofDetail `json:"ProofDetail"`
-	InputCoinPubKey  string                 `json:"InputCoinKeyImage"`
+	InputCoinPubKey  string                 `json:"InputCoinPubKey"`
 	OutputCoinPubKey []string               `json:"OutputCoinPubKey"`
 	OutputCoinSND    []string               `json:"OutputCoinSND"`
 
-	TokenInputCoinPubKey  string   `json:"TokenInputCoinKeyImage"`
+	TokenInputCoinPubKey  string   `json:"TokenInputCoinPubKey"`
 	TokenOutputCoinPubKey []string `json:"TokenOutputCoinPubKey"`
 	TokenOutputCoinSND    []string `json:"TokenOutputCoinSND"`
 
