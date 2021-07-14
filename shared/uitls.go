@@ -293,14 +293,14 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 				if len(outputCoins) > 0 {
 					for _, coin := range outputCoins {
 						if base58Fmt {
-							result.TokenOutputCoinPubKey = append(result.OutputCoinPubKey, base58.Base58Check{}.Encode(coin.GetPublicKey().ToBytesS(), common.ZeroByte))
+							result.TokenOutputCoinPubKey = append(result.TokenOutputCoinPubKey, base58.Base58Check{}.Encode(coin.GetPublicKey().ToBytesS(), common.ZeroByte))
 							if coin.GetVersion() == 1 {
-								result.TokenOutputCoinSND = append(result.OutputCoinSND, base58.Base58Check{}.Encode(coin.GetSNDerivator().ToBytesS(), common.ZeroByte))
+								result.TokenOutputCoinSND = append(result.TokenOutputCoinSND, base58.Base58Check{}.Encode(coin.GetSNDerivator().ToBytesS(), common.ZeroByte))
 							}
 						} else {
-							result.TokenOutputCoinPubKey = append(result.OutputCoinPubKey, base64.StdEncoding.EncodeToString(coin.GetPublicKey().ToBytesS()))
+							result.TokenOutputCoinPubKey = append(result.TokenOutputCoinPubKey, base64.StdEncoding.EncodeToString(coin.GetPublicKey().ToBytesS()))
 							if coin.GetVersion() == 1 {
-								result.TokenOutputCoinSND = append(result.OutputCoinSND, base64.StdEncoding.EncodeToString(coin.GetSNDerivator().ToBytesS()))
+								result.TokenOutputCoinSND = append(result.TokenOutputCoinSND, base64.StdEncoding.EncodeToString(coin.GetSNDerivator().ToBytesS()))
 							}
 						}
 					}
