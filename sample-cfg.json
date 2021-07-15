@@ -1,14 +1,11 @@
 {
-  "apiport": 9001,
-  "chaindata": "chain-data",
-  "fullnode": "http://51.195.4.15:9334",
-  "maxconcurrentotacheck": 10,
-  "mode": "indexer",
-  "mongo": "mongodb://root:example@10.152.183.152:27017",
-  "mongodb": "coinservice-stagingv2",
-  "chainnetwork": "testnet1",
-  "highway": "45.56.115.6:9330:9330",
+  "apiport": 9009,
+  "chaindata": "chain",
   "concurrentotacheck": 10,
-  "indexerid": 0,
-  "masterindexer": ""
+  "mode": "chainsync",
+  "mongo": "mongodb://root:example@172.24.0.2:27017",
+  "mongodb": "coin",
+  "chainnetwork": "local",
+  "indexerid": -1,
+  "masterindexer": "172.24.0.6:9009"
 }
