@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: coinservice-txservice-push-staging2
+  name: coinservice-txservice-push-staging
 spec:
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      run: coinservice-txservice-push-staging2
+      run: coinservice-txservice-push-staging
   replicas: 1
   template:
     metadata:
       labels:
-        run: coinservice-txservice-push-staging2
+        run: coinservice-txservice-push-staging
     spec:
       containers:
-        - name: coinservice-txservice-push-staging2-container
-          image: incognitochain/coin-service-txservice-staging2:4
+        - name: coinservice-txservice-push-staging-container
+          image: incognitochain/coin-service-txservice-staging:4
           imagePullPolicy: Never
           ports:
             - containerPort: 8001
@@ -25,7 +25,7 @@ spec:
               name: google-service-account-json-file
           envFrom:
             - configMapRef:
-                name: coinservice-txservice-staging2-config-map
+                name: coinservice-txservice-staging-config-map
           env:
             - name: MODE
               value: "push"
@@ -34,7 +34,7 @@ spec:
       volumes:
         - name: google-service-account-json-file
           hostPath:
-            path: /home/coin-service/config/staging2/txservice/google-service-account.json
+            path: /home/coin-service/config/staging/txservice/google-service-account.json
             type: File
 
 ---
@@ -42,22 +42,22 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: coinservice-txservice-broadcast-staging2
+  name: coinservice-txservice-broadcast-staging
 spec:
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      run: coinservice-txservice-broadcast-staging2
+      run: coinservice-txservice-broadcast-staging
   replicas: 1
   template:
     metadata:
       labels:
-        run: coinservice-txservice-broadcast-staging2
+        run: coinservice-txservice-broadcast-staging
     spec:
       containers:
-        - name: coinservice-txservice-broadcast-staging2-container
-          image: incognitochain/coin-service-txservice-staging2:4
+        - name: coinservice-txservice-broadcast-staging-container
+          image: incognitochain/coin-service-txservice-staging:4
           imagePullPolicy: Never
           ports:
             - containerPort: 8001
@@ -66,7 +66,7 @@ spec:
               name: google-service-account-json-file
           envFrom:
             - configMapRef:
-                name: coinservice-txservice-staging2-config-map
+                name: coinservice-txservice-staging-config-map
           env:
             - name: MODE
               value: "broadcast"
@@ -75,7 +75,7 @@ spec:
       volumes:
         - name: google-service-account-json-file
           hostPath:
-            path: /home/coin-service/config/staging2/txservice/google-service-account.json
+            path: /home/coin-service/config/staging/txservice/google-service-account.json
             type: File
 
 ---
@@ -83,22 +83,22 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: coinservice-txservice-status-staging2
+  name: coinservice-txservice-status-staging
 spec:
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      run: coinservice-txservice-status-staging2
+      run: coinservice-txservice-status-staging
   replicas: 1
   template:
     metadata:
       labels:
-        run: coinservice-txservice-status-staging2
+        run: coinservice-txservice-status-staging
     spec:
       containers:
-        - name: coinservice-txservice-status-staging2-container
-          image: incognitochain/coin-service-txservice-staging2:4
+        - name: coinservice-txservice-status-staging-container
+          image: incognitochain/coin-service-txservice-staging:4
           imagePullPolicy: Never
           ports:
             - containerPort: 8001
@@ -107,7 +107,7 @@ spec:
               name: google-service-account-json-file
           envFrom:
             - configMapRef:
-                name: coinservice-txservice-staging2-config-map
+                name: coinservice-txservice-staging-config-map
           env:
             - name: MODE
               value: "status"
@@ -116,7 +116,7 @@ spec:
       volumes:
         - name: google-service-account-json-file
           hostPath:
-            path: /home/coin-service/config/staging2/txservice/google-service-account.json
+            path: /home/coin-service/config/staging/txservice/google-service-account.json
             type: File
 
 ---
@@ -124,9 +124,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: coinservice-txservice-push-staging2
+  name: coinservice-txservice-push-staging
   labels:
-    run: coinservice-txservice-push-staging2
+    run: coinservice-txservice-push-staging
 spec:
   type: ClusterIP
   clusterIP: 10.152.183.158
@@ -136,4 +136,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    run: coinservice-txservice-push-staging2
+    run: coinservice-txservice-push-staging
