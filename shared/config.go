@@ -89,10 +89,10 @@ func ReadConfigAndArg() {
 	switch tempCfg.ChainNetwork {
 	case "local":
 		os.Setenv("INCOGNITO_NETWORK_KEY", "local")
-	case "testnet1":
+	case "testnet1", "testnet-1":
 		os.Setenv("INCOGNITO_NETWORK_KEY", "testnet")
 		os.Setenv("INCOGNITO_NETWORK_VERSION_KEY", "1")
-	case "testnet2":
+	case "testnet2", "testnet-2":
 		os.Setenv("INCOGNITO_NETWORK_KEY", "testnet")
 		os.Setenv("INCOGNITO_NETWORK_VERSION_KEY", "2")
 	case "mainnet":
