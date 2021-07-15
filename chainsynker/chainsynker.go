@@ -712,7 +712,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 
 	if len(coinV1PubkeyInfo) > 0 {
 		if len(coinV1AlreadyWrite) > 0 {
-
+			for _, v := range coinV1AlreadyWrite {
+				publicKeyStr := v.CoinPubkey
+				coinInfo := coinV1PubkeyInfo[publicKeyStr][v.TokenID]
+				coinInfo.Total -= 1
+				coinV1PubkeyInfo[publicKeyStr][v.TokenID] = coinInfo
+			}
 		}
 		err = database.DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
 		if err != nil {
