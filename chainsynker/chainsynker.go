@@ -421,7 +421,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
 				txToken := tx.(transaction.TransactionToken)
-				receiverList, _ := txToken.GetReceivers()
+				receiverList, _ := txToken.GetTxTokenData().TxNormal.GetReceivers()
 				for _, v := range receiverList {
 					pubkeyReceivers = append(pubkeyReceivers, base58.EncodeCheck(v))
 				}
