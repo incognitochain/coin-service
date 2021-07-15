@@ -1,40 +1,45 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: coinservice-api-stg
+  name: coinservice-api-staging
 spec:
   selector:
     matchLabels:
-      run: coinservice-api-stg
+      run: coinservice-api-staging
   replicas: 10
   template:
     metadata:
       labels:
-        run: coinservice-api-stg
+        run: coinservice-api-staging
     spec:
       containers:
-        - name: coinservice-api-stg-container
-          image: incognito/coin-service:latest
+        - name: coinservice-api-staging-container
+          image: incognitochain/coin-service-staging:13
           imagePullPolicy: Never
           ports:
             - containerPort: 9001
           volumeMounts:
             - mountPath: /app/cfg.json
               name: config-json-file
+            - mountPath: /app/config
+              name: app-config
       volumes:
         - name: config-json-file
           hostPath:
             path: /home/coin-service/config/staging/cfg-query-staging.json
             type: File
-
+        - name: app-config
+          hostPath:
+            path: /home/coin-service/config/staging/app-config
+            type: DirectoryOrCreate
 ---
 
 apiVersion: v1
 kind: Service
 metadata:
-  name: coinservice-api-stg
+  name: coinservice-api-staging
   labels:
-    run: coinservice-api-stg
+    run: coinservice-api-staging
 spec:
   type: ClusterIP
   clusterIP: 10.152.183.123
@@ -44,4 +49,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    run: coinservice-api-stg
+    run: coinservice-api-staging
