@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: coinservice-synker-staging2-container
-          image: incognitochain/coin-service-staging2:18
+          image: incognitochain/coin-service-staging:13
           imagePullPolicy: Never
           ports:
             - containerPort: 9001
@@ -31,6 +31,9 @@ spec:
               name: app-config
             - mountPath: /app/chain-data
               name: chain-data
+#          args: ["-resetdb=true"]
+#          command: ["/app/coinservice"]
+
       volumes:
         - name: config-json-file
           hostPath:
