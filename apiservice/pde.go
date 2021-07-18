@@ -171,10 +171,14 @@ func APIGetWithdrawHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	paymentkey := c.Query("paymentkey")
-	// tokenID1 := c.Query("tokenid1")
-	// tokenID2 := c.Query("tokenid2")
 
-	contrData, err := database.DBGetPDEWithdrawRespond(paymentkey, int64(limit), int64(offset))
+	paymentkeyOld, err := wallet.GetPaymentAddressV1(paymentkey, false)
+	if err != nil {
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
+		return
+	}
+
+	contrData, err := database.DBGetPDEWithdrawRespond([]string{paymentkey, paymentkeyOld}, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -207,10 +211,14 @@ func APIGetWithdrawFeeHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	paymentkey := c.Query("paymentkey")
-	// tokenID1 := c.Query("tokenid1")
-	// tokenID2 := c.Query("tokenid2")
 
-	contrData, err := database.DBGetPDEWithdrawFeeRespond(paymentkey, int64(limit), int64(offset))
+	paymentkeyOld, err := wallet.GetPaymentAddressV1(paymentkey, false)
+	if err != nil {
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
+		return
+	}
+
+	contrData, err := database.DBGetPDEWithdrawFeeRespond([]string{paymentkeyOld, paymentkey}, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -243,9 +251,14 @@ func APIGetContributeHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	paymentkey := c.Query("paymentkey")
-	// pairID := c.Query("pairid")
 
-	contrData, err := database.DBGetPDEContributeRespond(paymentkey, int64(limit), int64(offset))
+	paymentkeyOld, err := wallet.GetPaymentAddressV1(paymentkey, false)
+	if err != nil {
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
+		return
+	}
+
+	contrData, err := database.DBGetPDEContributeRespond([]string{paymentkeyOld, paymentkey}, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -266,6 +279,7 @@ func APIGetContributeHistory(c *gin.Context) {
 			contr, tx[0].Locktime,
 		})
 	}
+
 	// filterData := make(map[string][]shared.ContributionData)
 	// for _, data := range result {
 	// 	filterData[data.PairID] = append(filterData[data.PairID], data)
