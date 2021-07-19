@@ -3,13 +3,13 @@ module github.com/incognitochain/coin-service
 go 1.13
 
 require (
-	github.com/0xkumi/incognito-dev-framework v0.0.0-20210716005834-43ff6ea701e0
+	github.com/0xkumi/incognito-dev-framework v0.0.0-20210719044132-85949625fb3d
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-playground/validator/v10 v10.5.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/websocket v1.4.2
 	github.com/incognitochain/incognito-chain v0.0.0-20210702072622-bed45d0e1f2d
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
@@ -17,7 +17,7 @@ require (
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/satori/go.uuid v1.2.0 // indirect
+	github.com/satori/go.uuid v1.2.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	github.com/ugorji/go v1.2.5 // indirect
 	go.mongodb.org/mongo-driver v1.5.0
