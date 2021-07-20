@@ -64,6 +64,17 @@ func StartGinService() {
 		r.GET("/getcontributehistory", APIGetContributeHistory)
 		r.GET("/getwithdrawhistory", APIGetWithdrawHistory)
 		r.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
+
+		//pdex v3
+		pdex := r.Group("/pdex")
+		pdexv3 := pdex.Group("/v3")
+		pdexv3.GET("/estimatefee")
+		pdexv3.GET("/orderbook")
+		pdexv3.GET("/pricechange")
+		pdexv3.GET("/state")
+		pdexv3.GET("/orderstatus")
+
+		r.GET("")
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
