@@ -71,10 +71,12 @@ func StartGinService() {
 		pdexv3.GET("/estimatefee")
 		pdexv3.GET("/orderbook")
 		pdexv3.GET("/pricechange")
+		pdexv3.GET("/price")
 		pdexv3.GET("/state")
 		pdexv3.GET("/orderstatus")
-
-		r.GET("")
+		pdexv3.GET("/pools")
+		pdexv3.GET("/reward")
+		pdexv3.GET("/share")
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
