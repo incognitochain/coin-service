@@ -35,7 +35,7 @@ func DBUpdateCoins(list []shared.CoinData) error {
 	return nil
 }
 
-func DBGetCoinsByIndex(idx int, shardID int, tokenID string) (*shared.CoinData, error) {
+func DBGetCoinsByIndex(idx uint64, shardID int, tokenID string) (*shared.CoinData, error) {
 	var result shared.CoinData
 	filter := bson.M{"coinidx": bson.M{operator.Eq: idx}, "shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	err := mgm.Coll(&shared.CoinData{}).First(filter, &result)

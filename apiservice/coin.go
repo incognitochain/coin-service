@@ -169,7 +169,8 @@ func APIGetRandomCommitments(c *gin.Context) {
 		for i := 0; i < req.Limit; i++ {
 			idx, _ := common.RandBigIntMaxRange(lenOTA)
 			log.Println("getRandomCommitmentsHandler", lenOTA, idx.Int64())
-			coinData, err := database.DBGetCoinsByIndex(int(idx.Int64()), req.ShardID, req.TokenID)
+			coinIdx := uint64(idx.Int64())
+			coinData, err := database.DBGetCoinsByIndex(coinIdx, req.ShardID, req.TokenID)
 			if err != nil {
 				i--
 				continue
@@ -187,7 +188,7 @@ func APIGetRandomCommitments(c *gin.Context) {
 			publicKey := coinV2.GetPublicKey()
 			commitment := coinV2.GetCommitment()
 
-			commitmentIndices = append(commitmentIndices, idx.Uint64())
+			commitmentIndices = append(commitmentIndices, coinIdx)
 			if req.Base58 {
 				publicKeys = append(publicKeys, base58.EncodeCheck(publicKey.ToBytesS()))
 				commitments = append(commitments, base58.EncodeCheck(commitment.ToBytesS()))
@@ -209,7 +210,6 @@ func APIGetRandomCommitments(c *gin.Context) {
 				}
 			}
 		}
-
 	}
 
 	rs := struct {
