@@ -40,6 +40,7 @@ func StartGinService() {
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
+		// OLD API format
 		r.GET("/getcoininfo", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
@@ -57,14 +58,16 @@ func StartGinService() {
 		r.POST("/gettxsbysender", APIGetTxsBySender)
 
 		r.GET("/getlatesttx", APIGetLatestTxs)
-		r.GET("/gettradehistory", APIGetTradeHistory)
-		r.GET("/getpdestate", APIPDEState)
 		r.GET("/getshieldhistory", APIGetShieldHistory)
 		r.GET("/getunshieldhistory", APIGetUnshieldHistory)
+
+		r.GET("/gettradehistory", APIGetTradeHistory)
+		r.GET("/getpdestate", APIPDEState)
 		r.GET("/getcontributehistory", APIGetContributeHistory)
 		r.GET("/getwithdrawhistory", APIGetWithdrawHistory)
 		r.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
+		// New API format
 		//pdex v3
 		pdex := r.Group("/pdex")
 		pdexv3 := pdex.Group("/v3")
@@ -77,6 +80,14 @@ func StartGinService() {
 		pdexv3.GET("/pools")
 		pdexv3.GET("/reward")
 		pdexv3.GET("/share")
+
+		pdexv2 := pdex.Group("/v2")
+		pdexv2.GET("/gettradehistory", APIGetTradeHistory)
+		pdexv2.GET("/getpdestate", APIPDEState)
+		pdexv2.GET("/getcontributehistory", APIGetContributeHistory)
+		pdexv2.GET("/getwithdrawhistory", APIGetWithdrawHistory)
+		pdexv2.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
+
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
