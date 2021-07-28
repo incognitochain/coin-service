@@ -272,11 +272,12 @@ type TradeData struct {
 	Status           string `json:"status" bson:"status"`
 	TokenID          string `json:"tokenid" bson:"tokenid"`
 	Amount           uint64 `json:"amount" bson:"amount"`
+	PoolID           string `json:"poolid" bson:"poolid"`
 }
 
-func NewTradeData(requestTx, respondTx, status, tokenID string, amount uint64) *TradeData {
+func NewTradeData(requestTx, respondTx, status, tokenID string, amount uint64, poolID string) *TradeData {
 	return &TradeData{
-		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID: tokenID, Amount: amount,
+		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID: tokenID, Amount: amount, PoolID: poolID,
 	}
 }
 
@@ -466,6 +467,60 @@ func (model *WithdrawContributionFeeData) Creating() error {
 	return nil
 }
 func (model *WithdrawContributionFeeData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PendingTradeOrderData struct {
+	mgm.DefaultModel `bson:",inline"`
+	Txhash           string `json:"txhash" bson:"txhash"`
+	SellTokenID      string `json:"selltokenid" bson:"selltokenid"`
+	PairID           string `json:"pairid" bson:"pairid"`
+	Amount           uint64 `json:"amount" bson:"amount"`
+	Match            uint64 `json:"match" bson:"match"`
+	Locktime         int64  `json:"locktime" bson:"locktime"`
+}
+
+func (model *PendingTradeOrderData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PendingTradeOrderData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PoolPairData struct {
+	mgm.DefaultModel `bson:",inline"`
+	PairID           string `json:"pairid" bson:"pairid"`
+	Token1           string `json:"token1" bson:"token1"`
+	Token2           string `json:"token2" bson:"token2"`
+	AMP              int    `json:"amp" bson:"amp"`
+	Token1Amount     string `json:"token1amount" bson:"token1amount"`
+	Token2Amount     string `json:"token2amount" bson:"token2amount"`
+}
+
+func (model *PoolPairData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PoolPairData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

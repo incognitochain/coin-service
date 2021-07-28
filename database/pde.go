@@ -310,3 +310,9 @@ func DBGetPDEWithdrawFeeRespond(address []string, limit int64, offset int64) ([]
 
 	return result, nil
 }
+
+func DBFindPair(prefix string) ([]shared.PoolPairData, error) {
+	var result []shared.PoolPairData
+
+	return result, nil
+}

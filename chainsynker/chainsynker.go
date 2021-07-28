@@ -98,11 +98,16 @@ func InitChainSynker(cfg shared.Config) {
 	log.Println("initiating chain-synker...")
 	if shared.RESET_FLAG {
 		for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
-			statePrefix := fmt.Sprintf("coin-processed-%v", i)
+			statePrefix := fmt.Sprintf("%v%v", ShardData, i)
 			err := Localnode.GetUserDatabase().Delete([]byte(statePrefix), nil)
 			if err != nil {
 				panic(err)
 			}
+		}
+		beaconStatePrefix := BeaconData
+		err := Localnode.GetUserDatabase().Delete([]byte(beaconStatePrefix), nil)
+		if err != nil {
+			panic(err)
 		}
 		log.Println("=========================")
 		log.Println("RESET SUCCESS")
@@ -110,9 +115,9 @@ func InitChainSynker(cfg shared.Config) {
 	}
 	ShardProcessedState := make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
-
+	ProcessedBeaconBestState := uint64(1)
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
-		statePrefix := fmt.Sprintf("coin-processed-%v", i)
+		statePrefix := fmt.Sprintf("%v%v", ShardData, i)
 		v, err := Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 		if err != nil {
 			log.Println(err)
@@ -126,13 +131,25 @@ func InitChainSynker(cfg shared.Config) {
 		}
 		TransactionStateDB[byte(i)] = Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
 	}
+	beaconStatePrefix := BeaconData
+	v, err := Localnode.GetUserDatabase().Get([]byte(beaconStatePrefix), nil)
+	if err != nil {
+		log.Println(err)
+	} else {
+		height, err := strconv.ParseUint(string(v), 0, 64)
+		if err != nil {
+			panic(err)
+		}
+		ProcessedBeaconBestState = height
+	}
+
 	go mempoolWatcher()
 	go tokenListWatcher()
 	time.Sleep(5 * time.Second)
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
-	Localnode.OnNewBlockFromParticularHeight(-1, int64(Localnode.GetBlockchain().BeaconChain.GetFinalViewHeight()), true, updateBeaconState)
+	Localnode.OnNewBlockFromParticularHeight(-1, int64(ProcessedBeaconBestState), true, processBeacon)
 
 }
 

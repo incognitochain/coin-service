@@ -1,7 +1,9 @@
 package chainsynker
 
 import (
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
@@ -11,14 +13,20 @@ import (
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 )
 
-func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) {
+func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
+
 	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
+	blk := beaconBestState.BestBlock
 	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
 	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
 	if err != nil {
 		log.Println(err)
 	}
-	// PDEstate
+
+	log.Printf("start processing coin for block %v beacon\n", blk.GetHeight())
+	startTime := time.Now()
+
+	// Process PDEstate
 	pdeState, err := pdex.InitStateFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight)
 	if err != nil {
 		log.Println(err)
@@ -56,4 +64,15 @@ func updateBeaconState(bc *blockchain.BlockChain, h common.Hash, height uint64) 
 	if err != nil {
 		log.Println(err)
 	}
+
+	if pdeState.Version() == 2 {
+		//TODO process v2 order
+	}
+
+	statePrefix := BeaconData
+	err = Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
