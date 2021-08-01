@@ -70,23 +70,30 @@ func StartGinService() {
 		// New API format
 		//pdex v3
 		pdex := r.Group("/pdex")
-		pdexv3 := pdex.Group("/v3")
-		pdexv3.GET("/estimatefee")
-		pdexv3.GET("/orderbook")
-		pdexv3.GET("/pricechange")
-		pdexv3.GET("/price")
-		pdexv3.GET("/state")
-		pdexv3.GET("/orderstatus")
-		pdexv3.GET("/pools")
-		pdexv3.GET("/reward")
-		pdexv3.GET("/share")
+		pdexv3Group := pdex.Group("/v3")
+		pdexv3Group.GET("/state", pdexv3{}.GetState)
+		pdexv3Group.GET("/estimatetrade", pdexv3{}.EstimateTrade)
+		pdexv3Group.GET("/orderbook", pdexv3{}.GetOrderBook)
+		pdexv3Group.GET("/pendingorder", pdexv3{}.PendingOrder)
+		pdexv3Group.GET("/listpools", pdexv3{}.ListPools)
+		pdexv3Group.GET("/share", pdexv3{}.Share)
+		pdexv3Group.GET("/waitingliquidity", pdexv3{}.WaitingLiquidity)
+		pdexv3Group.POST("/poolsdetail", pdexv3{}.PoolsDetail)
 
-		pdexv2 := pdex.Group("/v2")
-		pdexv2.GET("/gettradehistory", APIGetTradeHistory)
-		pdexv2.GET("/getpdestate", APIPDEState)
-		pdexv2.GET("/getcontributehistory", APIGetContributeHistory)
-		pdexv2.GET("/getwithdrawhistory", APIGetWithdrawHistory)
-		pdexv2.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
+		pdexv3Group.GET("/pricehistory", pdexv3{}.PriceHistory)
+		pdexv3Group.GET("/liquidityhistory", pdexv3{}.LiquidityHistory)
+
+		pdexv3Group.GET("/gettradehistory", pdexv3{}.TradeHistory)
+		pdexv3Group.GET("/getcontributehistory", pdexv3{}.ContributeHistory)
+		pdexv3Group.GET("/getwithdrawhistory", pdexv3{}.WithdrawHistory)
+		pdexv3Group.GET("/getwithdrawfeehistory", pdexv3{}.WithdrawFeeHistory)
+
+		pdexv2Group := pdex.Group("/v2")
+		pdexv2Group.GET("/gettradehistory", APIGetTradeHistory)
+		pdexv2Group.GET("/getpdestate", APIPDEState)
+		pdexv2Group.GET("/getcontributehistory", APIGetContributeHistory)
+		pdexv2Group.GET("/getwithdrawhistory", APIGetWithdrawHistory)
+		pdexv2Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
 	}
 

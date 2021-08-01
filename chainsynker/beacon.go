@@ -66,6 +66,8 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 
 	if pdeState.Version() == 2 {
+		// for poolID, pool := range stateV2.PoolPairs {
+		// }
 		//TODO process v2 order
 	}
 

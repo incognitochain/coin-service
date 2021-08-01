@@ -3,6 +3,7 @@ package shared
 import (
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
+	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 )
 
 type CurrentPDEState struct {
@@ -20,10 +21,9 @@ type PDEStateV1 struct {
 }
 
 type PDEStateV2 struct {
-	WaitingContributions        map[string]pdex.Contribution
-	DeletedWaitingContributions map[string]pdex.Contribution
-	PoolPairs                   map[string]pdex.PoolPairState //
-	Params                      pdex.Params
-	StakingPoolsState           map[string]pdex.StakingPoolState // tokenID -> StakingPoolState
-	Orders                      map[int64][]pdex.Order
+	WaitingContributions map[string]statedb.Pdexv3ContributionState
+	PoolPairs            map[string]pdex.PoolPairState //
+	Params               pdex.Params
+	StakingPoolsState    map[string]pdex.StakingPoolState // tokenID -> StakingPoolState
+	Orders               map[int64][]pdex.Order
 }

@@ -75,15 +75,22 @@ type OrderData struct {
 	Price            int    `json:"price" bson:"price"`
 }
 
-type 
-
 // New metadata type
 const (
-	PDexV3AddLiquidityMeta = 271 // ?Response
-	// PDexV3TradeRequestMeta          = 273
-	PDexV3TradeResponseMeta = 274
-	// PDexV3AddOrderRequestMeta       = 275
-	// PDexV3WithdrawOrderRequestMeta  = 277
-	PDexV3AddOrderResponseMeta      = 276 //Should contain tracking data
-	PDexV3WithdrawOrderResponseMeta = 278 //Should contain tracking data
+	Pdexv3ModifyParamsMeta = 270
+
+	// Pdexv3AddLiquidityRequestMeta       = 271
+	Pdexv3AddLiquidityResponseMeta = 272
+
+	// Pdexv3WithdrawLiquidityRequestMeta  = 273
+	Pdexv3WithdrawLiquidityResponseMeta = 274
+
+	// Pdexv3TradeRequestMeta              = 275
+	PDexv3TradeResponseMeta = 276
+
+	Pdexv3AddOrderRequestMeta  = 277
+	Pdexv3AddOrderResponseMeta = 278
+
+	Pdexv3WithdrawOrderRequestMeta  = 279
+	Pdexv3WithdrawOrderResponseMeta = 280
 )

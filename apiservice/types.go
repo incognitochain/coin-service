@@ -29,7 +29,6 @@ type APIGetRandomCommitmentRequest struct {
 	Indexes []uint64
 	Base58  bool
 }
-
 type APIRespond struct {
 	Result interface{}
 	Error  *string
@@ -82,4 +81,33 @@ type APIGetTxTradeRespond struct {
 type ReceivedTransactionV2 struct {
 	TxDetail    *shared.TransactionDetail
 	FromShardID byte `json:"FromShardID"`
+}
+
+type PdexV3EstimateTradeRespond struct {
+	MaxGet uint64 `json:"MaxGet"`
+	Fee    uint64 `json:"Fee"`
+	Route  string `json:"Route"`
+}
+type PdexV3OrderBookRespond struct {
+	Buy  []PdexV3OrderBookVolume
+	Sell []PdexV3OrderBookVolume
+}
+type PdexV3OrderBookVolume struct {
+	Price  uint64 `json:"Price"`
+	Volume uint64 `json:"Volume"`
+}
+type PdexV3PoolDetail struct {
+	PoolID      string `json:"PoolID"`
+	Token1Value uint64 `json:"Token1Value"`
+	Token2Value uint64 `json:"Token2Value"`
+	Share       uint64 `json:"Share"`
+	Volume      uint64 `json:"Volume"`
+	DayChange   uint64 `json:"24h"`
+	Price       uint64 `json:"Price"`
+	AMP         uint64 `json:"AMP"`
+}
+
+type PdexV3LiquidityHistoryRespond struct {
+	Time   uint64 `json:"Time"`
+	Volume uint64 `json:"Volume"`
 }

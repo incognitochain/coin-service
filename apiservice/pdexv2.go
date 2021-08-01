@@ -280,53 +280,6 @@ func APIGetContributeHistory(c *gin.Context) {
 		})
 	}
 
-	// filterData := make(map[string][]shared.ContributionData)
-	// for _, data := range result {
-	// 	filterData[data.PairID] = append(filterData[data.PairID], data)
-	// }
-	// newListData := []shared.ContributionData{}
-	// for _, dataList := range filterData {
-	// 	fiteredList := []shared.ContributionData{}
-	// 	waitData := make(map[string]*shared.ContributionData)
-	// 	refundData := make(map[string][]shared.ContributionData)
-	// 	for _, data := range dataList {
-	// 		switch data.Status {
-	// 		case common.PDEContributionMatchedChainStatus, common.PDEContributionMatchedNReturnedChainStatus:
-	// 			fiteredList = append(fiteredList, data)
-	// 		case common.PDEContributionWaitingChainStatus:
-	// 			if d, ok := waitData[data.TokenID]; !ok {
-	// 				waitData[data.TokenID] = &data
-	// 			} else {
-	// 				if d.Respondblock < data.Respondblock {
-	// 					waitData[data.TokenID] = &data
-	// 				}
-	// 			}
-	// 		case common.PDEContributionRefundChainStatus:
-	// 			refundData[data.TokenID] = append(refundData[data.TokenID], data)
-	// 		}
-	// 	}
-	// 	if len(refundData) == 0 {
-	// 		if len(fiteredList) != 0 {
-	// 			newListData = append(newListData, fiteredList...)
-	// 			if len(fiteredList) == 1 {
-	// 				for tokenID, data := range waitData {
-	// 					if tokenID != newListData[0].TokenID {
-	// 						newListData = append(newListData, *data)
-	// 					}
-	// 				}
-	// 			}
-	// 		} else {
-	// 			for _, data := range waitData {
-	// 				newListData = append(newListData, *data)
-	// 			}
-	// 		}
-	// 	} else {
-	// 		for _, data := range refundData {
-	// 			newListData = append(newListData, data...)
-	// 		}
-	// 	}
-	// }
-
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Locktime > result[j].Locktime
 	})
@@ -334,7 +287,6 @@ func APIGetContributeHistory(c *gin.Context) {
 		Result: result,
 	}
 	c.JSON(http.StatusOK, respond)
-
 }
 
 func checkDup(list []shared.ContributionData) []shared.ContributionData {

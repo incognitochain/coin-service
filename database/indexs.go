@@ -226,5 +226,27 @@ func DBCreatePDEIndex() error {
 		return err
 	}
 
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	tradeOrderModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.PendingTradeOrderData{}).Indexes().CreateMany(ctx, tradeOrderModel)
+	if err != nil {
+		return err
+	}
+
+	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	poolPairModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.PoolPairData{}).Indexes().CreateMany(ctx, poolPairModel)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

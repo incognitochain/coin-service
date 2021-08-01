@@ -316,3 +316,95 @@ func DBFindPair(prefix string) ([]shared.PoolPairData, error) {
 
 	return result, nil
 }
+
+func DBSavePendingOrder(orders []shared.PendingTradeOrderData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, tx := range orders {
+		tx.Creating()
+		docs = append(docs, tx)
+	}
+	_, err := mgm.Coll(&shared.PendingTradeOrderData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
+	if err != nil {
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for idx, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				filter := bson.M{"txhash": bson.M{operator.Eq: orders[idx].Txhash}}
+				_, err = mgm.Coll(&shared.PendingTradeOrderData{}).UpdateOne(ctx, filter, v, mgm.UpsertTrueOption())
+				if err != nil {
+					writeErr, ok := err.(mongo.WriteException)
+					if !ok {
+						panic(err)
+					}
+					if !writeErr.HasErrorCode(11000) {
+						panic(err)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func DBGetPendingOrder(pubkey, pairID string) ([]shared.PendingTradeOrderData, error) {
+	var result []shared.PendingTradeOrderData
+
+	return result, nil
+}
+
+func DBSavePoolPairs(pools []shared.PoolPairData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(pools)+1)*shared.DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, tx := range pools {
+		tx.Creating()
+		docs = append(docs, tx)
+	}
+	_, err := mgm.Coll(&shared.PoolPairData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
+	if err != nil {
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for idx, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				filter := bson.M{"txhash": bson.M{operator.Eq: pools[idx].PoolID}}
+				_, err = mgm.Coll(&shared.PoolPairData{}).UpdateOne(ctx, filter, v, mgm.UpsertTrueOption())
+				if err != nil {
+					writeErr, ok := err.(mongo.WriteException)
+					if !ok {
+						panic(err)
+					}
+					if !writeErr.HasErrorCode(11000) {
+						panic(err)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func DBGetPoolPairs() ([]shared.PoolPairData, error) {
+	var result []shared.PoolPairData
+
+	return result, nil
+}

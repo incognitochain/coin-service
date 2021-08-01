@@ -28,6 +28,7 @@ type Config struct {
 	NumOfShard            int    `json:"numberofshard"`
 	IndexerID             int    `json:"indexerid"`
 	MasterIndexerAddr     string `json:"masterindexer"`
+	AnalyticService       string `json:"analyticservice"`
 }
 
 type ConfigJSON struct {
@@ -41,6 +42,7 @@ type ConfigJSON struct {
 	ChainNetwork          string `json:"chainnetwork"`
 	IndexerID             int    `json:"indexerid"`
 	MasterIndexerAddr     string `json:"masterindexer"`
+	AnalyticService       string `json:"analyticservice"`
 }
 
 func ReadConfigAndArg() {
@@ -121,6 +123,7 @@ func ReadConfigAndArg() {
 	ServiceCfg.NumOfShard = param.ActiveShards
 	ServiceCfg.IndexerID = tempCfg.IndexerID
 	ServiceCfg.MasterIndexerAddr = tempCfg.MasterIndexerAddr
+	ServiceCfg.AnalyticService = tempCfg.AnalyticService
 
 	common.MaxShardNumber = param.ActiveShards
 }

@@ -430,7 +430,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				requestTx = tx.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
 				status = tx.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
 			}
-			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue())
+			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue(), "")
 			tradeRespondList = append(tradeRespondList, *trade)
 		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 			requestTx := ""

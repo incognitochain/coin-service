@@ -479,10 +479,25 @@ type PendingTradeOrderData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Txhash           string `json:"txhash" bson:"txhash"`
 	SellTokenID      string `json:"selltokenid" bson:"selltokenid"`
+	PoolID           string `json:"poolid" bson:"poolid"`
 	PairID           string `json:"pairid" bson:"pairid"`
+	Price            uint64 `json:"price" bson:"price"`
 	Amount           uint64 `json:"amount" bson:"amount"`
-	Match            uint64 `json:"match" bson:"match"`
+	Remain           uint64 `json:"remain" bson:"remain"`
 	Locktime         int64  `json:"locktime" bson:"locktime"`
+}
+
+func NewPendingTradeOrderData(txhash, selltoken, poolid, pairid string, price, amount, remain uint64, locktime int64) *PendingTradeOrderData {
+	return &PendingTradeOrderData{
+		Txhash:      txhash,
+		SellTokenID: selltoken,
+		PoolID:      poolid,
+		PairID:      pairid,
+		Price:       price,
+		Amount:      amount,
+		Remain:      remain,
+		Locktime:    locktime,
+	}
 }
 
 func (model *PendingTradeOrderData) Creating() error {
@@ -504,12 +519,25 @@ func (model *PendingTradeOrderData) Saving() error {
 
 type PoolPairData struct {
 	mgm.DefaultModel `bson:",inline"`
+	PoolID           string `json:"poolid" bson:"poolid"`
 	PairID           string `json:"pairid" bson:"pairid"`
 	Token1           string `json:"token1" bson:"token1"`
 	Token2           string `json:"token2" bson:"token2"`
 	AMP              int    `json:"amp" bson:"amp"`
-	Token1Amount     string `json:"token1amount" bson:"token1amount"`
-	Token2Amount     string `json:"token2amount" bson:"token2amount"`
+	Token1Amount     uint64 `json:"token1amount" bson:"token1amount"`
+	Token2Amount     uint64 `json:"token2amount" bson:"token2amount"`
+}
+
+func NewPoolPairData(poolid, pairid, token1, token2 string, amp int, token1amount, token2amount uint64) *PoolPairData {
+	return &PoolPairData{
+		PoolID:       poolid,
+		PairID:       pairid,
+		Token1:       token1,
+		Token2:       token2,
+		AMP:          amp,
+		Token1Amount: token1amount,
+		Token2Amount: token2amount,
+	}
 }
 
 func (model *PoolPairData) Creating() error {
