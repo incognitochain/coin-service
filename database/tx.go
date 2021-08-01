@@ -76,7 +76,7 @@ func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey string, tokenID string) 
 func DBGetSendTxByKeyImages(keyimages []string) ([]shared.TxData, error) {
 	var result []shared.TxData
 	filter := bson.M{"keyimages": bson.M{operator.In: keyimages}}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keyimages)+1)*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keyimages)+5)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort: bson.D{{"locktime", -1}},
 	})
