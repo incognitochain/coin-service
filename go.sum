@@ -30,6 +30,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20210719044132-85949625fb3d h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210719044132-85949625fb3d/go.mod h1:ockC1zfPI6zHkno16Dw+P+moHtBxL7jY2UtdkCTGXhY=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210728034638-6e3911badc93 h1:mmDHg0ZxC2rtAQRBxvZUSvrIFyfbYvRwr1rtgW/+EyA=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20210728034638-6e3911badc93/go.mod h1:qx8e1zaIF8khH2p3VdtO+7aJo1+gzOwUmmueUf+TROA=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210802052908-7625b236fb12 h1:RRm/SWDl3rWIilkRXo30r96THAhF8EGfpm3B+sGw2uw=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20210802052908-7625b236fb12/go.mod h1:ebg0UegTib9RB61HFt/LoSg+oGsA35AFa8mBxzY2Nyo=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
@@ -289,6 +291,8 @@ github.com/incognitochain/incognito-chain v0.0.0-20210702072622-bed45d0e1f2d h1:
 github.com/incognitochain/incognito-chain v0.0.0-20210702072622-bed45d0e1f2d/go.mod h1:zaaGzpXQQTOh2OxL4zlhn01dIwWsnF82W5skN8CMQg0=
 github.com/incognitochain/incognito-chain v0.0.0-20210722025457-436398cab496 h1:hOx0trcZs677vWWIouF21HRii1mfe2OLMXgTjAErY70=
 github.com/incognitochain/incognito-chain v0.0.0-20210722025457-436398cab496/go.mod h1:zaaGzpXQQTOh2OxL4zlhn01dIwWsnF82W5skN8CMQg0=
+github.com/incognitochain/incognito-chain v0.0.0-20210802034357-3d0882ecbd11 h1:EbyffUL3xr2ndjAf5EDVryxc4ZU/HKr7k3fHBSrVoWA=
+github.com/incognitochain/incognito-chain v0.0.0-20210802034357-3d0882ecbd11/go.mod h1:zaaGzpXQQTOh2OxL4zlhn01dIwWsnF82W5skN8CMQg0=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
