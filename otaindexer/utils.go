@@ -38,7 +38,8 @@ retryCheckTokenID:
 	retryGetToken:
 		err := retrieveTokenIDList()
 		if err != nil {
-			panic(err)
+			log.Println("retrieveTokenIDList", err)
+			goto retryGetToken
 		}
 		if len(lastTokenIDMap) == 0 {
 			log.Println("retryGetToken")
