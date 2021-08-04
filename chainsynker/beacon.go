@@ -64,7 +64,16 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		log.Println(err)
 	}
+	pairData := []shared.PairData{}
+	pools := []shared.PoolPairData{}
+	for _, poolPairs := range newPDEState.StateV2.PoolPairs {
 
+	}
+
+	err = database.DBSavePoolPairs(pools)
+	if err != nil {
+		log.Println(err)
+	}
 	if pdeState.Version() == 2 {
 		// for poolID, pool := range stateV2.PoolPairs {
 		// }

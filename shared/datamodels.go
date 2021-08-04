@@ -517,6 +517,44 @@ func (model *PendingTradeOrderData) Saving() error {
 	return nil
 }
 
+type PairData struct {
+	mgm.DefaultModel `bson:",inline"`
+	PairID           string `json:"pairid" bson:"pairid"`
+	Token1           string `json:"token1" bson:"token1"`
+	Token2           string `json:"token2" bson:"token2"`
+	Token1Value      uint64 `json:"token1Value" bson:"token1Value"`
+	Token2Value      uint64 `json:"token2Value" bson:"token2Value"`
+	PoolCount        int    `json:"poolcount" bson:"poolcount"`
+}
+
+func NewPairData(pairid, token1, token2 string, poolcount int, token1value, token2value uint64) *PairData {
+	return &PairData{
+		PairID:      pairid,
+		Token1:      token1,
+		Token2:      token2,
+		Token1Value: token1value,
+		Token2Value: token2value,
+		PoolCount:   poolcount,
+	}
+}
+
+func (model *PairData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PairData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type PoolPairData struct {
 	mgm.DefaultModel `bson:",inline"`
 	PoolID           string `json:"poolid" bson:"poolid"`
