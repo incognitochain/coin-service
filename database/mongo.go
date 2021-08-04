@@ -117,8 +117,28 @@ func DBSavePendingTx(list []shared.CoinPendingData) error {
 		}
 		_, err := mgm.Coll(&shared.CoinPendingData{}).InsertMany(ctx, docs)
 		if err != nil {
-			log.Println(err)
-			return err
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				panic(err)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			} else {
+				for _, v := range docs {
+					ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+					_, err = mgm.Coll(&shared.CoinPendingData{}).InsertOne(ctx, v)
+					if err != nil {
+						writeErr, ok := err.(mongo.WriteException)
+						if !ok {
+							panic(err)
+						}
+						if !writeErr.HasErrorCode(11000) {
+							panic(err)
+						}
+					}
+				}
+			}
 		}
 	}
 	return nil

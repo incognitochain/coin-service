@@ -51,16 +51,16 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 	if limit == 0 {
 		limit = 10000
 	}
-	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx, operator.Lte: fromidx + limit}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
 	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
-		// Sort: bson.D{{Key: "coinidx", Value: 1}},
-		// Limit: &limit,
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
 	})
 	if err != nil {
 		return nil, err
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
-	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	log.Printf("found %v shard %v coins in %v", len(list), shardID, time.Since(startTime))
 	return list, err
 }
 
