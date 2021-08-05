@@ -33,8 +33,17 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	_ = poolID
 	_ = price
 }
-func (pdexv3) GetState(c *gin.Context) {
-
+func (pdexv3) ListPairs(c *gin.Context) {
+	result, err := database.DBGetPdexPairs()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 func (pdexv3) GetOrderBook(c *gin.Context) {
 	decimal := c.Query("decimal")

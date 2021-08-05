@@ -94,7 +94,7 @@ func StartGinService() {
 		//pdex v3
 		pdex := r.Group("/pdex")
 		pdexv3Group := pdex.Group("/v3")
-		pdexv3Group.GET("/state", pdexv3{}.GetState)
+		pdexv3Group.GET("/listpairs", pdexv3{}.ListPairs)
 		pdexv3Group.GET("/estimatetrade", pdexv3{}.EstimateTrade)
 		pdexv3Group.GET("/orderbook", pdexv3{}.GetOrderBook)
 		pdexv3Group.GET("/pendingorder", pdexv3{}.PendingOrder)

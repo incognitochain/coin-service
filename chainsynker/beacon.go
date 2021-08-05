@@ -67,9 +67,9 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	pairData := []shared.PairData{}
 	pools := []shared.PoolPairData{}
 	for _, poolPairs := range newPDEState.StateV2.PoolPairs {
-
+		_ = poolPairs
 	}
-
+	_ = pairData
 	err = database.DBSavePoolPairs(pools)
 	if err != nil {
 		log.Println(err)

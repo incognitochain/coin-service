@@ -408,3 +408,9 @@ func DBGetPoolPairs() ([]shared.PoolPairData, error) {
 
 	return result, nil
 }
+
+func DBGetPdexPairs() ([]shared.PairData, error) {
+	var result []shared.PairData
+
+	return result, nil
+}
