@@ -235,7 +235,7 @@ func DBCreatePDEIndex() error {
 			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
 		},
 	}
-	_, err = mgm.Coll(&shared.PendingTradeOrderData{}).Indexes().CreateMany(ctx, tradeOrderModel)
+	_, err = mgm.Coll(&shared.LimitOrderData{}).Indexes().CreateMany(ctx, tradeOrderModel)
 	if err != nil {
 		return err
 	}

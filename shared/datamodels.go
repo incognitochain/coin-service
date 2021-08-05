@@ -475,7 +475,7 @@ func (model *WithdrawContributionFeeData) Saving() error {
 	return nil
 }
 
-type PendingTradeOrderData struct {
+type LimitOrderData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Txhash           string `json:"txhash" bson:"txhash"`
 	SellTokenID      string `json:"selltokenid" bson:"selltokenid"`
@@ -487,8 +487,8 @@ type PendingTradeOrderData struct {
 	Locktime         int64  `json:"locktime" bson:"locktime"`
 }
 
-func NewPendingTradeOrderData(txhash, selltoken, poolid, pairid string, price, amount, remain uint64, locktime int64) *PendingTradeOrderData {
-	return &PendingTradeOrderData{
+func NewLimitOrderData(txhash, selltoken, poolid, pairid string, price, amount, remain uint64, locktime int64) *LimitOrderData {
+	return &LimitOrderData{
 		Txhash:      txhash,
 		SellTokenID: selltoken,
 		PoolID:      poolid,
@@ -500,7 +500,7 @@ func NewPendingTradeOrderData(txhash, selltoken, poolid, pairid string, price, a
 	}
 }
 
-func (model *PendingTradeOrderData) Creating() error {
+func (model *LimitOrderData) Creating() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Creating(); err != nil {
 		return err
@@ -508,7 +508,7 @@ func (model *PendingTradeOrderData) Creating() error {
 
 	return nil
 }
-func (model *PendingTradeOrderData) Saving() error {
+func (model *LimitOrderData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err
