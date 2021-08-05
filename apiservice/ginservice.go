@@ -52,7 +52,6 @@ func StartGinService() {
 		r.POST("/gettxsbypubkey", APIGetTxsByPubkey)
 		r.GET("/getpendingtxs", APIGetPendingTxs)
 		r.GET("/checkpendingtx", APICheckTxPending)
-		r.GET("/tokenlist", APIGetTokenList)
 
 		r.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
 		r.POST("/gettxsbysender", APIGetTxsBySender)
@@ -68,6 +67,30 @@ func StartGinService() {
 		r.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
 		// New API format
+		//coins
+		coinsGroup := r.Group("/coins")
+		coinsGroup.GET("/tokenlist", APIGetTokenList)
+		coinsGroup.GET("/getcoininfo", APIGetCoinInfo)
+		coinsGroup.GET("/getcoinspending", APIGetCoinsPending)
+		coinsGroup.GET("/getcoins", APIGetCoins)
+		coinsGroup.GET("/getkeyinfo", APIGetKeyInfo)
+		coinsGroup.POST("/checkkeyimages", APICheckKeyImages)
+		coinsGroup.POST("/getrandomcommitments", APIGetRandomCommitments)
+		//tx
+		txGroup := r.Group("/txs")
+		txGroup.POST("/gettxsbysender", APIGetTxsBySender)
+		txGroup.POST("/checktxs", APICheckTXs)
+		txGroup.POST("/gettxsbypubkey", APIGetTxsByPubkey)
+		txGroup.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
+		txGroup.GET("/gettxdetail", APIGetTxDetail)
+		txGroup.GET("/getpendingtxs", APIGetPendingTxs)
+		txGroup.GET("/checkpendingtx", APICheckTxPending)
+		txGroup.GET("/getlatesttx", APIGetLatestTxs)
+		//shield
+		shieldGroup := r.Group("/shield")
+		shieldGroup.GET("/getshieldhistory", APIGetShieldHistory)
+		shieldGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
+
 		//pdex v3
 		pdex := r.Group("/pdex")
 		pdexv3Group := pdex.Group("/v3")
