@@ -265,38 +265,38 @@ func (model *TxData) Saving() error {
 	return nil
 }
 
-type TradeData struct {
-	mgm.DefaultModel `bson:",inline"`
-	RequestTx        string `json:"requesttx" bson:"requesttx"`
-	RespondTx        string `json:"respondtx" bson:"respondtx"`
-	Status           string `json:"status" bson:"status"`
-	TokenID          string `json:"tokenid" bson:"tokenid"`
-	Amount           uint64 `json:"amount" bson:"amount"`
-	PoolID           string `json:"poolid" bson:"poolid"`
-}
+// type TradeData struct {
+// 	mgm.DefaultModel `bson:",inline"`
+// 	RequestTx        string `json:"requesttx" bson:"requesttx"`
+// 	RespondTx        string `json:"respondtx" bson:"respondtx"`
+// 	Status           string `json:"status" bson:"status"`
+// 	TokenID          string `json:"tokenid" bson:"tokenid"`
+// 	Amount           uint64 `json:"amount" bson:"amount"`
+// 	PoolID           string `json:"poolid" bson:"poolid"`
+// }
 
-func NewTradeData(requestTx, respondTx, status, tokenID string, amount uint64, poolID string) *TradeData {
-	return &TradeData{
-		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID: tokenID, Amount: amount, PoolID: poolID,
-	}
-}
+// func NewTradeData(requestTx, respondTx, status, tokenID string, amount uint64, poolID string) *TradeData {
+// 	return &TradeData{
+// 		RequestTx: requestTx, RespondTx: respondTx, Status: status, TokenID: tokenID, Amount: amount, PoolID: poolID,
+// 	}
+// }
 
-func (model *TradeData) Creating() error {
-	// Call the DefaultModel Creating hook
-	if err := model.DefaultModel.Creating(); err != nil {
-		return err
-	}
+// func (model *TradeData) Creating() error {
+// 	// Call the DefaultModel Creating hook
+// 	if err := model.DefaultModel.Creating(); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
-func (model *TradeData) Saving() error {
-	// Call the DefaultModel Creating hook
-	if err := model.DefaultModel.Saving(); err != nil {
-		return err
-	}
+// 	return nil
+// }
+// func (model *TradeData) Saving() error {
+// 	// Call the DefaultModel Creating hook
+// 	if err := model.DefaultModel.Saving(); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 type PDEStateData struct {
 	mgm.DefaultModel `bson:",inline"`
@@ -475,32 +475,37 @@ func (model *WithdrawContributionFeeData) Saving() error {
 	return nil
 }
 
-type LimitOrderData struct {
+type TradeOrderData struct {
 	mgm.DefaultModel `bson:",inline"`
-	Txhash           string `json:"txhash" bson:"txhash"`
-	SellTokenID      string `json:"selltokenid" bson:"selltokenid"`
-	PoolID           string `json:"poolid" bson:"poolid"`
-	PairID           string `json:"pairid" bson:"pairid"`
-	Price            uint64 `json:"price" bson:"price"`
-	Amount           uint64 `json:"amount" bson:"amount"`
-	Remain           uint64 `json:"remain" bson:"remain"`
-	Locktime         int64  `json:"locktime" bson:"locktime"`
+	RequestTx        string   `json:"requesttx" bson:"requesttx"`
+	RespondTxs       []string `json:"respondtxs" bson:"respondtxs"`
+	WithdrawTx       string   `json:"withdrawtx" bson:"withdrawtx"`
+	SellTokenID      string   `json:"selltokenid" bson:"selltokenid"`
+	Status           string   `json:"status" bson:"status"`
+	PairID           string   `json:"pairid" bson:"pairid"`
+	PoolID           string   `json:"poolid" bson:"poolid"`
+	Rate             uint64   `json:"price" bson:"price"`
+	Amount           uint64   `json:"amount" bson:"amount"`
+	Remain           uint64   `json:"remain" bson:"remain"`
+	Locktime         int64    `json:"locktime" bson:"locktime"`
 }
 
-func NewLimitOrderData(txhash, selltoken, poolid, pairid string, price, amount, remain uint64, locktime int64) *LimitOrderData {
-	return &LimitOrderData{
-		Txhash:      txhash,
+func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status string, respondTxs []string, rate, amount, remain uint64, locktime int64) *TradeOrderData {
+	return &TradeOrderData{
+		RequestTx:   requestTx,
+		RespondTxs:  respondTxs,
 		SellTokenID: selltoken,
+		Status:      status,
 		PoolID:      poolid,
 		PairID:      pairid,
-		Price:       price,
+		Rate:        rate,
 		Amount:      amount,
 		Remain:      remain,
 		Locktime:    locktime,
 	}
 }
 
-func (model *LimitOrderData) Creating() error {
+func (model *TradeOrderData) Creating() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Creating(); err != nil {
 		return err
@@ -508,7 +513,7 @@ func (model *LimitOrderData) Creating() error {
 
 	return nil
 }
-func (model *LimitOrderData) Saving() error {
+func (model *TradeOrderData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

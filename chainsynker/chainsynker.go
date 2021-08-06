@@ -81,12 +81,7 @@ func InitChainSynker(cfg shared.Config) {
 		panic(err)
 	}
 
-	err = database.DBCreateTradeIndex()
-	if err != nil {
-		panic(err)
-	}
-
-	err = database.DBCreatePDEIndex()
+	err = database.DBCreatePDEXIndex()
 	if err != nil {
 		panic(err)
 	}

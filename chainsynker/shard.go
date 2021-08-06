@@ -96,7 +96,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	coinV1PubkeyInfo := make(map[string]map[string]shared.CoinInfo)
 
 	txDataList := []shared.TxData{}
-	tradeRespondList := []shared.TradeData{}
+	tradeRespondList := []shared.TradeOrderData{}
+	tradeRequestList := []shared.TradeOrderData{}
 	bridgeShieldRespondList := []shared.ShieldData{}
 	txRespondMap := make(map[string][]struct {
 		Amount   uint64
@@ -419,6 +420,49 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 
 		metaDataType := tx.GetMetadataType()
 		switch metaDataType {
+		case metadata.PDECrossPoolTradeRequestMeta, metadata.PDETradeRequestMeta, metadata.Pdexv3TradeRequestMeta, metadata.Pdexv3AddOrderRequestMeta:
+			requestTx := tx.Hash().String()
+			lockTime := tx.GetLockTime()
+			buyToken := ""
+			sellToken := ""
+			poolID := ""
+			pairID := ""
+			rate := uint64(0)
+			amount := uint64(0)
+			switch metaDataType {
+			case metadata.PDETradeRequestMeta:
+				meta := tx.GetMetadata().(*metadata.PDECrossPoolTradeRequest)
+				payment := meta.TraderAddressStr
+				wl, err := wallet.Base58CheckDeserialize(payment)
+				if err != nil {
+					panic(err)
+				}
+				pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
+				buyToken = meta.TokenIDToBuyStr
+				sellToken = meta.TokenIDToSellStr
+				pairID = meta.TokenIDToBuyStr + "-" + meta.TokenIDToSellStr
+				rate = meta.MinAcceptableAmount / meta.SellAmount
+				amount = meta.SellAmount
+			case metadata.PDECrossPoolTradeRequestMeta:
+				meta := tx.GetMetadata().(*metadata.PDETradeRequest)
+				payment := meta.TraderAddressStr
+				wl, err := wallet.Base58CheckDeserialize(payment)
+				if err != nil {
+					panic(err)
+				}
+				pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
+				buyToken = meta.TokenIDToBuyStr
+				sellToken = meta.TokenIDToSellStr
+				pairID = meta.TokenIDToBuyStr + "-" + meta.TokenIDToSellStr
+				rate = meta.MinAcceptableAmount / meta.SellAmount
+				amount = meta.SellAmount
+			case metadata.Pdexv3TradeRequestMeta:
+
+			case metadata.Pdexv3AddOrderRequestMeta:
+
+			}
+			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nil, rate, amount, 0, lockTime)
+			tradeRequestList = append(tradeRequestList, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta:
 			requestTx := ""
 			status := ""
@@ -430,8 +474,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				requestTx = tx.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
 				status = tx.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
 			}
-			trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue(), "")
+			trade := shared.NewTradeOrderData(requestTx, tokenIDStr, "", "", status, []string{tx.Hash().String()}, outs[0].GetValue(), tx.GetLockTime())
+			// trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue(), "")
 			tradeRespondList = append(tradeRespondList, *trade)
+		case metadata.Pdexv3WithdrawOrderRequestMeta:
+			//TODO
+		case metadata.Pdexv3WithdrawOrderResponseMeta:
 		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 			requestTx := ""
 			shieldType := "shield"
