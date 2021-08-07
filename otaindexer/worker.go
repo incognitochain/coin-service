@@ -17,8 +17,10 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
+	"github.com/kamva/mgm/v3"
 	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var assignedOTAKeys = struct {
@@ -37,6 +39,7 @@ retry:
 	})
 	if err != nil {
 		log.Println(err)
+		time.Sleep(5 * time.Second)
 		goto retry
 	}
 	defer c.Close()
@@ -44,15 +47,20 @@ retry:
 	done := make(chan struct{})
 
 	go func() {
-		defer close(done)
 		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
+			select {
+			case <-done:
 				return
+			default:
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Println("read:", err)
+					close(done)
+					return
+				}
+				log.Printf("recv: %s", message)
+				readCh <- message
 			}
-			log.Printf("recv: %s", message)
-			readCh <- message
 		}
 	}()
 
@@ -66,7 +74,8 @@ retry:
 			err := c.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
-				return
+				close(done)
+				continue
 			}
 		case <-t.C:
 			go func() {
@@ -80,45 +89,64 @@ retry:
 func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 	for {
 		msg := <-readCh
-		var key OTAkeyInfo
-		err := json.Unmarshal(msg, &key)
+		var keyAction WorkerOTACmd
+		err := json.Unmarshal(msg, &keyAction)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
+
 		assignedOTAKeys.Lock()
-		pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
-		if err != nil {
-			log.Fatalln(err)
+		switch keyAction.Action {
+		case REINDEX:
+			pubkey, _, err := base58.Base58Check{}.Decode(keyAction.Key.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+			for _, v := range assignedOTAKeys.Keys[int(shardID)] {
+				if v.OTAKey == keyAction.Key.OTAKey {
+					for tokenID, coinInfo := range v.KeyInfo.CoinIndex {
+						coinInfo.LastScanned = 0
+						v.KeyInfo.CoinIndex[tokenID] = coinInfo
+					}
+				}
+			}
+		case INDEX:
+
+			pubkey, _, err := base58.Base58Check{}.Decode(keyAction.Key.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes, _, err := base58.Base58Check{}.Decode(keyAction.Key.OTAKey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes = append(keyBytes, pubkey...)
+			if len(keyBytes) != 64 {
+				log.Fatalln(errors.New("keyBytes length isn't 64"))
+			}
+			otaKey := shared.OTAKeyFromRaw(keyBytes)
+			ks := &incognitokey.KeySet{}
+			ks.OTAKey = otaKey
+			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+			data, err := database.DBGetCoinV2PubkeyInfo(keyAction.Key.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			data.OTAKey = keyAction.Key.OTAKey
+			k := OTAkeyInfo{
+				KeyInfo: data,
+				ShardID: int(shardID),
+				OTAKey:  keyAction.Key.OTAKey,
+				Pubkey:  keyAction.Key.Pubkey,
+				keyset:  ks,
+			}
+			assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
+			assignedOTAKeys.TotalKeys += 1
 		}
-		keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		keyBytes = append(keyBytes, pubkey...)
-		if len(keyBytes) != 64 {
-			log.Fatalln(errors.New("keyBytes length isn't 64"))
-		}
-		otaKey := shared.OTAKeyFromRaw(keyBytes)
-		ks := &incognitokey.KeySet{}
-		ks.OTAKey = otaKey
-		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-		data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		data.OTAKey = key.OTAKey
-		k := OTAkeyInfo{
-			KeyInfo: data,
-			ShardID: int(shardID),
-			OTAKey:  key.OTAKey,
-			Pubkey:  key.Pubkey,
-			keyset:  ks,
-		}
-		assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
-		assignedOTAKeys.TotalKeys += 1
 		assignedOTAKeys.Unlock()
-		log.Printf("success added key %v for indexing", key.Pubkey)
+		log.Printf("success added key %v for indexing", keyAction.Key.Pubkey)
 	}
 }
 
@@ -276,32 +304,41 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 			}
 		}
 	}
-	err := updateSubmittedOTAKey()
-	if err != nil {
-		panic(err)
-	}
-	if len(coinsToUpdate) > 0 {
-		log.Println("\n=========================================")
-		log.Println("len(coinsToUpdate)", len(coinsToUpdate))
-		log.Println("=========================================\n")
-		err := database.DBUpdateCoins(coinsToUpdate)
-		if err != nil {
-			panic(err)
-		}
-	}
 
-	for key, tokenTxs := range totalTxs {
-		for tokenID, txList := range tokenTxs {
-			txHashs := []string{}
-			for txHash := range txList {
-				txHashs = append(txHashs, txHash)
-			}
-			err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key], tokenID)
+	err := mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
+		if len(coinsToUpdate) > 0 {
+			log.Println("\n=========================================")
+			log.Println("len(coinsToUpdate)", len(coinsToUpdate))
+			log.Println("=========================================\n")
+			err := database.DBUpdateCoins(coinsToUpdate)
 			if err != nil {
 				panic(err)
 			}
 		}
+
+		err := updateSubmittedOTAKey()
+		if err != nil {
+			panic(err)
+		}
+
+		for key, tokenTxs := range totalTxs {
+			for tokenID, txList := range tokenTxs {
+				txHashs := []string{}
+				for txHash := range txList {
+					txHashs = append(txHashs, txHash)
+				}
+				err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key], tokenID)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+		return session.CommitTransaction(sc)
+	})
+	if err != nil {
+		panic(err)
 	}
+
 }
 
 func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinData, []shared.CoinData, map[int]uint64, map[int]uint64, error) {

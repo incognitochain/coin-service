@@ -16,7 +16,6 @@ import (
 
 func DBUpdateCoins(list []shared.CoinData) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, coin := range list {
 		update := bson.M{
@@ -25,7 +24,7 @@ func DBUpdateCoins(list []shared.CoinData) error {
 		docs = append(docs, update)
 	}
 	for idx, doc := range docs {
-		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(ctx, list[idx].GetID(), doc)
+		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(context.Background(), list[idx].GetID(), doc)
 		if err != nil {
 			log.Printf("failed to update %v coins in %v", len(list), time.Since(startTime))
 			return err
@@ -176,6 +175,18 @@ func DBGetCoinV2PubkeyInfo(key string) (*shared.KeyInfoData, error) {
 func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
+	doc := shared.CoinData{}
+	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		return -1
+	}
+	return count
+}
+
+func DBGetCoinV2OfOTAkeyCount(shardID int, tokenID, otakey string) int64 {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(500)*shared.DB_OPERATION_TIMEOUT)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "realtokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
 	doc := shared.CoinData{}
 	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
 	if err != nil {
