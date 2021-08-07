@@ -79,7 +79,6 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 
 func (pdexv3) Share(c *gin.Context) {
 	otakey := c.Query("otakey")
-	_ = otakey
 }
 
 func (pdexv3) WaitingLiquidity(c *gin.Context) {

@@ -481,6 +481,7 @@ type TradeOrderData struct {
 	RespondTxs       []string `json:"respondtxs" bson:"respondtxs"`
 	WithdrawTx       string   `json:"withdrawtx" bson:"withdrawtx"`
 	SellTokenID      string   `json:"selltokenid" bson:"selltokenid"`
+	BuyTokenID       string   `json:"buytokenid" bson:"buytokenid"`
 	Status           string   `json:"status" bson:"status"`
 	PairID           string   `json:"pairid" bson:"pairid"`
 	PoolID           string   `json:"poolid" bson:"poolid"`
@@ -488,6 +489,7 @@ type TradeOrderData struct {
 	Amount           uint64   `json:"amount" bson:"amount"`
 	Remain           uint64   `json:"remain" bson:"remain"`
 	Locktime         int64    `json:"locktime" bson:"locktime"`
+	NFCT             string   `json:"nfct" bson:"nfct"`
 }
 
 func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status string, respondTxs []string, rate, amount, remain uint64, locktime int64) *TradeOrderData {

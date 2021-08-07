@@ -44,14 +44,14 @@ func DBGetPDEState() (string, error) {
 	return result.State, nil
 }
 
-func DBSaveTxTrade(list []shared.TradeData) error {
+func DBSaveTxTrade(list []shared.TradeOrderData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.TradeData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
+	_, err := mgm.Coll(&shared.TradeOrderData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
 		writeErr, ok := err.(mongo.BulkWriteException)
 		if !ok {
@@ -67,7 +67,7 @@ func DBSaveTxTrade(list []shared.TradeData) error {
 		} else {
 			for _, v := range docs {
 				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
-				_, err = mgm.Coll(&shared.TradeData{}).InsertOne(ctx, v)
+				_, err = mgm.Coll(&shared.TradeOrderData{}).InsertOne(ctx, v)
 				if err != nil {
 					writeErr, ok := err.(mongo.WriteException)
 					if !ok {
@@ -105,12 +105,12 @@ func DBSaveTxTrade(list []shared.TradeData) error {
 // 	return nil
 // }
 
-func DBGetTxTrade(respondList []string) ([]shared.TradeData, error) {
+func DBGetTxTradeFromTxRespond(respondList []string) ([]shared.TradeOrderData, error) {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondList)+10)*shared.DB_OPERATION_TIMEOUT)
-	result := []shared.TradeData{}
+	result := []shared.TradeOrderData{}
 
-	filter := bson.M{"respondtx": bson.M{operator.In: respondList}}
-	err := mgm.Coll(&shared.TradeData{}).SimpleFindWithCtx(ctx, &result, filter)
+	filter := bson.M{"respondtxs": bson.M{operator.In: respondList}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFindWithCtx(ctx, &result, filter)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -317,14 +317,14 @@ func DBFindPair(prefix string) ([]shared.PoolPairData, error) {
 	return result, nil
 }
 
-func DBSaveLimitOrder(orders []shared.LimitOrderData) error {
+func DBSaveTradeOrder(orders []shared.TradeOrderData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range orders {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.LimitOrderData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
+	_, err := mgm.Coll(&shared.TradeOrderData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
 		writeErr, ok := err.(mongo.BulkWriteException)
 		if !ok {
@@ -340,8 +340,8 @@ func DBSaveLimitOrder(orders []shared.LimitOrderData) error {
 		} else {
 			for idx, v := range docs {
 				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
-				filter := bson.M{"txhash": bson.M{operator.Eq: orders[idx].Txhash}}
-				_, err = mgm.Coll(&shared.LimitOrderData{}).UpdateOne(ctx, filter, v, mgm.UpsertTrueOption())
+				filter := bson.M{"requesttx": bson.M{operator.Eq: orders[idx].RequestTx}}
+				_, err = mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, filter, v, mgm.UpsertTrueOption())
 				if err != nil {
 					writeErr, ok := err.(mongo.WriteException)
 					if !ok {
@@ -357,8 +357,8 @@ func DBSaveLimitOrder(orders []shared.LimitOrderData) error {
 	return nil
 }
 
-func DBGetPendingOrder(pubkey, pairID string) ([]shared.LimitOrderData, error) {
-	var result []shared.LimitOrderData
+func DBGetPendingOrder(pubkey, pairID string) ([]shared.TradeOrderData, error) {
+	var result []shared.TradeOrderData
 
 	return result, nil
 }

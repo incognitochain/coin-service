@@ -68,7 +68,7 @@ func APIGetTradeHistory(c *gin.Context) {
 		respList = append(respList, v.TxHash)
 	}
 
-	txTradePairlist, err := database.DBGetTxTrade(respList)
+	txTradePairlist, err := database.DBGetTxTradeFromTxRespond(respList)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

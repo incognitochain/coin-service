@@ -14,10 +14,10 @@ type CurrentPDEState struct {
 }
 
 type PDEStateV1 struct {
-	WaitingPDEContributions map[string]*rawdbv2.PDEContribution
-	PDEPoolPairs            map[string]*rawdbv2.PDEPoolForPair
-	PDEShares               map[string]uint64
-	PDETradingFees          map[string]uint64
+	WaitingContributions map[string]*rawdbv2.PDEContribution
+	PDEPoolPairs         map[string]*rawdbv2.PDEPoolForPair
+	PDEShares            map[string]uint64
+	PDETradingFees       map[string]uint64
 }
 
 type PDEStateV2 struct {

@@ -464,22 +464,22 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nil, rate, amount, 0, lockTime)
 			tradeRequestList = append(tradeRequestList, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta:
-			requestTx := ""
 			status := ""
 			switch metaDataType {
 			case metadata.PDECrossPoolTradeResponseMeta:
-				requestTx = tx.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
 				status = tx.GetMetadata().(*metadata.PDECrossPoolTradeResponse).TradeStatus
 			case metadata.PDETradeResponseMeta:
-				requestTx = tx.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
 				status = tx.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
 			}
-			trade := shared.NewTradeOrderData(requestTx, tokenIDStr, "", "", status, []string{tx.Hash().String()}, outs[0].GetValue(), tx.GetLockTime())
-			// trade := shared.NewTradeData(requestTx, tx.Hash().String(), status, tokenIDStr, outs[0].GetValue(), "")
-			tradeRespondList = append(tradeRespondList, *trade)
+			trade := shared.TradeOrderData{
+				Status:     status,
+				RespondTxs: []string{tx.Hash().String()},
+			}
+			tradeRespondList = append(tradeRespondList, trade)
 		case metadata.Pdexv3WithdrawOrderRequestMeta:
 			//TODO
 		case metadata.Pdexv3WithdrawOrderResponseMeta:
+			//TODO
 		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 			requestTx := ""
 			shieldType := "shield"
@@ -694,8 +694,16 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 	}
+
+	if len(tradeRequestList) > 0 {
+		err = database.DBSaveTradeOrder(tradeRequestList)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	if len(tradeRespondList) > 0 {
-		err = database.DBSaveTxTrade(tradeRespondList)
+		err = database.DBSaveTradeOrder(tradeRespondList)
 		if err != nil {
 			panic(err)
 		}
