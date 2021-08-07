@@ -35,6 +35,11 @@ var Submitted_OTAKey = struct {
 	TotalKeys   int
 }{}
 
+const (
+	REINDEX = "reindex"
+	INDEX   = "index"
+)
+
 func init() {
 	assignedOTAKeys.Keys = make(map[int][]*OTAkeyInfo)
 	workers = make(map[string]*worker)
@@ -79,7 +84,6 @@ func WorkerRegisterHandler(c *gin.Context) {
 					continue
 				}
 			}
-			// readCh <- msg
 		}
 	}()
 
@@ -181,7 +185,11 @@ func StartWorkerAssigner() {
 				w.OTAAssigned++
 				Submitted_OTAKey.AssignedKey[key] = w
 				log.Printf("assign %v to worker %v", key, w.ID)
-				keyBytes, err := json.Marshal(Submitted_OTAKey.Keys[key])
+				keyAction := WorkerOTACmd{
+					Action: INDEX,
+					Key:    *Submitted_OTAKey.Keys[key],
+				}
+				keyBytes, err := json.Marshal(keyAction)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -201,7 +209,11 @@ func StartWorkerAssigner() {
 					w.OTAAssigned++
 					Submitted_OTAKey.AssignedKey[key] = w
 					log.Printf("re-assign %v to worker %v", key, w.ID)
-					keyBytes, err := json.Marshal(Submitted_OTAKey.Keys[key])
+					keyAction := WorkerOTACmd{
+						Action: INDEX,
+						Key:    *Submitted_OTAKey.Keys[key],
+					}
+					keyBytes, err := json.Marshal(keyAction)
 					if err != nil {
 						log.Fatalln(err)
 					}
@@ -326,27 +338,39 @@ func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
 	if w, ok := Submitted_OTAKey.AssignedKey[key.Pubkey]; !ok {
 		return errors.New("key not assign yet")
 	} else {
-		close(w.closeCh)
-	}
-	for tokenID, coinInfo := range data.CoinIndex {
-		if tokenID == common.ConfidentialAssetID.String() {
+		for tokenID, coinInfo := range data.CoinIndex {
+			if tokenID == common.ConfidentialAssetID.String() {
+				coinInfo.LastScanned = 0
+				data.CoinIndex[tokenID] = coinInfo
+				continue
+			}
+			coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
 			coinInfo.LastScanned = 0
 			data.CoinIndex[tokenID] = coinInfo
-			continue
 		}
-		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
-		coinInfo.LastScanned = 0
-		data.CoinIndex[tokenID] = coinInfo
+		err := data.Saving()
+		if err != nil {
+			return err
+		}
+		doc := bson.M{
+			"$set": *data,
+		}
+		err = database.DBUpdateKeyInfoV2(doc, data)
+		if err != nil {
+			return err
+		}
+		Submitted_OTAKey.Keys[key.Pubkey].KeyInfo = data
+
+		keyAction := WorkerOTACmd{
+			Action: REINDEX,
+			Key:    *Submitted_OTAKey.Keys[key.Pubkey],
+		}
+		keyBytes, err := json.Marshal(keyAction)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		w.writeCh <- keyBytes
 	}
-	data.Saving()
-	doc := bson.M{
-		"$set": *data,
-	}
-	err = database.DBUpdateKeyInfoV2(doc, data)
-	if err != nil {
-		return err
-	}
-	Submitted_OTAKey.Keys[key.Pubkey].KeyInfo = data
-	Submitted_OTAKey.AssignedKey[key.Pubkey] = nil
+
 	return nil
 }

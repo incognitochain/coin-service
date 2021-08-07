@@ -26,3 +26,8 @@ type worker struct {
 	writeCh     chan []byte
 	closeCh     chan struct{}
 }
+
+type WorkerOTACmd struct {
+	Action string
+	Key    OTAkeyInfo
+}
