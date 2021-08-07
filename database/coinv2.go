@@ -185,6 +185,18 @@ func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
 	return count
 }
 
+func DBGetCoinV2OfOTAkeyCount(shardID int, tokenID, otakey string) int64 {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(500)*shared.DB_OPERATION_TIMEOUT)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "realtokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
+	doc := shared.CoinData{}
+	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		return -1
+	}
+	return count
+}
+
 func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {
 	var result []shared.TxData
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(pubkeys)+1)*shared.DB_OPERATION_TIMEOUT)

@@ -1,6 +1,7 @@
 package otaindexer
 
 import (
+	"github.com/gorilla/websocket"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 )
@@ -24,4 +25,5 @@ type worker struct {
 	OTAAssigned int
 	readCh      chan []byte
 	writeCh     chan []byte
+	conn        *websocket.Conn
 }

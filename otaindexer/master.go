@@ -55,6 +55,7 @@ func WorkerRegisterHandler(c *gin.Context) {
 	newWorker.readCh = readCh
 	newWorker.writeCh = writeCh
 	newWorker.Heartbeat = time.Now().Unix()
+	newWorker.conn = ws
 
 	done := make(chan struct{})
 	go func() {
@@ -266,5 +267,62 @@ func addKeys(keys []shared.SubmittedOTAKeyData) error {
 		Submitted_OTAKey.Keys[key.Pubkey] = &k
 		Submitted_OTAKey.TotalKeys += 1
 	}
+	return nil
+}
+
+func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
+	Submitted_OTAKey.Lock()
+	defer Submitted_OTAKey.Unlock()
+	if _, ok := Submitted_OTAKey.Keys[key.Pubkey]; !ok {
+		return errors.New("wrong indexer")
+	}
+	pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
+	if err != nil {
+		return err
+	}
+	keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
+	if err != nil {
+		return err
+	}
+	keyBytes = append(keyBytes, pubkey...)
+	if len(keyBytes) != 64 {
+		return errors.New("keyBytes length isn't 64")
+	}
+	otaKey := shared.OTAKeyFromRaw(keyBytes)
+	ks := &incognitokey.KeySet{}
+	ks.OTAKey = otaKey
+	shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+	data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
+	if err != nil {
+		return err
+	}
+	data.OTAKey = key.OTAKey
+	if w, ok := Submitted_OTAKey.AssignedKey[key.Pubkey]; !ok {
+		return errors.New("key not assign yet")
+	} else {
+		err := w.conn.Close()
+		if err != nil {
+			return err
+		}
+	}
+	for tokenID, coinInfo := range data.CoinIndex {
+		if tokenID == common.ConfidentialAssetID.String() {
+			coinInfo.LastScanned = 0
+			data.CoinIndex[tokenID] = coinInfo
+			continue
+		}
+		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
+		coinInfo.LastScanned = 0
+		data.CoinIndex[tokenID] = coinInfo
+	}
+	k := OTAkeyInfo{
+		KeyInfo: data,
+		ShardID: int(shardID),
+		OTAKey:  key.OTAKey,
+		Pubkey:  key.Pubkey,
+		keyset:  ks,
+	}
+	Submitted_OTAKey.Keys[key.Pubkey] = &k
+	Submitted_OTAKey.AssignedKey[key.Pubkey] = nil
 	return nil
 }
