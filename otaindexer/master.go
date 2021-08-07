@@ -1,7 +1,6 @@
 package otaindexer
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -16,8 +15,11 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
+	jsoniter "github.com/json-iterator/go"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var upGrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
@@ -45,6 +47,26 @@ func init() {
 	workers = make(map[string]*worker)
 	OTAAssignChn = make(chan OTAAssignRequest)
 }
+
+func GetWorkerStat(c *gin.Context) {
+	workerLock.RLock()
+	defer workerLock.RUnlock()
+	type APIRespond struct {
+		Result interface{}
+		Error  *string
+	}
+	stats := make(map[string]uint64)
+	for _, v := range workers {
+		stats[v.ID] = uint64(v.OTAAssigned)
+	}
+	respond := APIRespond{
+		Result: stats,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+	return
+}
+
 func WorkerRegisterHandler(c *gin.Context) {
 	ws, err := upGrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -77,6 +99,7 @@ func WorkerRegisterHandler(c *gin.Context) {
 				_, msg, err := ws.ReadMessage()
 				if err != nil {
 					log.Println(err)
+					close(done)
 					return
 				}
 				if len(msg) == 1 && msg[0] == 1 {
@@ -103,7 +126,6 @@ func WorkerRegisterHandler(c *gin.Context) {
 			err := ws.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
-				close(done)
 				continue
 			}
 		}
@@ -346,6 +368,11 @@ func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
 			}
 			coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
 			coinInfo.LastScanned = 0
+			txs, err := database.DBGetReceiveTxByPubkey(key.Pubkey, tokenID, 2, 99999999, 0)
+			if err != nil {
+				return err
+			}
+			data.TotalReceiveTxs[tokenID] = uint64(len(txs))
 			data.CoinIndex[tokenID] = coinInfo
 		}
 		err := data.Saving()

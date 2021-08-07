@@ -124,6 +124,7 @@ func StartGinService() {
 		r.POST("/submitotakey", APISubmitOTA)
 		r.POST("/rescanotakey", APIRescanOTA)
 		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
+		r.GET("/workerstat", otaindexer.GetWorkerStat)
 	}
 
 	if shared.ServiceCfg.Mode == shared.FULLMODE {
