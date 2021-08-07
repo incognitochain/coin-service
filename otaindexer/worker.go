@@ -44,15 +44,20 @@ retry:
 	done := make(chan struct{})
 
 	go func() {
-		defer close(done)
 		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
+			select {
+			case <-done:
 				return
+			default:
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Println("read:", err)
+					close(done)
+					return
+				}
+				log.Printf("recv: %s", message)
+				readCh <- message
 			}
-			log.Printf("recv: %s", message)
-			readCh <- message
 		}
 	}()
 
@@ -66,7 +71,8 @@ retry:
 			err := c.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
-				return
+				close(done)
+				continue
 			}
 		case <-t.C:
 			go func() {

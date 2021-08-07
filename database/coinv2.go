@@ -16,7 +16,6 @@ import (
 
 func DBUpdateCoins(list []shared.CoinData) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, coin := range list {
 		update := bson.M{
@@ -25,7 +24,7 @@ func DBUpdateCoins(list []shared.CoinData) error {
 		docs = append(docs, update)
 	}
 	for idx, doc := range docs {
-		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(ctx, list[idx].GetID(), doc)
+		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(context.Background(), list[idx].GetID(), doc)
 		if err != nil {
 			log.Printf("failed to update %v coins in %v", len(list), time.Since(startTime))
 			return err

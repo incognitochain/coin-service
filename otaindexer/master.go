@@ -16,6 +16,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var upGrader = websocket.Upgrader{
@@ -55,21 +56,28 @@ func WorkerRegisterHandler(c *gin.Context) {
 	newWorker.readCh = readCh
 	newWorker.writeCh = writeCh
 	newWorker.Heartbeat = time.Now().Unix()
-	newWorker.conn = ws
-
 	done := make(chan struct{})
+	newWorker.closeCh = done
+
 	go func() {
-		defer close(done)
 		for {
-			_, msg, err := ws.ReadMessage()
-			if err != nil {
-				log.Println(err)
+			select {
+			case <-done:
+				newWorker.OTAAssigned = 0
 				newWorker.Heartbeat = 0
+				removeWorker(newWorker)
+				ws.Close()
 				return
-			}
-			if len(msg) == 1 && msg[0] == 1 {
-				newWorker.Heartbeat = time.Now().Unix()
-				continue
+			default:
+				_, msg, err := ws.ReadMessage()
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				if len(msg) == 1 && msg[0] == 1 {
+					newWorker.Heartbeat = time.Now().Unix()
+					continue
+				}
 			}
 			// readCh <- msg
 		}
@@ -83,12 +91,16 @@ func WorkerRegisterHandler(c *gin.Context) {
 	for {
 		select {
 		case <-done:
+			newWorker.OTAAssigned = 0
+			newWorker.Heartbeat = 0
+			removeWorker(newWorker)
 			return
 		case msg := <-writeCh:
 			err := ws.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
-				return
+				close(done)
+				continue
 			}
 		}
 	}
@@ -97,11 +109,24 @@ func WorkerRegisterHandler(c *gin.Context) {
 func registerWorker(w *worker) error {
 	workerLock.Lock()
 	if _, ok := workers[w.ID]; ok {
+		workerLock.Unlock()
 		return errors.New("workerID already exist")
 	}
 	workers[w.ID] = w
 	workerLock.Unlock()
 	log.Printf("register worker %v success\n", w.ID)
+	return nil
+}
+
+func removeWorker(w *worker) error {
+	workerLock.Lock()
+	if _, ok := workers[w.ID]; !ok {
+		workerLock.Unlock()
+		return errors.New("workerID not exist")
+	}
+	delete(workers, w.ID)
+	workerLock.Unlock()
+	log.Printf("remove worker %v success\n", w.ID)
 	return nil
 }
 
@@ -175,6 +200,7 @@ func StartWorkerAssigner() {
 					}
 					w.OTAAssigned++
 					Submitted_OTAKey.AssignedKey[key] = w
+					log.Printf("re-assign %v to worker %v", key, w.ID)
 					keyBytes, err := json.Marshal(Submitted_OTAKey.Keys[key])
 					if err != nil {
 						log.Fatalln(err)
@@ -300,10 +326,7 @@ func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
 	if w, ok := Submitted_OTAKey.AssignedKey[key.Pubkey]; !ok {
 		return errors.New("key not assign yet")
 	} else {
-		err := w.conn.Close()
-		if err != nil {
-			return err
-		}
+		close(w.closeCh)
 	}
 	for tokenID, coinInfo := range data.CoinIndex {
 		if tokenID == common.ConfidentialAssetID.String() {
@@ -315,14 +338,15 @@ func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
 		coinInfo.LastScanned = 0
 		data.CoinIndex[tokenID] = coinInfo
 	}
-	k := OTAkeyInfo{
-		KeyInfo: data,
-		ShardID: int(shardID),
-		OTAKey:  key.OTAKey,
-		Pubkey:  key.Pubkey,
-		keyset:  ks,
+	data.Saving()
+	doc := bson.M{
+		"$set": *data,
 	}
-	Submitted_OTAKey.Keys[key.Pubkey] = &k
+	err = database.DBUpdateKeyInfoV2(doc, data)
+	if err != nil {
+		return err
+	}
+	Submitted_OTAKey.Keys[key.Pubkey].KeyInfo = data
 	Submitted_OTAKey.AssignedKey[key.Pubkey] = nil
 	return nil
 }
