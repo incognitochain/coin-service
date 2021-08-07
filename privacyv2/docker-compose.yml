@@ -44,8 +44,7 @@ services:
 
   worker:
     image: coinservice
-    deploy:
-      replicas: 3
+    scale: 5
     working_dir: /home
     entrypoint: [./run.sh]
     environment:

@@ -1,7 +1,6 @@
 package otaindexer
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -113,7 +112,6 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 				}
 			}
 		case INDEX:
-
 			pubkey, _, err := base58.Base58Check{}.Decode(keyAction.Key.Pubkey)
 			if err != nil {
 				log.Fatalln(err)
@@ -142,6 +140,13 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 				Pubkey:  keyAction.Key.Pubkey,
 				keyset:  ks,
 			}
+			for _, v := range assignedOTAKeys.Keys[int(shardID)] {
+				if v.OTAKey == keyAction.Key.OTAKey {
+					log.Println("key already assign")
+					assignedOTAKeys.Unlock()
+					continue
+				}
+			}
 			assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
 			assignedOTAKeys.TotalKeys += 1
 		}
@@ -165,7 +170,6 @@ func StartOTAIndexing() {
 		if err != nil {
 			panic(err)
 		}
-
 		log.Println("scanning coins...")
 		if len(assignedOTAKeys.Keys) == 0 {
 			log.Println("len(assignedOTAKeys.Keys) == 0")
@@ -195,6 +199,7 @@ func StartOTAIndexing() {
 func cleanAssignedOTA() {
 	assignedOTAKeys.Lock()
 	assignedOTAKeys.Keys = make(map[int][]*OTAkeyInfo)
+	assignedOTAKeys.TotalKeys = 0
 	assignedOTAKeys.Unlock()
 }
 
