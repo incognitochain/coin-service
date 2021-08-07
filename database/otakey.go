@@ -57,9 +57,8 @@ func DBGetIndexerStats(indexerID int) (uint64, error) {
 }
 
 func DBUpdateKeyInfoV2(doc interface{}, key *shared.KeyInfoData) error {
-	ctx, _ := context.WithTimeout(context.Background(), 1*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"otasecret": bson.M{operator.Eq: key.OTAKey}}
-	result, err := mgm.Coll(&shared.KeyInfoDataV2{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
+	result, err := mgm.Coll(&shared.KeyInfoDataV2{}).UpdateOne(context.Background(), filter, doc, mgm.UpsertTrueOption())
 	if err != nil {
 		return err
 	}

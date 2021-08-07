@@ -122,6 +122,7 @@ func StartGinService() {
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
 		r.POST("/submitotakey", APISubmitOTA)
+		r.POST("/rescanotakey", APIRescanOTA)
 		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
 	}
 
@@ -360,6 +361,41 @@ func APIGetKeyInfo(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("key cant be empty")))
 		return
 	}
+}
+
+func APIRescanOTA(c *gin.Context) {
+	var req APISubmitOTAkeyRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	wl, err := wallet.Base58CheckDeserialize(req.OTAKey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("OTASecretKey is invalid")))
+		return
+	}
+	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
+	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
+	err = otaindexer.ReScanOTAKey(*newSubmitRequest)
+	respond := APIRespond{
+		Result: "true",
+	}
+	if err != nil {
+		errStr := err.Error()
+		respond = APIRespond{
+			Result: "false",
+			Error:  &errStr,
+		}
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func APISubmitOTA(c *gin.Context) {

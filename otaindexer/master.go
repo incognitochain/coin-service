@@ -16,6 +16,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var upGrader = websocket.Upgrader{
@@ -33,6 +34,11 @@ var Submitted_OTAKey = struct {
 	AssignedKey map[string]*worker
 	TotalKeys   int
 }{}
+
+const (
+	REINDEX = "reindex"
+	INDEX   = "index"
+)
 
 func init() {
 	assignedOTAKeys.Keys = make(map[int][]*OTAkeyInfo)
@@ -55,22 +61,29 @@ func WorkerRegisterHandler(c *gin.Context) {
 	newWorker.readCh = readCh
 	newWorker.writeCh = writeCh
 	newWorker.Heartbeat = time.Now().Unix()
-
 	done := make(chan struct{})
+	newWorker.closeCh = done
+
 	go func() {
-		defer close(done)
 		for {
-			_, msg, err := ws.ReadMessage()
-			if err != nil {
-				log.Println(err)
+			select {
+			case <-done:
+				newWorker.OTAAssigned = 0
 				newWorker.Heartbeat = 0
+				removeWorker(newWorker)
+				ws.Close()
 				return
+			default:
+				_, msg, err := ws.ReadMessage()
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				if len(msg) == 1 && msg[0] == 1 {
+					newWorker.Heartbeat = time.Now().Unix()
+					continue
+				}
 			}
-			if len(msg) == 1 && msg[0] == 1 {
-				newWorker.Heartbeat = time.Now().Unix()
-				continue
-			}
-			// readCh <- msg
 		}
 	}()
 
@@ -82,12 +95,16 @@ func WorkerRegisterHandler(c *gin.Context) {
 	for {
 		select {
 		case <-done:
+			newWorker.OTAAssigned = 0
+			newWorker.Heartbeat = 0
+			removeWorker(newWorker)
 			return
 		case msg := <-writeCh:
 			err := ws.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
-				return
+				close(done)
+				continue
 			}
 		}
 	}
@@ -96,11 +113,24 @@ func WorkerRegisterHandler(c *gin.Context) {
 func registerWorker(w *worker) error {
 	workerLock.Lock()
 	if _, ok := workers[w.ID]; ok {
+		workerLock.Unlock()
 		return errors.New("workerID already exist")
 	}
 	workers[w.ID] = w
 	workerLock.Unlock()
 	log.Printf("register worker %v success\n", w.ID)
+	return nil
+}
+
+func removeWorker(w *worker) error {
+	workerLock.Lock()
+	if _, ok := workers[w.ID]; !ok {
+		workerLock.Unlock()
+		return errors.New("workerID not exist")
+	}
+	delete(workers, w.ID)
+	workerLock.Unlock()
+	log.Printf("remove worker %v success\n", w.ID)
 	return nil
 }
 
@@ -155,7 +185,11 @@ func StartWorkerAssigner() {
 				w.OTAAssigned++
 				Submitted_OTAKey.AssignedKey[key] = w
 				log.Printf("assign %v to worker %v", key, w.ID)
-				keyBytes, err := json.Marshal(Submitted_OTAKey.Keys[key])
+				keyAction := WorkerOTACmd{
+					Action: INDEX,
+					Key:    *Submitted_OTAKey.Keys[key],
+				}
+				keyBytes, err := json.Marshal(keyAction)
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -174,7 +208,12 @@ func StartWorkerAssigner() {
 					}
 					w.OTAAssigned++
 					Submitted_OTAKey.AssignedKey[key] = w
-					keyBytes, err := json.Marshal(Submitted_OTAKey.Keys[key])
+					log.Printf("re-assign %v to worker %v", key, w.ID)
+					keyAction := WorkerOTACmd{
+						Action: INDEX,
+						Key:    *Submitted_OTAKey.Keys[key],
+					}
+					keyBytes, err := json.Marshal(keyAction)
 					if err != nil {
 						log.Fatalln(err)
 					}
@@ -266,5 +305,72 @@ func addKeys(keys []shared.SubmittedOTAKeyData) error {
 		Submitted_OTAKey.Keys[key.Pubkey] = &k
 		Submitted_OTAKey.TotalKeys += 1
 	}
+	return nil
+}
+
+func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
+	Submitted_OTAKey.Lock()
+	defer Submitted_OTAKey.Unlock()
+	if _, ok := Submitted_OTAKey.Keys[key.Pubkey]; !ok {
+		return errors.New("wrong indexer")
+	}
+	pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
+	if err != nil {
+		return err
+	}
+	keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
+	if err != nil {
+		return err
+	}
+	keyBytes = append(keyBytes, pubkey...)
+	if len(keyBytes) != 64 {
+		return errors.New("keyBytes length isn't 64")
+	}
+	otaKey := shared.OTAKeyFromRaw(keyBytes)
+	ks := &incognitokey.KeySet{}
+	ks.OTAKey = otaKey
+	shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+	data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
+	if err != nil {
+		return err
+	}
+	data.OTAKey = key.OTAKey
+	if w, ok := Submitted_OTAKey.AssignedKey[key.Pubkey]; !ok {
+		return errors.New("key not assign yet")
+	} else {
+		for tokenID, coinInfo := range data.CoinIndex {
+			if tokenID == common.ConfidentialAssetID.String() {
+				coinInfo.LastScanned = 0
+				data.CoinIndex[tokenID] = coinInfo
+				continue
+			}
+			coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
+			coinInfo.LastScanned = 0
+			data.CoinIndex[tokenID] = coinInfo
+		}
+		err := data.Saving()
+		if err != nil {
+			return err
+		}
+		doc := bson.M{
+			"$set": *data,
+		}
+		err = database.DBUpdateKeyInfoV2(doc, data)
+		if err != nil {
+			return err
+		}
+		Submitted_OTAKey.Keys[key.Pubkey].KeyInfo = data
+
+		keyAction := WorkerOTACmd{
+			Action: REINDEX,
+			Key:    *Submitted_OTAKey.Keys[key.Pubkey],
+		}
+		keyBytes, err := json.Marshal(keyAction)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		w.writeCh <- keyBytes
+	}
+
 	return nil
 }
