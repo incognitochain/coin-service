@@ -1,4 +1,4 @@
-version: "3.1"
+version: "2.2"
 services:
   chainsync:
     image: coinservice
@@ -44,8 +44,7 @@ services:
 
   worker:
     image: coinservice
-    deploy:
-      replicas: 3
+    scale: 5
     working_dir: /home
     entrypoint: [./run.sh]
     environment:

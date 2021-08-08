@@ -95,7 +95,6 @@ func DBGetReceiveTxByPubkey(pubkey string, tokenID string, txversion int, limit 
 	if txversion == 1 {
 		filter = bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
 	} else {
-
 		filter = bson.M{"realtokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
@@ -129,4 +128,20 @@ func DBGetTxByHash(txHashes []string) ([]shared.TxData, error) {
 	}
 
 	return resultFn, nil
+}
+
+func DBGetCountTxByPubkey(pubkey string, tokenID string, txversion int) (int64, error) {
+	filter := bson.M{}
+	if txversion == 1 {
+		filter = bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
+	} else {
+		filter = bson.M{"realtokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(100)*shared.DB_OPERATION_TIMEOUT)
+
+	count, err := mgm.Coll(&shared.TxData{}).CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
