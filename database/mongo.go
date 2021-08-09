@@ -230,25 +230,27 @@ func DBCheckTxsExist(txList []string, shardID int) ([]bool, error) {
 	return result, nil
 }
 
-func DBGetCoinInfo() (int64, int64, int64, int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
-	prvFilter := bson.M{"tokenid": bson.M{operator.Eq: common.PRVCoinID.String()}}
-	prvV2, err := mgm.Coll(&shared.CoinData{}).CountDocuments(ctx, prvFilter)
-	if err != nil {
-		return 0, 0, 0, 0, err
+func DBGetCoinInfo() (map[int]uint64, map[int]uint64, map[int]uint64, map[int]uint64, error) {
+	prvV1 := make(map[int]uint64)
+	prvV2 := make(map[int]uint64)
+	tokenV1 := make(map[int]uint64)
+	tokenV2 := make(map[int]uint64)
+
+	for i := 0; i < shared.ServiceCfg.NumOfShard; i++ {
+
+		pv2 := DBGetCoinV2OfShardCount(i, common.PRVCoinID.String())
+
+		tkv2 := DBGetCoinV2OfShardCount(i, common.ConfidentialAssetID.String())
+
+		pv1 := DBGetCoinV1OfShardCount(i, common.PRVCoinID.String())
+
+		tkv1 := DBGetCoinTokenV1OfShardCount(i)
+
+		prvV1[i] = uint64(pv1)
+		prvV2[i] = uint64(pv2)
+		tokenV1[i] = uint64(tkv1)
+		tokenV2[i] = uint64(tkv2)
 	}
-	prvV1, err := mgm.Coll(&shared.CoinDataV1{}).CountDocuments(ctx, prvFilter)
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-	tokenFilter := bson.M{"tokenid": bson.M{operator.Ne: common.PRVCoinID.String()}}
-	tokenV2, err := mgm.Coll(&shared.CoinData{}).CountDocuments(ctx, tokenFilter)
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-	tokenV1, err := mgm.Coll(&shared.CoinDataV1{}).CountDocuments(ctx, tokenFilter)
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
+
 	return prvV1, prvV2, tokenV1, tokenV2, nil
 }

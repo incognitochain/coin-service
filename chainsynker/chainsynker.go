@@ -13,6 +13,7 @@ import (
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/wallet"
 	jsoniter "github.com/json-iterator/go"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"fmt"
 	"io/ioutil"
@@ -657,72 +658,77 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		}
 	}
 	coinV1AlreadyWrite := []shared.CoinDataV1{}
-
-	if len(txDataList) > 0 {
-		err = database.DBSaveTXs(txDataList)
-		if err != nil {
-			panic(err)
-		}
-	}
-	if len(outCoinList) > 0 {
-		err, coinV1AlreadyWrite = database.DBSaveCoins(outCoinList)
-		if err != nil {
-			panic(err)
-		}
-	}
-	if len(keyImageList) > 0 {
-		err = database.DBSaveUsedKeyimage(keyImageList)
-		if err != nil {
-			panic(err)
-		}
-	}
-	if len(tradeRespondList) > 0 {
-		err = database.DBSaveTxTrade(tradeRespondList)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if len(bridgeShieldRespondList) > 0 {
-		err = database.DBSaveTxShield(bridgeShieldRespondList)
-		if err != nil {
-			panic(err)
-		}
-	}
-	if len(contributionRespondList) > 0 {
-		err = database.DBSavePDEContribute(contributionRespondList)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if len(contributionWithdrawRepsondList) > 0 {
-		err = database.DBSavePDEWithdraw(contributionWithdrawRepsondList)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if len(contributionFeeWithdrawRepsondList) > 0 {
-		err = database.DBSavePDEWithdrawFee(contributionFeeWithdrawRepsondList)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if len(coinV1PubkeyInfo) > 0 {
-		if len(coinV1AlreadyWrite) > 0 {
-			for _, v := range coinV1AlreadyWrite {
-				publicKeyStr := v.CoinPubkey
-				coinInfo := coinV1PubkeyInfo[publicKeyStr][v.TokenID]
-				coinInfo.Total -= 1
-				coinV1PubkeyInfo[publicKeyStr][v.TokenID] = coinInfo
+	err = mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
+		if len(txDataList) > 0 {
+			err = database.DBSaveTXs(txDataList)
+			if err != nil {
+				panic(err)
 			}
 		}
-		err = database.DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
-		if err != nil {
-			panic(err)
+		if len(outCoinList) > 0 {
+			err, coinV1AlreadyWrite = database.DBSaveCoins(outCoinList)
+			if err != nil {
+				panic(err)
+			}
 		}
+		if len(keyImageList) > 0 {
+			err = database.DBSaveUsedKeyimage(keyImageList)
+			if err != nil {
+				panic(err)
+			}
+		}
+		if len(tradeRespondList) > 0 {
+			err = database.DBSaveTxTrade(tradeRespondList)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		if len(bridgeShieldRespondList) > 0 {
+			err = database.DBSaveTxShield(bridgeShieldRespondList)
+			if err != nil {
+				panic(err)
+			}
+		}
+		if len(contributionRespondList) > 0 {
+			err = database.DBSavePDEContribute(contributionRespondList)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		if len(contributionWithdrawRepsondList) > 0 {
+			err = database.DBSavePDEWithdraw(contributionWithdrawRepsondList)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		if len(contributionFeeWithdrawRepsondList) > 0 {
+			err = database.DBSavePDEWithdrawFee(contributionFeeWithdrawRepsondList)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		if len(coinV1PubkeyInfo) > 0 {
+			if len(coinV1AlreadyWrite) > 0 {
+				for _, v := range coinV1AlreadyWrite {
+					publicKeyStr := v.CoinPubkey
+					coinInfo := coinV1PubkeyInfo[publicKeyStr][v.TokenID]
+					coinInfo.Total -= 1
+					coinV1PubkeyInfo[publicKeyStr][v.TokenID] = coinInfo
+				}
+			}
+			err = database.DBUpdateCoinV1PubkeyInfo(coinV1PubkeyInfo)
+			if err != nil {
+				panic(err)
+			}
+		}
+		return session.CommitTransaction(sc)
+	})
+	if err != nil {
+		panic(err)
 	}
 
 	statePrefix := fmt.Sprintf("coin-processed-%v", blk.Header.ShardID)

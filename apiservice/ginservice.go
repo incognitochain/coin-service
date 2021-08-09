@@ -40,7 +40,7 @@ func StartGinService() {
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
-		r.GET("/getcoininfo", APIGetCoinInfo)
+		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
 		r.GET("/getkeyinfo", APIGetKeyInfo)
@@ -64,6 +64,31 @@ func StartGinService() {
 		r.GET("/getcontributehistory", APIGetContributeHistory)
 		r.GET("/getwithdrawhistory", APIGetWithdrawHistory)
 		r.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
+
+		// New API format
+		//coins
+		coinsGroup := r.Group("/coins")
+		coinsGroup.GET("/tokenlist", APIGetTokenList)
+		coinsGroup.GET("/getcoinslength", APIGetCoinInfo)
+		coinsGroup.GET("/getcoinspending", APIGetCoinsPending)
+		coinsGroup.GET("/getcoins", APIGetCoins)
+		coinsGroup.GET("/getkeyinfo", APIGetKeyInfo)
+		coinsGroup.POST("/checkkeyimages", APICheckKeyImages)
+		coinsGroup.POST("/getrandomcommitments", APIGetRandomCommitments)
+		//tx
+		txGroup := r.Group("/txs")
+		txGroup.POST("/gettxsbysender", APIGetTxsBySender)
+		txGroup.POST("/checktxs", APICheckTXs)
+		txGroup.POST("/gettxsbypubkey", APIGetTxsByPubkey)
+		txGroup.GET("/gettxsbyreceiver", APIGetTxsByReceiver)
+		txGroup.GET("/gettxdetail", APIGetTxDetail)
+		txGroup.GET("/getpendingtxs", APIGetPendingTxs)
+		txGroup.GET("/checkpendingtx", APICheckTxPending)
+		txGroup.GET("/getlatesttx", APIGetLatestTxs)
+		//shield
+		shieldGroup := r.Group("/shield")
+		shieldGroup.GET("/getshieldhistory", APIGetShieldHistory)
+		shieldGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {

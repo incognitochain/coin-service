@@ -254,10 +254,10 @@ func APIGetCoinInfo(c *gin.Context) {
 		return
 	}
 	result := struct {
-		TotalPRVV1   int64
-		TotalPRVV2   int64
-		TotalTokenV1 int64
-		TotalTokenV2 int64
+		PRVV1   map[int]uint64
+		PRVV2   map[int]uint64
+		TokenV1 map[int]uint64
+		TokenV2 map[int]uint64
 	}{prvV1, prvV2, tokenV1, tokenV2}
 	respond := APIRespond{
 		Result: result,

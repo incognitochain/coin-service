@@ -368,11 +368,11 @@ func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
 			}
 			coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
 			coinInfo.LastScanned = 0
-			txs, err := database.DBGetReceiveTxByPubkey(key.Pubkey, tokenID, 2, 99999999, 0)
+			txs, err := database.DBGetCountTxByPubkey(key.Pubkey, tokenID, 2)
 			if err != nil {
 				return err
 			}
-			data.TotalReceiveTxs[tokenID] = uint64(len(txs))
+			data.TotalReceiveTxs[tokenID] = uint64(txs)
 			data.CoinIndex[tokenID] = coinInfo
 		}
 		err := data.Saving()

@@ -95,7 +95,6 @@ func DBGetReceiveTxByPubkey(pubkey string, tokenID string, txversion int, limit 
 	if txversion == 1 {
 		filter = bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
 	} else {
-
 		filter = bson.M{"realtokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
@@ -129,4 +128,38 @@ func DBGetTxByHash(txHashes []string) ([]shared.TxData, error) {
 	}
 
 	return resultFn, nil
+}
+
+func DBGetCountTxByPubkey(pubkey string, tokenID string, txversion int) (int64, error) {
+	filter := bson.M{}
+	if txversion == 1 {
+		filter = bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
+	} else {
+		filter = bson.M{"realtokenid": bson.M{operator.Eq: tokenID}, "pubkeyreceivers": bson.M{operator.Eq: pubkey}, "txversion": bson.M{operator.Eq: txversion}}
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(100)*shared.DB_OPERATION_TIMEOUT)
+
+	count, err := mgm.Coll(&shared.TxData{}).CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func DBGetLatestTxByShardID(shardID int, limit int64) ([]shared.TxData, error) {
+	var result []shared.TxData
+	filter := bson.M{"shardID": bson.M{operator.Eq: shardID}}
+	if shardID == -1 {
+		filter = bson.M{}
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
