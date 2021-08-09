@@ -63,7 +63,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	// if err != nil {
 	// 	log.Println(err)
 	// }
-
+	orderStatusList := []shared.TradeOrderData{}
 	if pdeState.Version() == 1 {
 		for key, contribute := range stateV1.WaitingContributions {
 
@@ -83,11 +83,14 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			log.Println(err)
 		}
-for _, orders := range stateV2.Orders {
-	for _, order := range orders {
-		order.
-	}
-}
+		for _, orders := range stateV2.Orders {
+			for _, order := range orders {
+				o := shared.TradeOrderData{
+					RequestTx: order.Id(),
+				}
+
+			}
+		}
 	}
 
 	statePrefix := BeaconData

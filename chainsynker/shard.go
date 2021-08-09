@@ -461,6 +461,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			case metadata.Pdexv3AddOrderRequestMeta:
 
 			}
+			_ = buyToken
 			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nil, rate, amount, 0, lockTime)
 			tradeRequestList = append(tradeRequestList, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta:

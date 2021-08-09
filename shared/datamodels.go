@@ -298,33 +298,33 @@ func (model *TxData) Saving() error {
 // 	return nil
 // }
 
-type PDEStateData struct {
-	mgm.DefaultModel `bson:",inline"`
-	State            string `json:"state" bson:"state"`
-}
+// type PDEStateData struct {
+// 	mgm.DefaultModel `bson:",inline"`
+// 	State            string `json:"state" bson:"state"`
+// }
 
-func (model *PDEStateData) Creating() error {
-	// Call the DefaultModel Creating hook
-	if err := model.DefaultModel.Creating(); err != nil {
-		return err
-	}
+// func (model *PDEStateData) Creating() error {
+// 	// Call the DefaultModel Creating hook
+// 	if err := model.DefaultModel.Creating(); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
-func (model *PDEStateData) Saving() error {
-	// Call the DefaultModel Creating hook
-	if err := model.DefaultModel.Saving(); err != nil {
-		return err
-	}
+// 	return nil
+// }
+// func (model *PDEStateData) Saving() error {
+// 	// Call the DefaultModel Creating hook
+// 	if err := model.DefaultModel.Saving(); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func NewPDEStateData(state string) *PDEStateData {
-	return &PDEStateData{
-		State: state,
-	}
-}
+// func NewPDEStateData(state string) *PDEStateData {
+// 	return &PDEStateData{
+// 		State: state,
+// 	}
+// }
 
 type ShieldData struct {
 	mgm.DefaultModel `bson:",inline"`
@@ -594,6 +594,31 @@ func (model *PoolPairData) Creating() error {
 	return nil
 }
 func (model *PoolPairData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PoolShareData struct {
+	mgm.DefaultModel `bson:",inline"`
+	PoolID           string `json:"poolid" bson:"poolid"`
+	NFCT             string `json:"nfct" bson:"nfct"`
+	Amount           string `json:"amount" bson:"amount"`
+	TradingFee       string `json:"tradingfee" bson:"tradingfee"`
+}
+
+func (model *PoolShareData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PoolShareData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

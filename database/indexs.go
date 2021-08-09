@@ -233,7 +233,6 @@ func DBCreatePDEXIndex() error {
 		return err
 	}
 
-	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	tradeOrderModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}, {Key: "pairid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
@@ -245,18 +244,17 @@ func DBCreatePDEXIndex() error {
 			Keys: bsonx.Doc{{Key: "requesttx", Value: bsonx.Int32(1)}},
 		},
 	}
-	_, err = mgm.Coll(&shared.TradeOrderData{}).Indexes().CreateMany(ctx, tradeOrderModel)
+	_, err = mgm.Coll(&shared.TradeOrderData{}).Indexes().CreateMany(context.Background(), tradeOrderModel)
 	if err != nil {
 		return err
 	}
 
-	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	poolPairModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
 		},
 	}
-	_, err = mgm.Coll(&shared.PoolPairData{}).Indexes().CreateMany(ctx, poolPairModel)
+	_, err = mgm.Coll(&shared.PoolPairData{}).Indexes().CreateMany(context.Background(), poolPairModel)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/privacy"
 	jsoniter "github.com/json-iterator/go"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"fmt"
 	"io/ioutil"
