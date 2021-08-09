@@ -27,6 +27,7 @@ var assignedOTAKeys = struct {
 	Keys      map[int][]*OTAkeyInfo
 	TotalKeys int
 }{}
+var workerID string
 
 func connectMasterIndexer(addr string, id string, readCh chan []byte, writeCh chan []byte) {
 retry:
@@ -140,15 +141,18 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 				Pubkey:  keyAction.Key.Pubkey,
 				keyset:  ks,
 			}
+			isAlreadyAssigned := false
 			for _, v := range assignedOTAKeys.Keys[int(shardID)] {
 				if v.OTAKey == keyAction.Key.OTAKey {
 					log.Println("key already assign")
-					assignedOTAKeys.Unlock()
-					continue
+					isAlreadyAssigned = true
+					break
 				}
 			}
-			assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
-			assignedOTAKeys.TotalKeys += 1
+			if !isAlreadyAssigned {
+				assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
+				assignedOTAKeys.TotalKeys += 1
+			}
 		}
 		assignedOTAKeys.Unlock()
 		log.Printf("success added key %v for indexing", keyAction.Key.Pubkey)
@@ -158,6 +162,7 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 func StartOTAIndexing() {
 	log.Println("initiating ota-indexing-service...")
 	id := uuid.NewV4()
+	workerID = id.String()
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
@@ -183,6 +188,7 @@ func StartOTAIndexing() {
 			filteredCoins := make(map[string][]shared.CoinData)
 			coinList = GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
 			if len(coinList) == 0 {
+				updateOTALastScan(lastPRVIndex, lastTokenIndex)
 				break
 			}
 			filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
@@ -191,7 +197,7 @@ func StartOTAIndexing() {
 			}
 			updateState(filteredCoins, lastPRVIndex, lastTokenIndex)
 		}
-		log.Println("finish scanning coins in", time.Since(startTime))
+		log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
 		assignedOTAKeys.Unlock()
 	}
 }
@@ -362,7 +368,6 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 		var wg sync.WaitGroup
 		tempOTACoinsCh := make(chan map[string]shared.CoinData, shared.ServiceCfg.MaxConcurrentOTACheck)
 		for idx, c := range coinList {
-			log.Println("coinIdx", c.CoinIndex)
 			wg.Add(1)
 			go func(cn shared.CoinData) {
 				newCoin := new(coin.CoinV2)
@@ -485,7 +490,7 @@ func GetOTAKeyListMinScannedCoinIndex() (map[int]uint64, map[int]uint64) {
 		}
 	}
 
-	log.Println("minPRVIdx", minPRVIdx, minTokenIdx)
+	log.Printf("worker/%v minPRVIdx %v %v\n", workerID, minPRVIdx, minTokenIdx)
 	return minPRVIdx, minTokenIdx
 }
 
@@ -512,4 +517,44 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 		result = append(result, coinList...)
 	}
 	return result
+}
+
+func updateOTALastScan(fromPRVIndex, fromTokenIndex map[int]uint64) {
+	newLastScanPRV := make(map[int]uint64)
+	newLastScanToken := make(map[int]uint64)
+
+	for shardID, v := range fromPRVIndex {
+		coinCount := database.DBGetCoinV2OfShardCount(shardID, common.PRVCoinID.String())
+		log.Printf("shard %v count %v prv (lastScanIdx:%v)", shardID, coinCount, v)
+		if uint64(coinCount-1) > v {
+			newLastScanPRV[shardID] = uint64(coinCount - 1)
+		}
+	}
+	for shardID, v := range fromTokenIndex {
+		coinCount := database.DBGetCoinV2OfShardCount(shardID, common.ConfidentialAssetID.String())
+		log.Printf("shard %v count %v token (lastScanIdx:%v)", shardID, coinCount, v)
+		if uint64(coinCount-1) > v {
+			newLastScanToken[shardID] = uint64(coinCount - 1)
+		}
+	}
+
+	for shardID, v := range newLastScanPRV {
+		for _, key := range assignedOTAKeys.Keys[shardID] {
+			c := key.KeyInfo.CoinIndex[common.PRVCoinID.String()]
+			c.LastScanned = v
+			key.KeyInfo.CoinIndex[common.PRVCoinID.String()] = c
+		}
+	}
+
+	for shardID, v := range newLastScanToken {
+		for _, key := range assignedOTAKeys.Keys[shardID] {
+			c := key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]
+			c.LastScanned = v
+			key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()] = c
+		}
+	}
+	err := updateSubmittedOTAKey()
+	if err != nil {
+		panic(err)
+	}
 }

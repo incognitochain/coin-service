@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -147,6 +148,18 @@ func DBGetCoinV1PubkeyInfo(key string) (*shared.KeyInfoData, error) {
 func DBGetCoinV1OfShardCount(shardID int, tokenID string) int64 {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
+	doc := shared.CoinDataV1{}
+	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		return -1
+	}
+	return count
+}
+
+func DBGetCoinTokenV1OfShardCount(shardID int) int64 {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Ne: common.PRVCoinID.String()}}
 	doc := shared.CoinDataV1{}
 	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
 	if err != nil {

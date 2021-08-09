@@ -40,8 +40,7 @@ func StartGinService() {
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
-		// OLD API format
-		r.GET("/getcoininfo", APIGetCoinInfo)
+		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
 		r.GET("/getkeyinfo", APIGetKeyInfo)
@@ -70,7 +69,6 @@ func StartGinService() {
 		//coins
 		coinsGroup := r.Group("/coins")
 		coinsGroup.GET("/tokenlist", APIGetTokenList)
-		coinsGroup.GET("/getcoininfo", APIGetCoinInfo)
 		coinsGroup.GET("/getcoinspending", APIGetCoinsPending)
 		coinsGroup.GET("/getcoins", APIGetCoins)
 		coinsGroup.GET("/getkeyinfo", APIGetKeyInfo)
@@ -118,6 +116,7 @@ func StartGinService() {
 		pdexv2Group.GET("/getwithdrawhistory", APIGetWithdrawHistory)
 		pdexv2Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
+		coinsGroup.GET("/getcoinslength", APIGetCoinInfo)
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
