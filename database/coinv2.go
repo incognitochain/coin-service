@@ -59,7 +59,7 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 		return nil, err
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
-	log.Printf("found %v shard %v coins in %v", len(list), shardID, time.Since(startTime))
+	log.Printf("found %v fromidx %v shard %v coins in %v", len(list), fromidx, shardID, time.Since(startTime))
 	return list, err
 }
 
