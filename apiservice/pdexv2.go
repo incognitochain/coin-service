@@ -14,7 +14,6 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
-	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
@@ -80,18 +79,18 @@ func APIGetTradeHistory(c *gin.Context) {
 		if idx, ok := txsMap[v.RequestTx]; !ok {
 			newTxDetail := TxTradeDetail{
 				RequestTx:     v.RequestTx,
-				RespondTx:     []string{v.RespondTx},
+				RespondTx:     v.RespondTxs,
 				Status:        v.Status,
 				ReceiveAmount: make(map[string]uint64),
 			}
-			newTxDetail.ReceiveAmount[v.TokenID] = v.Amount
+			newTxDetail.ReceiveAmount[v.BuyTokenID] = v.Amount
 			txsMap[v.RequestTx] = len(result)
 			result = append(result, &newTxDetail)
 			txsRequest = append(txsRequest, v.RequestTx)
 		} else {
 			txdetail := result[idx]
-			txdetail.RespondTx = append(txdetail.RespondTx, v.RespondTx)
-			txdetail.ReceiveAmount[v.TokenID] = v.Amount
+			txdetail.RespondTx = append(txdetail.RespondTx, v.RespondTxs...)
+			txdetail.ReceiveAmount[v.BuyTokenID] = v.Amount
 		}
 	}
 
@@ -149,19 +148,19 @@ func reverseAny(s interface{}) {
 }
 
 func APIPDEState(c *gin.Context) {
-	state, err := database.DBGetPDEState()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	pdeState := jsonresult.CurrentPDEState{}
-	err = json.UnmarshalFromString(state, &pdeState)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
+	// state, err := database.DBGetPDEState()
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
+	// pdeState := jsonresult.CurrentPDEState{}
+	// err = json.UnmarshalFromString(state, &pdeState)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
 	respond := APIRespond{
-		Result: pdeState,
+		Result: "deprecated",
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

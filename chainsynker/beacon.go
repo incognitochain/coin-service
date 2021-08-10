@@ -10,10 +10,16 @@ import (
 	"github.com/incognitochain/incognito-chain/blockchain"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 )
 
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
+	bestHeight := Localnode.GetBlockchain().GetBeaconBestState().BeaconHeight
+	doProcess := false
+	if bestHeight-height < 8 {
+		doProcess = true
+	}
 
 	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 	blk := beaconBestState.BestBlock
@@ -36,17 +42,39 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	var stateV2 *shared.PDEStateV2
 
 	if pdeState.Version() == 1 {
+		poolPairs := make(map[string]*rawdbv2.PDEPoolForPair)
+		waitingContributions := make(map[string]*rawdbv2.PDEContribution)
+		err = json.Unmarshal(pdeState.Reader().WaitingContributions(), &waitingContributions)
+		if err != nil {
+			panic(err)
+		}
+		err = json.Unmarshal(pdeState.Reader().PoolPairs(), &poolPairs)
+		if err != nil {
+			panic(err)
+		}
+
 		stateV1 = &shared.PDEStateV1{
-			WaitingContributions: pdeState.Reader().WaitingContributionsV1(),
-			PDEPoolPairs:         pdeState.Reader().PoolPairsV1(),
+			WaitingContributions: waitingContributions,
+			PDEPoolPairs:         poolPairs,
 			PDEShares:            pdeState.Reader().Shares(),
 			PDETradingFees:       pdeState.Reader().TradingFees(),
 		}
 	} else {
+		poolPairs := make(map[string]*pdex.PoolPairState)
+		waitingContributions := make(map[string]*rawdbv2.Pdexv3Contribution)
+		err = json.Unmarshal(pdeState.Reader().WaitingContributions(), &waitingContributions)
+		if err != nil {
+			panic(err)
+		}
+		err = json.Unmarshal(pdeState.Reader().PoolPairs(), &poolPairs)
+		if err != nil {
+			panic(err)
+		}
+
 		stateV2 = &shared.PDEStateV2{
-			WaitingContributions: pdeState.Reader().WaitingContributionsV2(),
-			PoolPairs:            pdeState.Reader().PoolPairsV2(),
-			// StakingPoolsState:    pdeState.Reader().Shares(),
+			WaitingContributions: waitingContributions,
+			PoolPairs:            poolPairs,
+			// StakingPoolsState:    pdeState.Reader().
 		}
 	}
 	// newPDEState := shared.CurrentPDEState{
@@ -64,39 +92,86 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	// 	log.Println(err)
 	// }
 	orderStatusList := []shared.TradeOrderData{}
+	waitingContributeList := []shared.WaitingContributions{}
 	if pdeState.Version() == 1 {
-		for key, contribute := range stateV1.WaitingContributions {
-
+		if doProcess {
+			waitingContributeList = processWaitingContribute(stateV1.WaitingContributions, nil, height)
 		}
+
 	} else {
-		for key, contribute := range stateV2.WaitingContributions {
-
+		if doProcess {
+			waitingContributeList = processWaitingContribute(nil, stateV2.WaitingContributions, height)
 		}
-
+		orderStatusList = processBeaconOrder(stateV2.Orders)
 		pairData := []shared.PairData{}
 		pools := []shared.PoolPairData{}
-		for pair, poolPairs := range stateV2.PoolPairs {
 
+		for poolID, poolPair := range stateV2.PoolPairs {
+			_ = poolID
+			_ = poolPair
 		}
+
 		_ = pairData
 		err = database.DBSavePoolPairs(pools)
 		if err != nil {
 			log.Println(err)
 		}
-		for _, orders := range stateV2.Orders {
-			for _, order := range orders {
-				o := shared.TradeOrderData{
-					RequestTx: order.Id(),
-				}
-
-			}
-		}
 	}
-
+	_ = orderStatusList
+	_ = waitingContributeList
 	statePrefix := BeaconData
 	err = Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
 	if err != nil {
 		panic(err)
 	}
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+}
+
+func processWaitingContribute(statev1 map[string]*rawdbv2.PDEContribution, statev2 map[string]*rawdbv2.Pdexv3Contribution, beaconHeight uint64) []shared.WaitingContributions {
+	result := []shared.WaitingContributions{}
+	if statev1 != nil {
+		for _, contribute := range statev1 {
+			newContr := shared.WaitingContributions{
+				RequestTx:     contribute.TxReqID.String(),
+				RefundAddress: contribute.ContributorAddressStr,
+				TokenID:       contribute.TokenIDStr,
+				BeaconHeight:  beaconHeight,
+			}
+			result = append(result, newContr)
+		}
+	}
+	if statev2 != nil {
+		for _, contribute := range statev2 {
+			newContr := shared.WaitingContributions{
+				RequestTx:      contribute.TxReqID().String(),
+				RefundAddress:  contribute.RefundAddress(),
+				ReceiveAddress: contribute.ReceiveAddress(),
+				TokenID:        contribute.TokenID().String(),
+				Amount:         contribute.Amount(),
+				AMP:            contribute.Amplifier(),
+				BeaconHeight:   beaconHeight,
+			}
+			result = append(result, newContr)
+		}
+	}
+
+	return result
+}
+
+func processBeaconOrder(orderGroups map[int64][]rawdbv2.Pdexv3Order) []shared.TradeOrderData {
+	var result []shared.TradeOrderData
+	for _, orders := range orderGroups {
+		for _, order := range orders {
+			newOrder := shared.TradeOrderData{
+				RequestTx: order.Id(),
+			}
+			result = append(result, newOrder)
+		}
+	}
+
+	return result
+}
+
+func processPoolPairs() {
+
 }

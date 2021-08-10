@@ -15,33 +15,33 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func DBSavePDEState(state string) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
-	upsert := true
-	opt := options.FindOneAndUpdateOptions{
-		Upsert: &upsert,
-	}
-	var doc interface{}
-	newState := shared.NewPDEStateData(state)
-	doc = newState
-	err := mgm.Coll(&shared.PDEStateData{}).FindOneAndUpdate(ctx, bson.M{}, doc, &opt)
-	if err.Err() != nil {
-		log.Println(err)
-		return err.Err()
-	}
-	return nil
-}
+// func DBSavePDEState(state string) error {
+// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
+// 	upsert := true
+// 	opt := options.FindOneAndUpdateOptions{
+// 		Upsert: &upsert,
+// 	}
+// 	var doc interface{}
+// 	newState := shared.NewPDEStateData(state)
+// 	doc = newState
+// 	err := mgm.Coll(&shared.PDEStateData{}).FindOneAndUpdate(ctx, bson.M{}, doc, &opt)
+// 	if err.Err() != nil {
+// 		log.Println(err)
+// 		return err.Err()
+// 	}
+// 	return nil
+// }
 
-func DBGetPDEState() (string, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
-	var result shared.PDEStateData
-	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{}, &result)
-	if err != nil {
-		log.Println(err)
-		return "", err
-	}
-	return result.State, nil
-}
+// func DBGetPDEState() (string, error) {
+// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
+// 	var result shared.PDEStateData
+// 	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{}, &result)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return "", err
+// 	}
+// 	return result.State, nil
+// }
 
 func DBSaveTxTrade(list []shared.TradeOrderData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
@@ -410,6 +410,12 @@ func DBGetPoolPairs() ([]shared.PoolPairData, error) {
 
 func DBGetPdexPairs() ([]shared.PairData, error) {
 	var result []shared.PairData
+
+	return result, nil
+}
+
+func DBGetPdexWaitingLiquidity() ([]shared.WaitingContributions, error) {
+	var result []shared.WaitingContributions
 
 	return result, nil
 }

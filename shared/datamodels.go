@@ -489,7 +489,7 @@ type TradeOrderData struct {
 	Amount           uint64   `json:"amount" bson:"amount"`
 	Remain           uint64   `json:"remain" bson:"remain"`
 	Locktime         int64    `json:"locktime" bson:"locktime"`
-	NFCT             string   `json:"nfct" bson:"nfct"`
+	NFT              string   `json:"nft" bson:"nft"`
 }
 
 func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status string, respondTxs []string, rate, amount, remain uint64, locktime int64) *TradeOrderData {
@@ -568,12 +568,12 @@ type PoolPairData struct {
 	PairID           string `json:"pairid" bson:"pairid"`
 	Token1           string `json:"token1" bson:"token1"`
 	Token2           string `json:"token2" bson:"token2"`
-	AMP              int    `json:"amp" bson:"amp"`
+	AMP              uint   `json:"amp" bson:"amp"`
 	Token1Amount     uint64 `json:"token1amount" bson:"token1amount"`
 	Token2Amount     uint64 `json:"token2amount" bson:"token2amount"`
 }
 
-func NewPoolPairData(poolid, pairid, token1, token2 string, amp int, token1amount, token2amount uint64) *PoolPairData {
+func NewPoolPairData(poolid, pairid, token1, token2 string, amp uint, token1amount, token2amount uint64) *PoolPairData {
 	return &PoolPairData{
 		PoolID:       poolid,
 		PairID:       pairid,
@@ -605,9 +605,18 @@ func (model *PoolPairData) Saving() error {
 type PoolShareData struct {
 	mgm.DefaultModel `bson:",inline"`
 	PoolID           string `json:"poolid" bson:"poolid"`
-	NFCT             string `json:"nfct" bson:"nfct"`
-	Amount           string `json:"amount" bson:"amount"`
+	NFT              string `json:"nft" bson:"nft"`
+	Amount           uint64 `json:"amount" bson:"amount"`
 	TradingFee       string `json:"tradingfee" bson:"tradingfee"`
+}
+
+func NewPoolShareData(poolid, nft, tradingfee string, amount uint64) *PoolShareData {
+	return &PoolShareData{
+		PoolID:     poolid,
+		NFT:        nft,
+		TradingFee: tradingfee,
+		Amount:     amount,
+	}
 }
 
 func (model *PoolShareData) Creating() error {
@@ -619,6 +628,35 @@ func (model *PoolShareData) Creating() error {
 	return nil
 }
 func (model *PoolShareData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type WaitingContributions struct {
+	mgm.DefaultModel `bson:",inline"`
+	RequestTx        string `json:"requesttx" bson:"requesttx"`
+	PoolID           string `json:"poolid" bson:"poolid"`
+	AMP              uint   `json:"amp" bson:"amp"`
+	ReceiveAddress   string `json:"receiveaddress" bson:"receiveaddress"`
+	RefundAddress    string `json:"refundaddress" bson:"refundaddress"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	Amount           uint64 `json:"amount" bson:"amount"`
+	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
+}
+
+func (model *WaitingContributions) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *WaitingContributions) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

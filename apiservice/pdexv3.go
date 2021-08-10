@@ -79,6 +79,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 
 func (pdexv3) Share(c *gin.Context) {
 	otakey := c.Query("otakey")
+	_ = otakey
 }
 
 func (pdexv3) WaitingLiquidity(c *gin.Context) {
@@ -136,7 +137,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		respList = append(respList, v.TxHash)
 	}
 
-	txTradePairlist, err := database.DBGetTxTrade(respList)
+	txTradePairlist, err := database.DBGetTxTradeFromTxRespond(respList)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -148,18 +149,18 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		if idx, ok := txsMap[v.RequestTx]; !ok {
 			newTxDetail := TxTradeDetail{
 				RequestTx:     v.RequestTx,
-				RespondTx:     []string{v.RespondTx},
+				RespondTx:     v.RespondTxs,
 				Status:        v.Status,
 				ReceiveAmount: make(map[string]uint64),
 			}
-			newTxDetail.ReceiveAmount[v.TokenID] = v.Amount
+			newTxDetail.ReceiveAmount[v.BuyTokenID] = v.Amount
 			txsMap[v.RequestTx] = len(result)
 			result = append(result, &newTxDetail)
 			txsRequest = append(txsRequest, v.RequestTx)
 		} else {
 			txdetail := result[idx]
-			txdetail.RespondTx = append(txdetail.RespondTx, v.RespondTx)
-			txdetail.ReceiveAmount[v.TokenID] = v.Amount
+			txdetail.RespondTx = append(txdetail.RespondTx, v.RespondTxs...)
+			txdetail.ReceiveAmount[v.BuyTokenID] = v.Amount
 		}
 	}
 
