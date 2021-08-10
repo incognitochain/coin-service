@@ -188,7 +188,6 @@ func StartOTAIndexing() {
 		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex()
 		if lastScanReach >= 4 {
 			lastScanReach = 0
-			updateOTALastScan(lastPRVIndex, lastTokenIndex)
 			log.Println("lastScanReach >= 4")
 		}
 		for {
@@ -196,6 +195,9 @@ func StartOTAIndexing() {
 			coinList = GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
 			if len(coinList) == 0 {
 				lastScanReach++
+				if lastScanReach >= 4 {
+					updateOTALastScan(lastPRVIndex, lastTokenIndex)
+				}
 				break
 			}
 			filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
@@ -509,6 +511,9 @@ func GetOTAKeyListMinScannedCoinIndex() (map[int]uint64, map[int]uint64) {
 func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared.CoinData {
 	var result []shared.CoinData
 	for shardID, v := range fromPRVIndex {
+		if v != 0 {
+			v += 1
+		}
 		coinList, err := database.DBGetUnknownCoinsV2(shardID, common.PRVCoinID.String(), int64(v), 8000)
 		if err != nil {
 			panic(err)
@@ -516,6 +521,9 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 		result = append(result, coinList...)
 	}
 	for shardID, v := range fromTokenIndex {
+		if v != 0 {
+			v += 1
+		}
 		coinList, err := database.DBGetUnknownCoinsV2(shardID, common.ConfidentialAssetID.String(), int64(v), 8000)
 		if err != nil {
 			panic(err)
