@@ -387,11 +387,11 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 				pass := false
 				tokenID := ""
 				for _, keyData := range assignedOTAKeys.Keys[cn.ShardID] {
-					if _, ok := keyData.KeyInfo.CoinIndex[cn.TokenID]; ok {
-						if cn.CoinIndex < keyData.KeyInfo.CoinIndex[cn.TokenID].LastScanned {
-							continue
-						}
-					}
+					// if _, ok := keyData.KeyInfo.CoinIndex[cn.TokenID]; ok {
+					// 	if cn.CoinIndex < keyData.KeyInfo.CoinIndex[cn.TokenID].LastScanned {
+					// 		continue
+					// 	}
+					// }
 					pass, tokenID, _ = doesCoinBelongToKeySet(newCoin, keyData.keyset, tokenIDMap)
 					if pass {
 						cn.RealTokenID = tokenID
