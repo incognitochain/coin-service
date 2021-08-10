@@ -218,20 +218,13 @@ func APIGetTxsByReceiver(c *gin.Context) {
 }
 
 func APIGetLatestTxs(c *gin.Context) {
-
-}
-
-func APIGetTxDetail(c *gin.Context) {
-	txhash := c.Query("txhash")
-	if txhash == "" {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid txhash")))
-		return
-	}
+	shardID, _ := strconv.Atoi(c.Query("shardid"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
 	isBase58 := false
 	if c.Query("base58") == "true" {
 		isBase58 = true
 	}
-	txDataList, err := database.DBGetTxByHash([]string{txhash})
+	txDataList, err := database.DBGetLatestTxByShardID(shardID, int64(limit))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -246,4 +239,48 @@ func APIGetTxDetail(c *gin.Context) {
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetTxDetail(c *gin.Context) {
+	txhash := c.Query("txhash")
+	if txhash == "" {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid txhash")))
+		return
+	}
+	isBase58 := false
+	if c.Query("base58") == "true" {
+		isBase58 = true
+	}
+	returnRaw := false
+	if c.Query("raw") == "true" {
+		returnRaw = true
+	}
+	txDataList, err := database.DBGetTxByHash([]string{txhash})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if !returnRaw {
+		result, err := buildTxDetailRespond(txDataList, isBase58)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		respond := APIRespond{
+			Result: result,
+			Error:  nil,
+		}
+		c.JSON(http.StatusOK, respond)
+	} else {
+		result := []string{}
+		for _, v := range txDataList {
+			result = append(result, v.TxDetail)
+		}
+		respond := APIRespond{
+			Result: result,
+			Error:  nil,
+		}
+		c.JSON(http.StatusOK, respond)
+	}
+
 }

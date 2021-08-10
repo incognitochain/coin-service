@@ -15,7 +15,6 @@ import (
 
 func DBCreateCoinV1Index() error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	coinMdl := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
@@ -27,20 +26,22 @@ func DBCreateCoinV1Index() error {
 			Keys:    bsonx.Doc{{Key: "coin", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}},
+		},
 	}
-	_, err := mgm.Coll(&shared.CoinDataV1{}).Indexes().CreateMany(ctx, coinMdl)
+	_, err := mgm.Coll(&shared.CoinDataV1{}).Indexes().CreateMany(context.Background(), coinMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
 	}
 
-	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	keyInfoMdl := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "pubkey", Value: bsonx.Int32(1)}},
 		},
 	}
-	_, err = mgm.Coll(&shared.KeyInfoData{}).Indexes().CreateMany(ctx, keyInfoMdl)
+	_, err = mgm.Coll(&shared.KeyInfoData{}).Indexes().CreateMany(context.Background(), keyInfoMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
@@ -51,7 +52,6 @@ func DBCreateCoinV1Index() error {
 
 func DBCreateCoinV2Index() error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(50000)*shared.DB_OPERATION_TIMEOUT)
 	coinMdl := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "otasecret", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
@@ -67,13 +67,12 @@ func DBCreateCoinV2Index() error {
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	_, err := mgm.Coll(&shared.CoinData{}).Indexes().CreateMany(ctx, coinMdl)
+	_, err := mgm.Coll(&shared.CoinData{}).Indexes().CreateMany(context.Background(), coinMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
 	}
 
-	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	otaMdl := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "indexerid", Value: bsonx.Int32(1)}},
@@ -83,20 +82,19 @@ func DBCreateCoinV2Index() error {
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	_, err = mgm.Coll(&shared.SubmittedOTAKeyData{}).Indexes().CreateMany(ctx, otaMdl)
+	_, err = mgm.Coll(&shared.SubmittedOTAKeyData{}).Indexes().CreateMany(context.Background(), otaMdl)
 	if err != nil {
 		log.Printf("failed to index otakey in %v", time.Since(startTime))
 		return err
 	}
 
-	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	keyInfoMdl := []mongo.IndexModel{
 		{
 			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
 	}
-	_, err = mgm.Coll(&shared.KeyInfoDataV2{}).Indexes().CreateMany(ctx, keyInfoMdl)
+	_, err = mgm.Coll(&shared.KeyInfoDataV2{}).Indexes().CreateMany(context.Background(), keyInfoMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
@@ -108,7 +106,6 @@ func DBCreateCoinV2Index() error {
 
 func DBCreateKeyimageIndex() error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	imageMdl := []mongo.IndexModel{
 		{
 			Keys:    bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "keyimage", Value: bsonx.Int32(1)}},
@@ -118,7 +115,7 @@ func DBCreateKeyimageIndex() error {
 			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "txhash", Value: bsonx.Int32(1)}},
 		},
 	}
-	indexName, err := mgm.Coll(&shared.KeyImageData{}).Indexes().CreateMany(ctx, imageMdl)
+	indexName, err := mgm.Coll(&shared.KeyImageData{}).Indexes().CreateMany(context.Background(), imageMdl)
 	if err != nil {
 		log.Printf("failed to index coins in %v", time.Since(startTime))
 		return err
@@ -129,7 +126,6 @@ func DBCreateKeyimageIndex() error {
 }
 
 func DBCreateTxIndex() error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(1000)*shared.DB_OPERATION_TIMEOUT)
 	txMdl := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "keyimages", Value: bsonx.Int32(1)}},
@@ -144,8 +140,17 @@ func DBCreateTxIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "keyimages", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
 		},
+		{
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "pubkeyreceivers", Value: bsonx.Int32(1)}, {Key: "txversion", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "realtokenid", Value: bsonx.Int32(1)}, {Key: "pubkeyreceivers", Value: bsonx.Int32(1)}, {Key: "txversion", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
+		},
 	}
-	indexName, err := mgm.Coll(&shared.TxData{}).Indexes().CreateMany(ctx, txMdl)
+	indexName, err := mgm.Coll(&shared.TxData{}).Indexes().CreateMany(context.Background(), txMdl)
 	if err != nil {
 		return err
 	}
@@ -170,13 +175,15 @@ func DBCreateTxPendingIndex() error {
 }
 
 func DBCreateTradeIndex() error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	model := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondtx", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys: bsonx.Doc{{Key: "respondtx", Value: bsonx.Int32(1)}},
+		},
 	}
-	indexName, err := mgm.Coll(&shared.TradeData{}).Indexes().CreateMany(ctx, model)
+	indexName, err := mgm.Coll(&shared.TradeData{}).Indexes().CreateMany(context.Background(), model)
 	if err != nil {
 		return err
 	}
@@ -185,13 +192,12 @@ func DBCreateTradeIndex() error {
 }
 
 func DBCreateShieldIndex() error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	model := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "respondtx", Value: bsonx.Int32(1)}, {Key: "height", Value: bsonx.Int32(-1)}},
 		},
 	}
-	indexName, err := mgm.Coll(&shared.ShieldData{}).Indexes().CreateMany(ctx, model)
+	indexName, err := mgm.Coll(&shared.ShieldData{}).Indexes().CreateMany(context.Background(), model)
 	if err != nil {
 		return err
 	}
@@ -200,34 +206,31 @@ func DBCreateShieldIndex() error {
 }
 
 func DBCreatePDEIndex() error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	ctrbModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondblock", Value: bsonx.Int32(-1)}},
 		},
 	}
-	_, err := mgm.Coll(&shared.ContributionData{}).Indexes().CreateMany(ctx, ctrbModel)
+	_, err := mgm.Coll(&shared.ContributionData{}).Indexes().CreateMany(context.Background(), ctrbModel)
 	if err != nil {
 		return err
 	}
-	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	wdCtrbModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}, {Key: "respondtime", Value: bsonx.Int32(-1)}},
 		},
 	}
-	_, err = mgm.Coll(&shared.WithdrawContributionData{}).Indexes().CreateMany(ctx, wdCtrbModel)
+	_, err = mgm.Coll(&shared.WithdrawContributionData{}).Indexes().CreateMany(context.Background(), wdCtrbModel)
 	if err != nil {
 		return err
 	}
 
-	ctx, _ = context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	wdFeeCtrbModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}, {Key: "respondtime", Value: bsonx.Int32(-1)}},
 		},
 	}
-	_, err = mgm.Coll(&shared.WithdrawContributionFeeData{}).Indexes().CreateMany(ctx, wdFeeCtrbModel)
+	_, err = mgm.Coll(&shared.WithdrawContributionFeeData{}).Indexes().CreateMany(context.Background(), wdFeeCtrbModel)
 	if err != nil {
 		return err
 	}
