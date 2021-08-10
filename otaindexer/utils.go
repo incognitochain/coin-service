@@ -21,15 +21,29 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	tokenID := ""
 	pass := false
 
-	rK := new(operation.Point).ScalarMult(txOTARandomPoint, keySet.OTAKey.GetOTASecretKey())
+	otasecret := new(operation.Scalar)
+	otasecret.FromBytesS(keySet.OTAKey.GetOTASecretKey().ToBytesS())
+
+	pubkey := new(operation.Point)
+	_, err := pubkey.FromBytesS(c.GetPublicKey().ToBytesS())
+	if err != nil {
+		panic(err)
+	}
+
+	otapub := new(operation.Point)
+	_, err = otapub.FromBytesS(keySet.OTAKey.GetPublicSpend().ToBytesS())
+	if err != nil {
+		panic(err)
+	}
+	rK := new(operation.Point).ScalarMult(txOTARandomPoint, otasecret)
 
 	hashed := operation.HashToScalar(
 		append(rK.ToBytesS(), common.Uint32ToBytes(index)...),
 	)
 
 	HnG := new(operation.Point).ScalarMultBase(hashed)
-	KCheck := new(operation.Point).Sub(c.GetPublicKey(), HnG)
-	pass = operation.IsPointEqual(KCheck, keySet.OTAKey.GetPublicSpend())
+	KCheck := new(operation.Point).Sub(pubkey, HnG)
+	pass = operation.IsPointEqual(KCheck, otapub)
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
 	}

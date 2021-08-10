@@ -28,6 +28,7 @@ var assignedOTAKeys = struct {
 	TotalKeys int
 }{}
 var workerID string
+var lastScanReach int
 
 func connectMasterIndexer(addr string, id string, readCh chan []byte, writeCh chan []byte) {
 retry:
@@ -163,10 +164,11 @@ func StartOTAIndexing() {
 	log.Println("initiating ota-indexing-service...")
 	id := uuid.NewV4()
 	workerID = id.String()
+	lastScanReach = 0
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
-	interval := time.NewTicker(6 * time.Second)
+	interval := time.NewTicker(5 * time.Second)
 	var coinList []shared.CoinData
 	go processMsgFromMaster(readCh, writeCh)
 	for {
@@ -184,11 +186,16 @@ func StartOTAIndexing() {
 
 		assignedOTAKeys.Lock()
 		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex()
+		if lastScanReach >= 4 {
+			lastScanReach = 0
+			updateOTALastScan(lastPRVIndex, lastTokenIndex)
+			log.Println("lastScanReach >= 4")
+		}
 		for {
 			filteredCoins := make(map[string][]shared.CoinData)
 			coinList = GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
 			if len(coinList) == 0 {
-				updateOTALastScan(lastPRVIndex, lastTokenIndex)
+				lastScanReach++
 				break
 			}
 			filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
@@ -466,26 +473,31 @@ func GetOTAKeyListMinScannedCoinIndex() (map[int]uint64, map[int]uint64) {
 	minPRVIdx := make(map[int]uint64)
 	minTokenIdx := make(map[int]uint64)
 	for shardID, keys := range assignedOTAKeys.Keys {
-		if _, ok := keys[0].KeyInfo.CoinIndex[common.PRVCoinID.String()]; ok {
-			minPRVIdx[shardID] = keys[0].KeyInfo.CoinIndex[common.PRVCoinID.String()].LastScanned
-		}
-		if _, ok := keys[0].KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]; ok {
-			minTokenIdx[shardID] = keys[0].KeyInfo.CoinIndex[common.ConfidentialAssetID.String()].LastScanned
-		}
-		for _, keyData := range keys {
-			if _, ok := keyData.KeyInfo.CoinIndex[common.PRVCoinID.String()]; ok {
-				if minPRVIdx[shardID] > keyData.KeyInfo.CoinIndex[common.PRVCoinID.String()].LastScanned {
-					minPRVIdx[shardID] = keyData.KeyInfo.CoinIndex[common.PRVCoinID.String()].LastScanned
-				}
-			} else {
-				minPRVIdx[shardID] = 0
+		if lastScanReach == 4 {
+			minPRVIdx[shardID] = 0
+			minTokenIdx[shardID] = 0
+		} else {
+			if _, ok := keys[0].KeyInfo.CoinIndex[common.PRVCoinID.String()]; ok {
+				minPRVIdx[shardID] = keys[0].KeyInfo.CoinIndex[common.PRVCoinID.String()].LastScanned
 			}
-			if _, ok := keyData.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]; ok {
-				if minTokenIdx[shardID] > keyData.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()].LastScanned {
-					minTokenIdx[shardID] = keyData.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()].LastScanned
+			if _, ok := keys[0].KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]; ok {
+				minTokenIdx[shardID] = keys[0].KeyInfo.CoinIndex[common.ConfidentialAssetID.String()].LastScanned
+			}
+			for _, keyData := range keys {
+				if _, ok := keyData.KeyInfo.CoinIndex[common.PRVCoinID.String()]; ok {
+					if minPRVIdx[shardID] > keyData.KeyInfo.CoinIndex[common.PRVCoinID.String()].LastScanned {
+						minPRVIdx[shardID] = keyData.KeyInfo.CoinIndex[common.PRVCoinID.String()].LastScanned
+					}
+				} else {
+					minPRVIdx[shardID] = 0
 				}
-			} else {
-				minTokenIdx[shardID] = 0
+				if _, ok := keyData.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]; ok {
+					if minTokenIdx[shardID] > keyData.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()].LastScanned {
+						minTokenIdx[shardID] = keyData.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()].LastScanned
+					}
+				} else {
+					minTokenIdx[shardID] = 0
+				}
 			}
 		}
 	}
@@ -500,7 +512,7 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 		if v != 0 {
 			v += 1
 		}
-		coinList, err := database.DBGetUnknownCoinsV2(shardID, common.PRVCoinID.String(), int64(v), 1000)
+		coinList, err := database.DBGetUnknownCoinsV2(shardID, common.PRVCoinID.String(), int64(v), 2000)
 		if err != nil {
 			panic(err)
 		}
@@ -510,7 +522,7 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 		if v != 0 {
 			v += 1
 		}
-		coinList, err := database.DBGetUnknownCoinsV2(shardID, common.ConfidentialAssetID.String(), int64(v), 1000)
+		coinList, err := database.DBGetUnknownCoinsV2(shardID, common.ConfidentialAssetID.String(), int64(v), 2000)
 		if err != nil {
 			panic(err)
 		}

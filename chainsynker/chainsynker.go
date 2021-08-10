@@ -791,6 +791,11 @@ func InitChainSynker(cfg shared.Config) {
 		panic(err)
 	}
 
+	err = database.DBCreateTokenIndex()
+	if err != nil {
+		panic(err)
+	}
+
 	var netw devframework.NetworkParam
 	netw.HighwayAddress = highwayAddress
 	node := devframework.NewAppNode(chainDataFolder, netw, true, false, false, cfg.EnableChainLog)
@@ -1032,10 +1037,16 @@ func tokenListWatcher() {
 			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount)
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
-		err = database.DBSaveTokenInfo(tokenInfoList)
-		if err != nil {
-			panic(err)
-		}
+
+		err = mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
+
+			err = database.DBSaveTokenInfo(tokenInfoList)
+			if err != nil {
+				panic(err)
+			}
+
+			return session.CommitTransaction(sc)
+		})
 		lastTokenIDLock.Lock()
 
 		if len(lastTokenIDMap) < len(tokenInfoList) {
