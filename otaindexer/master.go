@@ -288,6 +288,40 @@ func loadSubmittedOTAKey() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	for _, data := range Submitted_OTAKey.Keys {
+		pubkey, _, err := base58.Base58Check{}.Decode(data.KeyInfo.Pubkey)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+		for tokenID, coinInfo := range data.KeyInfo.CoinIndex {
+			if tokenID == common.ConfidentialAssetID.String() {
+				coinInfo.LastScanned = 0
+				data.KeyInfo.CoinIndex[tokenID] = coinInfo
+				continue
+			}
+			coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, data.KeyInfo.OTAKey))
+			coinInfo.LastScanned = 0
+			txs, err := database.DBGetCountTxByPubkey(data.KeyInfo.Pubkey, tokenID, 2)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			data.KeyInfo.TotalReceiveTxs[tokenID] = uint64(txs)
+			data.KeyInfo.CoinIndex[tokenID] = coinInfo
+		}
+		err = data.KeyInfo.Saving()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		doc := bson.M{
+			"$set": *data,
+		}
+		err = database.DBUpdateKeyInfoV2(doc, data.KeyInfo)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
 	log.Printf("Loaded %v keys\n", len(keys))
 }
 
