@@ -59,9 +59,9 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 		return nil, err
 	}
 	newList := filterByIndexedCoins(list)
-	sort.Slice(list, func(i, j int) bool { return newList[i].CoinIndex < newList[j].CoinIndex })
+	sort.Slice(newList, func(i, j int) bool { return newList[i].CoinIndex < newList[j].CoinIndex })
 	log.Printf("found %v/%v fromidx %v shard %v coins in %v", len(newList), len(list), fromidx, shardID, time.Since(startTime))
-	return list, err
+	return newList, err
 }
 
 func DBGetCoinsByOTAKey(shardID int, tokenID, OTASecret string, offset, limit int64) ([]shared.CoinData, error) {

@@ -455,7 +455,6 @@ func updateSubmittedOTAKey() error {
 	for idx, doc := range docs {
 		err := database.DBUpdateKeyInfoV2(doc, KeyInfoList[idx])
 		if err != nil {
-			assignedOTAKeys.Unlock()
 			return err
 		}
 	}
