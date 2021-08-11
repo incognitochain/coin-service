@@ -162,6 +162,8 @@ func processBeaconOrder(orderGroups map[int64][]rawdbv2.Pdexv3Order) []shared.Tr
 	var result []shared.TradeOrderData
 	for _, orders := range orderGroups {
 		for _, order := range orders {
+			// order.TradeDirection()
+			// order.
 			newOrder := shared.TradeOrderData{
 				RequestTx: order.Id(),
 			}
