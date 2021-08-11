@@ -50,7 +50,7 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 	if limit == 0 {
 		limit = 10000
 	}
-	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
 	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
 		Sort:  bson.D{{"coinidx", 1}},
 		Limit: &limit,
@@ -58,8 +58,9 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 	if err != nil {
 		return nil, err
 	}
-	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
-	log.Printf("found %v fromidx %v shard %v coins in %v", len(list), fromidx, shardID, time.Since(startTime))
+	newList := filterByIndexedCoins(list)
+	sort.Slice(list, func(i, j int) bool { return newList[i].CoinIndex < newList[j].CoinIndex })
+	log.Printf("found %v/%v fromidx %v shard %v coins in %v", len(newList), len(list), fromidx, shardID, time.Since(startTime))
 	return list, err
 }
 
@@ -232,4 +233,14 @@ func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {
 	}
 
 	return result, pubkeyTxs, nil
+}
+
+func filterByIndexedCoins(coins []shared.CoinData) []shared.CoinData {
+	var result []shared.CoinData
+	for _, v := range coins {
+		if v.OTASecret == "" {
+			result = append(result, v)
+		}
+	}
+	return result
 }
