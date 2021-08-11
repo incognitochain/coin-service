@@ -541,6 +541,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			contractingReqAction := tx.GetMetadata().(*metadata.ContractingRequest)
 			realTokenID = contractingReqAction.TokenID.String()
 			pubkey = base58.EncodeCheck(contractingReqAction.BurnerAddress.GetPublicSpend().ToBytesS())
+
+			// Pdexv3AddLiquidityResponseMeta
 		}
 
 		mtd := ""

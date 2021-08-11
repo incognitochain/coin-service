@@ -63,7 +63,16 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
-	_ = pair
+	result, err := database.DBGetPoolPairsByPairID(pair)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) PoolsDetail(c *gin.Context) {
@@ -75,6 +84,16 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	result, err := database.DBGetPoolPairsByPoolID(req.PoolIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) Share(c *gin.Context) {

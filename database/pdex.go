@@ -402,15 +402,35 @@ func DBSavePoolPairs(pools []shared.PoolPairData) error {
 	return nil
 }
 
-func DBGetPoolPairs() ([]shared.PoolPairData, error) {
+func DBGetPoolPairsByPairID(pairID string) ([]shared.PoolPairData, error) {
 	var result []shared.PoolPairData
+	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}}
+	if pairID == "all" {
+		filter = bson.M{}
+	}
+	err := mgm.Coll(&shared.PoolPairData{}).SimpleFind(result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
 
+func DBGetPoolPairsByPoolID(poolID []string) ([]shared.PoolPairData, error) {
+	var result []shared.PoolPairData
+	filter := bson.M{"poolid": bson.M{operator.In: poolID}}
+	err := mgm.Coll(&shared.PoolPairData{}).SimpleFind(result, filter)
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
 func DBGetPdexPairs() ([]shared.PairData, error) {
 	var result []shared.PairData
-
+	err := mgm.Coll(&shared.PairData{}).SimpleFind(result, bson.M{})
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
