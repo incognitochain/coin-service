@@ -1,14 +1,114 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
+	"errors"
+	"flag"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
 
-	"github.com/incognitochain/incognito-chain/common/base58"
-	"github.com/incognitochain/incognito-chain/wallet"
+	jsoniter "github.com/json-iterator/go"
 )
 
-func main() {
-	wl, _ := wallet.Base58CheckDeserialize("12RvqY93jN5Vnii82rc1xbYqVtLNYBZLC92JA9UwHvvz9sDmJeZYouh6U1uSMFpZTdUZqeXuwHLYoxPaYMgWnUyW9QhpERm2L4NcAiu")
-	fmt.Println(base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk))
+type APIRespond struct {
+	Result jsoniter.RawMessage
+	Error  *string
+}
 
+func main() {
+	argMainnet := flag.Bool("mn", false, "set mainnet")
+	csvEndpoint := "http://10.152.183.105:9001/rescanotakey"
+	if *argMainnet {
+		csvEndpoint = "https://api-coinservice.incognito.org/rescanotakey"
+	}
+	type keysJSON struct {
+		Result []struct {
+			Fullkey string `json:"fullkey"`
+		}
+	}
+
+	data, err := ioutil.ReadFile("./response.json")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	var keys keysJSON
+	if data != nil {
+		err = json.Unmarshal(data, &keys)
+		if err != nil {
+			panic(err)
+		}
+	}
+	for _, v := range keys.Result {
+		key := v.Fullkey
+		reqJSON := struct {
+			OTAKey string
+		}{
+			OTAKey: key,
+		}
+		reqBytes, err := json.Marshal(reqJSON)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		respond, err := makeRequest("POST", csvEndpoint, reqBytes)
+		if err != nil {
+			log.Println((respond))
+			log.Fatalln(err)
+		}
+		log.Println(key, string(respond))
+	}
+
+}
+
+func makeRequest(reqType string, url string, reqBody []byte) ([]byte, error) {
+	buf := bytes.NewBuffer(reqBody)
+	r, err := http.NewRequest(reqType, url, buf)
+	if err != nil {
+		return nil, err
+	}
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Content-Encoding", "gzip")
+	client := new(http.Client)
+	resp, err := client.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := readRespBody(resp)
+	if err != nil {
+		return nil, err
+	}
+	var apiResp APIRespond
+	err = json.Unmarshal(body, &apiResp)
+	if err != nil {
+		return nil, err
+	}
+	if apiResp.Error != nil {
+		return nil, errors.New(*apiResp.Error)
+	}
+	return apiResp.Result, nil
+}
+
+func readRespBody(resp *http.Response) ([]byte, error) {
+	var reader io.ReadCloser
+	var err error
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer reader.Close()
+	default:
+		reader = resp.Body
+	}
+
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
 }
