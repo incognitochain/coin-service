@@ -288,7 +288,7 @@ func loadSubmittedOTAKey() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
+	// re-check measure
 	for _, data := range Submitted_OTAKey.Keys {
 		pubkey, _, err := base58.Base58Check{}.Decode(data.KeyInfo.Pubkey)
 		if err != nil {
@@ -297,12 +297,12 @@ func loadSubmittedOTAKey() {
 		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
 		for tokenID, coinInfo := range data.KeyInfo.CoinIndex {
 			if tokenID == common.ConfidentialAssetID.String() {
-				coinInfo.LastScanned = 0
+				// coinInfo.LastScanned = 0
 				data.KeyInfo.CoinIndex[tokenID] = coinInfo
 				continue
 			}
 			coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, data.KeyInfo.OTAKey))
-			coinInfo.LastScanned = 0
+			// coinInfo.LastScanned = 0
 			txs, err := database.DBGetCountTxByPubkey(data.KeyInfo.Pubkey, tokenID, 2)
 			if err != nil {
 				log.Fatalln(err)
@@ -315,12 +315,14 @@ func loadSubmittedOTAKey() {
 			log.Fatalln(err)
 		}
 		doc := bson.M{
-			"$set": *data,
+			"$set": *data.KeyInfo,
 		}
 		err = database.DBUpdateKeyInfoV2(doc, data.KeyInfo)
 		if err != nil {
 			log.Fatalln(err)
 		}
+
+		log.Printf("update key %v\n", data.KeyInfo.OTAKey)
 	}
 	log.Printf("Loaded %v keys\n", len(keys))
 }
@@ -391,47 +393,47 @@ func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
 		return err
 	}
 	data.OTAKey = key.OTAKey
-	if w, ok := Submitted_OTAKey.AssignedKey[key.Pubkey]; !ok {
-		return errors.New("key not assign yet")
-	} else {
-		for tokenID, coinInfo := range data.CoinIndex {
-			if tokenID == common.ConfidentialAssetID.String() {
-				coinInfo.LastScanned = 0
-				data.CoinIndex[tokenID] = coinInfo
-				continue
-			}
-			coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
+
+	for tokenID, coinInfo := range data.CoinIndex {
+		if tokenID == common.ConfidentialAssetID.String() {
 			coinInfo.LastScanned = 0
-			txs, err := database.DBGetCountTxByPubkey(key.Pubkey, tokenID, 2)
-			if err != nil {
-				return err
-			}
-			data.TotalReceiveTxs[tokenID] = uint64(txs)
 			data.CoinIndex[tokenID] = coinInfo
+			continue
 		}
-		err := data.Saving()
+		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
+		coinInfo.LastScanned = 0
+		txs, err := database.DBGetCountTxByPubkey(key.Pubkey, tokenID, 2)
 		if err != nil {
 			return err
 		}
-		doc := bson.M{
-			"$set": *data,
-		}
-		err = database.DBUpdateKeyInfoV2(doc, data)
-		if err != nil {
-			return err
-		}
-		Submitted_OTAKey.Keys[key.Pubkey].KeyInfo = data
-
-		keyAction := WorkerOTACmd{
-			Action: REINDEX,
-			Key:    *Submitted_OTAKey.Keys[key.Pubkey],
-		}
-		keyBytes, err := json.Marshal(keyAction)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		w.writeCh <- keyBytes
+		data.TotalReceiveTxs[tokenID] = uint64(txs)
+		data.CoinIndex[tokenID] = coinInfo
 	}
+	err = data.Saving()
+	if err != nil {
+		return err
+	}
+	doc := bson.M{
+		"$set": *data,
+	}
+	err = database.DBUpdateKeyInfoV2(doc, data)
+	if err != nil {
+		return err
+	}
+	Submitted_OTAKey.Keys[key.Pubkey].KeyInfo = data
 
+	if w, ok := Submitted_OTAKey.AssignedKey[key.Pubkey]; ok {
+		if w.Heartbeat != 0 {
+			keyAction := WorkerOTACmd{
+				Action: REINDEX,
+				Key:    *Submitted_OTAKey.Keys[key.Pubkey],
+			}
+			keyBytes, err := json.Marshal(keyAction)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			w.writeCh <- keyBytes
+		}
+	}
 	return nil
 }

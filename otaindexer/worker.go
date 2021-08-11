@@ -99,6 +99,7 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 		assignedOTAKeys.Lock()
 		switch keyAction.Action {
 		case REINDEX:
+
 			pubkey, _, err := base58.Base58Check{}.Decode(keyAction.Key.Pubkey)
 			if err != nil {
 				log.Fatalln(err)
@@ -106,9 +107,9 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
 			for _, v := range assignedOTAKeys.Keys[int(shardID)] {
 				if v.OTAKey == keyAction.Key.OTAKey {
-					for tokenID, coinInfo := range v.KeyInfo.CoinIndex {
-						coinInfo.LastScanned = 0
+					for tokenID, coinInfo := range keyAction.Key.KeyInfo.CoinIndex {
 						v.KeyInfo.CoinIndex[tokenID] = coinInfo
+						v.KeyInfo.TotalReceiveTxs[tokenID] = keyAction.Key.KeyInfo.TotalReceiveTxs[tokenID]
 					}
 				}
 			}
