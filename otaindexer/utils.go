@@ -3,6 +3,7 @@ package otaindexer
 import (
 	"log"
 	"sync"
+	"time"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/incognito-chain/common"
@@ -21,20 +22,10 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	tokenID := ""
 	pass := false
 
-	otasecret := new(operation.Scalar)
-	otasecret.FromBytesS(keySet.OTAKey.GetOTASecretKey().ToBytesS())
+	otasecret := keySet.OTAKey.GetOTASecretKey()
+	pubkey := c.GetPublicKey()
+	otapub := keySet.OTAKey.GetPublicSpend()
 
-	pubkey := new(operation.Point)
-	_, err := pubkey.FromBytesS(c.GetPublicKey().ToBytesS())
-	if err != nil {
-		panic(err)
-	}
-
-	otapub := new(operation.Point)
-	_, err = otapub.FromBytesS(keySet.OTAKey.GetPublicSpend().ToBytesS())
-	if err != nil {
-		panic(err)
-	}
 	rK := new(operation.Point).ScalarMult(txOTARandomPoint, otasecret)
 
 	hashed := operation.HashToScalar(
@@ -53,10 +44,12 @@ retryCheckTokenID:
 		err := retrieveTokenIDList()
 		if err != nil {
 			log.Println("retrieveTokenIDList", err)
+			time.Sleep(1 * time.Second)
 			goto retryGetToken
 		}
 		if len(lastTokenIDMap) == 0 {
 			log.Println("retryGetToken")
+			time.Sleep(1 * time.Second)
 			goto retryGetToken
 		}
 		tokenListLock.RLock()
@@ -90,6 +83,7 @@ retryCheckTokenID:
 		}
 		if tokenID == "" {
 			log.Println("retryCheckTokenID")
+			time.Sleep(1 * time.Second)
 			goto retryCheckTokenID
 		}
 	}

@@ -6,19 +6,21 @@ import (
 
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/kamva/mgm/v3"
-	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func DBSaveTokenInfo(list []shared.TokenInfoData) error {
 	for _, v := range list {
-		filter := bson.M{"tokenid": bson.M{operator.Eq: v.TokenID}}
-		doc := bson.M{
-			"$set": v,
-		}
-		_, err := mgm.Coll(&shared.TokenInfoData{}).UpdateOne(context.Background(), filter, doc, mgm.UpsertTrueOption())
+		_, err := mgm.Coll(&shared.TokenInfoData{}).InsertOne(context.Background(), v)
 		if err != nil {
-			return err
+			writeErr, ok := err.(mongo.WriteException)
+			if !ok {
+				panic(err)
+			}
+			if !writeErr.HasErrorCode(11000) {
+				panic(err)
+			}
 		}
 	}
 	return nil
