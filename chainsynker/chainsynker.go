@@ -1038,15 +1038,10 @@ func tokenListWatcher() {
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
 		if len(lastTokenIDMap) != len(tokenInfoList) {
-			err = mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
-
-				err = database.DBSaveTokenInfo(tokenInfoList)
-				if err != nil {
-					panic(err)
-				}
-
-				return session.CommitTransaction(sc)
-			})
+			err = database.DBSaveTokenInfo(tokenInfoList)
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		lastTokenIDLock.Lock()

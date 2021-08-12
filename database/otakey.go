@@ -56,9 +56,9 @@ func DBGetIndexerStats(indexerID int) (uint64, error) {
 	return uint64(count), nil
 }
 
-func DBUpdateKeyInfoV2(doc interface{}, key *shared.KeyInfoData) error {
+func DBUpdateKeyInfoV2(doc interface{}, key *shared.KeyInfoData, ctx context.Context) error {
 	filter := bson.M{"otakey": bson.M{operator.Eq: key.OTAKey}}
-	result, err := mgm.Coll(&shared.KeyInfoDataV2{}).UpdateOne(context.Background(), filter, doc, mgm.UpsertTrueOption())
+	result, err := mgm.Coll(&shared.KeyInfoDataV2{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
 	if err != nil {
 		return err
 	}

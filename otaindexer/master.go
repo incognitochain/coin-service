@@ -1,6 +1,7 @@
 package otaindexer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -307,6 +308,12 @@ func loadSubmittedOTAKey() {
 			if err != nil {
 				log.Fatalln(err)
 			}
+			if len(data.KeyInfo.TotalReceiveTxs) == 0 {
+				data.KeyInfo.TotalReceiveTxs = make(map[string]uint64)
+			}
+			if len(data.KeyInfo.CoinIndex) == 0 {
+				data.KeyInfo.CoinIndex = make(map[string]shared.CoinInfo)
+			}
 			data.KeyInfo.TotalReceiveTxs[tokenID] = uint64(txs)
 			data.KeyInfo.CoinIndex[tokenID] = coinInfo
 		}
@@ -317,7 +324,7 @@ func loadSubmittedOTAKey() {
 		doc := bson.M{
 			"$set": *data.KeyInfo,
 		}
-		err = database.DBUpdateKeyInfoV2(doc, data.KeyInfo)
+		err = database.DBUpdateKeyInfoV2(doc, data.KeyInfo, context.Background())
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -416,7 +423,7 @@ func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
 	doc := bson.M{
 		"$set": *data,
 	}
-	err = database.DBUpdateKeyInfoV2(doc, data)
+	err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
 	if err != nil {
 		return err
 	}
