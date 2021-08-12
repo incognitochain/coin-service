@@ -64,6 +64,22 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 	return newList, err
 }
 
+func DBGetUnknownCoinsV21(shardID int, tokenID string, fromidx, limit int64) ([]shared.CoinData, error) {
+	list := []shared.CoinData{}
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return list, err
+}
+
 func DBGetCoinsByOTAKey(shardID int, tokenID, OTASecret string, offset, limit int64) ([]shared.CoinData, error) {
 	startTime := time.Now()
 	list := []shared.CoinData{}

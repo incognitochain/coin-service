@@ -178,7 +178,7 @@ func APIGetCoins(c *gin.Context) {
 				result = append(result, cV2)
 			}
 		} else {
-			coinList, err := database.DBGetUnknownCoinsV2(shardid, tokenid, int64(offset), int64(limit))
+			coinList, err := database.DBGetUnknownCoinsV21(shardid, tokenid, int64(offset), int64(limit))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 				return
