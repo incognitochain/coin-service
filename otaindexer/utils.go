@@ -38,19 +38,19 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
 	}
+
+	tokenMapLen := len(lastTokenIDMap)
 retryCheckTokenID:
 	if assetTag != nil && tokenID == "" {
 	retryGetToken:
-		err := retrieveTokenIDList()
-		if err != nil {
-			log.Println("retrieveTokenIDList", err)
-			time.Sleep(1 * time.Second)
-			goto retryGetToken
-		}
-		if len(lastTokenIDMap) == 0 {
-			log.Println("retryGetToken")
-			time.Sleep(1 * time.Second)
-			goto retryGetToken
+		if tokenMapLen == 0 {
+			err := retrieveTokenIDList()
+			if err != nil {
+				log.Println("retrieveTokenIDList", err)
+				time.Sleep(1 * time.Second)
+				goto retryGetToken
+			}
+			tokenMapLen = len(lastTokenIDMap)
 		}
 		tokenListLock.RLock()
 		tokenIDs = make(map[string]string)
@@ -71,7 +71,7 @@ retryCheckTokenID:
 			for tkStr, tkID := range tokenIDs {
 				recomputedAssetTag, err := new(operation.Point).UnmarshalText([]byte(tkStr))
 				if err != nil {
-					log.Println(err)
+					log.Println("UnmarshalText tkStr", err)
 					return false, "", nil
 				}
 				recomputedAssetTag.Add(recomputedAssetTag, new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder))
@@ -83,6 +83,7 @@ retryCheckTokenID:
 		}
 		if tokenID == "" {
 			log.Println("retryCheckTokenID")
+			tokenMapLen = 0
 			time.Sleep(1 * time.Second)
 			goto retryCheckTokenID
 		}

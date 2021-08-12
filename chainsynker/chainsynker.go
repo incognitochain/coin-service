@@ -950,7 +950,7 @@ func mempoolWatcher() {
 	}
 }
 func tokenListWatcher() {
-	interval := time.NewTicker(5 * time.Second)
+	interval := time.NewTicker(10 * time.Second)
 	activeShards := config.Param().ActiveShards
 	for {
 		<-interval.C
@@ -1037,16 +1037,18 @@ func tokenListWatcher() {
 			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount)
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
+		if len(lastTokenIDMap) != len(tokenInfoList) {
+			err = mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
 
-		err = mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
+				err = database.DBSaveTokenInfo(tokenInfoList)
+				if err != nil {
+					panic(err)
+				}
 
-			err = database.DBSaveTokenInfo(tokenInfoList)
-			if err != nil {
-				panic(err)
-			}
+				return session.CommitTransaction(sc)
+			})
+		}
 
-			return session.CommitTransaction(sc)
-		})
 		lastTokenIDLock.Lock()
 
 		if len(lastTokenIDMap) < len(tokenInfoList) {
