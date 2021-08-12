@@ -45,21 +45,6 @@ func (pdexv3) ListPairs(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, respond)
 }
-func (pdexv3) GetOrderBook(c *gin.Context) {
-	decimal := c.Query("decimal")
-	poolID := c.Query("poolid")
-
-	_ = decimal
-	_ = poolID
-}
-
-func (pdexv3) PendingOrder(c *gin.Context) {
-	poolID := c.Query("poolid")
-	otakey := c.Query("otakey")
-
-	_ = poolID
-	_ = otakey
-}
 
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
@@ -94,6 +79,22 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) GetOrderBook(c *gin.Context) {
+	decimal := c.Query("decimal")
+	poolID := c.Query("poolid")
+
+	_ = decimal
+	_ = poolID
+}
+
+func (pdexv3) PendingOrder(c *gin.Context) {
+	poolID := c.Query("poolid")
+	otakey := c.Query("otakey")
+
+	_ = poolID
+	_ = otakey
 }
 
 func (pdexv3) Share(c *gin.Context) {

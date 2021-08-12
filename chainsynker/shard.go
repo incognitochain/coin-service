@@ -430,6 +430,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			pairID := ""
 			rate := uint64(0)
 			amount := uint64(0)
+			nftID := ""
 			switch metaDataType {
 			case metadata.PDETradeRequestMeta:
 				meta := tx.GetMetadata().(*metadata.PDECrossPoolTradeRequest)
@@ -477,7 +478,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				rate = item.MinAcceptableAmount / item.SellAmount
 			}
 			_ = buyToken
-			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nil, rate, amount, 0, lockTime)
+			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nftID, nil, rate, amount, 0, lockTime)
 			tradeRequestList = append(tradeRequestList, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta:
 			status := ""
