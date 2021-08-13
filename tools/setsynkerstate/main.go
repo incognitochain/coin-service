@@ -3,34 +3,45 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"path/filepath"
 
-	devframework "github.com/0xkumi/incognito-dev-framework"
+	"github.com/syndtr/goleveldb/leveldb"
+	lvdbErrors "github.com/syndtr/goleveldb/leveldb/errors"
+	"github.com/syndtr/goleveldb/leveldb/filter"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 func main() {
-	argNetwork := flag.String("network", "", "set chain network")
 	argChainData := flag.String("chaindata", "", "set chain data folder")
 	argShardHeight := flag.Uint64("height", 1, "set shard state")
 	argShardID := flag.Int("shardid", 0, "set shardID")
 	flag.Parse()
-	chainNetwork := *argNetwork
 	chainData := *argChainData
-	var netw devframework.NetworkParam
-	switch chainNetwork {
-	case "testnet2":
-		netw = devframework.TestNet2Param
-	case "testnet":
-		netw = devframework.TestNetParam
-	case "mainnet":
-		netw = devframework.MainNetParam
-	default:
-		panic("unknown network")
-	}
-	netw.HighwayAddress = "127.0.0.1:1"
-	node := devframework.NewAppNode(chainData, netw, true, false, false, false)
 
+	handles := -1
+	cache := 8
+	userDBPath := filepath.Join(chainData, "userdb")
+	lvdb, err := leveldb.OpenFile(userDBPath, &opt.Options{
+		OpenFilesCacheCapacity: handles,
+		BlockCacheCapacity:     cache / 2 * opt.MiB,
+		WriteBuffer:            cache * opt.MiB, // Two of these are used internally
+		Filter:                 filter.NewBloomFilter(10),
+	})
+	if _, corrupted := err.(*lvdbErrors.ErrCorrupted); corrupted {
+		lvdb, err = leveldb.RecoverFile(userDBPath, nil)
+		if err != nil {
+			panic(err)
+		}
+	}
+	userDB := lvdb
 	statePrefix := fmt.Sprintf("coin-processed-%v", *argShardID)
-	err := node.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", *argShardHeight)), nil)
+	value, err := userDB.Get([]byte(statePrefix), nil)
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("changing shard %v from %v to %v", *argShardID, string(value), *argShardHeight)
+	err = userDB.Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", *argShardHeight)), nil)
 	if err != nil {
 		panic(err)
 	}
