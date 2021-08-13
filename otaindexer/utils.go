@@ -12,7 +12,7 @@ import (
 	"github.com/incognitochain/incognito-chain/privacy/operation"
 )
 
-func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenIDs map[string]string) (bool, string, *operation.Point) {
+func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenIDs map[string]string, willCheckToken bool) (bool, string, *operation.Point) {
 	_, txOTARandomPoint, index, err1 := c.GetTxRandomDetail()
 	if err1 != nil {
 		log.Println(err1)
@@ -35,6 +35,9 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	HnG := new(operation.Point).ScalarMultBase(hashed)
 	KCheck := new(operation.Point).Sub(pubkey, HnG)
 	pass = operation.IsPointEqual(KCheck, otapub)
+	if !willCheckToken {
+		return pass, "", nil
+	}
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
 	}

@@ -100,7 +100,6 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 		assignedOTAKeys.Lock()
 		switch keyAction.Action {
 		case REINDEX:
-
 			pubkey, _, err := base58.Base58Check{}.Decode(keyAction.Key.Pubkey)
 			if err != nil {
 				log.Fatalln(err)
@@ -382,11 +381,10 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 				for _, keyData := range assignedOTAKeys.Keys[cn.ShardID] {
 					if _, ok := keyData.KeyInfo.CoinIndex[cn.TokenID]; ok {
 						if cn.CoinIndex < keyData.KeyInfo.CoinIndex[cn.TokenID].LastScanned {
-							panic("this is not possible!!!")
 							continue
 						}
 					}
-					pass, tokenID, _ = doesCoinBelongToKeySet(newCoin, keyData.keyset, tokenIDMap)
+					pass, tokenID, _ = doesCoinBelongToKeySet(newCoin, keyData.keyset, tokenIDMap, true)
 					if pass {
 						cn.RealTokenID = tokenID
 						tempOTACoinsCh <- map[string]shared.CoinData{keyData.OTAKey: cn}
