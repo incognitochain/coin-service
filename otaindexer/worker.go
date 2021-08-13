@@ -326,7 +326,6 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 				panic(err)
 			}
 		}
-
 		err := updateSubmittedOTAKey()
 		if err != nil {
 			panic(err)
