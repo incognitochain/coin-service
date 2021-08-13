@@ -481,7 +481,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				receiver, _ = item.RefundReceiver.String()
 			}
 			_ = buyToken
-			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nftID, nil, rate, amount, 0, lockTime)
+			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nftID, receiver, nil, rate, amount, 0, lockTime)
 			tradeRequestList = append(tradeRequestList, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta:
 			status := ""

@@ -199,6 +199,7 @@ func StartOTAIndexing() {
 		}
 		log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
 		assignedOTAKeys.Unlock()
+
 	}
 }
 
@@ -556,4 +557,14 @@ func updateOTALastScan(fromPRVIndex, fromTokenIndex map[int]uint64) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func filterOrdersByOTAKey() {
+
+}
+
+func GetUnknownOrdersFromDB() ([]shared.TradeOrderData, error) {
+	var result []shared.TradeOrderData
+
+	return result, nil
 }

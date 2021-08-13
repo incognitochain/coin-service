@@ -439,3 +439,36 @@ func DBGetPdexWaitingLiquidity() ([]shared.WaitingContributions, error) {
 
 	return result, nil
 }
+
+func DBUpdateOrdersOwner(orders []shared.TradeOrderData) error {
+	startTime := time.Now()
+	docs := []interface{}{}
+	for _, order := range orders {
+		update := bson.M{
+			"$set": bson.M{"otasecret": order.OTAsecret},
+		}
+		docs = append(docs, update)
+	}
+	for idx, doc := range docs {
+		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(context.Background(), orders[idx].GetID(), doc)
+		if err != nil {
+			log.Printf("failed to update %v orders in %v", len(orders), time.Since(startTime))
+			return err
+		}
+	}
+	log.Printf("updated %v orders in %v", len(orders), time.Since(startTime))
+	return nil
+}
+
+func GetUnknownOrdersFromDB(limit int64) ([]shared.TradeOrderData, error) {
+	var result []shared.TradeOrderData
+	filter := bson.M{"nftid": bson.M{operator.Ne: ""}, "otasecret": bson.M{operator.Eq: ""}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}

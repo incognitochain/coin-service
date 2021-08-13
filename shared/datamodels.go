@@ -491,9 +491,10 @@ type TradeOrderData struct {
 	Locktime         int64    `json:"locktime" bson:"locktime"`
 	NFTID            string   `json:"nftid" bson:"nftid"`
 	Receiver         string   `json:"receiver" bson:"receiver"`
+	OTAsecret        string   `json:"otasecret" bson:"otasecret"`
 }
 
-func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid string, respondTxs []string, rate, amount, remain uint64, locktime int64) *TradeOrderData {
+func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid, receiver string, respondTxs []string, rate, amount, remain uint64, locktime int64) *TradeOrderData {
 	return &TradeOrderData{
 		NFTID:       nftid,
 		RequestTx:   requestTx,
@@ -506,6 +507,7 @@ func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid strin
 		Amount:      amount,
 		Remain:      remain,
 		Locktime:    locktime,
+		Receiver:    receiver,
 	}
 }
 
