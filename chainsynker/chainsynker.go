@@ -144,6 +144,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				publicKeyBytes := prvout.GetPublicKey().ToBytesS()
 				publicKeyStr := base58.EncodeCheck(publicKeyBytes)
 				publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+				isBurnCoin := false
 				if publicKeyShardID == byte(shardID) {
 					coinIdx := uint64(0)
 					if prvout.GetVersion() == 2 {
@@ -153,6 +154,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							panic(err)
 						}
 						coinIdx = idxBig.Uint64()
+						if base58.EncodeCheck(prvout.GetTxRandom().Bytes()) == "1111111111111111111111111111111111111SYXsAycDPUu4z2ZksJD5fh5nTDcH3vCFHnpcVye5XuF8JRxY" {
+							isBurnCoin = true
+						}
 					} else {
 						idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, prvout.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 						if err != nil {
@@ -181,6 +185,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						}
 					}
 					outCoin := shared.NewCoinData(beaconHeight, coinIdx, prvout.Bytes(), common.PRVCoinID.String(), publicKeyStr, "", crossShardCoinMap[prvout.GetCommitment().String()], shardID, int(prvout.GetVersion()))
+					if isBurnCoin {
+						outCoin.OTASecret = outCoin.CoinPubkey
+					}
 					outCoinList = append(outCoinList, *outCoin)
 				}
 			}
@@ -189,6 +196,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					publicKeyBytes := tkout.GetPublicKey().ToBytesS()
 					publicKeyStr := base58.EncodeCheck(publicKeyBytes)
 					publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+					isBurnCoin := false
 					if publicKeyShardID == byte(shardID) {
 						coinIdx := uint64(0)
 						tokenStr := tkouts.PropertyID.String()
@@ -199,6 +207,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							}
 							coinIdx = idxBig.Uint64()
 							tokenStr = common.ConfidentialAssetID.String()
+							if base58.EncodeCheck(tkout.GetTxRandom().Bytes()) == "1111111111111111111111111111111111111SYXsAycDPUu4z2ZksJD5fh5nTDcH3vCFHnpcVye5XuF8JRxY" {
+								isBurnCoin = true
+							}
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], tkouts.PropertyID, tkout.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 							if err != nil {
@@ -227,6 +238,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							}
 						}
 						outCoin := shared.NewCoinData(beaconHeight, coinIdx, tkout.Bytes(), tokenStr, publicKeyStr, "", crossShardCoinMap[tkout.GetCommitment().String()], shardID, int(tkout.GetVersion()))
+						if isBurnCoin {
+							outCoin.OTASecret = outCoin.CoinPubkey
+						}
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}
@@ -258,6 +272,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				publicKeyBytes := coin.GetPublicKey().ToBytesS()
 				publicKeyStr := base58.EncodeCheck(publicKeyBytes)
 				publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+				isBurnCoin := false
 				if publicKeyShardID == byte(shardID) {
 					coinIdx := uint64(0)
 					if coin.GetVersion() == 2 {
@@ -268,6 +283,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							panic(err)
 						}
 						coinIdx = idxBig.Uint64()
+						if base58.EncodeCheck(coin.GetTxRandom().Bytes()) == "1111111111111111111111111111111111111SYXsAycDPUu4z2ZksJD5fh5nTDcH3vCFHnpcVye5XuF8JRxY" {
+							isBurnCoin = true
+						}
 					} else {
 						idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 						if err != nil {
@@ -296,6 +314,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						}
 					}
 					outCoin := shared.NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenID, publicKeyStr, "", txHash, shardID, int(coin.GetVersion()))
+					if isBurnCoin {
+						outCoin.OTASecret = outCoin.CoinPubkey
+					}
 					outCoinList = append(outCoinList, *outCoin)
 				}
 			}
@@ -316,6 +337,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					publicKeyBytes := coin.GetPublicKey().ToBytesS()
 					publicKeyStr := base58.EncodeCheck(publicKeyBytes)
 					publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+					isBurnCoin := false
 					if publicKeyShardID == byte(shardID) {
 						coinIdx := uint64(0)
 						tokenStr := txToken.GetTokenID().String()
@@ -327,6 +349,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							}
 							coinIdx = idxBig.Uint64()
 							tokenStr = common.ConfidentialAssetID.String()
+							if base58.EncodeCheck(coin.GetTxRandom().Bytes()) == "1111111111111111111111111111111111111SYXsAycDPUu4z2ZksJD5fh5nTDcH3vCFHnpcVye5XuF8JRxY" {
+								isBurnCoin = true
+							}
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], *txToken.GetTokenID(), coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 							if err != nil {
@@ -355,6 +380,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							}
 						}
 						outCoin := shared.NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenStr, publicKeyStr, "", txHash, shardID, int(coin.GetVersion()))
+						if isBurnCoin {
+							outCoin.OTASecret = outCoin.CoinPubkey
+						}
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}
@@ -372,6 +400,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					publicKeyBytes := coin.GetPublicKey().ToBytesS()
 					publicKeyStr := base58.EncodeCheck(publicKeyBytes)
 					publicKeyShardID := common.GetShardIDFromLastByte(publicKeyBytes[len(publicKeyBytes)-1])
+					isBurnCoin := false
 					if publicKeyShardID == byte(shardID) {
 						coinIdx := uint64(0)
 						if coin.GetVersion() == 2 {
@@ -380,6 +409,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 								panic(err)
 							}
 							coinIdx = idxBig.Uint64()
+							if base58.EncodeCheck(coin.GetTxRandom().Bytes()) == "1111111111111111111111111111111111111SYXsAycDPUu4z2ZksJD5fh5nTDcH3vCFHnpcVye5XuF8JRxY" {
+								isBurnCoin = true
+							}
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 							if err != nil {
@@ -408,6 +440,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							}
 						}
 						outCoin := shared.NewCoinData(beaconHeight, coinIdx, coin.Bytes(), common.PRVCoinID.String(), publicKeyStr, "", txHash, shardID, int(coin.GetVersion()))
+						if isBurnCoin {
+							outCoin.OTASecret = outCoin.CoinPubkey
+						}
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}
