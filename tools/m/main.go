@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,6 +22,7 @@ type APIRespond struct {
 
 func main() {
 	argMainnet := flag.Bool("mn", false, "set mainnet")
+	flag.Parse()
 	csvEndpoint := "http://10.152.183.105:9001/rescanotakey"
 	if *argMainnet {
 		csvEndpoint = "https://api-coinservice.incognito.org/rescanotakey"
@@ -30,7 +32,7 @@ func main() {
 			Fullkey string `json:"fullkey"`
 		}
 	}
-
+	fmt.Println("csvEndpoint", csvEndpoint)
 	data, err := ioutil.ReadFile("./response.json")
 	if err != nil {
 		log.Fatalln(err)
