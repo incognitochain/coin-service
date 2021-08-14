@@ -17,10 +17,8 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
-	"github.com/kamva/mgm/v3"
 	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var assignedOTAKeys = struct {
@@ -96,7 +94,6 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 			log.Println(err)
 			continue
 		}
-
 		assignedOTAKeys.Lock()
 		switch keyAction.Action {
 		case REINDEX:
@@ -167,11 +164,10 @@ func StartOTAIndexing() {
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
-	interval := time.NewTicker(5 * time.Second)
 	var coinList []shared.CoinData
 	go processMsgFromMaster(readCh, writeCh)
 	for {
-		<-interval.C
+		time.Sleep(5 * time.Second)
 		err := retrieveTokenIDList()
 		if err != nil {
 			panic(err)
@@ -317,36 +313,36 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 		}
 	}
 
-	err := mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
-		if len(coinsToUpdate) > 0 {
-			log.Println("\n=========================================")
-			log.Println("len(coinsToUpdate)", len(coinsToUpdate))
-			log.Println("=========================================\n")
-			err := database.DBUpdateCoins(coinsToUpdate, sc)
+	// err := mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
+	if len(coinsToUpdate) > 0 {
+		log.Println("\n=========================================")
+		log.Println("len(coinsToUpdate)", len(coinsToUpdate))
+		log.Println("=========================================\n")
+		err := database.DBUpdateCoins(coinsToUpdate, context.Background())
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	err := updateSubmittedOTAKey(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	for key, tokenTxs := range totalTxs {
+		for tokenID, txList := range tokenTxs {
+			txHashs := []string{}
+			for txHash := range txList {
+				txHashs = append(txHashs, txHash)
+			}
+			err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key], tokenID, context.Background())
 			if err != nil {
 				panic(err)
 			}
 		}
-
-		err := updateSubmittedOTAKey(sc)
-		if err != nil {
-			panic(err)
-		}
-
-		for key, tokenTxs := range totalTxs {
-			for tokenID, txList := range tokenTxs {
-				txHashs := []string{}
-				for txHash := range txList {
-					txHashs = append(txHashs, txHash)
-				}
-				err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key], tokenID, sc)
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
-		return session.CommitTransaction(sc)
-	})
+	}
+	// 	return session.CommitTransaction(sc)
+	// })
 	if err != nil {
 		panic(err)
 	}
