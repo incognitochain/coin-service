@@ -65,6 +65,7 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 }
 
 func DBGetUnknownCoinsV21(shardID int, tokenID string, fromidx, limit int64) ([]shared.CoinData, error) {
+	startTime := time.Now()
 	list := []shared.CoinData{}
 	if limit == 0 {
 		limit = 10000
@@ -77,6 +78,7 @@ func DBGetUnknownCoinsV21(shardID int, tokenID string, fromidx, limit int64) ([]
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("found %v fromidx %v shard %v coins in %v", len(list), fromidx, shardID, time.Since(startTime))
 	return list, err
 }
 
