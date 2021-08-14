@@ -451,8 +451,8 @@ func ReScanOTAKey(otaKey, pubKey string) error {
 }
 
 func checkMissingIndexCoins() {
-	timer := time.NewTicker(30 * time.Minute)
-	time.Sleep(20 * time.Minute)
+	timer := time.NewTicker(5 * time.Minute)
+	time.Sleep(5 * time.Minute)
 
 	keysNeedRescan := make(map[string]OTAkeyInfo)
 	var keysNeedRescanLock sync.Mutex
@@ -470,7 +470,6 @@ func checkMissingIndexCoins() {
 					keyset: v.keyset,
 				})
 			}
-
 		}
 		Submitted_OTAKey.RUnlock()
 		keysNeedRescan = make(map[string]OTAkeyInfo)
@@ -479,8 +478,8 @@ func checkMissingIndexCoins() {
 			log.Println(err)
 			continue
 		}
-		log.Println("scanList", len(scanList))
 		for shardid, keys := range scanList {
+			log.Println("scanList", shardid, len(keys))
 			lastIndex := int64(0)
 			// check PRV
 			for {
