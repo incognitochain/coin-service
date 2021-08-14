@@ -195,7 +195,7 @@ func StartWorkerAssigner() {
 			}()
 		}
 	}()
-	go checkMissingIndexCoins()
+	// go checkMissingIndexCoins()
 	timer := time.NewTicker(10 * time.Second)
 	for {
 		<-timer.C
