@@ -386,8 +386,7 @@ func APIRescanOTA(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
-	err = otaindexer.ReScanOTAKey(*newSubmitRequest)
+	err = otaindexer.ReScanOTAKey(otaKey, pubKey)
 	respond := APIRespond{
 		Result: "true",
 	}
