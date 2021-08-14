@@ -472,3 +472,23 @@ func GetUnknownOrdersFromDB(limit int64) ([]shared.TradeOrderData, error) {
 	}
 	return result, nil
 }
+
+func DBUpdateOrderProgress(orders []shared.TradeOrderData) error {
+	startTime := time.Now()
+	docs := []interface{}{}
+	for _, order := range orders {
+		update := bson.M{
+			"$set": bson.M{"status": order.Status, "amount": order.Amount, "remain": order.Remain},
+		}
+		docs = append(docs, update)
+	}
+	for idx, doc := range docs {
+		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateByID(context.Background(), orders[idx].GetID(), doc)
+		if err != nil {
+			log.Printf("failed to update %v orders in %v", len(orders), time.Since(startTime))
+			return err
+		}
+	}
+	log.Printf("updated %v orders in %v", len(orders), time.Since(startTime))
+	return nil
+}

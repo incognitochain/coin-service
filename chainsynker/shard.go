@@ -778,5 +778,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		panic(err)
 	}
+	blockProcessedLock.Lock()
+	blockProcessed[shardID] = blk.Header.Height
+	blockProcessedLock.Unlock()
 	log.Printf("finish processing coin for block %v shard %v in %v\n", blk.GetHeight(), shardID, time.Since(startTime))
 }

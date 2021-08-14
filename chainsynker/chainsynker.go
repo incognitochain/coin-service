@@ -39,12 +39,15 @@ var Localnode interface {
 
 // var ShardProcessedState map[byte]uint64
 var TransactionStateDB map[byte]*statedb.StateDB
+var blockProcessed map[int]uint64
+var blockProcessedLock sync.RWMutex
 var lastTokenIDMap map[string]string
 var lastTokenIDLock sync.RWMutex
 var chainDataFolder string
 
 func InitChainSynker(cfg shared.Config) {
 	lastTokenIDMap = make(map[string]string)
+	blockProcessed = make(map[int]uint64)
 	highwayAddress := cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
 
@@ -141,7 +144,9 @@ func InitChainSynker(cfg shared.Config) {
 	go mempoolWatcher()
 	go tokenListWatcher()
 	time.Sleep(5 * time.Second)
+	blockProcessed[-1] = ProcessedBeaconBestState
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
+		blockProcessed[i] = ShardProcessedState[byte(i)]
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
 	Localnode.OnNewBlockFromParticularHeight(-1, int64(ProcessedBeaconBestState), true, processBeacon)

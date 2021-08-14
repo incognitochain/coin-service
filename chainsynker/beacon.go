@@ -3,6 +3,7 @@ package chainsynker
 import (
 	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
@@ -27,6 +28,21 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
 	if err != nil {
 		log.Println(err)
+	}
+	// this is a requirement check
+	for shardID, blks := range blk.Body.ShardState {
+		sort.Slice(blks, func(i, j int) bool { return blks[i].Height > blks[j].Height })
+	retry:
+		pass := true
+		blockProcessedLock.RLock()
+		if blockProcessed[int(shardID)] < blks[0].Height {
+			pass = false
+		}
+		blockProcessedLock.RUnlock()
+		if !pass {
+			time.Sleep(1 * time.Second)
+			goto retry
+		}
 	}
 
 	log.Printf("start processing coin for block %v beacon\n", blk.GetHeight())
@@ -124,6 +140,9 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		panic(err)
 	}
+	blockProcessedLock.Lock()
+	blockProcessed[-1] = blk.Header.Height
+	blockProcessedLock.Unlock()
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
