@@ -16,7 +16,7 @@ import (
 )
 
 func ConnectDB(dbName string, mongoAddr string) error {
-	err := mgm.SetDefaultConfig(nil, dbName, options.Client().ApplyURI(mongoAddr).SetReplicaSet("rs0"))
+	err := mgm.SetDefaultConfig(nil, dbName, options.Client().ApplyURI(mongoAddr))
 	if err != nil {
 		return err
 	}

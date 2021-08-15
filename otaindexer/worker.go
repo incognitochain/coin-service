@@ -313,7 +313,6 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 		}
 	}
 
-	// err := mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
 	if len(coinsToUpdate) > 0 {
 		log.Println("\n=========================================")
 		log.Println("len(coinsToUpdate)", len(coinsToUpdate))
@@ -323,7 +322,6 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 			panic(err)
 		}
 	}
-
 	err := updateSubmittedOTAKey(context.Background())
 	if err != nil {
 		panic(err)
@@ -341,8 +339,6 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 			}
 		}
 	}
-	// 	return session.CommitTransaction(sc)
-	// })
 	if err != nil {
 		panic(err)
 	}
