@@ -14,7 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func DBUpdateCoins(list []shared.CoinData) error {
+func DBUpdateCoins(list []shared.CoinData, ctx context.Context) error {
 	startTime := time.Now()
 	docs := []interface{}{}
 	for _, coin := range list {
@@ -24,7 +24,7 @@ func DBUpdateCoins(list []shared.CoinData) error {
 		docs = append(docs, update)
 	}
 	for idx, doc := range docs {
-		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(context.Background(), list[idx].GetID(), doc)
+		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(ctx, list[idx].GetID(), doc)
 		if err != nil {
 			log.Printf("failed to update %v coins in %v", len(list), time.Since(startTime))
 			return err
@@ -78,6 +78,8 @@ func DBGetUnknownCoinsV21(shardID int, tokenID string, fromidx, limit int64) ([]
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
 	log.Printf("found %v fromidx %v shard %v coins in %v", len(list), fromidx, shardID, time.Since(startTime))
 	return list, err
 }

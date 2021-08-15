@@ -1,6 +1,7 @@
 package otaindexer
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -16,10 +17,8 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
-	"github.com/kamva/mgm/v3"
 	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var assignedOTAKeys = struct {
@@ -95,7 +94,6 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 			log.Println(err)
 			continue
 		}
-
 		assignedOTAKeys.Lock()
 		switch keyAction.Action {
 		case REINDEX:
@@ -166,11 +164,10 @@ func StartOTAIndexing() {
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
-	interval := time.NewTicker(5 * time.Second)
 	var coinList []shared.CoinData
 	go processMsgFromMaster(readCh, writeCh)
 	for {
-		<-interval.C
+		time.Sleep(5 * time.Second)
 		err := retrieveTokenIDList()
 		if err != nil {
 			panic(err)
@@ -316,36 +313,32 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 		}
 	}
 
-	err := mgm.Transaction(func(session mongo.Session, sc mongo.SessionContext) error {
-		if len(coinsToUpdate) > 0 {
-			log.Println("\n=========================================")
-			log.Println("len(coinsToUpdate)", len(coinsToUpdate))
-			log.Println("=========================================\n")
-			err := database.DBUpdateCoins(coinsToUpdate)
+	if len(coinsToUpdate) > 0 {
+		log.Println("\n=========================================")
+		log.Println("len(coinsToUpdate)", len(coinsToUpdate))
+		log.Println("=========================================\n")
+		err := database.DBUpdateCoins(coinsToUpdate, context.Background())
+		if err != nil {
+			panic(err)
+		}
+	}
+	err := updateSubmittedOTAKey(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	for key, tokenTxs := range totalTxs {
+		for tokenID, txList := range tokenTxs {
+			txHashs := []string{}
+			for txHash := range txList {
+				txHashs = append(txHashs, txHash)
+			}
+			err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key], tokenID, context.Background())
 			if err != nil {
 				panic(err)
 			}
 		}
-
-		err := updateSubmittedOTAKey()
-		if err != nil {
-			panic(err)
-		}
-
-		for key, tokenTxs := range totalTxs {
-			for tokenID, txList := range tokenTxs {
-				txHashs := []string{}
-				for txHash := range txList {
-					txHashs = append(txHashs, txHash)
-				}
-				err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key], tokenID)
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
-		return session.CommitTransaction(sc)
-	})
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -439,7 +432,7 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 	return nil, nil, nil, nil, errors.New("no key to scan")
 }
 
-func updateSubmittedOTAKey() error {
+func updateSubmittedOTAKey(ctx context.Context) error {
 	docs := []interface{}{}
 	KeyInfoList := []*shared.KeyInfoData{}
 	for _, keys := range assignedOTAKeys.Keys {
@@ -453,7 +446,7 @@ func updateSubmittedOTAKey() error {
 		}
 	}
 	for idx, doc := range docs {
-		err := database.DBUpdateKeyInfoV2(doc, KeyInfoList[idx])
+		err := database.DBUpdateKeyInfoV2(doc, KeyInfoList[idx], ctx)
 		if err != nil {
 			return err
 		}
@@ -529,6 +522,9 @@ func updateOTALastScan(fromPRVIndex, fromTokenIndex map[int]uint64) {
 		if uint64(coinCount-1) > v {
 			newLastScanPRV[shardID] = uint64(coinCount - 1)
 		}
+		if coinCount == 0 {
+			newLastScanPRV[shardID] = 0
+		}
 	}
 	for shardID, v := range fromTokenIndex {
 		coinCount := database.DBGetCoinV2OfShardCount(shardID, common.ConfidentialAssetID.String())
@@ -536,24 +532,49 @@ func updateOTALastScan(fromPRVIndex, fromTokenIndex map[int]uint64) {
 		if uint64(coinCount-1) > v {
 			newLastScanToken[shardID] = uint64(coinCount - 1)
 		}
+		if coinCount == 0 {
+			newLastScanToken[shardID] = 0
+		}
 	}
 
 	for shardID, v := range newLastScanPRV {
 		for _, key := range assignedOTAKeys.Keys[shardID] {
-			c := key.KeyInfo.CoinIndex[common.PRVCoinID.String()]
-			c.LastScanned = v
-			key.KeyInfo.CoinIndex[common.PRVCoinID.String()] = c
+			if len(key.KeyInfo.CoinIndex) == 0 {
+				key.KeyInfo.CoinIndex = make(map[string]shared.CoinInfo)
+			}
+			if _, ok := key.KeyInfo.CoinIndex[common.PRVCoinID.String()]; !ok {
+				key.KeyInfo.CoinIndex[common.PRVCoinID.String()] = shared.CoinInfo{
+					Start:       0,
+					Total:       0,
+					End:         0,
+					LastScanned: 0}
+			} else {
+				c := key.KeyInfo.CoinIndex[common.PRVCoinID.String()]
+				c.LastScanned = v
+				key.KeyInfo.CoinIndex[common.PRVCoinID.String()] = c
+			}
 		}
 	}
 
 	for shardID, v := range newLastScanToken {
 		for _, key := range assignedOTAKeys.Keys[shardID] {
-			c := key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]
-			c.LastScanned = v
-			key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()] = c
+			if len(key.KeyInfo.CoinIndex) == 0 {
+				key.KeyInfo.CoinIndex = make(map[string]shared.CoinInfo)
+			}
+			if _, ok := key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]; !ok {
+				key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()] = shared.CoinInfo{
+					Start:       0,
+					Total:       0,
+					End:         0,
+					LastScanned: 0}
+			} else {
+				c := key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]
+				c.LastScanned = v
+				key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()] = c
+			}
 		}
 	}
-	err := updateSubmittedOTAKey()
+	err := updateSubmittedOTAKey(context.Background())
 	if err != nil {
 		panic(err)
 	}
