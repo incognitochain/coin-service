@@ -423,8 +423,14 @@ func ReScanOTAKey(otaKey, pubKey string) error {
 func checkMissingIndexCoins() {
 	keysNeedRescan := make(map[string]OTAkeyInfo)
 	var keysNeedRescanLock sync.Mutex
+	indexStart := time.Now()
+	lastIndexs := make(map[int]map[string]uint64)
 	for {
-		time.Sleep(5 * time.Minute)
+		time.Sleep(10 * time.Minute)
+		if time.Since(indexStart) >= (24 * time.Hour) {
+			lastIndexs = make(map[int]map[string]uint64)
+			indexStart = time.Now()
+		}
 		log.Println("start checkMissingIndexCoins")
 		start := time.Now()
 		Submitted_OTAKey.RLock()
@@ -447,12 +453,18 @@ func checkMissingIndexCoins() {
 		}
 		for shardid, keys := range scanList {
 			log.Println("scanList", shardid, len(keys))
-			lastIndex := int64(0)
+			if len(lastIndexs[shardid]) == 0 {
+				lastIndexs[shardid] = make(map[string]uint64)
+			}
 			// check PRV
+			lastIndex := int64(0)
+			if _, ok := lastIndexs[shardid][common.PRVCoinID.String()]; ok {
+				lastIndex = int64(lastIndexs[shardid][common.PRVCoinID.String()])
+			}
 			for {
 				limit := int64(5000)
-				log.Println("DBGetUnknownCoinsV22", shardid, common.PRVCoinID.String(), lastIndex, int64(totalPRV[shardid])-10, limit)
-				coinList, err := database.DBGetUnknownCoinsV22(shardid, common.PRVCoinID.String(), lastIndex, int64(totalPRV[shardid])-10, limit)
+				log.Println("DBGetUnknownCoinsV22", shardid, common.PRVCoinID.String(), lastIndex, int64(totalPRV[shardid])-2, limit)
+				coinList, err := database.DBGetUnknownCoinsV22(shardid, common.PRVCoinID.String(), lastIndex, int64(totalPRV[shardid])-2, limit)
 				if err != nil {
 					log.Println(err)
 					time.Sleep(5 * time.Second)
@@ -487,13 +499,16 @@ func checkMissingIndexCoins() {
 					break
 				}
 			}
+			lastIndexs[shardid][common.PRVCoinID.String()] = uint64(lastIndex)
 			// check token
-
 			lastIndex = int64(0)
+			if _, ok := lastIndexs[shardid][common.ConfidentialAssetID.String()]; ok {
+				lastIndex = int64(lastIndexs[shardid][common.ConfidentialAssetID.String()])
+			}
 			for {
 				limit := int64(5000)
-				log.Println("DBGetUnknownCoinsV22", shardid, common.ConfidentialAssetID.String(), lastIndex, int64(totalToken[shardid])-10, limit)
-				coinList, err := database.DBGetUnknownCoinsV22(shardid, common.ConfidentialAssetID.String(), lastIndex, int64(totalToken[shardid])-10, limit)
+				log.Println("DBGetUnknownCoinsV22", shardid, common.ConfidentialAssetID.String(), lastIndex, int64(totalToken[shardid])-2, limit)
+				coinList, err := database.DBGetUnknownCoinsV22(shardid, common.ConfidentialAssetID.String(), lastIndex, int64(totalToken[shardid])-2, limit)
 				if err != nil {
 					log.Println(err)
 					time.Sleep(5 * time.Second)
@@ -528,6 +543,7 @@ func checkMissingIndexCoins() {
 					break
 				}
 			}
+			lastIndexs[shardid][common.ConfidentialAssetID.String()] = uint64(lastIndex)
 		}
 		log.Println("need to rescan", len(keysNeedRescan), time.Since(start))
 		for _, v := range keysNeedRescan {
