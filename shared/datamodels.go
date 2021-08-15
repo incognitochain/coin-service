@@ -88,6 +88,7 @@ type KeyInfoData struct {
 	OTAKey           string              `json:"otakey" bson:"otakey"`
 	CoinIndex        map[string]CoinInfo `json:"coinindex" bson:"coinindex"`
 	TotalReceiveTxs  map[string]uint64   `json:"receivetxs" bson:"receivetxs"`
+	LastScanOrders   uint64              `json:"lastscanorders" bson:"lastscanorders"`
 }
 
 type KeyInfoDataV2 KeyInfoData
@@ -223,14 +224,14 @@ type TxData struct {
 	TokenID          string   `json:"tokenid" bson:"tokenid"`
 	RealTokenID      string   `json:"realtokenid" bson:"realtokenid"`
 	BlockHash        string   `json:"blockhash" bson:"blockhash"`
-	BlockHeight      string   `json:"blockheight" bson:"blockheight"`
+	BlockHeight      uint64   `json:"blockheight" bson:"blockheight"`
 	ShardID          int      `json:"shardid" bson:"shardid"`
 	Locktime         int64    `json:"locktime" bson:"locktime"`
 	Metatype         string   `json:"metatype" bson:"metatype"`
 	Metadata         string   `json:"metadata" bson:"metadata"`
 }
 
-func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, tokenID, txHash, txType, txDetail, metatype, metadata string, keyimages, pubKeyReceivers []string) *TxData {
+func NewTxData(locktime int64, shardID, txVersion int, blockHeight uint64, blockhash, tokenID, txHash, txType, txDetail, metatype, metadata string, keyimages, pubKeyReceivers []string) *TxData {
 	return &TxData{
 		TxVersion:       txVersion,
 		KeyImages:       keyimages,
@@ -240,7 +241,7 @@ func NewTxData(locktime int64, shardID, txVersion int, blockHash, blockHeight, t
 		TxDetail:        txDetail,
 		TokenID:         tokenID,
 		ShardID:         shardID,
-		BlockHash:       blockHash,
+		BlockHash:       blockhash,
 		BlockHeight:     blockHeight,
 		Locktime:        locktime,
 		Metatype:        metatype,
@@ -492,9 +493,11 @@ type TradeOrderData struct {
 	NFTID            string   `json:"nftid" bson:"nftid"`
 	Receiver         string   `json:"receiver" bson:"receiver"`
 	OTAsecret        string   `json:"otasecret" bson:"otasecret"`
+	ShardID          int      `json:"shardid" bson:"shardid"`
+	BlockHeight      uint64   `json:"blockheight" bson:"blockheight"`
 }
 
-func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid, receiver string, respondTxs []string, rate, amount, remain uint64, locktime int64) *TradeOrderData {
+func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid, receiver string, respondTxs []string, rate, amount, remain uint64, locktime int64, shardID int, blockHeight uint64) *TradeOrderData {
 	return &TradeOrderData{
 		NFTID:       nftid,
 		RequestTx:   requestTx,
@@ -508,6 +511,8 @@ func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid, rece
 		Remain:      remain,
 		Locktime:    locktime,
 		Receiver:    receiver,
+		ShardID:     shardID,
+		BlockHeight: blockHeight,
 	}
 }
 

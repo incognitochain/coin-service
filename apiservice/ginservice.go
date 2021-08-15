@@ -556,12 +556,7 @@ func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]Received
 				errD = errors.New("invalid tx detected")
 				return
 			}
-			blockHeight, err := strconv.ParseUint(txd.BlockHeight, 0, 64)
-			if err != nil {
-				errD = err
-				return
-			}
-			txDetail, err := shared.NewTransactionDetail(tx, nil, blockHeight, 0, byte(txd.ShardID), isBase58)
+			txDetail, err := shared.NewTransactionDetail(tx, nil, txd.BlockHeight, 0, byte(txd.ShardID), isBase58)
 			if err != nil {
 				errD = err
 				return

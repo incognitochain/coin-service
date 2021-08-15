@@ -166,8 +166,8 @@ func StartOTAIndexing() {
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
-	interval := time.NewTicker(6 * time.Second)
-	var coinList []shared.CoinData
+	interval := time.NewTicker(5 * time.Second)
+
 	go processMsgFromMaster(readCh, writeCh)
 	for {
 		<-interval.C
@@ -184,9 +184,10 @@ func StartOTAIndexing() {
 
 		assignedOTAKeys.Lock()
 		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex()
+		//scan coins
 		for {
 			filteredCoins := make(map[string][]shared.CoinData)
-			coinList = GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
+			coinList := GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
 			if len(coinList) == 0 {
 				updateOTALastScan(lastPRVIndex, lastTokenIndex)
 				break
@@ -198,6 +199,18 @@ func StartOTAIndexing() {
 			updateState(filteredCoins, lastPRVIndex, lastTokenIndex)
 		}
 		log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
+
+		startTime = time.Now()
+		//scan order
+		lastOrderHeight := GetOTAKeyListMinScannedOrders()
+		for {
+			orderList := GetUnknownOrdersFromDB(lastOrderHeight)
+			if err != nil {
+				panic(err)
+			}
+			_ = orderList
+		}
+		log.Printf("worker/%v finish scanning order in %v\n", workerID, time.Since(startTime))
 		assignedOTAKeys.Unlock()
 
 	}
@@ -563,8 +576,27 @@ func filterOrdersByOTAKey() {
 
 }
 
-func GetUnknownOrdersFromDB() ([]shared.TradeOrderData, error) {
-	var result []shared.TradeOrderData
+func GetOTAKeyListMinScannedOrders() map[int]uint64 {
+	minOrderHeight := make(map[int]uint64)
+	for shardID, keys := range assignedOTAKeys.Keys {
 
-	return result, nil
+	}
+
+	log.Printf("worker/%v minOrderHeight %v %v\n", workerID, minOrderHeight)
+	return minOrderHeight
+}
+
+func GetUnknownOrdersFromDB(fromOrderHeight map[int]uint64) []shared.TradeOrderData {
+	var result []shared.TradeOrderData
+	for shardID, v := range fromOrderHeight {
+		if v != 0 {
+			v += 1
+		}
+		coinList, err := database.DBGetUnknownOrdersFromDB(shardID, v, 1000)
+		if err != nil {
+			panic(err)
+		}
+		result = append(result, coinList...)
+	}
+	return result
 }

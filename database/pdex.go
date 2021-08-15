@@ -460,9 +460,9 @@ func DBUpdateOrdersOwner(orders []shared.TradeOrderData) error {
 	return nil
 }
 
-func GetUnknownOrdersFromDB(limit int64) ([]shared.TradeOrderData, error) {
+func DBGetUnknownOrdersFromDB(shardID int, height uint64, limit int64) ([]shared.TradeOrderData, error) {
 	var result []shared.TradeOrderData
-	filter := bson.M{"nftid": bson.M{operator.Ne: ""}, "otasecret": bson.M{operator.Eq: ""}}
+	filter := bson.M{"nftid": bson.M{operator.Ne: ""}, "otasecret": bson.M{operator.Eq: ""}, "shardid": bson.M{operator.Eq: shardID}, "blockheight": bson.M{operator.Gte: height}}
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", 1}},
 		Limit: &limit,

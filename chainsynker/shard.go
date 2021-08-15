@@ -32,7 +32,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		panic(err)
 	}
 	blockHash := blk.Hash().String()
-	blockHeight := fmt.Sprintf("%v", blk.GetHeight())
+	blockHeight := blk.GetHeight()
 	shardID := blk.GetShardID()
 	log.Printf("start processing coin for block %v shard %v\n", blk.GetHeight(), shardID)
 	startTime := time.Now()
@@ -481,7 +481,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				receiver, _ = item.RefundReceiver.String()
 			}
 			_ = buyToken
-			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nftID, receiver, nil, rate, amount, 0, lockTime)
+			trade := shared.NewTradeOrderData(requestTx, sellToken, poolID, pairID, "", nftID, receiver, nil, rate, amount, 0, lockTime, shardID, blockHeight)
 			tradeRequestList = append(tradeRequestList, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta:
 			status := ""
@@ -558,7 +558,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			mtd = string(mtdBytes)
 		}
 
-		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHash, blockHeight, tokenID, txHash, tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers)
+		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHeight, blockHash, tokenID, txHash, tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers)
 		txData.RealTokenID = realTokenID
 		if tx.GetVersion() == 2 {
 			txData.PubKeyReceivers = append(txData.PubKeyReceivers, pubkey)

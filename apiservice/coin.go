@@ -304,7 +304,7 @@ func APIGetPendingTxs(c *gin.Context) {
 	for _, v := range txdataStrs {
 		txDatas = append(txDatas, shared.TxData{
 			TxDetail:    v,
-			BlockHeight: "0",
+			BlockHeight: 0,
 		})
 	}
 	txDetails, err := buildTxDetailRespond(txDatas, base58Fmt)
@@ -335,7 +335,7 @@ func APICheckTxPending(c *gin.Context) {
 
 	txdata := shared.TxData{
 		TxDetail:    result,
-		BlockHeight: "0",
+		BlockHeight: 0,
 	}
 	txDetails, err := buildTxDetailRespond([]shared.TxData{txdata}, base58Fmt)
 	if err != nil {
