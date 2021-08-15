@@ -96,6 +96,7 @@ func WorkerRegisterHandler(c *gin.Context) {
 				newWorker.OTAAssigned = 0
 				newWorker.Heartbeat = 0
 				removeWorker(newWorker)
+				close(writeCh)
 				ws.Close()
 				return
 			default:
@@ -197,6 +198,7 @@ func StartWorkerAssigner() {
 		}
 	}()
 	go checkMissingIndexCoins()
+
 	for {
 		time.Sleep(10 * time.Second)
 		Submitted_OTAKey.Lock()
@@ -247,6 +249,7 @@ func StartWorkerAssigner() {
 			}
 		}
 		Submitted_OTAKey.Unlock()
+		// log.Println("All keys assigned", len(Submitted_OTAKey.AssignedKey))
 	}
 }
 
@@ -292,48 +295,6 @@ func loadSubmittedOTAKey() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	// re-check measure
-	// for _, data := range Submitted_OTAKey.Keys {
-	// 	pubkey, _, err := base58.Base58Check{}.Decode(data.KeyInfo.Pubkey)
-	// 	if err != nil {
-	// 		log.Fatalln(err)
-	// 	}
-	// 	shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-	// 	for tokenID, coinInfo := range data.KeyInfo.CoinIndex {
-	// 		if tokenID == common.ConfidentialAssetID.String() {
-	// 			// coinInfo.LastScanned = 0
-	// 			data.KeyInfo.CoinIndex[tokenID] = coinInfo
-	// 			continue
-	// 		}
-	// 		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, data.KeyInfo.OTAKey))
-	// 		// coinInfo.LastScanned = 0
-	// 		txs, err := database.DBGetCountTxByPubkey(data.KeyInfo.Pubkey, tokenID, 2)
-	// 		if err != nil {
-	// 			log.Fatalln(err)
-	// 		}
-	// 		if len(data.KeyInfo.TotalReceiveTxs) == 0 {
-	// 			data.KeyInfo.TotalReceiveTxs = make(map[string]uint64)
-	// 		}
-	// 		if len(data.KeyInfo.CoinIndex) == 0 {
-	// 			data.KeyInfo.CoinIndex = make(map[string]shared.CoinInfo)
-	// 		}
-	// 		data.KeyInfo.TotalReceiveTxs[tokenID] = uint64(txs)
-	// 		data.KeyInfo.CoinIndex[tokenID] = coinInfo
-	// 	}
-	// 	err = data.KeyInfo.Saving()
-	// 	if err != nil {
-	// 		log.Fatalln(err)
-	// 	}
-	// 	doc := bson.M{
-	// 		"$set": *data.KeyInfo,
-	// 	}
-	// 	err = database.DBUpdateKeyInfoV2(doc, data.KeyInfo)
-	// 	if err != nil {
-	// 		log.Fatalln(err)
-	// 	}
-
-	// 	log.Printf("update key %v\n", data.KeyInfo.OTAKey)
-	// }
 	log.Printf("Loaded %v keys\n", len(keys))
 }
 
@@ -382,7 +343,6 @@ func addKeys(keys []shared.SubmittedOTAKeyData) error {
 			Submitted_OTAKey.Unlock()
 			wg.Done()
 		}(key)
-
 	}
 	wg.Wait()
 	return nil
@@ -464,7 +424,7 @@ func checkMissingIndexCoins() {
 	keysNeedRescan := make(map[string]OTAkeyInfo)
 	var keysNeedRescanLock sync.Mutex
 	for {
-		time.Sleep(40 * time.Minute)
+		time.Sleep(5 * time.Minute)
 		log.Println("start checkMissingIndexCoins")
 		start := time.Now()
 		Submitted_OTAKey.RLock()
