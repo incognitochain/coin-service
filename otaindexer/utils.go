@@ -3,6 +3,7 @@ package otaindexer
 import (
 	"log"
 	"sync"
+	"time"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/incognito-chain/common"
@@ -11,7 +12,7 @@ import (
 	"github.com/incognitochain/incognito-chain/privacy/operation"
 )
 
-func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenIDs map[string]string) (bool, string, *operation.Point) {
+func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenIDs map[string]string, willCheckToken bool) (bool, string, *operation.Point) {
 	_, txOTARandomPoint, index, err1 := c.GetTxRandomDetail()
 	if err1 != nil {
 		log.Println(err1)
@@ -21,29 +22,38 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	tokenID := ""
 	pass := false
 
-	rK := new(operation.Point).ScalarMult(txOTARandomPoint, keySet.OTAKey.GetOTASecretKey())
+	otasecret := keySet.OTAKey.GetOTASecretKey()
+	pubkey := c.GetPublicKey()
+	otapub := keySet.OTAKey.GetPublicSpend()
+
+	rK := new(operation.Point).ScalarMult(txOTARandomPoint, otasecret)
 
 	hashed := operation.HashToScalar(
 		append(rK.ToBytesS(), common.Uint32ToBytes(index)...),
 	)
 
 	HnG := new(operation.Point).ScalarMultBase(hashed)
-	KCheck := new(operation.Point).Sub(c.GetPublicKey(), HnG)
-	pass = operation.IsPointEqual(KCheck, keySet.OTAKey.GetPublicSpend())
+	KCheck := new(operation.Point).Sub(pubkey, HnG)
+	pass = operation.IsPointEqual(KCheck, otapub)
+	if !willCheckToken {
+		return pass, "", nil
+	}
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
 	}
+
+	tokenMapLen := len(lastTokenIDMap)
 retryCheckTokenID:
 	if assetTag != nil && tokenID == "" {
 	retryGetToken:
-		err := retrieveTokenIDList()
-		if err != nil {
-			log.Println("retrieveTokenIDList", err)
-			goto retryGetToken
-		}
-		if len(lastTokenIDMap) == 0 {
-			log.Println("retryGetToken")
-			goto retryGetToken
+		if tokenMapLen == 0 {
+			err := retrieveTokenIDList()
+			if err != nil {
+				log.Println("retrieveTokenIDList", err)
+				time.Sleep(1 * time.Second)
+				goto retryGetToken
+			}
+			tokenMapLen = len(lastTokenIDMap)
 		}
 		tokenListLock.RLock()
 		tokenIDs = make(map[string]string)
@@ -64,7 +74,7 @@ retryCheckTokenID:
 			for tkStr, tkID := range tokenIDs {
 				recomputedAssetTag, err := new(operation.Point).UnmarshalText([]byte(tkStr))
 				if err != nil {
-					log.Println(err)
+					log.Println("UnmarshalText tkStr", err)
 					return false, "", nil
 				}
 				recomputedAssetTag.Add(recomputedAssetTag, new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder))
@@ -76,6 +86,8 @@ retryCheckTokenID:
 		}
 		if tokenID == "" {
 			log.Println("retryCheckTokenID")
+			tokenMapLen = 0
+			time.Sleep(1 * time.Second)
 			goto retryCheckTokenID
 		}
 	}

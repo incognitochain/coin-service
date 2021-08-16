@@ -143,6 +143,8 @@ func APIGetCoins(c *gin.Context) {
 	viewkey := c.Query("viewkey")
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
+	shardid, _ := strconv.Atoi(c.Query("shardid"))
+
 	base58Format := false
 	log.Println("tokenid", tokenid, common.PRVCoinID.String())
 	if tokenid == "" {
@@ -176,6 +178,35 @@ func APIGetCoins(c *gin.Context) {
 			// 	tokenidv2 = common.ConfidentialAssetID.String()
 			// }
 			coinList, err := database.DBGetCoinsByOTAKey(int(shardID), tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				return
+			}
+
+			for _, cn := range coinList {
+				if cn.CoinIndex > highestIdx {
+					highestIdx = cn.CoinIndex
+				}
+				coinV2 := new(coin.CoinV2)
+				err := coinV2.SetBytes(cn.Coin)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+					return
+				}
+				idx := new(big.Int).SetUint64(cn.CoinIndex)
+				var cV2 shared.OutCoinV2
+				if base58Format {
+					cV2 = shared.NewOutCoinV2(coinV2, true)
+					cV2.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+				} else {
+					cV2 = shared.NewOutCoinV2(coinV2, false)
+					cV2.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
+				}
+				cV2.TxHash = cn.TxHash
+				result = append(result, cV2)
+			}
+		} else {
+			coinList, err := database.DBGetUnknownCoinsV21(shardid, tokenid, int64(offset), int64(limit))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 				return
@@ -383,8 +414,7 @@ func APIRescanOTA(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
-	err = otaindexer.ReScanOTAKey(*newSubmitRequest)
+	err = otaindexer.ReScanOTAKey(otaKey, pubKey)
 	respond := APIRespond{
 		Result: "true",
 	}

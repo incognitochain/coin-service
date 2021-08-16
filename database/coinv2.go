@@ -14,7 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func DBUpdateCoins(list []shared.CoinData) error {
+func DBUpdateCoins(list []shared.CoinData, ctx context.Context) error {
 	startTime := time.Now()
 	docs := []interface{}{}
 	for _, coin := range list {
@@ -24,7 +24,7 @@ func DBUpdateCoins(list []shared.CoinData) error {
 		docs = append(docs, update)
 	}
 	for idx, doc := range docs {
-		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(context.Background(), list[idx].GetID(), doc)
+		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(ctx, list[idx].GetID(), doc)
 		if err != nil {
 			log.Printf("failed to update %v coins in %v", len(list), time.Since(startTime))
 			return err
@@ -50,6 +50,26 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 	if limit == 0 {
 		limit = 10000
 	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	newList := filterByIndexedCoins(list)
+	sort.Slice(newList, func(i, j int) bool { return newList[i].CoinIndex < newList[j].CoinIndex })
+	log.Printf("found %v/%v fromidx %v shard %v coins in %v", len(newList), len(list), fromidx, shardID, time.Since(startTime))
+	return newList, err
+}
+
+func DBGetUnknownCoinsV21(shardID int, tokenID string, fromidx, limit int64) ([]shared.CoinData, error) {
+	startTime := time.Now()
+	list := []shared.CoinData{}
+	if limit == 0 {
+		limit = 10000
+	}
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
 	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
 		Sort:  bson.D{{"coinidx", 1}},
@@ -58,8 +78,25 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 	if err != nil {
 		return nil, err
 	}
+
 	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
-	log.Printf("found %v shard %v coins in %v", len(list), shardID, time.Since(startTime))
+	log.Printf("found %v fromidx %v shard %v coins in %v", len(list), fromidx, shardID, time.Since(startTime))
+	return list, err
+}
+
+func DBGetUnknownCoinsV22(shardID int, tokenID string, fromidx, toidx, limit int64) ([]shared.CoinData, error) {
+	list := []shared.CoinData{}
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx, operator.Lte: toidx}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return list, err
 }
 
@@ -232,4 +269,14 @@ func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {
 	}
 
 	return result, pubkeyTxs, nil
+}
+
+func filterByIndexedCoins(coins []shared.CoinData) []shared.CoinData {
+	var result []shared.CoinData
+	for _, v := range coins {
+		if v.OTASecret == "" {
+			result = append(result, v)
+		}
+	}
+	return result
 }

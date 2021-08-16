@@ -1,6 +1,7 @@
 package otaindexer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -33,6 +34,7 @@ var workerLock sync.RWMutex
 var Submitted_OTAKey = struct {
 	sync.RWMutex
 	Keys        map[string]*OTAkeyInfo
+	KeysByShard map[int][]*OTAkeyInfo
 	AssignedKey map[string]*worker
 	TotalKeys   int
 }{}
@@ -93,6 +95,7 @@ func WorkerRegisterHandler(c *gin.Context) {
 				newWorker.OTAAssigned = 0
 				newWorker.Heartbeat = 0
 				removeWorker(newWorker)
+				close(writeCh)
 				ws.Close()
 				return
 			default:
@@ -193,9 +196,9 @@ func StartWorkerAssigner() {
 			}()
 		}
 	}()
-	timer := time.NewTicker(10 * time.Second)
+
 	for {
-		<-timer.C
+		time.Sleep(10 * time.Second)
 		Submitted_OTAKey.Lock()
 		for key, worker := range Submitted_OTAKey.AssignedKey {
 			if worker == nil {
@@ -244,6 +247,7 @@ func StartWorkerAssigner() {
 			}
 		}
 		Submitted_OTAKey.Unlock()
+		// log.Println("All keys assigned", len(Submitted_OTAKey.AssignedKey))
 	}
 }
 
@@ -283,6 +287,7 @@ func loadSubmittedOTAKey() {
 		log.Fatalln(err)
 	}
 	Submitted_OTAKey.Keys = make(map[string]*OTAkeyInfo)
+	Submitted_OTAKey.KeysByShard = make(map[int][]*OTAkeyInfo)
 	Submitted_OTAKey.AssignedKey = make(map[string]*worker)
 	err = addKeys(keys)
 	if err != nil {
@@ -292,55 +297,66 @@ func loadSubmittedOTAKey() {
 }
 
 func addKeys(keys []shared.SubmittedOTAKeyData) error {
-	Submitted_OTAKey.Lock()
-	defer Submitted_OTAKey.Unlock()
+	var wg sync.WaitGroup
 	for _, key := range keys {
-		pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
-		if err != nil {
-			return err
-		}
-		keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
-		if err != nil {
-			return err
-		}
-		keyBytes = append(keyBytes, pubkey...)
-		if len(keyBytes) != 64 {
-			return errors.New("keyBytes length isn't 64")
-		}
-		otaKey := shared.OTAKeyFromRaw(keyBytes)
-		ks := &incognitokey.KeySet{}
-		ks.OTAKey = otaKey
-		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-		data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
-		if err != nil {
-			return err
-		}
-		data.OTAKey = key.OTAKey
-		k := OTAkeyInfo{
-			KeyInfo: data,
-			ShardID: int(shardID),
-			OTAKey:  key.OTAKey,
-			Pubkey:  key.Pubkey,
-			keyset:  ks,
-		}
-		Submitted_OTAKey.AssignedKey[key.Pubkey] = nil
-		Submitted_OTAKey.Keys[key.Pubkey] = &k
-		Submitted_OTAKey.TotalKeys += 1
+		wg.Add(1)
+		go func(k shared.SubmittedOTAKeyData) {
+		retry:
+			pubkey, _, err := base58.Base58Check{}.Decode(k.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes, _, err := base58.Base58Check{}.Decode(k.OTAKey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes = append(keyBytes, pubkey...)
+			if len(keyBytes) != 64 {
+				log.Fatalln("keyBytes length isn't 64")
+			}
+			otaKey := shared.OTAKeyFromRaw(keyBytes)
+			ks := &incognitokey.KeySet{}
+			ks.OTAKey = otaKey
+			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+			data, err := database.DBGetCoinV2PubkeyInfo(k.Pubkey)
+			if err != nil {
+				log.Println(err)
+				time.Sleep(100 * time.Millisecond)
+				goto retry
+			}
+			data.OTAKey = k.OTAKey
+			kInfo := OTAkeyInfo{
+				KeyInfo: data,
+				ShardID: int(shardID),
+				OTAKey:  k.OTAKey,
+				Pubkey:  k.Pubkey,
+				keyset:  ks,
+			}
+
+			Submitted_OTAKey.Lock()
+			Submitted_OTAKey.AssignedKey[k.Pubkey] = nil
+			Submitted_OTAKey.Keys[k.Pubkey] = &kInfo
+			Submitted_OTAKey.KeysByShard[kInfo.ShardID] = append(Submitted_OTAKey.KeysByShard[kInfo.ShardID], &kInfo)
+			Submitted_OTAKey.TotalKeys += 1
+			Submitted_OTAKey.Unlock()
+			wg.Done()
+		}(key)
 	}
+	wg.Wait()
 	return nil
 }
 
-func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
-	Submitted_OTAKey.Lock()
-	defer Submitted_OTAKey.Unlock()
-	if _, ok := Submitted_OTAKey.Keys[key.Pubkey]; !ok {
+func ReScanOTAKey(otaKey, pubKey string) error {
+	Submitted_OTAKey.RLock()
+	defer Submitted_OTAKey.RUnlock()
+	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
 		return errors.New("wrong indexer")
 	}
-	pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
+	pubkey, _, err := base58.Base58Check{}.Decode(pubKey)
 	if err != nil {
 		return err
 	}
-	keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
+	keyBytes, _, err := base58.Base58Check{}.Decode(otaKey)
 	if err != nil {
 		return err
 	}
@@ -348,56 +364,56 @@ func ReScanOTAKey(key shared.SubmittedOTAKeyData) error {
 	if len(keyBytes) != 64 {
 		return errors.New("keyBytes length isn't 64")
 	}
-	otaKey := shared.OTAKeyFromRaw(keyBytes)
+	fullOTAKey := shared.OTAKeyFromRaw(keyBytes)
 	ks := &incognitokey.KeySet{}
-	ks.OTAKey = otaKey
+	ks.OTAKey = fullOTAKey
 	shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-	data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
+	data, err := database.DBGetCoinV2PubkeyInfo(pubKey)
 	if err != nil {
 		return err
 	}
-	data.OTAKey = key.OTAKey
-	if w, ok := Submitted_OTAKey.AssignedKey[key.Pubkey]; !ok {
-		return errors.New("key not assign yet")
-	} else {
-		for tokenID, coinInfo := range data.CoinIndex {
-			if tokenID == common.ConfidentialAssetID.String() {
-				coinInfo.LastScanned = 0
-				data.CoinIndex[tokenID] = coinInfo
-				continue
-			}
-			coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, key.OTAKey))
+	data.OTAKey = otaKey
+
+	for tokenID, coinInfo := range data.CoinIndex {
+		if tokenID == common.ConfidentialAssetID.String() {
 			coinInfo.LastScanned = 0
-			txs, err := database.DBGetCountTxByPubkey(key.Pubkey, tokenID, 2)
-			if err != nil {
-				return err
-			}
-			data.TotalReceiveTxs[tokenID] = uint64(txs)
 			data.CoinIndex[tokenID] = coinInfo
+			continue
 		}
-		err := data.Saving()
+		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey))
+		coinInfo.LastScanned = 0
+		txs, err := database.DBGetCountTxByPubkey(pubKey, tokenID, 2)
 		if err != nil {
 			return err
 		}
-		doc := bson.M{
-			"$set": *data,
-		}
-		err = database.DBUpdateKeyInfoV2(doc, data)
-		if err != nil {
-			return err
-		}
-		Submitted_OTAKey.Keys[key.Pubkey].KeyInfo = data
-
-		keyAction := WorkerOTACmd{
-			Action: REINDEX,
-			Key:    *Submitted_OTAKey.Keys[key.Pubkey],
-		}
-		keyBytes, err := json.Marshal(keyAction)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		w.writeCh <- keyBytes
+		data.TotalReceiveTxs[tokenID] = uint64(txs)
+		data.CoinIndex[tokenID] = coinInfo
 	}
+	err = data.Saving()
+	if err != nil {
+		return err
+	}
+	doc := bson.M{
+		"$set": *data,
+	}
+	err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
+	if err != nil {
+		return err
+	}
+	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
 
+	if w, ok := Submitted_OTAKey.AssignedKey[pubKey]; ok {
+		if w.Heartbeat != 0 {
+			keyAction := WorkerOTACmd{
+				Action: REINDEX,
+				Key:    *Submitted_OTAKey.Keys[pubKey],
+			}
+			keyBytes, err := json.Marshal(keyAction)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			w.writeCh <- keyBytes
+		}
+	}
 	return nil
 }

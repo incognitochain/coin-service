@@ -53,7 +53,7 @@ func DBSaveTXs(list []shared.TxData) error {
 	return nil
 }
 
-func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey string, tokenID string) error {
+func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey, tokenID string, ctx context.Context) error {
 	docs := []interface{}{}
 	for _ = range txHashes {
 		update := bson.M{
@@ -64,7 +64,6 @@ func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey string, tokenID string) 
 	}
 	for idx, doc := range docs {
 		filter := bson.M{"txhash": bson.M{operator.Eq: txHashes[idx]}}
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(1)*shared.DB_OPERATION_TIMEOUT)
 		_, err := mgm.Coll(&shared.TxData{}).UpdateOne(ctx, filter, doc)
 		if err != nil {
 			return err
