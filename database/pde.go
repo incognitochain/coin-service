@@ -17,17 +17,18 @@ import (
 
 func DBSavePDEState(state string) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
-	upsert := true
-	opt := options.FindOneAndUpdateOptions{
-		Upsert: &upsert,
+	err := mgm.Coll(&shared.PDEStateData{}).Drop(context.Background())
+	if err != nil {
+		log.Println(err)
+		return err
 	}
 	var doc interface{}
 	newState := shared.NewPDEStateData(state)
 	doc = newState
-	err := mgm.Coll(&shared.PDEStateData{}).FindOneAndUpdate(ctx, bson.M{}, doc, &opt)
-	if err.Err() != nil {
+	_, err = mgm.Coll(&shared.PDEStateData{}).InsertOne(ctx, doc)
+	if err != nil {
 		log.Println(err)
-		return err.Err()
+		return err
 	}
 	return nil
 }
