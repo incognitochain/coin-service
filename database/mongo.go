@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
@@ -34,6 +35,7 @@ func DBSaveCoins(list []shared.CoinData) (error, []shared.CoinDataV1) {
 	coinV1AlreadyWrite := []shared.CoinDataV1{}
 	docs := []interface{}{}
 	docsV1 := []interface{}{}
+	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
 	for _, coin := range list {
 		coin.Creating()
 		if coin.CoinVersion == 2 {

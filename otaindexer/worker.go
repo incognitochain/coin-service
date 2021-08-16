@@ -185,7 +185,7 @@ func StartOTAIndexing() {
 			filteredCoins := make(map[string][]shared.CoinData)
 			coinList = GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
 			if len(coinList) == 0 {
-				updateOTALastScan(lastPRVIndex, lastTokenIndex)
+				// updateOTALastScan(lastPRVIndex, lastTokenIndex)
 				break
 			}
 			filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)

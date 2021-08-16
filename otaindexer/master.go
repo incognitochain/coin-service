@@ -16,7 +16,6 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
-	"github.com/incognitochain/incognito-chain/privacy/coin"
 	jsoniter "github.com/json-iterator/go"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -197,7 +196,6 @@ func StartWorkerAssigner() {
 			}()
 		}
 	}()
-	go checkMissingIndexCoins()
 
 	for {
 		time.Sleep(10 * time.Second)
@@ -418,140 +416,4 @@ func ReScanOTAKey(otaKey, pubKey string) error {
 		}
 	}
 	return nil
-}
-
-func checkMissingIndexCoins() {
-	keysNeedRescan := make(map[string]OTAkeyInfo)
-	var keysNeedRescanLock sync.Mutex
-	indexStart := time.Now()
-	lastIndexs := make(map[int]map[string]uint64)
-	for {
-		time.Sleep(10 * time.Minute)
-		if time.Since(indexStart) >= (24 * time.Hour) {
-			lastIndexs = make(map[int]map[string]uint64)
-			indexStart = time.Now()
-		}
-		log.Println("start checkMissingIndexCoins")
-		start := time.Now()
-		Submitted_OTAKey.RLock()
-		scanList := make(map[int][]OTAkeyInfo)
-		for shardid, keys := range Submitted_OTAKey.KeysByShard {
-			for _, v := range keys {
-				scanList[shardid] = append(scanList[shardid], OTAkeyInfo{
-					Pubkey: v.Pubkey,
-					OTAKey: v.OTAKey,
-					keyset: v.keyset,
-				})
-			}
-		}
-		Submitted_OTAKey.RUnlock()
-		keysNeedRescan = make(map[string]OTAkeyInfo)
-		_, totalPRV, _, totalToken, err := database.DBGetCoinInfo()
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		for shardid, keys := range scanList {
-			log.Println("scanList", shardid, len(keys))
-			if len(lastIndexs[shardid]) == 0 {
-				lastIndexs[shardid] = make(map[string]uint64)
-			}
-			// check PRV
-			lastIndex := int64(0)
-			if _, ok := lastIndexs[shardid][common.PRVCoinID.String()]; ok {
-				lastIndex = int64(lastIndexs[shardid][common.PRVCoinID.String()])
-			}
-			for {
-				limit := int64(5000)
-				log.Println("DBGetUnknownCoinsV22", shardid, common.PRVCoinID.String(), lastIndex, int64(totalPRV[shardid])-2, limit)
-				coinList, err := database.DBGetUnknownCoinsV22(shardid, common.PRVCoinID.String(), lastIndex, int64(totalPRV[shardid])-2, limit)
-				if err != nil {
-					log.Println(err)
-					time.Sleep(5 * time.Second)
-					continue
-				}
-				if len(coinList) == 0 {
-					break
-				}
-				lastIndex = int64(coinList[len(coinList)-1].CoinIndex)
-				for _, v := range coinList {
-					newCoin := new(coin.CoinV2)
-					err := newCoin.SetBytes(v.Coin)
-					if err != nil {
-						panic(err)
-					}
-					var wg sync.WaitGroup
-					for _, key := range keys {
-						wg.Add(1)
-						go func(c *coin.CoinV2, k OTAkeyInfo) {
-							pass, _, _ := doesCoinBelongToKeySet(c, k.keyset, nil, false)
-							if pass {
-								keysNeedRescanLock.Lock()
-								keysNeedRescan[k.OTAKey] = k
-								keysNeedRescanLock.Unlock()
-							}
-							wg.Done()
-						}(newCoin, key)
-					}
-					wg.Wait()
-				}
-				if int64(len(coinList)) < limit {
-					break
-				}
-			}
-			lastIndexs[shardid][common.PRVCoinID.String()] = uint64(lastIndex)
-			// check token
-			lastIndex = int64(0)
-			if _, ok := lastIndexs[shardid][common.ConfidentialAssetID.String()]; ok {
-				lastIndex = int64(lastIndexs[shardid][common.ConfidentialAssetID.String()])
-			}
-			for {
-				limit := int64(5000)
-				log.Println("DBGetUnknownCoinsV22", shardid, common.ConfidentialAssetID.String(), lastIndex, int64(totalToken[shardid])-2, limit)
-				coinList, err := database.DBGetUnknownCoinsV22(shardid, common.ConfidentialAssetID.String(), lastIndex, int64(totalToken[shardid])-2, limit)
-				if err != nil {
-					log.Println(err)
-					time.Sleep(5 * time.Second)
-					continue
-				}
-				if len(coinList) == 0 {
-					break
-				}
-				lastIndex = int64(coinList[len(coinList)-1].CoinIndex)
-				for _, v := range coinList {
-					newCoin := new(coin.CoinV2)
-					err := newCoin.SetBytes(v.Coin)
-					if err != nil {
-						panic(err)
-					}
-					var wg sync.WaitGroup
-					for _, key := range keys {
-						wg.Add(1)
-						go func(c *coin.CoinV2, k OTAkeyInfo) {
-							pass, _, _ := doesCoinBelongToKeySet(c, k.keyset, nil, false)
-							if pass {
-								keysNeedRescanLock.Lock()
-								keysNeedRescan[k.OTAKey] = k
-								keysNeedRescanLock.Unlock()
-							}
-							wg.Done()
-						}(newCoin, key)
-					}
-					wg.Wait()
-				}
-				if int64(len(coinList)) < limit {
-					break
-				}
-			}
-			lastIndexs[shardid][common.ConfidentialAssetID.String()] = uint64(lastIndex)
-		}
-		log.Println("need to rescan", len(keysNeedRescan), time.Since(start))
-		for _, v := range keysNeedRescan {
-			err := ReScanOTAKey(v.OTAKey, v.Pubkey)
-			if err != nil {
-				log.Println("rescan error", v.OTAKey, err)
-				continue
-			}
-		}
-	}
 }
