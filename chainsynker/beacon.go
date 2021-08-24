@@ -16,11 +16,6 @@ import (
 )
 
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
-	bestHeight := Localnode.GetBlockchain().GetBeaconBestState().BeaconHeight
-	doProcess := false
-	if bestHeight-height < 8 {
-		doProcess = true
-	}
 
 	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 	blk := beaconBestState.BestBlock
@@ -110,14 +105,9 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	orderStatusList := []shared.TradeOrderData{}
 	waitingContributeList := []shared.WaitingContributions{}
 	if pdeState.Version() == 1 {
-		if doProcess {
-			waitingContributeList = processWaitingContribute(stateV1.WaitingContributions, nil, height)
-		}
-
+		waitingContributeList = processWaitingContribute(stateV1.WaitingContributions, nil, height)
 	} else {
-		if doProcess {
-			waitingContributeList = processWaitingContribute(nil, stateV2.WaitingContributions, height)
-		}
+		waitingContributeList = processWaitingContribute(nil, stateV2.WaitingContributions, height)
 		orderStatusList = processBeaconOrder(stateV2.Orders)
 		pairData := []shared.PairData{}
 		pools := []shared.PoolPairData{}

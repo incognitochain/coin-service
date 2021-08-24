@@ -164,7 +164,6 @@ func StartOTAIndexing() {
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
-	var coinList []shared.CoinData
 	go processMsgFromMaster(readCh, writeCh)
 	for {
 		time.Sleep(5 * time.Second)
@@ -601,7 +600,8 @@ func filterOrdersByOTAKey() {
 func GetOTAKeyListMinScannedOrders() map[int]uint64 {
 	minOrderHeight := make(map[int]uint64)
 	for shardID, keys := range assignedOTAKeys.Keys {
-
+		_ = shardID
+		_ = keys
 	}
 
 	log.Printf("worker/%v minOrderHeight %v %v\n", workerID, minOrderHeight)

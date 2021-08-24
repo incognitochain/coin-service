@@ -18,6 +18,7 @@ type CoinData struct {
 	TxHash           string `json:"txhash" bson:"txhash"`
 	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
 	ShardID          int    `json:"shardid" bson:"shardid"`
+	IsNFT            bool   `json:"isnft" bson:"isnft"`
 }
 
 type CoinDataV1 CoinData
@@ -334,17 +335,15 @@ type ShieldData struct {
 	Amount           uint64 `json:"amount" bson:"amount"`
 	RespondTx        string `json:"respondtx" bson:"respondtx"`
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
-	ShieldType       string `json:"shieldtype" bson:"shieldtype"`
 	IsDecentralized  bool   `json:"isdecentralized" bson:"isdecentralized"`
 	Pubkey           string `json:"pubkey" bson:"pubkey"`
 	BeaconHeight     uint64 `json:"height" bson:"height"`
 }
 
-func NewShieldData(requestTx, respondTx, tokenID, shieldType, bridge, pubkey string, isDecentralized bool, amount, height uint64) *ShieldData {
+func NewShieldData(requestTx, respondTx, tokenID, bridge, pubkey string, isDecentralized bool, amount, height uint64) *ShieldData {
 	return &ShieldData{
 		RespondTx:       respondTx,
 		RequestTx:       requestTx,
-		ShieldType:      shieldType,
 		Bridge:          bridge,
 		TokenID:         tokenID,
 		Amount:          amount,
@@ -482,22 +481,19 @@ type TradeOrderData struct {
 	RespondTxs       []string `json:"respondtxs" bson:"respondtxs"`
 	WithdrawTx       string   `json:"withdrawtx" bson:"withdrawtx"`
 	SellTokenID      string   `json:"selltokenid" bson:"selltokenid"`
-	BuyTokenID       string   `json:"buytokenid" bson:"buytokenid"`
 	Status           string   `json:"status" bson:"status"`
 	PairID           string   `json:"pairid" bson:"pairid"`
 	PoolID           string   `json:"poolid" bson:"poolid"`
 	Rate             uint64   `json:"price" bson:"price"`
 	Amount           uint64   `json:"amount" bson:"amount"`
-	Remain           uint64   `json:"remain" bson:"remain"`
 	Locktime         int64    `json:"locktime" bson:"locktime"`
 	NFTID            string   `json:"nftid" bson:"nftid"`
 	Receiver         string   `json:"receiver" bson:"receiver"`
-	OTAsecret        string   `json:"otasecret" bson:"otasecret"`
 	ShardID          int      `json:"shardid" bson:"shardid"`
 	BlockHeight      uint64   `json:"blockheight" bson:"blockheight"`
 }
 
-func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid, receiver string, respondTxs []string, rate, amount, remain uint64, locktime int64, shardID int, blockHeight uint64) *TradeOrderData {
+func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid, receiver string, respondTxs []string, rate, amount uint64, locktime int64, shardID int, blockHeight uint64) *TradeOrderData {
 	return &TradeOrderData{
 		NFTID:       nftid,
 		RequestTx:   requestTx,
@@ -508,7 +504,6 @@ func NewTradeOrderData(requestTx, selltoken, poolid, pairid, status, nftid, rece
 		PairID:      pairid,
 		Rate:        rate,
 		Amount:      amount,
-		Remain:      remain,
 		Locktime:    locktime,
 		Receiver:    receiver,
 		ShardID:     shardID,
@@ -672,4 +667,35 @@ func (model *WaitingContributions) Saving() error {
 	}
 
 	return nil
+}
+
+type ProcessorState struct {
+	mgm.DefaultModel `bson:",inline"`
+	Processor        string `json:"processor" bson:"processor"`
+	State            string `json:"state" bson:"state"`
+}
+
+func (model *ProcessorState) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *ProcessorState) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type LimitOrderStatus struct {
+	mgm.DefaultModel `bson:",inline"`
+	Status           string `json:"status" bson:"status"`
+	RequestTx        string `json:"requesttx" bson:"requesttx"`
+	Amount           string `json:"amount" bson:"amount"`
+	Matched          string `json:"matched" bson:"matched"`
 }

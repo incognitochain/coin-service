@@ -15,6 +15,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 	"github.com/incognitochain/incognito-chain/metadata"
+	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	metadataPdexv3 "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/transaction"
@@ -274,6 +275,13 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
 			txToken := tx.(transaction.TransactionToken)
 			txTokenData := txToken.GetTxTokenData()
+
+			isNFT := false
+
+			if tx.GetMetadataType() == metadataCommon.Pdexv3MintNft {
+				isNFT = true
+			}
+
 			if txTokenData.TxNormal.GetProof() != nil {
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
@@ -326,6 +334,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 							}
 						}
 						outCoin := shared.NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenStr, publicKeyStr, "", txHash, shardID, int(coin.GetVersion()))
+						outCoin.IsNFT = isNFT
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}
@@ -502,7 +511,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			//TODO
 		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 			requestTx := ""
-			shieldType := "shield"
 			bridge := ""
 			isDecentralized := false
 			switch metaDataType {
@@ -517,7 +525,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					bridge = "bsc"
 				}
 			}
-			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, shieldType, bridge, "", isDecentralized, outs[0].GetValue(), beaconHeight)
+			shielddata := shared.NewShieldData(requestTx, tx.Hash().String(), tokenIDStr, bridge, "", isDecentralized, outs[0].GetValue(), beaconHeight)
 			bridgeShieldRespondList = append(bridgeShieldRespondList, *shielddata)
 		case metadata.PDEContributionResponseMeta:
 			txRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()] = append(txRespondMap[tx.GetMetadata().(*metadata.PDEContributionResponse).RequestedTxID.String()], struct {

@@ -174,20 +174,19 @@ func DBCreateTxPendingIndex() error {
 	return nil
 }
 
-// func DBCreateTradeIndex() error {
-// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
-// 	model := []mongo.IndexModel{
-// 		{
-// 			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondtx", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}},
-// 		},
-// 	}
-// 	indexName, err := mgm.Coll(&shared.TradeData{}).Indexes().CreateMany(ctx, model)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	log.Println("indexName", indexName)
-// 	return nil
-// }
+func DBCreateTokenIndex() error {
+	tokenModel := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err := mgm.Coll(&shared.TokenInfoData{}).Indexes().CreateMany(context.Background(), tokenModel)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func DBCreateShieldIndex() error {
 	model := []mongo.IndexModel{
@@ -203,7 +202,7 @@ func DBCreateShieldIndex() error {
 	return nil
 }
 
-func DBCreatePDEXIndex() error {
+func DBCreateLiquidityIndex() error {
 	ctrbModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondblock", Value: bsonx.Int32(-1)}},
@@ -213,6 +212,7 @@ func DBCreatePDEXIndex() error {
 	if err != nil {
 		return err
 	}
+
 	wdCtrbModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "contributor", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}, {Key: "respondtime", Value: bsonx.Int32(-1)}},
@@ -233,22 +233,6 @@ func DBCreatePDEXIndex() error {
 		return err
 	}
 
-	tradeOrderModel := []mongo.IndexModel{
-		{
-			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}, {Key: "pairid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
-		},
-		{
-			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
-		},
-		{
-			Keys: bsonx.Doc{{Key: "requesttx", Value: bsonx.Int32(1)}},
-		},
-	}
-	_, err = mgm.Coll(&shared.TradeOrderData{}).Indexes().CreateMany(context.Background(), tradeOrderModel)
-	if err != nil {
-		return err
-	}
-
 	poolPairModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
@@ -262,16 +246,53 @@ func DBCreatePDEXIndex() error {
 	return nil
 }
 
-func DBCreateTokenIndex() error {
-	tokenModel := []mongo.IndexModel{
+func DBCreateTradeIndex() error {
+
+	tradeOrderModel := []mongo.IndexModel{
 		{
-			Keys:    bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}},
-			Options: options.Index().SetUnique(true),
+			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}, {Key: "pairid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "requesttx", Value: bsonx.Int32(1)}},
 		},
 	}
-	_, err := mgm.Coll(&shared.TokenInfoData{}).Indexes().CreateMany(context.Background(), tokenModel)
+	_, err := mgm.Coll(&shared.TradeOrderData{}).Indexes().CreateMany(context.Background(), tradeOrderModel)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
+
+func DBCreateProcessorIndex() error {
+	processorModal := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "processor", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err := mgm.Coll(&shared.ProcessorState{}).Indexes().CreateMany(context.Background(), processorModal)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// func DBCreateTradeIndex() error {
+// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+// 	model := []mongo.IndexModel{
+// 		{
+// 			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "respondtx", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}},
+// 		},
+// 	}
+// 	indexName, err := mgm.Coll(&shared.TradeData{}).Indexes().CreateMany(ctx, model)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	log.Println("indexName", indexName)
+// 	return nil
+// }

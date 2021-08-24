@@ -82,7 +82,7 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			err = database.DBSaveCoins(cdata)
+			err, _ = database.DBSaveCoins(cdata)
 			if err != nil {
 				panic(err)
 			}

@@ -33,6 +33,9 @@ const (
 	QUERYMODE     = "query"
 	WORKERMODE    = "indexworker"
 	FULLMODE      = "full"
+	LIQUIDITYMODE = "liquidity"
+	SHIELDMODE    = "shield"
+	TRADEMODE     = "trade"
 )
 
 const (

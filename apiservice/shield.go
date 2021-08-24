@@ -128,7 +128,6 @@ func APIGetShieldHistory(c *gin.Context) {
 				Amount:          v.Amount,
 				RespondTx:       v.RespondTx,
 				RequestTx:       v.RequestTx,
-				ShieldType:      v.ShieldType,
 				IsDecentralized: v.IsDecentralized,
 			},
 			Locktime: tx[0].Locktime,

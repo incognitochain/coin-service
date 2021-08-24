@@ -440,25 +440,25 @@ func DBGetPdexWaitingLiquidity() ([]shared.WaitingContributions, error) {
 	return result, nil
 }
 
-func DBUpdateOrdersOwner(orders []shared.TradeOrderData) error {
-	startTime := time.Now()
-	docs := []interface{}{}
-	for _, order := range orders {
-		update := bson.M{
-			"$set": bson.M{"otasecret": order.OTAsecret},
-		}
-		docs = append(docs, update)
-	}
-	for idx, doc := range docs {
-		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(context.Background(), orders[idx].GetID(), doc)
-		if err != nil {
-			log.Printf("failed to update %v orders in %v", len(orders), time.Since(startTime))
-			return err
-		}
-	}
-	log.Printf("updated %v orders in %v", len(orders), time.Since(startTime))
-	return nil
-}
+// func DBUpdateOrdersOwner(orders []shared.TradeOrderData) error {
+// 	startTime := time.Now()
+// 	docs := []interface{}{}
+// 	for _, order := range orders {
+// 		update := bson.M{
+// 			"$set": bson.M{"otasecret": order.OTAsecret},
+// 		}
+// 		docs = append(docs, update)
+// 	}
+// 	for idx, doc := range docs {
+// 		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(context.Background(), orders[idx].GetID(), doc)
+// 		if err != nil {
+// 			log.Printf("failed to update %v orders in %v", len(orders), time.Since(startTime))
+// 			return err
+// 		}
+// 	}
+// 	log.Printf("updated %v orders in %v", len(orders), time.Since(startTime))
+// 	return nil
+// }
 
 func DBGetUnknownOrdersFromDB(shardID int, height uint64, limit int64) ([]shared.TradeOrderData, error) {
 	var result []shared.TradeOrderData
@@ -490,5 +490,13 @@ func DBUpdateOrderProgress(orders []shared.TradeOrderData) error {
 		}
 	}
 	log.Printf("updated %v orders in %v", len(orders), time.Since(startTime))
+	return nil
+}
+
+func DBUpdatePoolShare(shareList []shared.PoolShareData) error {
+	return nil
+}
+
+func DBUpdatePoolData(poolList []shared.PoolPairData) error {
 	return nil
 }
