@@ -149,6 +149,9 @@ func DBCreateTxIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "realtokenid", Value: bsonx.Int32(1)}, {Key: "pubkeyreceivers", Value: bsonx.Int32(1)}, {Key: "txversion", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
 		},
+		{
+			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
+		},
 	}
 	indexName, err := mgm.Coll(&shared.TxData{}).Indexes().CreateMany(context.Background(), txMdl)
 	if err != nil {

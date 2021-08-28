@@ -1,11 +1,16 @@
 package shield
 
 import (
+	"errors"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/metadata"
+	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -33,17 +38,21 @@ func StartProcessor() {
 			continue
 		}
 
-		for _, v := range txList {
-			_ = v
+		request, respond, err := processShieldTxs(txList)
+		if err != nil {
+			panic(err)
 		}
-
-		currentState.LastProcessedObjectID = 
+		_ = request
+		err = database.DBSaveTxShield(respond)
+		if err != nil {
+			panic(err)
+		}
+		currentState.LastProcessedObjectID = txList[len(txList)-1].ID.String()
 		err = updateState()
 		if err != nil {
 			panic(err)
 		}
 	}
-	return
 }
 
 func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
@@ -79,11 +88,57 @@ func loadState() error {
 	return json.UnmarshalFromString(result.State, &currentState)
 }
 
-func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, error) {
-	var result []shared.ShieldData
+func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.ShieldData, error) {
+	var requestData []shared.ShieldData
 
+	var respondData []shared.ShieldData
 	for _, tx := range shieldTxs {
+		metaDataType, _ := strconv.Atoi(tx.Metatype)
+		requestTx := ""
+		bridge := ""
+		isDecentralized := false
+		if metaDataType == metadata.IssuingResponseMeta || metaDataType == metadata.IssuingETHResponseMeta || metaDataType == metadata.IssuingBSCResponseMeta {
+			switch metaDataType {
+			case metadata.IssuingResponseMeta:
+				meta := metadata.IssuingResponse{}
+				json.Unmarshal([]byte(tx.Metadata), &meta)
+				requestTx = meta.RequestedTxID.String()
+				bridge = "btc"
+			case metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
+				meta := metadata.IssuingEVMResponse{}
+				json.Unmarshal([]byte(tx.Metadata), &meta)
+				requestTx = meta.RequestedTxID.String()
+				if metaDataType == metadata.IssuingETHResponseMeta {
+					bridge = "eth"
+				} else {
+					bridge = "bsc"
+				}
+			}
+			txChoice, parseErr := shared.DeserializeTransactionJSON([]byte(tx.TxDetail))
+			if parseErr != nil {
+				panic(parseErr)
+			}
+			txDetail := txChoice.ToTx()
+			if txDetail == nil {
+				panic(errors.New("invalid tx detected"))
+			}
+			tokenIDStr := txDetail.GetTokenID().String()
+			amount := uint64(0)
+			if txDetail.GetType() == common.TxCustomTokenPrivacyType || txDetail.GetType() == common.TxTokenConversionType {
+				txToken := txDetail.(transaction.TransactionToken)
+				if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
+					outs := txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+					amount = outs[0].GetValue()
+					if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
+						txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
+						tokenIDStr = txTokenData.PropertyID.String()
+					}
+				}
+			}
+			shieldData := shared.NewShieldData(requestTx, tx.TxHash, tokenIDStr, bridge, "", isDecentralized, amount, tx.BlockHeight)
+			respondData = append(respondData, *shieldData)
+		}
 
 	}
-	return result, nil
+	return requestData, respondData, nil
 }

@@ -103,19 +103,10 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	// 	log.Println(err)
 	// }
 	orderStatusList := []shared.TradeOrderData{}
-	waitingContributeList := []shared.WaitingContributions{}
-	if pdeState.Version() == 1 {
-		waitingContributeList = processWaitingContribute(stateV1.WaitingContributions, nil, height)
-	} else {
-		waitingContributeList = processWaitingContribute(nil, stateV2.WaitingContributions, height)
+	if pdeState.Version() == 2 {
 		orderStatusList = processBeaconOrder(stateV2.Orders)
 		pairData := []shared.PairData{}
 		pools := []shared.PoolPairData{}
-
-		for poolID, poolPair := range stateV2.PoolPairs {
-			_ = poolID
-			_ = poolPair
-		}
 
 		_ = pairData
 		err = database.DBSavePoolPairs(pools)
@@ -124,7 +115,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		}
 	}
 	_ = orderStatusList
-	_ = waitingContributeList
 	statePrefix := BeaconData
 	err = Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
 	if err != nil {
@@ -136,43 +126,41 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
-func processWaitingContribute(statev1 map[string]*rawdbv2.PDEContribution, statev2 map[string]*rawdbv2.Pdexv3Contribution, beaconHeight uint64) []shared.WaitingContributions {
-	result := []shared.WaitingContributions{}
-	if statev1 != nil {
-		for _, contribute := range statev1 {
-			newContr := shared.WaitingContributions{
-				RequestTx:     contribute.TxReqID.String(),
-				RefundAddress: contribute.ContributorAddressStr,
-				TokenID:       contribute.TokenIDStr,
-				BeaconHeight:  beaconHeight,
-			}
-			result = append(result, newContr)
-		}
-	}
-	if statev2 != nil {
-		for _, contribute := range statev2 {
-			newContr := shared.WaitingContributions{
-				RequestTx:      contribute.TxReqID().String(),
-				RefundAddress:  contribute.RefundAddress(),
-				ReceiveAddress: contribute.ReceiveAddress(),
-				TokenID:        contribute.TokenID().String(),
-				Amount:         contribute.Amount(),
-				AMP:            contribute.Amplifier(),
-				BeaconHeight:   beaconHeight,
-			}
-			result = append(result, newContr)
-		}
-	}
+// func processWaitingContribute(statev1 map[string]*rawdbv2.PDEContribution, statev2 map[string]*rawdbv2.Pdexv3Contribution, beaconHeight uint64) []shared.WaitingContributions {
+// 	result := []shared.WaitingContributions{}
+// 	if statev1 != nil {
+// 		for _, contribute := range statev1 {
+// 			newContr := shared.WaitingContributions{
+// 				RequestTx:     contribute.TxReqID.String(),
+// 				RefundAddress: contribute.ContributorAddressStr,
+// 				TokenID:       contribute.TokenIDStr,
+// 				BeaconHeight:  beaconHeight,
+// 			}
+// 			result = append(result, newContr)
+// 		}
+// 	}
+// 	if statev2 != nil {
+// 		for _, contribute := range statev2 {
+// 			newContr := shared.WaitingContributions{
+// 				RequestTx:      contribute.TxReqID().String(),
+// 				RefundAddress:  contribute.RefundAddress(),
+// 				ReceiveAddress: contribute.ReceiveAddress(),
+// 				TokenID:        contribute.TokenID().String(),
+// 				Amount:         contribute.Amount(),
+// 				AMP:            contribute.Amplifier(),
+// 				BeaconHeight:   beaconHeight,
+// 			}
+// 			result = append(result, newContr)
+// 		}
+// 	}
 
-	return result
-}
+// 	return result
+// }
 
 func processBeaconOrder(orderGroups map[int64][]rawdbv2.Pdexv3Order) []shared.TradeOrderData {
 	var result []shared.TradeOrderData
 	for _, orders := range orderGroups {
 		for _, order := range orders {
-			// order.TradeDirection()
-			// order.
 			newOrder := shared.TradeOrderData{
 				RequestTx: order.Id(),
 			}
@@ -183,6 +171,14 @@ func processBeaconOrder(orderGroups map[int64][]rawdbv2.Pdexv3Order) []shared.Tr
 	return result
 }
 
-func processPoolPairs() {
+func processPoolPairs(statev1 map[string]*rawdbv2.PDEContribution, statev2 map[string]*rawdbv2.Pdexv3Contribution, beaconHeight uint64) ([]shared.PoolPairData, []shared.PoolShareData, error) {
+	var poolPairs []shared.PoolPairData
+	var poolShare []shared.PoolShareData
+	for _, state := range statev1 {
 
+	}
+
+	for _, state := range statev2 {
+
+	}
 }

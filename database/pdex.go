@@ -356,6 +356,38 @@ func DBSaveTradeOrder(orders []shared.TradeOrderData) error {
 	return nil
 }
 
+func DBUpdateTradeOrder(orders []shared.TradeOrderData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range orders {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		update := bson.M{
+			"$addToSet": bson.M{"respondtxs": order.RespondTxs},
+			"$set":      bson.M{"status": order.Status},
+		}
+		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdateCancelTradeOrder(orders []shared.TradeOrderData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range orders {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		update := bson.M{
+			"$addToSet": bson.M{"canceltx": order.CancelTx},
+			"$set":      bson.M{"status": order.Status},
+		}
+		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
 func DBGetPendingOrder(pubkey, pairID string) ([]shared.TradeOrderData, error) {
 	var result []shared.TradeOrderData
 
@@ -473,17 +505,17 @@ func DBGetUnknownOrdersFromDB(shardID int, height uint64, limit int64) ([]shared
 	return result, nil
 }
 
-func DBUpdateOrderProgress(orders []shared.TradeOrderData) error {
+func DBUpdateOrderProgress(orders []shared.LimitOrderStatus) error {
 	startTime := time.Now()
 	docs := []interface{}{}
 	for _, order := range orders {
 		update := bson.M{
-			"$set": bson.M{"status": order.Status, "amount": order.Amount, "remain": order.Remain},
+			"$set": bson.M{"status": order.Status, "amount": order.Amount, "matched": order.Matched, "requesttx": order.RequestTx},
 		}
 		docs = append(docs, update)
 	}
 	for idx, doc := range docs {
-		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateByID(context.Background(), orders[idx].GetID(), doc)
+		_, err := mgm.Coll(&shared.LimitOrderStatus{}).UpdateByID(context.Background(), orders[idx].GetID(), doc)
 		if err != nil {
 			log.Printf("failed to update %v orders in %v", len(orders), time.Since(startTime))
 			return err
@@ -498,5 +530,53 @@ func DBUpdatePoolShare(shareList []shared.PoolShareData) error {
 }
 
 func DBUpdatePoolData(poolList []shared.PoolPairData) error {
+	return nil
+}
+
+func DBUpdatePDEContribute(list []shared.ContributionData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range list {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		update := bson.M{
+			"$addToSet": bson.M{"respondtxs": order.RespondTxs, "returntoken": order.ReturnToken, "returnamount": order.ReturnAmount},
+			"$set":      bson.M{},
+		}
+		err := mgm.Coll(&shared.ContributionData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdatePDEWithdraw(list []shared.WithdrawContributionData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range list {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		update := bson.M{
+			"$addToSet": bson.M{"respondtxs": order.RespondTxs, "withdrawtoken": order.WithdrawToken, "withdrawamount": order.WithdrawAmount},
+			"$set":      bson.M{"status": order.Status},
+		}
+		err := mgm.Coll(&shared.WithdrawContributionData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdatePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range list {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		update := bson.M{
+			"$addToSet": bson.M{"respondtxs": order.RespondTxs, "withdrawtoken": order.ReturnTokens, "withdrawamount": order.ReturnAmount},
+			"$set":      bson.M{"status": order.Status},
+		}
+		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
 	return nil
 }
