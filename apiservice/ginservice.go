@@ -144,6 +144,7 @@ func APIGetCoins(c *gin.Context) {
 	otakey := c.Query("otakey")
 	tokenid := c.Query("tokenid")
 	shardid, _ := strconv.Atoi(c.Query("shardid"))
+	getNFT := false
 
 	base58Format := false
 	log.Println("tokenid", tokenid, common.PRVCoinID.String())
@@ -156,7 +157,9 @@ func APIGetCoins(c *gin.Context) {
 	if version != 1 && version != 2 {
 		version = 1
 	}
-	var result []interface{}
+	if tokenid == "nft" {
+		getNFT = true
+	}
 	var pubkey string
 	highestIdx := uint64(0)
 	if version == 2 {
@@ -173,38 +176,86 @@ func APIGetCoins(c *gin.Context) {
 			pukeyBytes := wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
 			pubkey = base58.EncodeCheck(pukeyBytes)
 			shardID := common.GetShardIDFromLastByte(pukeyBytes[len(pukeyBytes)-1])
-			tokenidv2 := tokenid
-			// if tokenid != common.PRVCoinID.String() && tokenid != common.ConfidentialAssetID.String() {
-			// 	tokenidv2 = common.ConfidentialAssetID.String()
-			// }
-			coinList, err := database.DBGetCoinsByOTAKey(int(shardID), tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-				return
-			}
-
-			for _, cn := range coinList {
-				if cn.CoinIndex > highestIdx {
-					highestIdx = cn.CoinIndex
-				}
-				coinV2 := new(coin.CoinV2)
-				err := coinV2.SetBytes(cn.Coin)
+			if !getNFT {
+				tokenidv2 := tokenid
+				coinList, err := database.DBGetCoinsByOTAKey(int(shardID), tokenidv2, base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 					return
 				}
-				idx := new(big.Int).SetUint64(cn.CoinIndex)
-				var cV2 shared.OutCoinV2
-				if base58Format {
-					cV2 = shared.NewOutCoinV2(coinV2, true)
-					cV2.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
-				} else {
-					cV2 = shared.NewOutCoinV2(coinV2, false)
-					cV2.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
+
+				var result []interface{}
+				for _, cn := range coinList {
+					if cn.CoinIndex > highestIdx {
+						highestIdx = cn.CoinIndex
+					}
+					coinV2 := new(coin.CoinV2)
+					err := coinV2.SetBytes(cn.Coin)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+						return
+					}
+					idx := new(big.Int).SetUint64(cn.CoinIndex)
+					var cV2 shared.OutCoinV2
+					if base58Format {
+						cV2 = shared.NewOutCoinV2(coinV2, true)
+						cV2.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+					} else {
+						cV2 = shared.NewOutCoinV2(coinV2, false)
+						cV2.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
+					}
+					cV2.TxHash = cn.TxHash
+					result = append(result, cV2)
 				}
-				cV2.TxHash = cn.TxHash
-				result = append(result, cV2)
+				rs := make(map[string]interface{})
+				rs["HighestIndex"] = highestIdx
+				rs["Outputs"] = map[string]interface{}{pubkey: result}
+				respond := APIRespond{
+					Result: rs,
+					Error:  nil,
+				}
+				c.JSON(http.StatusOK, respond)
+			} else {
+				coinList, err := database.DBGetNFTByOTAKey(int(shardID), base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()), int64(offset), int64(limit))
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+					return
+				}
+				result := make(map[string][]interface{})
+				for token, list := range coinList {
+					for _, cn := range list {
+						if cn.CoinIndex > highestIdx {
+							highestIdx = cn.CoinIndex
+						}
+						coinV2 := new(coin.CoinV2)
+						err := coinV2.SetBytes(cn.Coin)
+						if err != nil {
+							c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+							return
+						}
+						idx := new(big.Int).SetUint64(cn.CoinIndex)
+						var cV2 shared.OutCoinV2
+						if base58Format {
+							cV2 = shared.NewOutCoinV2(coinV2, true)
+							cV2.Index = base58.Base58Check{}.Encode(idx.Bytes(), common.ZeroByte)
+						} else {
+							cV2 = shared.NewOutCoinV2(coinV2, false)
+							cV2.Index = base64.StdEncoding.EncodeToString(idx.Bytes())
+						}
+						cV2.TxHash = cn.TxHash
+						result[token] = append(result[token], cV2)
+					}
+				}
+				rs := make(map[string]interface{})
+				rs["HighestIndex"] = highestIdx
+				rs["Outputs"] = result
+				respond := APIRespond{
+					Result: rs,
+					Error:  nil,
+				}
+				c.JSON(http.StatusOK, respond)
 			}
+
 		} else {
 			coinList, err := database.DBGetUnknownCoinsV21(shardid, tokenid, int64(offset), int64(limit))
 			if err != nil {
@@ -212,6 +263,7 @@ func APIGetCoins(c *gin.Context) {
 				return
 			}
 
+			var result []interface{}
 			for _, cn := range coinList {
 				if cn.CoinIndex > highestIdx {
 					highestIdx = cn.CoinIndex
@@ -234,6 +286,14 @@ func APIGetCoins(c *gin.Context) {
 				cV2.TxHash = cn.TxHash
 				result = append(result, cV2)
 			}
+			rs := make(map[string]interface{})
+			rs["HighestIndex"] = highestIdx
+			rs["Outputs"] = map[string]interface{}{pubkey: result}
+			respond := APIRespond{
+				Result: rs,
+				Error:  nil,
+			}
+			c.JSON(http.StatusOK, respond)
 		}
 	}
 	if version == 1 {
@@ -271,7 +331,7 @@ func APIGetCoins(c *gin.Context) {
 		}
 		var wg sync.WaitGroup
 		collectCh := make(chan shared.OutCoinV1, shared.MAX_CONCURRENT_COIN_DECRYPT)
-		// decryptCount := 0
+		var result []interface{}
 		for idx, cdata := range coinListV1 {
 			if cdata.CoinIndex > highestIdx {
 				highestIdx = cdata.CoinIndex
@@ -329,16 +389,17 @@ func APIGetCoins(c *gin.Context) {
 				result = append(result, cV1)
 			}
 		}
+
+		rs := make(map[string]interface{})
+		rs["HighestIndex"] = highestIdx
+		rs["Outputs"] = map[string]interface{}{pubkey: result}
+		respond := APIRespond{
+			Result: rs,
+			Error:  nil,
+		}
+		c.JSON(http.StatusOK, respond)
 	}
 
-	rs := make(map[string]interface{})
-	rs["HighestIndex"] = highestIdx
-	rs["Outputs"] = map[string]interface{}{pubkey: result}
-	respond := APIRespond{
-		Result: rs,
-		Error:  nil,
-	}
-	c.JSON(http.StatusOK, respond)
 }
 
 func APIGetKeyInfo(c *gin.Context) {

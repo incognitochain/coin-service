@@ -280,3 +280,27 @@ func filterByIndexedCoins(coins []shared.CoinData) []shared.CoinData {
 	}
 	return result
 }
+
+func DBGetNFTByOTAKey(shardID int, OTASecret string, offset, limit int64) (map[string][]shared.CoinData, error) {
+	result := make(map[string][]shared.CoinData)
+	startTime := time.Now()
+	list := []shared.CoinData{}
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: OTASecret}, "isnft": bson.M{operator.Eq: "true"}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
+	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	for _, coin := range list {
+		result[coin.RealTokenID] = append(result[coin.RealTokenID], coin)
+	}
+	return result, err
+}
