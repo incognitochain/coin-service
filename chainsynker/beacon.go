@@ -54,37 +54,31 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 
 	if pdeState.Version() == 1 {
 		poolPairs := make(map[string]*rawdbv2.PDEPoolForPair)
-		waitingContributions := make(map[string]*rawdbv2.PDEContribution)
-		err = json.Unmarshal(pdeState.Reader().WaitingContributions(), &waitingContributions)
-		if err != nil {
-			panic(err)
-		}
 		err = json.Unmarshal(pdeState.Reader().PoolPairs(), &poolPairs)
 		if err != nil {
 			panic(err)
 		}
 
 		stateV1 = &shared.PDEStateV1{
-			WaitingContributions: waitingContributions,
-			PDEPoolPairs:         poolPairs,
-			PDEShares:            pdeState.Reader().Shares(),
-			PDETradingFees:       pdeState.Reader().TradingFees(),
+			PDEPoolPairs:   poolPairs,
+			PDEShares:      pdeState.Reader().Shares(),
+			PDETradingFees: pdeState.Reader().TradingFees(),
 		}
 	} else {
-		poolPairs := make(map[string]*pdex.PoolPairState)
+		poolPairs := make(map[string]*shared.PoolPairState)
 		waitingContributions := make(map[string]*rawdbv2.Pdexv3Contribution)
 		err = json.Unmarshal(pdeState.Reader().WaitingContributions(), &waitingContributions)
 		if err != nil {
 			panic(err)
 		}
+
 		err = json.Unmarshal(pdeState.Reader().PoolPairs(), &poolPairs)
 		if err != nil {
 			panic(err)
 		}
 
 		stateV2 = &shared.PDEStateV2{
-			WaitingContributions: waitingContributions,
-			PoolPairs:            poolPairs,
+			PoolPairs: poolPairs,
 			// StakingPoolsState:    pdeState.Reader().
 		}
 	}
@@ -102,16 +96,28 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	// if err != nil {
 	// 	log.Println(err)
 	// }
-	orderStatusList := []shared.TradeOrderData{}
+	orderStatusList := []shared.LimitOrderStatus{}
+
+	poolDatas, sharesDatas, err := processPoolPairs(stateV1, stateV2, beaconBestState.BeaconHeight)
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBUpdatePDEPoolPairData(poolDatas)
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBUpdatePDEPoolShareData(sharesDatas)
+	if err != nil {
+		panic(err)
+	}
+
 	if pdeState.Version() == 2 {
 		orderStatusList = processBeaconOrder(stateV2.Orders)
-		pairData := []shared.PairData{}
-		pools := []shared.PoolPairData{}
-
-		_ = pairData
-		err = database.DBSavePoolPairs(pools)
+		err = database.DBUpdateOrderProgress(orderStatusList)
 		if err != nil {
-			log.Println(err)
+			panic(err)
 		}
 	}
 	_ = orderStatusList
@@ -126,43 +132,14 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
-// func processWaitingContribute(statev1 map[string]*rawdbv2.PDEContribution, statev2 map[string]*rawdbv2.Pdexv3Contribution, beaconHeight uint64) []shared.WaitingContributions {
-// 	result := []shared.WaitingContributions{}
-// 	if statev1 != nil {
-// 		for _, contribute := range statev1 {
-// 			newContr := shared.WaitingContributions{
-// 				RequestTx:     contribute.TxReqID.String(),
-// 				RefundAddress: contribute.ContributorAddressStr,
-// 				TokenID:       contribute.TokenIDStr,
-// 				BeaconHeight:  beaconHeight,
-// 			}
-// 			result = append(result, newContr)
-// 		}
-// 	}
-// 	if statev2 != nil {
-// 		for _, contribute := range statev2 {
-// 			newContr := shared.WaitingContributions{
-// 				RequestTx:      contribute.TxReqID().String(),
-// 				RefundAddress:  contribute.RefundAddress(),
-// 				ReceiveAddress: contribute.ReceiveAddress(),
-// 				TokenID:        contribute.TokenID().String(),
-// 				Amount:         contribute.Amount(),
-// 				AMP:            contribute.Amplifier(),
-// 				BeaconHeight:   beaconHeight,
-// 			}
-// 			result = append(result, newContr)
-// 		}
-// 	}
-
-// 	return result
-// }
-
-func processBeaconOrder(orderGroups map[int64][]rawdbv2.Pdexv3Order) []shared.TradeOrderData {
-	var result []shared.TradeOrderData
+func processBeaconOrder(orderGroups map[int64][]rawdbv2.Pdexv3Order) []shared.LimitOrderStatus {
+	var result []shared.LimitOrderStatus
 	for _, orders := range orderGroups {
 		for _, order := range orders {
-			newOrder := shared.TradeOrderData{
+			newOrder := shared.LimitOrderStatus{
 				RequestTx: order.Id(),
+				Status:    "",
+				Left:      order.Token0Balance(),
 			}
 			result = append(result, newOrder)
 		}
@@ -171,14 +148,60 @@ func processBeaconOrder(orderGroups map[int64][]rawdbv2.Pdexv3Order) []shared.Tr
 	return result
 }
 
-func processPoolPairs(statev1 map[string]*rawdbv2.PDEContribution, statev2 map[string]*rawdbv2.Pdexv3Contribution, beaconHeight uint64) ([]shared.PoolPairData, []shared.PoolShareData, error) {
+func processPoolPairs(statev1 *shared.PDEStateV1, statev2 *shared.PDEStateV2, beaconHeight uint64) ([]shared.PoolPairData, []shared.PoolShareData, error) {
 	var poolPairs []shared.PoolPairData
 	var poolShare []shared.PoolShareData
-	for _, state := range statev1 {
 
+	for poolID, state := range statev1.PDEPoolPairs {
+		poolData := shared.PoolPairData{
+			Version:      1,
+			PoolID:       poolID,
+			PairID:       state.Token1IDStr + "-" + state.Token2IDStr,
+			TokenID1:     state.Token1IDStr,
+			TokenID2:     state.Token2IDStr,
+			Token1Amount: state.Token1PoolValue,
+			Token2Amount: state.Token2PoolValue,
+		}
+		poolPairs = append(poolPairs, poolData)
 	}
 
-	for _, state := range statev2 {
-
+	for shareID, share := range statev1.PDEShares {
+		shareData := shared.PoolShareData{
+			Version:    1,
+			Amount:     share,
+			TradingFee: map[string]uint64{common.PRVCoinID.String(): statev1.PDETradingFees[shareID]},
+			Pubkey:     "",
+		}
+		poolShare = append(poolShare, shareData)
 	}
+
+	for poolID, state := range statev2.PoolPairs {
+		for shareID, share := range state.Shares {
+			shareData := shared.PoolShareData{
+				Version:    2,
+				Amount:     share.Amount(),
+				TradingFee: share.TradingFees(),
+				NFTID:      shareID,
+			}
+			poolShare = append(poolShare, shareData)
+		}
+
+		poolData := shared.PoolPairData{
+			Version:      2,
+			PoolID:       poolID,
+			PairID:       state.State.Token0ID().String() + "-" + state.State.Token1ID().String(),
+			AMP:          state.State.Amplifier(),
+			TokenID1:     state.State.Token0ID().String(),
+			TokenID2:     state.State.Token1ID().String(),
+			Token1Amount: state.State.Token0RealAmount(),
+			Token2Amount: state.State.Token1RealAmount(),
+		}
+		poolPairs = append(poolPairs, poolData)
+	}
+
+	// for nftID, share := range statev2.StakingPoolsState {
+
+	// }
+
+	return poolPairs, poolShare, nil
 }

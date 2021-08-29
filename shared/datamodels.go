@@ -300,33 +300,33 @@ func (model *TxData) Saving() error {
 // 	return nil
 // }
 
-// type PDEStateData struct {
-// 	mgm.DefaultModel `bson:",inline"`
-// 	State            string `json:"state" bson:"state"`
-// }
+type PDEStateData struct {
+	mgm.DefaultModel `bson:",inline"`
+	State            string `json:"state" bson:"state"`
+}
 
-// func (model *PDEStateData) Creating() error {
-// 	// Call the DefaultModel Creating hook
-// 	if err := model.DefaultModel.Creating(); err != nil {
-// 		return err
-// 	}
+func (model *PDEStateData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
 
-// 	return nil
-// }
-// func (model *PDEStateData) Saving() error {
-// 	// Call the DefaultModel Creating hook
-// 	if err := model.DefaultModel.Saving(); err != nil {
-// 		return err
-// 	}
+	return nil
+}
+func (model *PDEStateData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
-// func NewPDEStateData(state string) *PDEStateData {
-// 	return &PDEStateData{
-// 		State: state,
-// 	}
-// }
+func NewPDEStateData(state string) *PDEStateData {
+	return &PDEStateData{
+		State: state,
+	}
+}
 
 type ShieldData struct {
 	mgm.DefaultModel `bson:",inline"`
@@ -568,6 +568,7 @@ type PoolPairData struct {
 	AMP              uint   `json:"amp" bson:"amp"`
 	Token1Amount     uint64 `json:"token1amount" bson:"token1amount"`
 	Token2Amount     uint64 `json:"token2amount" bson:"token2amount"`
+	Version          int    `json:"version" bson:"version"`
 }
 
 func NewPoolPairData(poolid, pairid, token1, token2 string, amp uint, token1amount, token2amount uint64) *PoolPairData {
@@ -601,19 +602,12 @@ func (model *PoolPairData) Saving() error {
 
 type PoolShareData struct {
 	mgm.DefaultModel `bson:",inline"`
-	PoolID           string `json:"poolid" bson:"poolid"`
-	NFT              string `json:"nft" bson:"nft"`
-	Amount           uint64 `json:"amount" bson:"amount"`
-	TradingFee       string `json:"tradingfee" bson:"tradingfee"`
-}
-
-func NewPoolShareData(poolid, nft, tradingfee string, amount uint64) *PoolShareData {
-	return &PoolShareData{
-		PoolID:     poolid,
-		NFT:        nft,
-		TradingFee: tradingfee,
-		Amount:     amount,
-	}
+	PoolID           string            `json:"poolid" bson:"poolid"`
+	NFTID            string            `json:"nftid" bson:"nftid"`
+	Pubkey           string            `json:"pubkey" bson:"pubkey"`
+	Amount           uint64            `json:"amount" bson:"amount"`
+	TradingFee       map[string]uint64 `json:"tradingfee" bson:"tradingfee"`
+	Version          int               `json:"version" bson:"version"`
 }
 
 func (model *PoolShareData) Creating() error {
@@ -689,6 +683,11 @@ type LimitOrderStatus struct {
 	mgm.DefaultModel `bson:",inline"`
 	Status           string `json:"status" bson:"status"`
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
-	Amount           string `json:"amount" bson:"amount"`
-	Matched          string `json:"matched" bson:"matched"`
+	Left             uint64 `json:"left" bson:"left"`
+}
+
+type PoolStakingData struct {
+	mgm.DefaultModel `bson:",inline"`
+	NFTID            string `json:"nftid" bson:"nftid"`
+	Amount           uint64 `json:"amount" bson:"amount"`
 }

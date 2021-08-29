@@ -15,33 +15,33 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// func DBSavePDEState(state string) error {
-// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
-// 	upsert := true
-// 	opt := options.FindOneAndUpdateOptions{
-// 		Upsert: &upsert,
-// 	}
-// 	var doc interface{}
-// 	newState := shared.NewPDEStateData(state)
-// 	doc = newState
-// 	err := mgm.Coll(&shared.PDEStateData{}).FindOneAndUpdate(ctx, bson.M{}, doc, &opt)
-// 	if err.Err() != nil {
-// 		log.Println(err)
-// 		return err.Err()
-// 	}
-// 	return nil
-// }
+func DBSavePDEState(state string) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
+	upsert := true
+	opt := options.FindOneAndUpdateOptions{
+		Upsert: &upsert,
+	}
+	var doc interface{}
+	newState := shared.NewPDEStateData(state)
+	doc = newState
+	err := mgm.Coll(&shared.PDEStateData{}).FindOneAndUpdate(ctx, bson.M{}, doc, &opt)
+	if err.Err() != nil {
+		log.Println(err)
+		return err.Err()
+	}
+	return nil
+}
 
-// func DBGetPDEState() (string, error) {
-// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
-// 	var result shared.PDEStateData
-// 	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{}, &result)
-// 	if err != nil {
-// 		log.Println(err)
-// 		return "", err
-// 	}
-// 	return result.State, nil
-// }
+func DBGetPDEState() (string, error) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
+	var result shared.PDEStateData
+	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{}, &result)
+	if err != nil {
+		log.Println(err)
+		return "", err
+	}
+	return result.State, nil
+}
 
 func DBSaveTxTrade(list []shared.TradeOrderData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
@@ -510,7 +510,7 @@ func DBUpdateOrderProgress(orders []shared.LimitOrderStatus) error {
 	docs := []interface{}{}
 	for _, order := range orders {
 		update := bson.M{
-			"$set": bson.M{"status": order.Status, "amount": order.Amount, "matched": order.Matched, "requesttx": order.RequestTx},
+			"$set": bson.M{"status": order.Status, "left": order.Left, "requesttx": order.RequestTx},
 		}
 		docs = append(docs, update)
 	}
@@ -574,6 +574,36 @@ func DBUpdatePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
 			"$set":      bson.M{"status": order.Status},
 		}
 		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, pool := range list {
+		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
+		update := bson.M{
+			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "amp": pool.AMP, "version": pool.Version},
+		}
+		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, share := range list {
+		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}}
+		update := bson.M{
+			"$set": bson.M{"poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee},
+		}
+		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
 			return err.Err()
 		}
