@@ -53,7 +53,7 @@ func DBSaveTXs(list []shared.TxData) error {
 	return nil
 }
 
-func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey, tokenID string, ctx context.Context) error {
+func DBUpdateTxPubkeyReceiverAndTokenID(txHashes []string, pubKey, tokenID string, ctx context.Context) error {
 	docs := []interface{}{}
 	for _ = range txHashes {
 		update := bson.M{
@@ -161,4 +161,38 @@ func DBGetLatestTxByShardID(shardID int, limit int64) ([]shared.TxData, error) {
 	}
 
 	return result, nil
+}
+
+func DBGetTxByMetaAndOTA(pubkey string, metatype int, limit int64, offset int64) ([]shared.TxData, error) {
+	var result []shared.TxData
+	filter := bson.M{"pubkey": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.Eq: metatype}}
+	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBUpdateTxsWithPubkeyReceiver(list []shared.TxData) error {
+	startTime := time.Now()
+	docs := []interface{}{}
+	for _, tx := range list {
+		update := bson.M{
+			"$addToSet": bson.M{"pubkeyreceivers": tx.PubKeyReceivers},
+		}
+		docs = append(docs, update)
+	}
+	for idx, doc := range docs {
+		_, err := mgm.Coll(&shared.TxData{}).UpdateByID(context.Background(), list[idx].GetID(), doc)
+		if err != nil {
+			log.Printf("failed to update %v txs in %v", len(list), time.Since(startTime))
+			return err
+		}
+	}
+	log.Printf("updated %v txs in %v", len(list), time.Since(startTime))
+	return nil
 }

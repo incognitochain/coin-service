@@ -141,19 +141,19 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				if !ok {
 					panic("invalid metadataPdexv3.TradeRequest")
 				}
-				amount = item.SellAmount
 				sellToken = item.TokenToSell.String()
 				pairID = strings.Join(item.TradePath, "-")
 				rate = item.MinAcceptableAmount / item.SellAmount
+				amount = item.SellAmount
 			case metadata.Pdexv3AddOrderRequestMeta:
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.AddOrderRequest)
 				if !ok {
 					panic("invalid metadataPdexv3.AddOrderRequest")
 				}
 				sellToken = item.TokenToSell.String()
-				amount = item.SellAmount
 				poolID = item.PoolPairID
 				rate = item.MinAcceptableAmount / item.SellAmount
+				amount = item.SellAmount
 				nftID = item.NftID.String()
 			}
 			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, "", nftID, nil, rate, amount, lockTime, tx.ShardID, tx.BlockHeight)
@@ -169,6 +169,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				status = txDetail.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
 				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
 			case metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
+				//TODO: Status => string
 				md := txDetail.GetMetadata().(*metadataPdexv3.AddOrderResponse)
 				status = fmt.Sprintf("%v", md.Status)
 				requestTx = md.RequestTxID.String()

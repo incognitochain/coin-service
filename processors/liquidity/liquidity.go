@@ -44,13 +44,6 @@ func StartProcessor() {
 			panic(err)
 		}
 
-		_ = contribRQData
-		_ = contribRPData
-		_ = withdrawFeeRQDatas
-		_ = withdrawFeeRPDatas
-		_ = withdrawRQDatas
-		_ = withdrawRPDatas
-
 		err = database.DBSavePDEContribute(contribRQData)
 		if err != nil {
 			panic(err)
@@ -188,16 +181,17 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				RequestTx:  tx.TxHash,
 				NFTID:      md.NftID(),
 				RespondTxs: []string{tx.TxHash},
+				PoolID:     md.PoolPairID(),
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawLiquidityResponse)
-			data := shared.WithdrawContributionFeeData{
+			data := shared.WithdrawContributionData{
 				RequestTx:  md.TxReqID(),
 				RespondTxs: []string{tx.TxHash},
 				// Amount: md.,
 			}
-			withdrawFeeRespondDatas = append(withdrawFeeRespondDatas, data)
+			withdrawRespondDatas = append(withdrawRespondDatas, data)
 		case metadata.PDEContributionMeta:
 			md := txDetail.GetMetadata().(*metadata.PDEContribution)
 			data := shared.ContributionData{
@@ -290,6 +284,7 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				ReturnAmount: []uint64{amount},
 			}
 			withdrawFeeRespondDatas = append(withdrawFeeRespondDatas, data)
+			// case pdexV3 Staking
 		}
 	}
 

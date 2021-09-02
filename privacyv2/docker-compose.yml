@@ -55,6 +55,42 @@ services:
     depends_on:
       - indexer
 
+  liquidity-processor:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      MODE: "liquidity"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
+  trade-processor:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      MODE: "trade"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
+  sheild-processor:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      MODE: "sheild"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
   nginx-server:
     image: nginx-load-balancer
     build:

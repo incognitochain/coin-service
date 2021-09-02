@@ -198,6 +198,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		tokenID := tx.GetTokenID().String()
 		realTokenID := ""
 		pubkey := ""
+		isNFT := false
 		txKeyImages := []string{}
 		if tx.GetType() == common.TxNormalType || tx.GetType() == common.TxConversionType || tx.GetType() == common.TxRewardType || tx.GetType() == common.TxReturnStakingType {
 			if tx.GetProof() == nil {
@@ -262,8 +263,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			txToken := tx.(transaction.TransactionToken)
 			txTokenData := txToken.GetTxTokenData()
 
-			isNFT := false
-
 			if tx.GetMetadataType() == metadataCommon.Pdexv3MintNftResponseMeta {
 				isNFT = true
 			}
@@ -291,7 +290,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 								panic(err)
 							}
 							coinIdx = idxBig.Uint64()
-							tokenStr = common.ConfidentialAssetID.String()
+							if !isNFT {
+								tokenStr = common.ConfidentialAssetID.String()
+							}
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], *txToken.GetTokenID(), coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 							if err != nil {
@@ -440,7 +441,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			mtd = string(mtdBytes)
 		}
 
-		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHeight, blockHash, tokenID, txHash, tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers)
+		txData := shared.NewTxData(tx.GetLockTime(), shardID, int(tx.GetVersion()), blockHeight, blockHash, tokenID, txHash, tx.GetType(), string(txBytes), strconv.Itoa(metaDataType), mtd, txKeyImages, pubkeyReceivers, isNFT)
 		txData.RealTokenID = realTokenID
 		if tx.GetVersion() == 2 {
 			txData.PubKeyReceivers = append(txData.PubKeyReceivers, pubkey)

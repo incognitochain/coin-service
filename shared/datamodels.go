@@ -89,7 +89,7 @@ type KeyInfoData struct {
 	OTAKey           string              `json:"otakey" bson:"otakey"`
 	CoinIndex        map[string]CoinInfo `json:"coinindex" bson:"coinindex"`
 	TotalReceiveTxs  map[string]uint64   `json:"receivetxs" bson:"receivetxs"`
-	LastScanOrders   uint64              `json:"lastscanorders" bson:"lastscanorders"`
+	LastScanTxID     string              `json:"lastscantxid" bson:"lastscantxid"`
 }
 
 type KeyInfoDataV2 KeyInfoData
@@ -158,11 +158,12 @@ type TokenInfoData struct {
 	Amount           string `json:"amount" bson:"amount"`
 	IsPrivacy        bool   `json:"isprivacy" bson:"isprivacy"`
 	IsBridge         bool   `json:"isbridge" bson:"isbridge"`
+	IsNFT            bool   `json:"isnft" bson:"isnft"`
 }
 
-func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy, isbridge bool, amount uint64) *TokenInfoData {
+func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy, isbridge bool, amount uint64, isNFT bool) *TokenInfoData {
 	return &TokenInfoData{
-		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, IsBridge: isbridge, Amount: strconv.FormatUint(amount, 10),
+		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, IsBridge: isbridge, Amount: strconv.FormatUint(amount, 10), IsNFT: isNFT,
 	}
 }
 
@@ -230,9 +231,10 @@ type TxData struct {
 	Locktime         int64    `json:"locktime" bson:"locktime"`
 	Metatype         string   `json:"metatype" bson:"metatype"`
 	Metadata         string   `json:"metadata" bson:"metadata"`
+	IsNFT            bool     `json:"isnft" bson:"isnft"`
 }
 
-func NewTxData(locktime int64, shardID, txVersion int, blockHeight uint64, blockhash, tokenID, txHash, txType, txDetail, metatype, metadata string, keyimages, pubKeyReceivers []string) *TxData {
+func NewTxData(locktime int64, shardID, txVersion int, blockHeight uint64, blockhash, tokenID, txHash, txType, txDetail, metatype, metadata string, keyimages, pubKeyReceivers []string, isNFT bool) *TxData {
 	return &TxData{
 		TxVersion:       txVersion,
 		KeyImages:       keyimages,
@@ -247,6 +249,7 @@ func NewTxData(locktime int64, shardID, txVersion int, blockHeight uint64, block
 		Locktime:        locktime,
 		Metatype:        metatype,
 		Metadata:        metadata,
+		IsNFT:           isNFT,
 	}
 }
 
@@ -418,6 +421,7 @@ type WithdrawContributionData struct {
 	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
 	RequestTime           int64    `json:"requesttime" bson:"requesttime"`
 	NFTID                 string   `json:"nftid" bson:"nftid"`
+	PoolID                string   `json:"poolid" bson:"poolid"`
 }
 
 func (model *WithdrawContributionData) Creating() error {
@@ -477,16 +481,18 @@ type TradeOrderData struct {
 	Status           string   `json:"status" bson:"status"`
 	PairID           string   `json:"pairid" bson:"pairid"`
 	PoolID           string   `json:"poolid" bson:"poolid"`
-	Rate             uint64   `json:"price" bson:"price"`
+	Price            uint64   `json:"price" bson:"price"`
 	Amount           uint64   `json:"amount" bson:"amount"`
-	Locktime         int64    `json:"locktime" bson:"locktime"`
+	Requesttime      int64    `json:"requesttime" bson:"requesttime"`
 	NFTID            string   `json:"nftid" bson:"nftid"`
 	Receiver         string   `json:"receiver" bson:"receiver"`
 	ShardID          int      `json:"shardid" bson:"shardid"`
 	BlockHeight      uint64   `json:"blockheight" bson:"blockheight"`
+	Fee              uint64   `json:"fee" bson:"fee"`
+	FeeToken         string   `json:"feetoken" bson:"feetoken"`
 }
 
-func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, status, nftid string, respondTxs []string, rate, amount uint64, locktime int64, shardID int, blockHeight uint64) *TradeOrderData {
+func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, status, nftid string, respondTxs []string, price, amount uint64, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
 	return &TradeOrderData{
 		NFTID:       nftid,
 		RequestTx:   requestTx,
@@ -496,9 +502,9 @@ func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, status, n
 		Status:      status,
 		PoolID:      poolid,
 		PairID:      pairid,
-		Rate:        rate,
+		Price:       price,
 		Amount:      amount,
-		Locktime:    locktime,
+		Requesttime: requestTime,
 		ShardID:     shardID,
 		BlockHeight: blockHeight,
 	}

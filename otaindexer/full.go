@@ -148,7 +148,7 @@ func StartOTAIndexingFull() {
 			if err != nil {
 				panic(err)
 			}
-			updateState(filteredCoins, lastPRVIndex, lastTokenIndex)
+			updateCoinState(filteredCoins, lastPRVIndex, lastTokenIndex)
 		}
 		log.Println("finish scanning coins in", time.Since(startTime))
 		assignedOTAKeys.Unlock()

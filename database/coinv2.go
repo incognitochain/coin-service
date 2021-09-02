@@ -288,7 +288,7 @@ func DBGetNFTByOTAKey(shardID int, OTASecret string, offset, limit int64) (map[s
 	if limit == 0 {
 		limit = 10000
 	}
-	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: OTASecret}, "isnft": bson.M{operator.Eq: "true"}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: OTASecret}, "isnft": bson.M{operator.Eq: true}}
 	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
 		Sort:  bson.D{{"coinidx", 1}},
 		Skip:  &offset,

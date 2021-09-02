@@ -95,7 +95,7 @@ func StartGinService() {
 		pdexv3Group.GET("/listpairs", pdexv3{}.ListPairs)
 		pdexv3Group.GET("/estimatetrade", pdexv3{}.EstimateTrade)
 		pdexv3Group.GET("/orderbook", pdexv3{}.GetOrderBook)
-		pdexv3Group.GET("/pendingorder", pdexv3{}.PendingOrder)
+		pdexv3Group.GET("/tradestatus", pdexv3{}.TradeStatus)
 		pdexv3Group.GET("/listpools", pdexv3{}.ListPools)
 		pdexv3Group.GET("/share", pdexv3{}.Share)
 		pdexv3Group.GET("/waitingliquidity", pdexv3{}.WaitingLiquidity)
@@ -103,6 +103,7 @@ func StartGinService() {
 
 		pdexv3Group.GET("/pricehistory", pdexv3{}.PriceHistory)
 		pdexv3Group.GET("/liquidityhistory", pdexv3{}.LiquidityHistory)
+		pdexv3Group.GET("/tradevolume", pdexv3{}.TradeVolume)
 
 		pdexv3Group.GET("/gettradehistory", pdexv3{}.TradeHistory)
 		pdexv3Group.GET("/getcontributehistory", pdexv3{}.ContributeHistory)

@@ -108,6 +108,7 @@ func tokenListWatcher() {
 		}
 
 		tokenStates := make(map[common.Hash]*statedb.TokenState)
+		nftToken := make(map[string]bool)
 		for i := 0; i < activeShards; i++ {
 			shardID := byte(i)
 			m := statedb.ListPrivacyToken(shardStateDB[shardID])
@@ -125,6 +126,11 @@ func tokenListWatcher() {
 						v.SetAmount(newV.Amount())
 					}
 					v.AddTxs(newV.Txs())
+					txs, err := database.DBGetTxByHash([]string{newV.InitTx().String()})
+					if err != nil {
+						panic(err)
+					}
+					nftToken[newK.String()] = txs[0].IsNFT
 				}
 			}
 		}
@@ -181,7 +187,7 @@ func tokenListWatcher() {
 
 		var tokenInfoList []shared.TokenInfoData
 		for _, token := range tokenList.ListCustomToken {
-			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount)
+			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount, nftToken[token.ID])
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
 		err = database.DBSaveTokenInfo(tokenInfoList)
