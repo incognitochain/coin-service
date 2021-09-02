@@ -112,6 +112,10 @@ func loadState() error {
 	if err != nil {
 		return err
 	}
+	if result == nil {
+		currentState = State{}
+		return nil
+	}
 	return json.UnmarshalFromString(result.State, &currentState)
 }
 

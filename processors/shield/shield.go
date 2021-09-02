@@ -77,6 +77,10 @@ func updateState() error {
 	if err != nil {
 		panic(err)
 	}
+	if result == nil {
+		currentState = State{}
+		return nil
+	}
 	return database.DBUpdateProcessorState("liquidity", string(result))
 }
 
@@ -84,6 +88,10 @@ func loadState() error {
 	result, err := database.DBGetProcessorState("liquidity")
 	if err != nil {
 		return err
+	}
+	if result == nil {
+		currentState = State{}
+		return nil
 	}
 	return json.UnmarshalFromString(result.State, &currentState)
 }

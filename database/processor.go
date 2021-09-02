@@ -23,11 +23,14 @@ func DBUpdateProcessorState(processor string, state string) error {
 }
 
 func DBGetProcessorState(processor string) (*shared.ProcessorState, error) {
-	var result shared.ProcessorState
+	var result []shared.ProcessorState
 	filter := bson.M{"processor": bson.M{operator.Eq: processor}}
-	err := mgm.Coll(&shared.ProcessorState{}).SimpleFind(result, filter)
+	err := mgm.Coll(&shared.ProcessorState{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
 	}
-	return &result, nil
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return &result[0], nil
 }
