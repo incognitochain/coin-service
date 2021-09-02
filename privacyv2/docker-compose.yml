@@ -60,6 +60,7 @@ services:
     working_dir: /home
     entrypoint: [./run.sh]
     environment:
+      INDEXERID: 0
       MODE: "liquidity"
     env_file:
       - service.env
@@ -72,6 +73,7 @@ services:
     working_dir: /home
     entrypoint: [./run.sh]
     environment:
+      INDEXERID: 0
       MODE: "trade"
     env_file:
       - service.env
@@ -79,12 +81,13 @@ services:
       - chainsync
       - mongo
 
-  sheild-processor:
+  shield-processor:
     image: coinservice
     working_dir: /home
     entrypoint: [./run.sh]
     environment:
-      MODE: "sheild"
+      INDEXERID: 0
+      MODE: "shield"
     env_file:
       - service.env
     depends_on:
@@ -97,7 +100,7 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     ports:
-      - 8092:80
+      - 7001:80
     restart: unless-stopped
     depends_on:
       - query
@@ -128,7 +131,7 @@ services:
     image: mongo-express
     restart: always
     ports:
-      - 8031:8081
+      - 7002:8081
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
