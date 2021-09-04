@@ -30,6 +30,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	_ = poolID
 	_ = price
 }
+
 func (pdexv3) ListPairs(c *gin.Context) {
 	result, err := database.DBGetPdexPairs()
 	if err != nil {
@@ -245,7 +246,6 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		log.Println("APIGetTradeHistory time:", time.Since(startTime))
 		c.JSON(http.StatusOK, respond)
 	}
-
 }
 
 func (pdexv3) ContributeHistory(c *gin.Context) {

@@ -16,7 +16,7 @@ import (
 )
 
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
-
+	// Localnode.GetBlockchain().GetBestStateBeaconFeatureStateDBByHeight(Localnode.GetBlockchain().GetBeaconChainDatabase())
 	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 	blk := beaconBestState.BestBlock
 	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
@@ -66,20 +66,14 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		}
 	} else {
 		poolPairs := make(map[string]*shared.PoolPairState)
-		waitingContributions := make(map[string]*rawdbv2.Pdexv3Contribution)
-		err = json.Unmarshal(pdeState.Reader().WaitingContributions(), &waitingContributions)
-		if err != nil {
-			panic(err)
-		}
-
 		err = json.Unmarshal(pdeState.Reader().PoolPairs(), &poolPairs)
 		if err != nil {
 			panic(err)
 		}
 
 		stateV2 = &shared.PDEStateV2{
-			PoolPairs: poolPairs,
-			// StakingPoolsState:    pdeState.Reader().
+			PoolPairs:         poolPairs,
+			StakingPoolsState: pdeState.Reader().StakingPools(),
 		}
 	}
 	// newPDEState := shared.CurrentPDEState{
@@ -96,9 +90,8 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	// if err != nil {
 	// 	log.Println(err)
 	// }
-	orderStatusList := []shared.LimitOrderStatus{}
 
-	poolDatas, sharesDatas, err := processPoolPairs(stateV1, stateV2, beaconBestState.BeaconHeight)
+	poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, err := processPoolPairs(stateV1, stateV2, beaconBestState.BeaconHeight)
 	if err != nil {
 		panic(err)
 	}
@@ -113,14 +106,21 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		panic(err)
 	}
 
-	if pdeState.Version() == 2 {
-		orderStatusList = processBeaconOrder(stateV2.Orders)
-		err = database.DBUpdateOrderProgress(orderStatusList)
-		if err != nil {
-			panic(err)
-		}
+	err = database.DBUpdatePDEPoolStakeData(poolStakeDatas)
+	if err != nil {
+		panic(err)
 	}
-	_ = orderStatusList
+
+	err = database.DBUpdatePDEPoolStakerData(poolStakersDatas)
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBUpdateOrderProgress(orderBook)
+	if err != nil {
+		panic(err)
+	}
+
 	statePrefix := BeaconData
 	err = Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", blk.Header.Height)), nil)
 	if err != nil {
@@ -132,25 +132,12 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
-func processBeaconOrder(orderGroups map[int64][]rawdbv2.Pdexv3Order) []shared.LimitOrderStatus {
-	var result []shared.LimitOrderStatus
-	for _, orders := range orderGroups {
-		for _, order := range orders {
-			newOrder := shared.LimitOrderStatus{
-				RequestTx: order.Id(),
-				Status:    "",
-				Left:      order.Token0Balance(),
-			}
-			result = append(result, newOrder)
-		}
-	}
-
-	return result
-}
-
-func processPoolPairs(statev1 *shared.PDEStateV1, statev2 *shared.PDEStateV2, beaconHeight uint64) ([]shared.PoolPairData, []shared.PoolShareData, error) {
+func processPoolPairs(statev1 *shared.PDEStateV1, statev2 *shared.PDEStateV2, beaconHeight uint64) ([]shared.PoolPairData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, error) {
 	var poolPairs []shared.PoolPairData
 	var poolShare []shared.PoolShareData
+	var stakePools []shared.PoolStakeData
+	var poolStaking []shared.PoolStakerData
+	var orderStatus []shared.LimitOrderStatus
 
 	for poolID, state := range statev1.PDEPoolPairs {
 		poolData := shared.PoolPairData{
@@ -197,11 +184,33 @@ func processPoolPairs(statev1 *shared.PDEStateV1, statev2 *shared.PDEStateV2, be
 			Token2Amount: state.State.Token1RealAmount(),
 		}
 		poolPairs = append(poolPairs, poolData)
+
+		for _, order := range state.Orderbook.Orders {
+			newOrder := shared.LimitOrderStatus{
+				RequestTx: order.Id(),
+				Status:    "",
+				Left:      order.Token0Balance(),
+			}
+			orderStatus = append(orderStatus, newOrder)
+		}
 	}
 
-	// for nftID, share := range statev2.StakingPoolsState {
+	for tokenID, stakeData := range statev2.StakingPoolsState {
+		poolData := shared.PoolStakeData{
+			Amount:  stakeData.Liquidity(),
+			TokenID: tokenID,
+		}
+		stakePools = append(stakePools, poolData)
+		for nftID, staker := range stakeData.Stakers() {
+			stake := shared.PoolStakerData{
+				TokenID: tokenID,
+				NFTID:   nftID,
+				Amount:  stakeData.Liquidity(),
+				Reward:  staker.Rewards(),
+			}
+			poolStaking = append(poolStaking, stake)
+		}
+	}
 
-	// }
-
-	return poolPairs, poolShare, nil
+	return poolPairs, poolShare, stakePools, poolStaking, orderStatus, nil
 }

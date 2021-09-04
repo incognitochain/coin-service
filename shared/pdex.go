@@ -21,13 +21,14 @@ type PDEStateV1 struct {
 
 type PDEStateV2 struct {
 	WaitingContributions map[string]*rawdbv2.Pdexv3Contribution
-	PoolPairs            map[string]*PoolPairState //
+	PoolPairs            map[string]*PoolPairState         //
+	StakingPoolsState    map[string]*pdex.StakingPoolState // tokenID -> StakingPoolState
 	Params               pdex.Params
-	StakingPoolsState    map[string]pdex.StakingPoolState // tokenID -> StakingPoolState
-	Orders               map[int64][]pdex.Order
 }
 type PoolPairState struct {
 	State     rawdbv2.Pdexv3PoolPair
 	Shares    map[string]*pdex.Share
-	Orderbook pdex.Orderbook
+	Orderbook struct {
+		Orders []*pdex.Order
+	}
 }

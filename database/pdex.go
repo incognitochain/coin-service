@@ -536,12 +536,6 @@ func DBGetPdexPairs() ([]shared.PairData, error) {
 	return result, nil
 }
 
-func DBGetPdexWaitingLiquidity() ([]shared.WaitingContributions, error) {
-	var result []shared.WaitingContributions
-
-	return result, nil
-}
-
 // func DBUpdateOrdersOwner(orders []shared.TradeOrderData) error {
 // 	startTime := time.Now()
 // 	docs := []interface{}{}
@@ -674,6 +668,36 @@ func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
 			"$set": bson.M{"poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee},
 		}
 		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdatePDEPoolStakeData(list []shared.PoolStakeData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, stake := range list {
+		fitler := bson.M{"tokenid": bson.M{operator.Eq: stake.TokenID}}
+		update := bson.M{
+			"$set": bson.M{"tokenid": stake.TokenID, "amount": stake.Amount},
+		}
+		err := mgm.Coll(&shared.PoolStakeData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdatePDEPoolStakerData(list []shared.PoolStakerData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, stake := range list {
+		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}}
+		update := bson.M{
+			"$set": bson.M{"nftid": stake.NFTID, "amount": stake.Amount, "reward": stake.Reward},
+		}
+		err := mgm.Coll(&shared.PoolStakerData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
 			return err.Err()
 		}

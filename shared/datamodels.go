@@ -633,19 +633,13 @@ func (model *PoolShareData) Saving() error {
 	return nil
 }
 
-type WaitingContributions struct {
+type PoolStakeData struct {
 	mgm.DefaultModel `bson:",inline"`
-	RequestTx        string `json:"requesttx" bson:"requesttx"`
-	PoolID           string `json:"poolid" bson:"poolid"`
-	AMP              uint   `json:"amp" bson:"amp"`
-	ReceiveAddress   string `json:"receiveaddress" bson:"receiveaddress"`
-	RefundAddress    string `json:"refundaddress" bson:"refundaddress"`
 	TokenID          string `json:"tokenid" bson:"tokenid"`
 	Amount           uint64 `json:"amount" bson:"amount"`
-	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
 }
 
-func (model *WaitingContributions) Creating() error {
+func (model *PoolStakeData) Creating() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Creating(); err != nil {
 		return err
@@ -653,7 +647,32 @@ func (model *WaitingContributions) Creating() error {
 
 	return nil
 }
-func (model *WaitingContributions) Saving() error {
+func (model *PoolStakeData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PoolStakerData struct {
+	mgm.DefaultModel `bson:",inline"`
+	TokenID          string            `json:"tokenid" bson:"tokenid"`
+	NFTID            string            `json:"nftid" bson:"nftid"`
+	Amount           uint64            `json:"amount" bson:"amount"`
+	Reward           map[string]uint64 `json:"reward" bson:"reward"`
+}
+
+func (model *PoolStakerData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PoolStakerData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err
@@ -690,10 +709,4 @@ type LimitOrderStatus struct {
 	Status           string `json:"status" bson:"status"`
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
 	Left             uint64 `json:"left" bson:"left"`
-}
-
-type PoolStakingData struct {
-	mgm.DefaultModel `bson:",inline"`
-	NFTID            string `json:"nftid" bson:"nftid"`
-	Amount           uint64 `json:"amount" bson:"amount"`
 }

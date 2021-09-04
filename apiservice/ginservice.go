@@ -105,10 +105,14 @@ func StartGinService() {
 		pdexv3Group.GET("/liquidityhistory", pdexv3{}.LiquidityHistory)
 		pdexv3Group.GET("/tradevolume", pdexv3{}.TradeVolume)
 
-		pdexv3Group.GET("/gettradehistory", pdexv3{}.TradeHistory)
-		pdexv3Group.GET("/getcontributehistory", pdexv3{}.ContributeHistory)
-		pdexv3Group.GET("/getwithdrawhistory", pdexv3{}.WithdrawHistory)
-		pdexv3Group.GET("/getwithdrawfeehistory", pdexv3{}.WithdrawFeeHistory)
+		pdexv3Group.GET("/tradehistory", pdexv3{}.TradeHistory)
+		pdexv3Group.GET("/contributehistory", pdexv3{}.ContributeHistory)
+		pdexv3Group.GET("/withdrawhistory", pdexv3{}.WithdrawHistory)
+		pdexv3Group.GET("/withdrawfeehistory", pdexv3{}.WithdrawFeeHistory)
+
+		pdexv3Group.GET("/stakingpool")
+		pdexv3Group.GET("/stakeinfo")
+		pdexv3Group.GET("/stakehistory")
 
 		pdexv2Group := pdex.Group("/v2")
 		pdexv2Group.GET("/gettradehistory", APIGetTradeHistory)
