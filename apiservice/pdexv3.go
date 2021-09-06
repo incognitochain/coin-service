@@ -15,22 +15,6 @@ import (
 
 type pdexv3 struct{}
 
-func (pdexv3) EstimateTrade(c *gin.Context) {
-	sellToken := c.Query("selltoken")
-	buyToken := c.Query("buytoken")
-	amount := c.Query("amount")
-	feeToken := c.Query("feetoken")
-	poolID := c.Query("poolid")
-	price := c.Query("price")
-
-	_ = sellToken
-	_ = buyToken
-	_ = amount
-	_ = feeToken
-	_ = poolID
-	_ = price
-}
-
 func (pdexv3) ListPairs(c *gin.Context) {
 	result, err := database.DBGetPdexPairs()
 	if err != nil {
@@ -302,6 +286,42 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
+func (pdexv3) StakingPool(c *gin.Context) {
+
+}
+
+func (pdexv3) StakeInfo(c *gin.Context) {
+
+}
+
+func (pdexv3) StakeHistory(c *gin.Context) {
+
+}
+
+func (pdexv3) EstimateTrade(c *gin.Context) {
+	sellToken := c.Query("selltoken")
+	buyToken := c.Query("buytoken")
+	amount := c.Query("amount")
+	feeToken := c.Query("feetoken")
+	poolID := c.Query("poolid")
+	price := c.Query("price")
+
+	_ = sellToken
+	_ = buyToken
+	_ = amount
+	_ = feeToken
+	_ = poolID
+	_ = price
+
+	var result PdexV3EstimateTradeRespond
+
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
 func (pdexv3) PriceHistory(c *gin.Context) {
 	poolid := c.Query("poolid")
 	period := c.Query("period")
@@ -310,6 +330,13 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 	_ = poolid
 	_ = period
 	_ = datapoint
+
+	var result []PdexV3PriceHistoryRespond
+
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) LiquidityHistory(c *gin.Context) {
@@ -320,10 +347,27 @@ func (pdexv3) LiquidityHistory(c *gin.Context) {
 	_ = poolid
 	_ = period
 	_ = datapoint
+
+	var result []PdexV3LiquidityHistoryRespond
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) TradeVolume(c *gin.Context) {
 	pair := c.Query("pair")
 
 	_ = pair
+
+	var result uint64
+
+	respond := APIRespond{
+		Result: struct {
+			Value uint64
+		}{
+			Value: result,
+		},
+	}
+	c.JSON(http.StatusOK, respond)
 }

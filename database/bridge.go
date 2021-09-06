@@ -94,16 +94,15 @@ func DBSaveTxUnShield(list []shared.ShieldData) error {
 	return nil
 }
 
-func DBGetTxShieldRespond(pubkey, tokenID string, limit int64, offset int64) ([]shared.TxData, error) {
+func DBGetTxShield(pubkey, tokenID string, limit int64, offset int64) ([]shared.ShieldData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
-	metas := []string{strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta), strconv.Itoa(metadata.IssuingBSCResponseMeta)}
-	var result []shared.TxData
-	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.In: metas}, "realtokenid": bson.M{operator.Eq: tokenID}}
+	var result []shared.ShieldData
+	filter := bson.M{"pubkey": bson.M{operator.Eq: pubkey}, "tokenid": bson.M{operator.Eq: tokenID}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"locktime", -1}},
+	err := mgm.Coll(&shared.ShieldData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"requesttime", -1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})
@@ -111,19 +110,6 @@ func DBGetTxShieldRespond(pubkey, tokenID string, limit int64, offset int64) ([]
 		return nil, err
 	}
 
-	return result, nil
-}
-
-func DBGetTxShield(respondList []string) ([]shared.ShieldData, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondList)+10)*shared.DB_OPERATION_TIMEOUT)
-	result := []shared.ShieldData{}
-
-	filter := bson.M{"respondtx": bson.M{operator.In: respondList}}
-	err := mgm.Coll(&shared.ShieldData{}).SimpleFindWithCtx(ctx, &result, filter)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
 	return result, nil
 }
 
@@ -145,4 +131,18 @@ func DBGetTxUnshield(pubkey, tokenID string, limit int64, offset int64) ([]share
 	}
 
 	return result, nil
+}
+func DBUpdateShieldData(list []shared.ShieldData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, tx := range list {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: tx.RequestTx}}
+		update := bson.M{
+			"$set": bson.M{"requesttx": tx.RequestTx, "amount": tx.Amount, "respondtx": tx.RespondTx},
+		}
+		err := mgm.Coll(&shared.ShieldData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
 }

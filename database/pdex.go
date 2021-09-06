@@ -197,7 +197,7 @@ func DBGetPDEContributeRespond(address []string, limit int64, offset int64) ([]s
 	filter := bson.M{"contributor": bson.M{operator.In: address}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"respondblock", -1}},
+		Sort:  bson.D{{"requesttime", -1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})
@@ -536,39 +536,6 @@ func DBGetPdexPairs() ([]shared.PairData, error) {
 	return result, nil
 }
 
-// func DBUpdateOrdersOwner(orders []shared.TradeOrderData) error {
-// 	startTime := time.Now()
-// 	docs := []interface{}{}
-// 	for _, order := range orders {
-// 		update := bson.M{
-// 			"$set": bson.M{"otasecret": order.OTAsecret},
-// 		}
-// 		docs = append(docs, update)
-// 	}
-// 	for idx, doc := range docs {
-// 		_, err := mgm.Coll(&shared.CoinData{}).UpdateByID(context.Background(), orders[idx].GetID(), doc)
-// 		if err != nil {
-// 			log.Printf("failed to update %v orders in %v", len(orders), time.Since(startTime))
-// 			return err
-// 		}
-// 	}
-// 	log.Printf("updated %v orders in %v", len(orders), time.Since(startTime))
-// 	return nil
-// }
-
-func DBGetUnknownOrdersFromDB(shardID int, height uint64, limit int64) ([]shared.TradeOrderData, error) {
-	var result []shared.TradeOrderData
-	filter := bson.M{"nftid": bson.M{operator.Ne: ""}, "otasecret": bson.M{operator.Eq: ""}, "shardid": bson.M{operator.Eq: shardID}, "blockheight": bson.M{operator.Gte: height}}
-	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(result, filter, &options.FindOptions{
-		Sort:  bson.D{{"locktime", 1}},
-		Limit: &limit,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 func DBUpdateOrderProgress(orders []shared.LimitOrderStatus) error {
 	startTime := time.Now()
 	docs := []interface{}{}
@@ -586,14 +553,6 @@ func DBUpdateOrderProgress(orders []shared.LimitOrderStatus) error {
 		}
 	}
 	log.Printf("updated %v orders in %v", len(orders), time.Since(startTime))
-	return nil
-}
-
-func DBUpdatePoolShare(shareList []shared.PoolShareData) error {
-	return nil
-}
-
-func DBUpdatePoolData(poolList []shared.PoolPairData) error {
 	return nil
 }
 
@@ -652,7 +611,7 @@ func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
 		update := bson.M{
 			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "amp": pool.AMP, "version": pool.Version},
 		}
-		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
+		err := mgm.Coll(&shared.PoolPairData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
 			return err.Err()
 		}
@@ -667,7 +626,7 @@ func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
 		update := bson.M{
 			"$set": bson.M{"poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee},
 		}
-		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
+		err := mgm.Coll(&shared.PoolShareData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
 			return err.Err()
 		}

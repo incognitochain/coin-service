@@ -270,6 +270,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			if txTokenData.TxNormal.GetProof() != nil {
 				tokenIns := txTokenData.TxNormal.GetProof().GetInputCoins()
 				tokenOuts := txTokenData.TxNormal.GetProof().GetOutputCoins()
+
 				for _, coin := range tokenIns {
 					kmString := base58.EncodeCheck(coin.GetKeyImage().ToBytesS())
 					txKeyImages = append(txKeyImages, kmString)
@@ -290,9 +291,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 								panic(err)
 							}
 							coinIdx = idxBig.Uint64()
-							if !isNFT {
-								tokenStr = common.ConfidentialAssetID.String()
-							}
+							tokenStr = common.ConfidentialAssetID.String()
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], *txToken.GetTokenID(), coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 							if err != nil {
@@ -322,6 +321,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						}
 						outCoin := shared.NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenStr, publicKeyStr, "", txHash, shardID, int(coin.GetVersion()))
 						outCoin.IsNFT = isNFT
+						if isNFT {
+							outCoin.RealTokenID = txTokenData.TxNormal.GetTokenID().String()
+						}
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}

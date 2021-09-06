@@ -42,11 +42,16 @@ func StartProcessor() {
 		if err != nil {
 			panic(err)
 		}
-		_ = request
-		err = database.DBSaveTxShield(respond)
+		err = database.DBSaveTxShield(request)
 		if err != nil {
 			panic(err)
 		}
+
+		err = database.DBUpdateShieldData(respond)
+		if err != nil {
+			panic(err)
+		}
+
 		currentState.LastProcessedObjectID = txList[len(txList)-1].ID.String()
 		err = updateState()
 		if err != nil {
@@ -98,23 +103,58 @@ func loadState() error {
 
 func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.ShieldData, error) {
 	var requestData []shared.ShieldData
-
 	var respondData []shared.ShieldData
+
 	for _, tx := range shieldTxs {
 		metaDataType, _ := strconv.Atoi(tx.Metatype)
 		requestTx := ""
 		bridge := ""
 		isDecentralized := false
-		if metaDataType == metadata.IssuingResponseMeta || metaDataType == metadata.IssuingETHResponseMeta || metaDataType == metadata.IssuingBSCResponseMeta {
+		switch metaDataType {
+		case metadata.IssuingRequestMeta, metadata.IssuingBSCRequestMeta, metadata.IssuingETHRequestMeta:
+			tokenIDStr := ""
+			amount := uint64(0)
+			switch metaDataType {
+			case metadata.IssuingResponseMeta:
+				meta := metadata.IssuingRequest{}
+				err := json.Unmarshal([]byte(tx.Metadata), &meta)
+				if err != nil {
+					panic(err)
+				}
+				tokenIDStr = meta.TokenID.String()
+				amount = meta.DepositedAmount
+				bridge = "btc"
+			case metadata.IssuingBSCRequestMeta, metadata.IssuingETHRequestMeta:
+				meta := metadata.IssuingEVMRequest{}
+				err := json.Unmarshal([]byte(tx.Metadata), &meta)
+				if err != nil {
+					panic(err)
+				}
+				tokenIDStr = meta.IncTokenID.String()
+				if metaDataType == metadata.IssuingETHRequestMeta {
+					bridge = "eth"
+				} else {
+					bridge = "bsc"
+				}
+			}
+			shieldData := shared.NewShieldData(requestTx, "", tokenIDStr, bridge, "", isDecentralized, amount, tx.BlockHeight, tx.Locktime)
+			requestData = append(respondData, *shieldData)
+		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 			switch metaDataType {
 			case metadata.IssuingResponseMeta:
 				meta := metadata.IssuingResponse{}
-				json.Unmarshal([]byte(tx.Metadata), &meta)
+				err := json.Unmarshal([]byte(tx.Metadata), &meta)
+				if err != nil {
+					panic(err)
+				}
 				requestTx = meta.RequestedTxID.String()
 				bridge = "btc"
 			case metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 				meta := metadata.IssuingEVMResponse{}
-				json.Unmarshal([]byte(tx.Metadata), &meta)
+				err := json.Unmarshal([]byte(tx.Metadata), &meta)
+				if err != nil {
+					panic(err)
+				}
 				requestTx = meta.RequestedTxID.String()
 				if metaDataType == metadata.IssuingETHResponseMeta {
 					bridge = "eth"
@@ -143,7 +183,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 					}
 				}
 			}
-			shieldData := shared.NewShieldData(requestTx, tx.TxHash, tokenIDStr, bridge, "", isDecentralized, amount, tx.BlockHeight)
+			shieldData := shared.NewShieldData(requestTx, tx.TxHash, tokenIDStr, bridge, "", isDecentralized, amount, tx.BlockHeight, 0)
 			respondData = append(respondData, *shieldData)
 		}
 

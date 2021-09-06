@@ -2,7 +2,6 @@ package trade
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -173,9 +172,13 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				status = txDetail.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
 				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
 			case metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
-				//TODO: Status => string
 				md := txDetail.GetMetadata().(*metadataPdexv3.AddOrderResponse)
-				status = fmt.Sprintf("%v", md.Status)
+				if md.Status == 1 {
+					status = "accepted"
+				} else {
+					status = "refunded"
+				}
+
 				requestTx = md.RequestTxID.String()
 			}
 			trade := shared.TradeOrderData{

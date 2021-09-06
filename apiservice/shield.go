@@ -57,19 +57,10 @@ func APIGetUnshieldHistory(c *gin.Context) {
 func APIGetShieldHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	// otakey := c.Query("otakey")
 	tokenID := c.Query("tokenid")
 	paymentkey := c.Query("paymentkey")
 
 	pubKeyStr := ""
-	// if otakey != "" {
-	// 	wl, err := wallet.Base58CheckDeserialize(otakey)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-	// 		return
-	// 	}
-	// 	pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
-	// } else {
 	if paymentkey == "" {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
 		return
@@ -79,31 +70,9 @@ func APIGetShieldHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	pubKeyBytes := wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
-	// }
-	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
+	pubKeyStr = base58.EncodeCheck(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
 
-	list, err := database.DBGetTxShieldRespond(pubKeyStr, tokenID, int64(limit), int64(offset))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	if len(list) == 0 {
-		err := errors.New("len(list) == 0").Error()
-		respond := APIRespond{
-			Result: nil,
-			Error:  &err,
-		}
-		c.JSON(http.StatusOK, respond)
-		return
-	}
-
-	respList := []string{}
-	for _, v := range list {
-		respList = append(respList, v.TxHash)
-	}
-
-	txShieldPairlist, err := database.DBGetTxShield(respList)
+	txShieldPairlist, err := database.DBGetTxShield(pubKeyStr, tokenID, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -116,11 +85,6 @@ func APIGetShieldHistory(c *gin.Context) {
 
 	var result []DataWithLockTime
 	for _, v := range txShieldPairlist {
-		tx, err := database.DBGetTxByHash([]string{v.RequestTx})
-		if err != nil {
-			c.JSON(http.StatusOK, buildGinErrorRespond(err))
-			return
-		}
 		result = append(result, DataWithLockTime{
 			TxBridgeDetail: TxBridgeDetail{
 				Bridge:          v.Bridge,
@@ -130,7 +94,7 @@ func APIGetShieldHistory(c *gin.Context) {
 				RequestTx:       v.RequestTx,
 				IsDecentralized: v.IsDecentralized,
 			},
-			Locktime: tx[0].Locktime,
+			Locktime: int64(v.RequestTime),
 		})
 	}
 	respond := APIRespond{

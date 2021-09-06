@@ -313,26 +313,50 @@ func updateCoinState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, las
 				}
 				sort.Slice(cd, func(i, j int) bool { return cd[i].CoinIndex < cd[j].CoinIndex })
 				for _, v := range cd {
-					if _, ok := keyData.KeyInfo.CoinIndex[v.RealTokenID]; !ok {
-						keyData.KeyInfo.CoinIndex[v.RealTokenID] = shared.CoinInfo{
-							Start: v.CoinIndex,
-							End:   v.CoinIndex,
-							Total: 1,
+					if !v.IsNFT {
+						if _, ok := keyData.KeyInfo.CoinIndex[v.RealTokenID]; !ok {
+							keyData.KeyInfo.CoinIndex[v.RealTokenID] = shared.CoinInfo{
+								Start: v.CoinIndex,
+								End:   v.CoinIndex,
+								Total: 1,
+							}
+						} else {
+							d := keyData.KeyInfo.CoinIndex[v.RealTokenID]
+							if d.Total == 0 {
+								d.Start = v.CoinIndex
+								d.End = v.CoinIndex
+							}
+							if d.Start > v.CoinIndex {
+								d.Start = v.CoinIndex
+							}
+							if d.End < v.CoinIndex {
+								d.End = v.CoinIndex
+							}
+							d.Total += 1
+							keyData.KeyInfo.CoinIndex[v.RealTokenID] = d
 						}
 					} else {
-						d := keyData.KeyInfo.CoinIndex[v.RealTokenID]
-						if d.Total == 0 {
-							d.Start = v.CoinIndex
-							d.End = v.CoinIndex
+						if _, ok := keyData.KeyInfo.NFTIndex[v.RealTokenID]; !ok {
+							keyData.KeyInfo.NFTIndex[v.RealTokenID] = shared.CoinInfo{
+								Start: v.CoinIndex,
+								End:   v.CoinIndex,
+								Total: 1,
+							}
+						} else {
+							d := keyData.KeyInfo.NFTIndex[v.RealTokenID]
+							if d.Total == 0 {
+								d.Start = v.CoinIndex
+								d.End = v.CoinIndex
+							}
+							if d.Start > v.CoinIndex {
+								d.Start = v.CoinIndex
+							}
+							if d.End < v.CoinIndex {
+								d.End = v.CoinIndex
+							}
+							d.Total += 1
+							keyData.KeyInfo.NFTIndex[v.RealTokenID] = d
 						}
-						if d.Start > v.CoinIndex {
-							d.Start = v.CoinIndex
-						}
-						if d.End < v.CoinIndex {
-							d.End = v.CoinIndex
-						}
-						d.Total += 1
-						keyData.KeyInfo.CoinIndex[v.RealTokenID] = d
 					}
 				}
 			}
@@ -422,7 +446,7 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 				}
 				pass := false
 				tokenID := ""
-				isNFT := cn.IsNFT
+				isNFT := false
 				for _, keyData := range assignedOTAKeys.Keys[cn.ShardID] {
 					if _, ok := keyData.KeyInfo.CoinIndex[cn.TokenID]; ok {
 						if cn.CoinIndex < keyData.KeyInfo.CoinIndex[cn.TokenID].LastScanned {
@@ -435,9 +459,8 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 					}
 					pass, tokenID, _, isNFT = doesCoinBelongToKeySet(newCoin, keyData.keyset, tokenIDMap, nftIDMap, checkToken)
 					if pass {
-						cn.RealTokenID = tokenID
-						if cn.IsNFT {
-							cn.RealTokenID = cn.TokenID
+						if !cn.IsNFT {
+							cn.RealTokenID = tokenID
 						}
 						if isNFT {
 							cn.IsNFT = isNFT

@@ -112,6 +112,13 @@ type PdexV3LiquidityHistoryRespond struct {
 	Volume uint64 `json:"Volume"`
 }
 
+type PdexV3PriceHistoryRespond struct {
+	Timestamp uint64
+	High      uint64
+	Low       uint64
+	Close     uint64
+	Open      uint64
+}
 type TradeDataRespond struct {
 	RequestTx   string   `json:"requesttx"`
 	RespondTxs  []string `json:"respondtxs"`

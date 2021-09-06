@@ -88,6 +88,7 @@ type KeyInfoData struct {
 	Pubkey           string              `json:"pubkey" bson:"pubkey"`
 	OTAKey           string              `json:"otakey" bson:"otakey"`
 	CoinIndex        map[string]CoinInfo `json:"coinindex" bson:"coinindex"`
+	NFTIndex         map[string]CoinInfo `json:"nftindex" bson:"nftindex"`
 	TotalReceiveTxs  map[string]uint64   `json:"receivetxs" bson:"receivetxs"`
 	LastScanTxID     string              `json:"lastscantxid" bson:"lastscantxid"`
 }
@@ -341,9 +342,10 @@ type ShieldData struct {
 	IsDecentralized  bool   `json:"isdecentralized" bson:"isdecentralized"`
 	Pubkey           string `json:"pubkey" bson:"pubkey"`
 	BeaconHeight     uint64 `json:"height" bson:"height"`
+	RequestTime      int64  `json:"requesttime" bson:"requesttime"`
 }
 
-func NewShieldData(requestTx, respondTx, tokenID, bridge, pubkey string, isDecentralized bool, amount, height uint64) *ShieldData {
+func NewShieldData(requestTx, respondTx, tokenID, bridge, pubkey string, isDecentralized bool, amount, height uint64, requestTime int64) *ShieldData {
 	return &ShieldData{
 		RespondTx:       respondTx,
 		RequestTx:       requestTx,
@@ -353,6 +355,7 @@ func NewShieldData(requestTx, respondTx, tokenID, bridge, pubkey string, isDecen
 		IsDecentralized: isDecentralized,
 		Pubkey:          pubkey,
 		BeaconHeight:    height,
+		RequestTime:     requestTime,
 	}
 }
 
@@ -384,7 +387,7 @@ type ContributionData struct {
 	ReturnAmount          []uint64 `json:"returnamount" bson:"returnamount"`
 	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
 	NFTID                 string   `json:"nftid" bson:"nftid"`
-	RequestTime           uint64   `json:"requesttime" bson:"requesttime"`
+	RequestTime           int64    `json:"requesttime" bson:"requesttime"`
 }
 
 // func NewContributionData(requestTx, respondTx, pairID, contributorAddressStr string, respondBlock uint64) *ContributionData {
