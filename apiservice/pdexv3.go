@@ -131,7 +131,22 @@ func (pdexv3) Share(c *gin.Context) {
 
 func (pdexv3) WaitingLiquidity(c *gin.Context) {
 	otakey := c.Query("otakey")
-	_ = otakey
+	if otakey == "" {
+		errStr := "otakey can't be empty"
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+	wl, err := wallet.Base58CheckDeserialize(otakey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	pubkey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+	_ = pubkey
 }
 
 func (pdexv3) TradeHistory(c *gin.Context) {
@@ -287,15 +302,59 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 }
 
 func (pdexv3) StakingPool(c *gin.Context) {
-
+	result, err := database.DBGetStakePools()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) StakeInfo(c *gin.Context) {
-
+	nftid := c.Query("nftid")
+	result, err := database.DBGetStakingInfo(nftid)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) StakeHistory(c *gin.Context) {
 
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	otakey := c.Query("otakey")
+	if otakey == "" {
+		errStr := "otakey can't be empty"
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+	wl, err := wallet.Base58CheckDeserialize(otakey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	pubkey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
+	result, err := database.DBGetStakingPoolHistory(pubkey, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) EstimateTrade(c *gin.Context) {

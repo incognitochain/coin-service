@@ -716,3 +716,43 @@ func DBGetTxTradeFromPoolAndNFT(poolid, nftid string, limit, offset int64) ([]sh
 	}
 	return result, nil
 }
+
+func DBGetStakePools() ([]shared.PoolStakeData, error) {
+	var result []shared.PoolStakeData
+	filter := bson.M{}
+	err := mgm.Coll(&shared.PoolStakeData{}).SimpleFind(&result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetStakingPoolHistory(pubkey string, limit, offset int64) ([]shared.TxData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	metas := []string{strconv.Itoa(metadata.PDEStake)}
+	var result []shared.TxData
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.In: metas}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func DBGetStakingInfo(nftid string) ([]shared.PoolStakerData, error) {
+	var result []shared.PoolStakerData
+	filter := bson.M{"nftid": bson.M{operator.Eq: nftid}}
+	err := mgm.Coll(&shared.PoolStakerData{}).SimpleFind(&result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
