@@ -39,7 +39,7 @@ func StartProcessor() {
 			continue
 		}
 
-		contribRQData, contribRPData, withdrawRQDatas, withdrawRPDatas, withdrawFeeRQDatas, withdrawFeeRPDatas, err := processAddLiquidity(txList)
+		contribRQData, contribRPData, withdrawRQDatas, withdrawRPDatas, withdrawFeeRQDatas, withdrawFeeRPDatas, stakeRQDatas, stakeRPDatas, err := processAddLiquidity(txList)
 		if err != nil {
 			panic(err)
 		}
@@ -59,6 +59,11 @@ func StartProcessor() {
 			panic(err)
 		}
 
+		err = database.DBSavePDEStakeHistory(stakeRQDatas)
+		if err != nil {
+			panic(err)
+		}
+
 		err = database.DBUpdatePDEContribute(contribRPData)
 		if err != nil {
 			panic(err)
@@ -70,6 +75,11 @@ func StartProcessor() {
 		}
 
 		err = database.DBUpdatePDEWithdrawFee(withdrawFeeRPDatas)
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBUpdatePDEStakinHistory(stakeRPDatas)
 		if err != nil {
 			panic(err)
 		}
@@ -119,7 +129,7 @@ func loadState() error {
 	return json.UnmarshalFromString(result.State, &currentState)
 }
 
-func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shared.ContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionFeeData, []shared.WithdrawContributionFeeData, error) {
+func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shared.ContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionFeeData, []shared.WithdrawContributionFeeData, []shared.PoolStakeHistoryData, []shared.PoolStakeHistoryData, error) {
 
 	var contributeRequestDatas []shared.ContributionData
 	var contributeRespondDatas []shared.ContributionData
@@ -129,6 +139,9 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 
 	var withdrawFeeRequestDatas []shared.WithdrawContributionFeeData
 	var withdrawFeeRespondDatas []shared.WithdrawContributionFeeData
+
+	var stakingRequestDatas []shared.PoolStakeHistoryData
+	var stakingRespondDatas []shared.PoolStakeHistoryData
 
 	for _, tx := range txList {
 		metaDataType, _ := strconv.Atoi(tx.Metatype)
@@ -288,9 +301,49 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				ReturnAmount: []uint64{amount},
 			}
 			withdrawFeeRespondDatas = append(withdrawFeeRespondDatas, data)
-			// case pdexV3 Staking
+		case metadataCommon.Pdexv3StakingRequestMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.StakingRequest)
+			data := shared.PoolStakeHistoryData{
+				RequestTx:   tx.TxHash,
+				TokenID:     md.TokenID(),
+				NFTID:       md.NftID(),
+				Amount:      md.TokenAmount(),
+				Status:      "pending",
+				Requesttime: tx.Locktime,
+				IsStaking:   true,
+			}
+			stakingRequestDatas = append(stakingRequestDatas, data)
+		case metadataCommon.Pdexv3StakingResponseMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.StakingResponse)
+			data := shared.PoolStakeHistoryData{
+				RequestTx: md.TxReqID(),
+				RespondTx: tx.TxHash,
+				Status:    md.Status(),
+			}
+			stakingRespondDatas = append(stakingRespondDatas, data)
+		case metadataCommon.Pdexv3UnstakingRequestMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.UnstakingRequest)
+			data := shared.PoolStakeHistoryData{
+				RequestTx:   tx.TxHash,
+				TokenID:     md.StakingPoolID(),
+				NFTID:       md.NftID(),
+				Amount:      md.UnstakingAmount(),
+				Status:      "pending",
+				Requesttime: tx.Locktime,
+				IsStaking:   false,
+			}
+			stakingRequestDatas = append(stakingRequestDatas, data)
+		case metadataCommon.Pdexv3UnstakingResponseMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.UnstakingResponse)
+
+			data := shared.PoolStakeHistoryData{
+				RequestTx: md.TxReqID(),
+				RespondTx: tx.TxHash,
+				Status:    md.Status(),
+			}
+			stakingRespondDatas = append(stakingRespondDatas, data)
 		}
 	}
 
-	return contributeRequestDatas, contributeRespondDatas, withdrawRequestDatas, withdrawRespondDatas, withdrawFeeRequestDatas, withdrawFeeRespondDatas, nil
+	return contributeRequestDatas, contributeRespondDatas, withdrawRequestDatas, withdrawRespondDatas, withdrawFeeRequestDatas, withdrawFeeRespondDatas, stakingRequestDatas, stakingRespondDatas, nil
 }

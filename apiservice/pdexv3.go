@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/wallet"
@@ -83,14 +84,15 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	matchedAmount := uint64(0)
-	if tradeStatus != nil {
-		matchedAmount = tradeInfo.Amount - tradeStatus.Left
+	matchedAmount, status, withdrawTxs, err := getTradeStatus(tradeInfo, tradeStatus)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
 	}
 	result := TradeDataRespond{
 		RequestTx:   tradeInfo.RequestTx,
 		RespondTxs:  tradeInfo.RespondTxs,
-		CancelTx:    tradeInfo.CancelTx,
+		WithdrawTxs: withdrawTxs,
 		PoolID:      tradeInfo.PoolID,
 		PairID:      tradeInfo.PairID,
 		SellTokenID: tradeInfo.SellTokenID,
@@ -98,7 +100,7 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 		Amount:      tradeInfo.Amount,
 		Price:       tradeInfo.Price,
 		Matched:     matchedAmount,
-		Status:      tradeStatus.Status,
+		Status:      status,
 		Requestime:  tradeInfo.Requesttime,
 		NFTID:       tradeInfo.NFTID,
 		Fee:         tradeInfo.Fee,
@@ -214,14 +216,19 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		for _, tradeInfo := range tradeList {
 			matchedAmount := uint64(0)
 			status := ""
-			if st, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
-				matchedAmount = tradeInfo.Amount - st.Left
-				status = st.Status
+			var tradeStatus *shared.LimitOrderStatus
+			if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
+				tradeStatus = &t
+			}
+			matchedAmount, status, withdrawTxs, err := getTradeStatus(&tradeInfo, tradeStatus)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
 			}
 			trade := TradeDataRespond{
 				RequestTx:   tradeInfo.RequestTx,
 				RespondTxs:  tradeInfo.RespondTxs,
-				CancelTx:    tradeInfo.CancelTx,
+				WithdrawTxs: withdrawTxs,
 				PoolID:      tradeInfo.PoolID,
 				PairID:      tradeInfo.PairID,
 				SellTokenID: tradeInfo.SellTokenID,
@@ -330,23 +337,9 @@ func (pdexv3) StakeHistory(c *gin.Context) {
 
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	otakey := c.Query("otakey")
-	if otakey == "" {
-		errStr := "otakey can't be empty"
-		respond := APIRespond{
-			Result: nil,
-			Error:  &errStr,
-		}
-		c.JSON(http.StatusOK, respond)
-		return
-	}
-	wl, err := wallet.Base58CheckDeserialize(otakey)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	pubkey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
-	result, err := database.DBGetStakingPoolHistory(pubkey, int64(limit), int64(offset))
+	nftid := c.Query("nftid")
+	tokenid := c.Query("tokenid")
+	result, err := database.DBGetStakingPoolHistory(nftid, tokenid, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

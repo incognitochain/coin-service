@@ -37,7 +37,7 @@ func StartProcessor() {
 			log.Println("getTxToProcess", err)
 			continue
 		}
-		request, respond, cancel, err := processTradeToken(txList)
+		request, respond, cancelReq, cancelRes, err := processTradeToken(txList)
 		if err != nil {
 			panic(err)
 		}
@@ -50,10 +50,16 @@ func StartProcessor() {
 		if err != nil {
 			panic(err)
 		}
-		err = database.DBUpdateCancelTradeOrder(cancel)
+		err = database.DBUpdateCancelTradeOrderReq(cancelReq)
 		if err != nil {
 			panic(err)
 		}
+
+		err = database.DBUpdateCancelTradeOrderRes(cancelRes)
+		if err != nil {
+			panic(err)
+		}
+
 		currentState.LastProcessedObjectID = txList[len(txList)-1].ID.String()
 		err = updateState()
 		if err != nil {
@@ -99,10 +105,11 @@ func loadState() error {
 	return json.UnmarshalFromString(result.State, &currentState)
 }
 
-func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []shared.TradeOrderData, []shared.TradeOrderData, error) {
+func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []shared.TradeOrderData, []shared.TradeOrderData, []shared.TradeOrderData, error) {
 	var requestTrades []shared.TradeOrderData
 	var respondTrades []shared.TradeOrderData
 	var cancelTrades []shared.TradeOrderData
+	var cancelRespond []shared.TradeOrderData
 	for _, tx := range txlist {
 		metaDataType, _ := strconv.Atoi(tx.Metatype)
 		txChoice, parseErr := shared.DeserializeTransactionJSON([]byte(tx.TxDetail))
@@ -188,10 +195,30 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			}
 			respondTrades = append(respondTrades, trade)
 		case metadata.Pdexv3WithdrawOrderRequestMeta:
-			//TODO
+			meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderRequest)
+			order := shared.TradeOrderData{
+				RequestTx:      meta.OrderID,
+				WithdrawTxs:    []string{tx.TxHash},
+				WithdrawTokens: []string{meta.TokenID.String()},
+				WithdrawAmount: []uint64{meta.Amount},
+				NFTID:          meta.NftID.String(),
+			}
+			cancelTrades = append(cancelTrades, order)
 		case metadata.Pdexv3WithdrawOrderResponseMeta:
-			//TODO
+			meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderResponse)
+			status := ""
+			if meta.Status == 1 {
+				status = "accepted"
+			} else {
+				status = "refunded"
+			}
+			order := shared.TradeOrderData{
+				WithdrawTxs:      []string{meta.RequestTxID.String()},
+				WithdrawStatus:   []string{status},
+				WithdrawResponds: []string{tx.TxHash},
+			}
+			cancelRespond = append(cancelTrades, order)
 		}
 	}
-	return requestTrades, respondTrades, cancelTrades, nil
+	return requestTrades, respondTrades, cancelTrades, cancelRespond, nil
 }

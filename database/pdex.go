@@ -442,13 +442,27 @@ func DBUpdateTradeOrder(orders []shared.TradeOrderData) error {
 	return nil
 }
 
-func DBUpdateCancelTradeOrder(orders []shared.TradeOrderData) error {
+func DBUpdateCancelTradeOrderReq(orders []shared.TradeOrderData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range orders {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$addToSet": bson.M{"canceltx": order.CancelTx},
-			"$set":      bson.M{"status": order.Status},
+			"$addToSet": bson.M{"canceltxs": order.WithdrawTxs, "withdrawtokens": order.WithdrawTokens, "withdrawamount": order.WithdrawAmount},
+		}
+		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdateCancelTradeOrderRes(orders []shared.TradeOrderData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range orders {
+		fitler := bson.M{"canceltxs": bson.M{operator.In: order.WithdrawTxs}}
+		update := bson.M{
+			"$addToSet": bson.M{"cancelresponds": order.WithdrawResponds, "cancelstatus": order.WithdrawStatus},
 		}
 		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
 		if err != nil {
@@ -506,7 +520,7 @@ func DBSavePoolPairs(pools []shared.PoolPairData) error {
 
 func DBGetPoolPairsByPairID(pairID string) ([]shared.PoolPairData, error) {
 	var result []shared.PoolPairData
-	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}}
+	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}, "version": bson.M{operator.Eq: 2}}
 	if pairID == "all" {
 		filter = bson.M{}
 	}
@@ -534,26 +548,6 @@ func DBGetPdexPairs() ([]shared.PairData, error) {
 		return nil, err
 	}
 	return result, nil
-}
-
-func DBUpdateOrderProgress(orders []shared.LimitOrderStatus) error {
-	startTime := time.Now()
-	docs := []interface{}{}
-	for _, order := range orders {
-		update := bson.M{
-			"$set": bson.M{"status": order.Status, "left": order.Left, "requesttx": order.RequestTx},
-		}
-		docs = append(docs, update)
-	}
-	for idx, doc := range docs {
-		_, err := mgm.Coll(&shared.LimitOrderStatus{}).UpdateByID(context.Background(), orders[idx].GetID(), doc)
-		if err != nil {
-			log.Printf("failed to update %v orders in %v", len(orders), time.Since(startTime))
-			return err
-		}
-	}
-	log.Printf("updated %v orders in %v", len(orders), time.Since(startTime))
-	return nil
 }
 
 func DBUpdatePDEContribute(list []shared.ContributionData) error {
@@ -622,11 +616,26 @@ func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
 func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, share := range list {
-		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}}
+		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
 		update := bson.M{
 			"$set": bson.M{"poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee},
 		}
 		err := mgm.Coll(&shared.PoolShareData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range list {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		update := bson.M{
+			"$set": bson.M{"left": order.Left},
+		}
+		err := mgm.Coll(&shared.ContributionData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
 			return err.Err()
 		}
@@ -652,9 +661,9 @@ func DBUpdatePDEPoolStakeData(list []shared.PoolStakeData) error {
 func DBUpdatePDEPoolStakerData(list []shared.PoolStakerData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, stake := range list {
-		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}}
+		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
 		update := bson.M{
-			"$set": bson.M{"nftid": stake.NFTID, "amount": stake.Amount, "reward": stake.Reward},
+			"$set": bson.M{"nftid": stake.NFTID, "tokenid": stake.TokenID, "amount": stake.Amount, "reward": stake.Reward},
 		}
 		err := mgm.Coll(&shared.PoolStakerData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
@@ -727,16 +736,15 @@ func DBGetStakePools() ([]shared.PoolStakeData, error) {
 	return result, nil
 }
 
-func DBGetStakingPoolHistory(pubkey string, limit, offset int64) ([]shared.TxData, error) {
+func DBGetStakingPoolHistory(nftid, tokenid string, limit, offset int64) ([]shared.TxData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
-	metas := []string{strconv.Itoa(metadata.PDEStake)}
 	var result []shared.TxData
-	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.In: metas}}
+	filter := bson.M{"nftid": bson.M{operator.Eq: nftid}, "tokenid": bson.M{operator.Eq: tokenid}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"locktime", -1}},
+	err := mgm.Coll(&shared.PoolStakeHistoryData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"requesttime", -1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})
@@ -755,4 +763,118 @@ func DBGetStakingInfo(nftid string) ([]shared.PoolStakerData, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func DBSavePDEStakeHistory(list []shared.PoolStakeHistoryData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, tx := range list {
+		tx.Creating()
+		docs = append(docs, tx)
+	}
+	_, err := mgm.Coll(&shared.PoolStakeHistoryData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
+	if err != nil {
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.PoolStakeHistoryData{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.WriteException)
+					if !ok {
+						panic(err)
+					}
+					if !writeErr.HasErrorCode(11000) {
+						panic(err)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func DBUpdatePDEStakinHistory(list []shared.PoolStakeHistoryData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range list {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		update := bson.M{
+			"$set": bson.M{"status": order.Status, "respondtx": order.RespondTx, "Status": order.Status},
+		}
+		err := mgm.Coll(&shared.PoolStakeHistoryData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBDeletePDEPoolData(list []shared.PoolPairData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, pool := range list {
+		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
+		err := mgm.Coll(&shared.PoolPairData{}).FindOneAndDelete(ctx, fitler)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBDeletePDEPoolShareData(list []shared.PoolShareData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, share := range list {
+		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
+		err := mgm.Coll(&shared.PoolShareData{}).FindOneAndDelete(ctx, fitler)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBDeletePDEPoolStakeData(list []shared.PoolStakeData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, stake := range list {
+		fitler := bson.M{"tokenid": bson.M{operator.Eq: stake.TokenID}}
+		err := mgm.Coll(&shared.PoolStakeData{}).FindOneAndDelete(ctx, fitler)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBDeletePDEPoolStakerData(list []shared.PoolStakerData) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, stake := range list {
+		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
+		err := mgm.Coll(&shared.PoolStakerData{}).FindOneAndDelete(ctx, fitler)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
+func DBDeleteOrderProgress(list []shared.LimitOrderStatus) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, v := range list {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: v.RequestTx}}
+		err := mgm.Coll(&shared.PoolStakerData{}).FindOneAndDelete(ctx, fitler)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
 }

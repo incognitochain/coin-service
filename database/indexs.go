@@ -290,12 +290,29 @@ func DBCreateLiquidityIndex() error {
 		return err
 	}
 
+	poolStakeHistoryModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "requesttx", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.PoolStakeHistoryData{}).Indexes().CreateMany(context.Background(), poolStakeHistoryModel)
+	if err != nil {
+		return err
+	}
+
 	return nil
+
 }
 
 func DBCreateTradeIndex() error {
 
 	tradeOrderModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "canceltxs", Value: bsonx.Int32(1)}},
+		},
 		{
 			Keys: bsonx.Doc{{Key: "requesttx", Value: bsonx.Int32(1)}},
 		},

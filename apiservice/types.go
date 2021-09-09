@@ -120,20 +120,26 @@ type PdexV3PriceHistoryRespond struct {
 	Open      uint64
 }
 type TradeDataRespond struct {
-	RequestTx   string   `json:"requesttx"`
-	RespondTxs  []string `json:"respondtxs"`
-	CancelTx    []string `json:"canceltx"`
-	SellTokenID string   `json:"selltokenid"`
-	BuyTokenID  string   `json:"buytokenid"`
-	Status      string   `json:"status"`
-	PairID      string   `json:"pairid"`
-	PoolID      string   `json:"poolid"`
-	Price       uint64   `json:"price"`
-	Amount      uint64   `json:"amount"`
-	Matched     uint64   `json:"matched"`
-	Requestime  int64    `json:"requesttime"`
-	NFTID       string   `json:"nftid"`
-	Receiver    string   `json:"receiver"`
-	Fee         uint64   `json:"fee"`
-	FeeToken    string   `json:"feetoken"`
+	RequestTx   string                       `json:"requesttx"`
+	RespondTxs  []string                     `json:"respondtxs"`
+	WithdrawTxs map[string]TradeWithdrawInfo `json:"withdrawtxs"`
+	SellTokenID string                       `json:"selltokenid"`
+	BuyTokenID  string                       `json:"buytokenid"`
+	Status      string                       `json:"status"`
+	PairID      string                       `json:"pairid"`
+	PoolID      string                       `json:"poolid"`
+	Price       uint64                       `json:"price"`
+	Amount      uint64                       `json:"amount"`
+	Matched     uint64                       `json:"matched"`
+	Requestime  int64                        `json:"requesttime"`
+	NFTID       string                       `json:"nftid"`
+	Receiver    string                       `json:"receiver"`
+	Fee         uint64                       `json:"fee"`
+	FeeToken    string                       `json:"feetoken"`
+}
+
+type TradeWithdrawInfo struct {
+	Amount    uint64
+	TokenID   string
+	RespondTx string
 }

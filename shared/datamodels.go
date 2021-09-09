@@ -478,9 +478,13 @@ type TradeOrderData struct {
 	mgm.DefaultModel `bson:",inline" json:"-"`
 	RequestTx        string   `json:"requesttx" bson:"requesttx"`
 	RespondTxs       []string `json:"respondtxs" bson:"respondtxs"`
-	CancelTx         []string `json:"canceltx" bson:"canceltx"`
 	SellTokenID      string   `json:"selltokenid" bson:"selltokenid"`
 	BuyTokenID       string   `json:"buytokenid" bson:"buytokenid"`
+	WithdrawResponds []string `json:"withdrawresponds" bson:"withdrawresponds"`
+	WithdrawTokens   []string `json:"withdrawtokens" bson:"withdrawtokens"`
+	WithdrawAmount   []uint64 `json:"withdrawamount" bson:"withdrawamount"`
+	WithdrawTxs      []string `json:"withdrawtxs" bson:"withdrawtxs"`
+	WithdrawStatus   []string `json:"withdrawstatus" bson:"withdrawstatus"`
 	Status           string   `json:"status" bson:"status"`
 	PairID           string   `json:"pairid" bson:"pairid"`
 	PoolID           string   `json:"poolid" bson:"poolid"`
@@ -613,7 +617,6 @@ type PoolShareData struct {
 	mgm.DefaultModel `bson:",inline"`
 	PoolID           string            `json:"poolid" bson:"poolid"`
 	NFTID            string            `json:"nftid" bson:"nftid"`
-	Pubkey           string            `json:"pubkey" bson:"pubkey"`
 	Amount           uint64            `json:"amount" bson:"amount"`
 	TradingFee       map[string]uint64 `json:"tradingfee" bson:"tradingfee"`
 	Version          int               `json:"version" bson:"version"`
@@ -628,6 +631,35 @@ func (model *PoolShareData) Creating() error {
 	return nil
 }
 func (model *PoolShareData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PoolStakeHistoryData struct {
+	mgm.DefaultModel `bson:",inline"`
+	IsStaking        bool   `json:"isstaking" bson:"isstaking"`
+	RequestTx        string `json:"requesttx" bson:"requesttx"`
+	RespondTx        string `json:"respondtx" bson:"respondtx"`
+	Status           string `json:"status" bson:"status"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	NFTID            string `json:"nftid" bson:"nftid"`
+	Amount           uint64 `json:"amount" bson:"amount"`
+	Requesttime      int64  `json:"requesttime" bson:"requesttime"`
+}
+
+func (model *PoolStakeHistoryData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PoolStakeHistoryData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err
@@ -709,7 +741,6 @@ func (model *ProcessorState) Saving() error {
 
 type LimitOrderStatus struct {
 	mgm.DefaultModel `bson:",inline"`
-	Status           string `json:"status" bson:"status"`
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
 	Left             uint64 `json:"left" bson:"left"`
 }

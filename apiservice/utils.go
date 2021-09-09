@@ -67,3 +67,44 @@ func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]Received
 	}
 	return result, errD
 }
+
+func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.LimitOrderStatus) (uint64, string, map[string]TradeWithdrawInfo, error) {
+	var matchedAmount uint64
+	var status string
+	var sellTokenWDAmount uint64
+	var sellTokenAmount int64
+	withdrawTxs := make(map[string]TradeWithdrawInfo)
+
+	if limitOrderStatus != nil {
+		sellTokenAmount = int64(limitOrderStatus.Left)
+	}
+
+	for idx, v := range order.WithdrawTxs {
+		withdrawInfo := TradeWithdrawInfo{
+			Amount:  order.WithdrawAmount[idx],
+			TokenID: order.WithdrawTokens[idx],
+		}
+		if len(order.WithdrawResponds) >= idx+1 {
+			withdrawInfo.RespondTx = order.WithdrawResponds[idx]
+			if order.WithdrawTokens[idx] == order.SellTokenID {
+				sellTokenWDAmount += order.WithdrawAmount[idx]
+			}
+		}
+		withdrawTxs[v] = withdrawInfo
+	}
+
+	sellTokenAmount += int64(sellTokenWDAmount)
+	matchedAmount = order.Amount - uint64(sellTokenAmount)
+	if len(order.WithdrawTxs) > 0 {
+		if len(order.WithdrawTxs) > len(order.WithdrawResponds) {
+			status = "withdrawing"
+		}
+	} else {
+		if len(order.RespondTxs) == 0 {
+			status = "ongoing"
+		} else {
+			status = "success"
+		}
+	}
+	return matchedAmount, status, withdrawTxs, nil
+}

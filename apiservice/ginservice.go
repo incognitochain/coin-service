@@ -62,6 +62,8 @@ func StartGinService() {
 		coinsGroup.GET("/getkeyinfo", APIGetKeyInfo)
 		coinsGroup.POST("/checkkeyimages", APICheckKeyImages)
 		coinsGroup.POST("/getrandomcommitments", APIGetRandomCommitments)
+		coinsGroup.GET("/getcoinslength", APIGetCoinInfo)
+
 		//tx
 		txGroup := r.Group("/txs")
 		txGroup.POST("/gettxsbysender", APIGetTxsBySender)
@@ -109,7 +111,6 @@ func StartGinService() {
 		pdexv2Group.GET("/getwithdrawhistory", APIGetWithdrawHistory)
 		pdexv2Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
-		coinsGroup.GET("/getcoinslength", APIGetCoinInfo)
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
