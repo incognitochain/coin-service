@@ -39,7 +39,7 @@ func StartProcessor() {
 			continue
 		}
 
-		contribRQData, contribRPData, withdrawRQDatas, withdrawRPDatas, withdrawFeeRQDatas, withdrawFeeRPDatas, stakeRQDatas, stakeRPDatas, err := processAddLiquidity(txList)
+		contribRQData, contribRPData, withdrawRQDatas, withdrawRPDatas, withdrawFeeRQDatas, withdrawFeeRPDatas, stakeRQDatas, stakeRPDatas, stakeRewardRQDatas, stakeRewardRPDatas, err := processAddLiquidity(txList)
 		if err != nil {
 			panic(err)
 		}
@@ -64,6 +64,11 @@ func StartProcessor() {
 			panic(err)
 		}
 
+		err = database.DBSavePDEStakeRewardHistory(stakeRewardRQDatas)
+		if err != nil {
+			panic(err)
+		}
+
 		err = database.DBUpdatePDEContribute(contribRPData)
 		if err != nil {
 			panic(err)
@@ -79,7 +84,12 @@ func StartProcessor() {
 			panic(err)
 		}
 
-		err = database.DBUpdatePDEStakinHistory(stakeRPDatas)
+		err = database.DBUpdatePDEStakingHistory(stakeRPDatas)
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBUpdatePDEStakeRewardHistory(stakeRewardRPDatas)
 		if err != nil {
 			panic(err)
 		}
@@ -129,7 +139,7 @@ func loadState() error {
 	return json.UnmarshalFromString(result.State, &currentState)
 }
 
-func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shared.ContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionFeeData, []shared.WithdrawContributionFeeData, []shared.PoolStakeHistoryData, []shared.PoolStakeHistoryData, error) {
+func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shared.ContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionFeeData, []shared.WithdrawContributionFeeData, []shared.PoolStakeHistoryData, []shared.PoolStakeHistoryData, []shared.PoolStakeRewardHistoryData, []shared.PoolStakeRewardHistoryData, error) {
 
 	var contributeRequestDatas []shared.ContributionData
 	var contributeRespondDatas []shared.ContributionData
@@ -143,6 +153,9 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 	var stakingRequestDatas []shared.PoolStakeHistoryData
 	var stakingRespondDatas []shared.PoolStakeHistoryData
 
+	var stakingRewardRequestDatas []shared.PoolStakeRewardHistoryData
+	var stakingRewardRespondDatas []shared.PoolStakeRewardHistoryData
+
 	for _, tx := range txList {
 		metaDataType, _ := strconv.Atoi(tx.Metatype)
 		txChoice, parseErr := shared.DeserializeTransactionJSON([]byte(tx.TxDetail))
@@ -154,15 +167,20 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 			panic(errors.New("invalid tx detected"))
 		}
 		switch metaDataType {
+
+		//---------------------------------------------------
+		//PDexV3
 		case metadataCommon.Pdexv3AddLiquidityRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.AddLiquidityRequest)
 			data := shared.ContributionData{
 				RequestTx:        tx.TxHash,
 				PoolID:           md.PoolPairID(),
-				ContributeToken:  []string{md.TokenID()},
+				ContributeTokens: []string{md.TokenID()},
 				ContributeAmount: []uint64{md.TokenAmount()},
 				NFTID:            md.NftID(),
 				PairHash:         md.PairHash(),
+				RequestTime:      tx.Locktime,
+				Status:           "waiting",
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 
@@ -188,50 +206,187 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 			data := shared.ContributionData{
 				RequestTx:    requestTx,
 				RespondTxs:   []string{tx.TxHash},
-				ReturnToken:  []string{tokenIDStr},
+				ReturnTokens: []string{tokenIDStr},
 				ReturnAmount: []uint64{amount},
+				Status:       md.Status(),
 			}
 			contributeRespondDatas = append(contributeRespondDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawLiquidityRequest)
 			data := shared.WithdrawContributionData{
-				RequestTx:  tx.TxHash,
-				NFTID:      md.NftID(),
-				RespondTxs: []string{tx.TxHash},
-				PoolID:     md.PoolPairID(),
+				RequestTx:   tx.TxHash,
+				NFTID:       md.NftID(),
+				RespondTxs:  []string{tx.TxHash},
+				PoolID:      md.PoolPairID(),
+				ShareAmount: md.ShareAmount(),
+				Status:      0,
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawLiquidityResponse)
+			status := 0
+			if md.Status() == "accepted" {
+				status = 1
+			} else {
+				status = 2
+			}
+			tokenIDStr := txDetail.GetTokenID().String()
+			amount := uint64(0)
+			if txDetail.GetType() == common.TxCustomTokenPrivacyType || txDetail.GetType() == common.TxTokenConversionType {
+				txToken := txDetail.(transaction.TransactionToken)
+				if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
+					outs := txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+					amount = outs[0].GetValue()
+					if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
+						txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
+						tokenIDStr = txTokenData.PropertyID.String()
+					}
+				}
+			} else {
+				outs := txDetail.GetProof().GetOutputCoins()
+				amount = outs[0].GetValue()
+			}
 			data := shared.WithdrawContributionData{
-				RequestTx:  md.TxReqID(),
-				RespondTxs: []string{tx.TxHash},
-				// Amount: md.,
+				RequestTx:      md.TxReqID(),
+				RespondTxs:     []string{tx.TxHash},
+				WithdrawTokens: []string{tokenIDStr},
+				WithdrawAmount: []uint64{amount},
+				Status:         status,
 			}
 			withdrawRespondDatas = append(withdrawRespondDatas, data)
+		case metadataCommon.Pdexv3WithdrawLPFeeRequestMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalLPFeeRequest)
+			data := shared.WithdrawContributionFeeData{
+				PoodID:      md.PoolPairID,
+				NFTID:       md.NftID.String(),
+				RequestTx:   tx.TxHash,
+				RequestTime: tx.Locktime,
+				Status:      0,
+			}
+			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
+		case metadataCommon.Pdexv3WithdrawLPFeeResponseMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalLPFeeResponse)
+			tokenIDStr := txDetail.GetTokenID().String()
+			amount := uint64(0)
+			if txDetail.GetType() == common.TxCustomTokenPrivacyType || txDetail.GetType() == common.TxTokenConversionType {
+				txToken := txDetail.(transaction.TransactionToken)
+				if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
+					outs := txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+					amount = outs[0].GetValue()
+					if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
+						txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
+						tokenIDStr = txTokenData.PropertyID.String()
+					}
+				}
+			} else {
+				outs := txDetail.GetProof().GetOutputCoins()
+				amount = outs[0].GetValue()
+			}
+			data := shared.WithdrawContributionFeeData{
+				RequestTx:      md.ReqTxID.String(),
+				RespondTxs:     []string{tx.TxHash},
+				WithdrawTokens: []string{tokenIDStr},
+				WithdrawAmount: []uint64{amount},
+				Status:         1,
+			}
+			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
+		case metadataCommon.Pdexv3StakingRequestMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.StakingRequest)
+			data := shared.PoolStakeHistoryData{
+				RequestTx:   tx.TxHash,
+				TokenID:     md.TokenID(),
+				NFTID:       md.NftID(),
+				Amount:      md.TokenAmount(),
+				Status:      0,
+				Requesttime: tx.Locktime,
+				IsStaking:   true,
+			}
+			stakingRequestDatas = append(stakingRequestDatas, data)
+		case metadataCommon.Pdexv3StakingResponseMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.StakingResponse)
+			status := 0
+			if md.Status() == "accepted" {
+				status = 1
+			} else {
+				status = 2
+			}
+			data := shared.PoolStakeHistoryData{
+				RequestTx: md.TxReqID(),
+				RespondTx: tx.TxHash,
+				Status:    status,
+			}
+			stakingRespondDatas = append(stakingRespondDatas, data)
+		case metadataCommon.Pdexv3UnstakingRequestMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.UnstakingRequest)
+			data := shared.PoolStakeHistoryData{
+				RequestTx:   tx.TxHash,
+				TokenID:     md.StakingPoolID(),
+				NFTID:       md.NftID(),
+				Amount:      md.UnstakingAmount(),
+				Status:      0,
+				Requesttime: tx.Locktime,
+				IsStaking:   false,
+			}
+			stakingRequestDatas = append(stakingRequestDatas, data)
+		case metadataCommon.Pdexv3UnstakingResponseMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.UnstakingResponse)
+			status := 0
+			if md.Status() == "accepted" {
+				status = 1
+			} else {
+				status = 2
+			}
+			data := shared.PoolStakeHistoryData{
+				RequestTx: md.TxReqID(),
+				RespondTx: tx.TxHash,
+				Status:    status,
+			}
+			stakingRespondDatas = append(stakingRespondDatas, data)
+		case metadataCommon.Pdexv3WithdrawStakingRewardRequestMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalStakingRewardRequest)
+			data := shared.PoolStakeRewardHistoryData{
+				RequestTx: tx.TxHash,
+				Status:    0,
+				TokenID:   md.StakingPoolID,
+				NFTID:     md.NftID.String(),
+			}
+			stakingRewardRequestDatas = append(stakingRewardRequestDatas, data)
+		case metadataCommon.Pdexv3WithdrawStakingRewardResponseMeta:
+			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalStakingRewardResponse)
+			// tokenIDStr := txDetail.GetTokenID().String()
+			amount := uint64(0)
+			if txDetail.GetType() == common.TxCustomTokenPrivacyType || txDetail.GetType() == common.TxTokenConversionType {
+				txToken := txDetail.(transaction.TransactionToken)
+				if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
+					outs := txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+					amount = outs[0].GetValue()
+					// if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
+					// 	txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
+					// 	tokenIDStr = txTokenData.PropertyID.String()
+					// }
+				}
+			} else {
+				outs := txDetail.GetProof().GetOutputCoins()
+				amount = outs[0].GetValue()
+			}
+			data := shared.PoolStakeRewardHistoryData{
+				RequestTx: md.ReqTxID.String(),
+				RespondTx: tx.TxHash,
+				Status:    1,
+				Amount:    amount,
+			}
+			stakingRewardRespondDatas = append(stakingRewardRespondDatas, data)
+		//---------------------------------------------------
+		//PDexV2
 		case metadata.PDEContributionMeta:
 			md := txDetail.GetMetadata().(*metadata.PDEContribution)
 			data := shared.ContributionData{
 				RequestTx:        tx.TxHash,
 				PairID:           md.PDEContributionPairID,
-				ContributeToken:  []string{md.TokenIDStr},
+				ContributeTokens: []string{md.TokenIDStr},
 				ContributeAmount: []uint64{md.ContributedAmount},
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
-		case metadata.PDEWithdrawalRequestMeta:
-			md := txDetail.GetMetadata().(*metadata.PDEWithdrawalRequest)
-			data := shared.WithdrawContributionData{
-				RequestTx: tx.TxHash,
-			}
-			withdrawRespondDatas = append(withdrawRespondDatas, data)
-			_ = md
-		case metadata.PDEFeeWithdrawalRequestMeta:
-			md := txDetail.GetMetadata().(*metadata.PDEFeeWithdrawalRequest)
-			data := shared.WithdrawContributionFeeData{
-				RequestTx: tx.TxHash,
-			}
-			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
-			_ = md
 		case metadata.PDEContributionResponseMeta:
 			md := txDetail.GetMetadata().(*metadata.PDEContributionResponse)
 			requestTx := md.RequestedTxID.String()
@@ -254,10 +409,19 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 			data := shared.ContributionData{
 				RequestTx:    requestTx,
 				RespondTxs:   []string{tx.TxHash},
-				ReturnToken:  []string{tokenIDStr},
+				ReturnTokens: []string{tokenIDStr},
 				ReturnAmount: []uint64{amount},
 			}
 			contributeRespondDatas = append(contributeRespondDatas, data)
+		case metadata.PDEWithdrawalRequestMeta:
+			md := txDetail.GetMetadata().(*metadata.PDEWithdrawalRequest)
+			data := shared.WithdrawContributionData{
+				RequestTx:   tx.TxHash,
+				ShareAmount: md.WithdrawalShareAmt,
+				RequestTime: tx.Locktime,
+				Status:      0,
+			}
+			withdrawRespondDatas = append(withdrawRespondDatas, data)
 		case metadata.PDEWithdrawalResponseMeta:
 			md := txDetail.GetMetadata().(*metadata.PDEWithdrawalResponse)
 			requestTx := md.RequestedTxID.String()
@@ -280,70 +444,33 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 			data := shared.WithdrawContributionData{
 				RequestTx:      requestTx,
 				RespondTxs:     []string{tx.TxHash},
-				Status:         "success",
-				WithdrawToken:  []string{tokenIDStr},
+				Status:         1,
+				WithdrawTokens: []string{tokenIDStr},
 				WithdrawAmount: []uint64{amount},
 			}
 			withdrawRespondDatas = append(withdrawRespondDatas, data)
+		case metadata.PDEFeeWithdrawalRequestMeta:
+			md := txDetail.GetMetadata().(*metadata.PDEFeeWithdrawalRequest)
+			data := shared.WithdrawContributionFeeData{
+				RequestTx: tx.TxHash,
+				// pdexv2 PRV only fee
+				WithdrawTokens: []string{common.PRVCoinID.String()},
+				WithdrawAmount: []uint64{md.WithdrawalFeeAmt},
+				RequestTime:    tx.Locktime,
+				Status:         0,
+			}
+			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadata.PDEFeeWithdrawalResponseMeta:
 			md := txDetail.GetMetadata().(*metadata.PDEFeeWithdrawalResponse)
 			requestTx := md.RequestedTxID.String()
-			amount := uint64(0)
-			outs := txDetail.GetProof().GetOutputCoins()
-			amount = outs[0].GetValue()
-
 			data := shared.WithdrawContributionFeeData{
 				RequestTx:  requestTx,
 				RespondTxs: []string{tx.TxHash},
-				Status:     "success",
-				// pdexv2 PRV only fee
-				ReturnTokens: []string{common.PRVCoinID.String()},
-				ReturnAmount: []uint64{amount},
+				Status:     1,
 			}
 			withdrawFeeRespondDatas = append(withdrawFeeRespondDatas, data)
-		case metadataCommon.Pdexv3StakingRequestMeta:
-			md := txDetail.GetMetadata().(*metadataPdexv3.StakingRequest)
-			data := shared.PoolStakeHistoryData{
-				RequestTx:   tx.TxHash,
-				TokenID:     md.TokenID(),
-				NFTID:       md.NftID(),
-				Amount:      md.TokenAmount(),
-				Status:      "pending",
-				Requesttime: tx.Locktime,
-				IsStaking:   true,
-			}
-			stakingRequestDatas = append(stakingRequestDatas, data)
-		case metadataCommon.Pdexv3StakingResponseMeta:
-			md := txDetail.GetMetadata().(*metadataPdexv3.StakingResponse)
-			data := shared.PoolStakeHistoryData{
-				RequestTx: md.TxReqID(),
-				RespondTx: tx.TxHash,
-				Status:    md.Status(),
-			}
-			stakingRespondDatas = append(stakingRespondDatas, data)
-		case metadataCommon.Pdexv3UnstakingRequestMeta:
-			md := txDetail.GetMetadata().(*metadataPdexv3.UnstakingRequest)
-			data := shared.PoolStakeHistoryData{
-				RequestTx:   tx.TxHash,
-				TokenID:     md.StakingPoolID(),
-				NFTID:       md.NftID(),
-				Amount:      md.UnstakingAmount(),
-				Status:      "pending",
-				Requesttime: tx.Locktime,
-				IsStaking:   false,
-			}
-			stakingRequestDatas = append(stakingRequestDatas, data)
-		case metadataCommon.Pdexv3UnstakingResponseMeta:
-			md := txDetail.GetMetadata().(*metadataPdexv3.UnstakingResponse)
-
-			data := shared.PoolStakeHistoryData{
-				RequestTx: md.TxReqID(),
-				RespondTx: tx.TxHash,
-				Status:    md.Status(),
-			}
-			stakingRespondDatas = append(stakingRespondDatas, data)
 		}
 	}
 
-	return contributeRequestDatas, contributeRespondDatas, withdrawRequestDatas, withdrawRespondDatas, withdrawFeeRequestDatas, withdrawFeeRespondDatas, stakingRequestDatas, stakingRespondDatas, nil
+	return contributeRequestDatas, contributeRespondDatas, withdrawRequestDatas, withdrawRespondDatas, withdrawFeeRequestDatas, withdrawFeeRespondDatas, stakingRequestDatas, stakingRespondDatas, stakingRewardRequestDatas, stakingRewardRespondDatas, nil
 }

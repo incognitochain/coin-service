@@ -77,10 +77,19 @@ func APIGetTradeHistory(c *gin.Context) {
 	txsRequest := []string{}
 	for _, v := range txTradePairlist {
 		if idx, ok := txsMap[v.RequestTx]; !ok {
+			statusStr := ""
+			switch v.Status {
+			case 0:
+				statusStr = "pending"
+			case 1:
+				statusStr = "accepted"
+			case 2:
+				statusStr = "rejected"
+			}
 			newTxDetail := TxTradeDetail{
 				RequestTx:     v.RequestTx,
 				RespondTx:     v.RespondTxs,
-				Status:        v.Status,
+				Status:        statusStr,
 				ReceiveAmount: make(map[string]uint64),
 			}
 			newTxDetail.ReceiveAmount[v.BuyTokenID] = v.Amount

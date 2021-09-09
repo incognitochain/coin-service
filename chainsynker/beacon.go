@@ -307,11 +307,15 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		}
 		stakePools = append(stakePools, poolData)
 		for nftID, staker := range stakeData.Stakers() {
+			rewardMap := make(map[string]uint64)
+			for k, v := range staker.Rewards() {
+				rewardMap[k.String()] = v
+			}
 			stake := shared.PoolStakerData{
 				TokenID: tokenID,
 				NFTID:   nftID,
 				Amount:  stakeData.Liquidity(),
-				Reward:  staker.Rewards(),
+				Reward:  rewardMap,
 			}
 			poolStaking = append(poolStaking, stake)
 		}

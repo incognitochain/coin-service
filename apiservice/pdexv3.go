@@ -113,9 +113,9 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func (pdexv3) Share(c *gin.Context) {
+func (pdexv3) PoolShare(c *gin.Context) {
 	nftID := c.Query("nftID")
-	result, err := database.DBGetShare(nftID)
+	list, err := database.DBGetShare(nftID)
 	if err != nil {
 		errStr := err.Error()
 		respond := APIRespond{
@@ -124,6 +124,42 @@ func (pdexv3) Share(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, respond)
 		return
+	}
+	var result []PdexV3PoolShareRespond
+	for _, v := range list {
+		l, err := database.DBGetPoolPairsByPoolID([]string{v.PoolID})
+		if err != nil {
+			errStr := err.Error()
+			respond := APIRespond{
+				Result: nil,
+				Error:  &errStr,
+			}
+			c.JSON(http.StatusOK, respond)
+			return
+		}
+		if len(l) == 0 {
+			continue
+		}
+		tk1Reward := uint64(0)
+		tk2Reward := uint64(0)
+
+		if rw, ok := v.TradingFee[l[0].TokenID1]; ok {
+			tk1Reward = rw
+		}
+		if rw, ok := v.TradingFee[l[0].TokenID2]; ok {
+			tk2Reward = rw
+		}
+		result = append(result, PdexV3PoolShareRespond{
+			PoolID:       v.PoolID,
+			Share:        v.Amount,
+			Token1Reward: tk1Reward,
+			Token2Reward: tk2Reward,
+			AMP:          l[0].AMP,
+			TokenID1:     l[0].TokenID1,
+			TokenID2:     l[0].TokenID2,
+			Token1Amount: l[0].Token1Amount,
+			Token2Amount: l[0].Token2Amount,
+		})
 	}
 	respond := APIRespond{
 		Result: result,
@@ -149,6 +185,7 @@ func (pdexv3) WaitingLiquidity(c *gin.Context) {
 	}
 	pubkey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 	_ = pubkey
+	//TODO:
 }
 
 func (pdexv3) TradeHistory(c *gin.Context) {
@@ -214,6 +251,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		}
 		var result []TradeDataRespond
 		for _, tradeInfo := range tradeList {
+
 			matchedAmount := uint64(0)
 			status := ""
 			var tradeStatus *shared.LimitOrderStatus
@@ -277,13 +315,37 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
-
-	result, err := database.DBGetPDEV3WithdrawRespond(nftID, poolID, int64(limit), int64(offset))
+	var result []PdexV3WithdrawRespond
+	list, err := database.DBGetPDEV3WithdrawRespond(nftID, poolID, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-
+	for _, v := range list {
+		var token1, token2 string
+		var amount1, amount2 uint64
+		if len(v.RespondTxs) == 2 {
+			token1 = v.WithdrawTokens[0]
+			amount1 = v.WithdrawAmount[0]
+			token2 = v.WithdrawTokens[1]
+			amount2 = v.WithdrawAmount[1]
+		}
+		if len(v.RespondTxs) == 1 {
+			token1 = v.WithdrawTokens[0]
+			amount1 = v.WithdrawAmount[0]
+		}
+		result = append(result, PdexV3WithdrawRespond{
+			RequestTx:   v.RequestTx,
+			RespondTxs:  v.RespondTxs,
+			TokenID1:    token1,
+			Amount1:     amount1,
+			TokenID2:    token2,
+			Amount2:     amount2,
+			Status:      v.Status,
+			ShareAmount: v.ShareAmount,
+			Requestime:  v.RequestTime,
+		})
+	}
 	respond := APIRespond{
 		Result: result,
 	}
@@ -295,13 +357,36 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
-
-	result, err := database.DBGetPDEV3WithdrawFeeRespond(nftID, poolID, int64(limit), int64(offset))
+	var result []PdexV3WithdrawFeeRespond
+	list, err := database.DBGetPDEV3WithdrawFeeRespond(nftID, poolID, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-
+	for _, v := range list {
+		var token1, token2 string
+		var amount1, amount2 uint64
+		if len(v.RespondTxs) == 2 {
+			token1 = v.WithdrawTokens[0]
+			amount1 = v.WithdrawAmount[0]
+			token2 = v.WithdrawTokens[1]
+			amount2 = v.WithdrawAmount[1]
+		}
+		if len(v.RespondTxs) == 1 {
+			token1 = v.WithdrawTokens[0]
+			amount1 = v.WithdrawAmount[0]
+		}
+		result = append(result, PdexV3WithdrawFeeRespond{
+			RequestTx:  v.RequestTx,
+			RespondTxs: v.RespondTxs,
+			TokenID1:   token1,
+			Amount1:    amount1,
+			TokenID2:   token2,
+			Amount2:    amount2,
+			Status:     v.Status,
+			Requestime: v.RequestTime,
+		})
+	}
 	respond := APIRespond{
 		Result: result,
 	}
@@ -340,6 +425,22 @@ func (pdexv3) StakeHistory(c *gin.Context) {
 	nftid := c.Query("nftid")
 	tokenid := c.Query("tokenid")
 	result, err := database.DBGetStakingPoolHistory(nftid, tokenid, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) StakeRewardHistory(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	nftid := c.Query("nftid")
+	tokenid := c.Query("tokenid")
+	result, err := database.DBGetStakePoolRewardHistory(nftid, tokenid, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

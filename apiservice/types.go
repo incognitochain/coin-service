@@ -139,7 +139,42 @@ type TradeDataRespond struct {
 }
 
 type TradeWithdrawInfo struct {
-	Amount    uint64
-	TokenID   string
-	RespondTx string
+	Amount    uint64 `json:"amount"`
+	TokenID   string `json:"tokenid"`
+	RespondTx string `json:"respondtx"`
+}
+
+type PdexV3WithdrawRespond struct {
+	RequestTx   string   `json:"requesttx"`
+	RespondTxs  []string `json:"respondtxs"`
+	Status      int      `json:"status"`
+	TokenID1    string   `json:"tokenid1"`
+	TokenID2    string   `json:"tokenid2"`
+	Amount1     uint64   `json:"amount1"`
+	Amount2     uint64   `json:"amount2"`
+	ShareAmount uint64   `json:"shareamount"`
+	Requestime  int64    `json:"requesttime"`
+}
+
+type PdexV3WithdrawFeeRespond struct {
+	RequestTx  string   `json:"requesttx"`
+	RespondTxs []string `json:"respondtxs"`
+	Status     int      `json:"status"`
+	TokenID1   string   `json:"tokenid1"`
+	TokenID2   string   `json:"tokenid2"`
+	Amount1    uint64   `json:"amount1"`
+	Amount2    uint64   `json:"amount2"`
+	Requestime int64    `json:"requesttime"`
+}
+
+type PdexV3PoolShareRespond struct {
+	PoolID       string `json:"poolid" bson:"poolid"`
+	Token1Reward uint64 `json:"token1reward"`
+	Token2Reward uint64 `json:"token2reward"`
+	Share        uint64 `json:"share" bson:"share"`
+	TokenID1     string `json:"tokenid1" bson:"tokenid1"`
+	TokenID2     string `json:"tokenid2" bson:"tokenid2"`
+	AMP          uint   `json:"amp" bson:"amp"`
+	Token1Amount uint64 `json:"token1amount" bson:"token1amount"`
+	Token2Amount uint64 `json:"token2amount" bson:"token2amount"`
 }

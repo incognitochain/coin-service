@@ -85,7 +85,7 @@ func StartGinService() {
 		pdexv3Group.GET("/listpairs", pdexv3{}.ListPairs)
 		pdexv3Group.GET("/tradestatus", pdexv3{}.TradeStatus)
 		pdexv3Group.GET("/listpools", pdexv3{}.ListPools)
-		pdexv3Group.GET("/share", pdexv3{}.Share)
+		pdexv3Group.GET("/share", pdexv3{}.PoolShare)
 		pdexv3Group.GET("/waitingliquidity", pdexv3{}.WaitingLiquidity)
 		pdexv3Group.POST("/poolsdetail", pdexv3{}.PoolsDetail)
 		pdexv3Group.GET("/tradehistory", pdexv3{}.TradeHistory)
@@ -95,7 +95,8 @@ func StartGinService() {
 
 		pdexv3Group.GET("/stakingpool", pdexv3{}.StakingPool)
 		pdexv3Group.GET("/stakeinfo", pdexv3{}.StakeInfo)
-		pdexv3Group.GET("/stakehistory", pdexv3{}.StakeHistory)
+		pdexv3Group.GET("/stakinghistory", pdexv3{}.StakeHistory)
+		pdexv3Group.GET("/stakerewardhistory", pdexv3{}.StakeRewardHistory)
 
 		//external dependency
 		pdexv3Group.GET("/estimatetrade", pdexv3{}.EstimateTrade)

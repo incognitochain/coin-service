@@ -9,7 +9,9 @@ import (
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
+	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -166,32 +168,59 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				amount = item.SellAmount
 				nftID = item.NftID.String()
 			}
-			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, "", nftID, nil, rate, amount, lockTime, tx.ShardID, tx.BlockHeight)
+			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, nil, rate, amount, lockTime, tx.ShardID, tx.BlockHeight)
 			requestTrades = append(requestTrades, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta, metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
-			status := ""
+			status := 0
 			requestTx := ""
 			switch metaDataType {
 			case metadata.PDECrossPoolTradeResponseMeta:
-				status = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).TradeStatus
+				statusStr := txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).TradeStatus
+				if statusStr == "xPoolTradeAccepted" {
+					status = 1
+				} else {
+					status = 0
+				}
 				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
 			case metadata.PDETradeResponseMeta:
-				status = txDetail.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
+				statusStr := txDetail.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
+				if statusStr == "accepted" {
+					status = 1
+				} else {
+					status = 0
+				}
 				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
 			case metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
 				md := txDetail.GetMetadata().(*metadataPdexv3.AddOrderResponse)
-				if md.Status == 1 {
-					status = "accepted"
-				} else {
-					status = "refunded"
-				}
-
+				status = md.Status
 				requestTx = md.RequestTxID.String()
 			}
+			tokenIDStr := txDetail.GetTokenID().String()
+			amount := uint64(0)
+			if txDetail.GetType() == common.TxCustomTokenPrivacyType || txDetail.GetType() == common.TxTokenConversionType {
+				txToken := txDetail.(transaction.TransactionToken)
+				if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
+					outs := txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+					if len(outs) > 0 {
+						amount = outs[0].GetValue()
+						if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
+							txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
+							tokenIDStr = txTokenData.PropertyID.String()
+						}
+					}
+				}
+			} else {
+				outs := txDetail.GetProof().GetOutputCoins()
+				if len(outs) > 0 {
+					amount = outs[0].GetValue()
+				}
+			}
 			trade := shared.TradeOrderData{
-				RequestTx:  requestTx,
-				Status:     status,
-				RespondTxs: []string{txDetail.Hash().String()},
+				RequestTx:     requestTx,
+				Status:        status,
+				RespondTxs:    []string{txDetail.Hash().String()},
+				RespondTokens: []string{tokenIDStr},
+				RespondAmount: []uint64{amount},
 			}
 			respondTrades = append(respondTrades, trade)
 		case metadata.Pdexv3WithdrawOrderRequestMeta:
@@ -202,20 +231,16 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				WithdrawTokens: []string{meta.TokenID.String()},
 				WithdrawAmount: []uint64{meta.Amount},
 				NFTID:          meta.NftID.String(),
+				Status:         0,
 			}
 			cancelTrades = append(cancelTrades, order)
 		case metadata.Pdexv3WithdrawOrderResponseMeta:
 			meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderResponse)
-			status := ""
-			if meta.Status == 1 {
-				status = "accepted"
-			} else {
-				status = "refunded"
-			}
 			order := shared.TradeOrderData{
 				WithdrawTxs:      []string{meta.RequestTxID.String()},
-				WithdrawStatus:   []string{status},
+				WithdrawStatus:   []int{meta.Status},
 				WithdrawResponds: []string{tx.TxHash},
+				Status:           meta.Status,
 			}
 			cancelRespond = append(cancelTrades, order)
 		}
