@@ -53,63 +53,63 @@ type APIGetTxsByPubkeyRequest struct {
 }
 
 type TxTradeDetail struct {
-	RequestTx string   `json:"requesttx"`
-	RespondTx []string `json:"respondtx"`
-	Status    string   `json:"status"`
-	BuyToken  string   `json:"buytoken"`
-	SellToken string   `json:"selltoken"`
+	RequestTx string
+	RespondTx []string
+	Status    string
+	BuyToken  string
+	SellToken string
 	//from respondtx
-	ReceiveAmount map[string]uint64 `json:"receive"`
+	ReceiveAmount map[string]uint64
 	//from requesttx
-	SellAmount  uint64 `json:"sell"`
-	Fee         uint64 `json:"fee"`
-	RequestTime int64  `json:"requesttime"`
+	SellAmount  uint64
+	Fee         uint64
+	RequestTime int64
 }
 
 type TxBridgeDetail struct {
-	Bridge          string `json:"bridge"`
-	TokenID         string `json:"tokenid"`
-	Amount          uint64 `json:"amount"`
-	RespondTx       string `json:"respondtx"`
-	RequestTx       string `json:"requesttx"`
-	ShieldType      string `json:"shieldtype"`
-	IsDecentralized bool   `json:"isdecentralized"`
+	Bridge          string
+	TokenID         string
+	Amount          uint64
+	RespondTx       string
+	RequestTx       string
+	ShieldType      string
+	IsDecentralized bool
 }
 
 type APIGetTxTradeRespond struct {
 }
 type ReceivedTransactionV2 struct {
 	TxDetail    *shared.TransactionDetail
-	FromShardID byte `json:"FromShardID"`
+	FromShardID byte
 }
 
 type PdexV3EstimateTradeRespond struct {
-	MaxGet uint64 `json:"MaxGet"`
-	Fee    uint64 `json:"Fee"`
-	Route  string `json:"Route"`
+	MaxGet uint64
+	Fee    uint64
+	Route  string
 }
 type PdexV3OrderBookRespond struct {
 	Buy  []PdexV3OrderBookVolume
 	Sell []PdexV3OrderBookVolume
 }
 type PdexV3OrderBookVolume struct {
-	Price  uint64 `json:"Price"`
-	Volume uint64 `json:"Volume"`
+	Price  uint64
+	Volume uint64
 }
 type PdexV3PoolDetail struct {
-	PoolID      string `json:"PoolID"`
-	Token1Value uint64 `json:"Token1Value"`
-	Token2Value uint64 `json:"Token2Value"`
-	Share       uint64 `json:"Share"`
-	Volume      uint64 `json:"Volume"`
-	DayChange   uint64 `json:"24h"`
-	Price       uint64 `json:"Price"`
-	AMP         uint64 `json:"AMP"`
+	PoolID      string
+	Token1Value uint64
+	Token2Value uint64
+	Share       uint64
+	Volume      uint64
+	DayChange   uint64
+	Price       uint64
+	AMP         uint64
 }
 
 type PdexV3LiquidityHistoryRespond struct {
-	Time   uint64 `json:"Time"`
-	Volume uint64 `json:"Volume"`
+	Time   uint64
+	Volume uint64
 }
 
 type PdexV3PriceHistoryRespond struct {
@@ -120,63 +120,63 @@ type PdexV3PriceHistoryRespond struct {
 	Open      uint64
 }
 type TradeDataRespond struct {
-	RequestTx   string                       `json:"requesttx"`
-	RespondTxs  []string                     `json:"respondtxs"`
-	WithdrawTxs map[string]TradeWithdrawInfo `json:"withdrawtxs"`
-	SellTokenID string                       `json:"selltokenid"`
-	BuyTokenID  string                       `json:"buytokenid"`
-	Status      string                       `json:"status"`
-	StatusCode  int                          `json:"statuscode"`
-	PairID      string                       `json:"pairid"`
-	PoolID      string                       `json:"poolid"`
-	Price       uint64                       `json:"price"`
-	Amount      uint64                       `json:"amount"`
-	Matched     uint64                       `json:"matched"`
-	Requestime  int64                        `json:"requesttime"`
-	NFTID       string                       `json:"nftid"`
-	Receiver    string                       `json:"receiver"`
-	Fee         uint64                       `json:"fee"`
-	FeeToken    string                       `json:"feetoken"`
+	RequestTx   string
+	RespondTxs  []string
+	WithdrawTxs map[string]TradeWithdrawInfo
+	SellTokenID string
+	BuyTokenID  string
+	Status      string
+	StatusCode  int
+	PairID      string
+	PoolID      string
+	Price       uint64
+	Amount      uint64
+	Matched     uint64
+	Requestime  int64
+	NFTID       string
+	Receiver    string
+	Fee         uint64
+	FeeToken    string
 }
 
 type TradeWithdrawInfo struct {
-	Amount    uint64 `json:"amount"`
-	TokenID   string `json:"tokenid"`
-	Status    int    `json:"status"`
-	RespondTx string `json:"respondtx"`
+	Amount    uint64
+	TokenID   string
+	Status    int
+	RespondTx string
 }
 
 type PdexV3WithdrawRespond struct {
-	RequestTx   string   `json:"requesttx"`
-	RespondTxs  []string `json:"respondtxs"`
-	Status      int      `json:"status"`
-	TokenID1    string   `json:"tokenid1"`
-	TokenID2    string   `json:"tokenid2"`
-	Amount1     uint64   `json:"amount1"`
-	Amount2     uint64   `json:"amount2"`
-	ShareAmount uint64   `json:"shareamount"`
-	Requestime  int64    `json:"requesttime"`
+	RequestTx   string
+	RespondTxs  []string
+	Status      int
+	TokenID1    string
+	TokenID2    string
+	Amount1     uint64
+	Amount2     uint64
+	ShareAmount uint64
+	Requestime  int64
 }
 
 type PdexV3WithdrawFeeRespond struct {
-	RequestTx  string   `json:"requesttx"`
-	RespondTxs []string `json:"respondtxs"`
-	Status     int      `json:"status"`
-	TokenID1   string   `json:"tokenid1"`
-	TokenID2   string   `json:"tokenid2"`
-	Amount1    uint64   `json:"amount1"`
-	Amount2    uint64   `json:"amount2"`
-	Requestime int64    `json:"requesttime"`
+	RequestTx  string
+	RespondTxs []string
+	Status     int
+	TokenID1   string
+	TokenID2   string
+	Amount1    uint64
+	Amount2    uint64
+	Requestime int64
 }
 
 type PdexV3PoolShareRespond struct {
-	PoolID       string `json:"poolid" bson:"poolid"`
-	Token1Reward uint64 `json:"token1reward"`
-	Token2Reward uint64 `json:"token2reward"`
-	Share        uint64 `json:"share" bson:"share"`
-	TokenID1     string `json:"tokenid1" bson:"tokenid1"`
-	TokenID2     string `json:"tokenid2" bson:"tokenid2"`
-	AMP          uint   `json:"amp" bson:"amp"`
-	Token1Amount uint64 `json:"token1amount" bson:"token1amount"`
-	Token2Amount uint64 `json:"token2amount" bson:"token2amount"`
+	PoolID       string
+	Token1Reward uint64
+	Token2Reward uint64
+	Share        uint64
+	TokenID1     string
+	TokenID2     string
+	AMP          uint
+	Token1Amount uint64
+	Token2Amount uint64
 }

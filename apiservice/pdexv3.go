@@ -43,35 +43,6 @@ func (pdexv3) ListPools(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func (pdexv3) PoolsDetail(c *gin.Context) {
-	var req struct {
-		PoolIDs []string
-	}
-	err := c.ShouldBindJSON(&req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	result, err := database.DBGetPoolPairsByPoolID(req.PoolIDs)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	respond := APIRespond{
-		Result: result,
-		Error:  nil,
-	}
-	c.JSON(http.StatusOK, respond)
-}
-
-func (pdexv3) GetOrderBook(c *gin.Context) {
-	decimal := c.Query("decimal")
-	poolID := c.Query("poolid")
-
-	_ = decimal
-	_ = poolID
-}
-
 func (pdexv3) TradeStatus(c *gin.Context) {
 	requestTx := c.Query("requesttx")
 	tradeInfo, tradeStatus, err := database.DBGetTradeInfoAndStatus(requestTx)
@@ -447,6 +418,35 @@ func (pdexv3) StakeRewardHistory(c *gin.Context) {
 		Result: result,
 	}
 	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) PoolsDetail(c *gin.Context) {
+	var req struct {
+		PoolIDs []string
+	}
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	result, err := database.DBGetPoolPairsByPoolID(req.PoolIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) GetOrderBook(c *gin.Context) {
+	decimal := c.Query("decimal")
+	poolID := c.Query("poolid")
+
+	_ = decimal
+	_ = poolID
 }
 
 func (pdexv3) EstimateTrade(c *gin.Context) {

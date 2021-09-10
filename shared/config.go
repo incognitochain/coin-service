@@ -106,6 +106,7 @@ func ReadConfigAndArg() {
 	fmt.Println("===========================")
 	fmt.Println(cfg.Network())
 	fmt.Println(param.ActiveShards)
+	fmt.Println(cfg.DiscoverPeersAddress)
 	fmt.Println("===========================")
 
 	RESET_FLAG = *argResetDB
