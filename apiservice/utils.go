@@ -68,7 +68,7 @@ func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]Received
 	return result, errD
 }
 
-func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.LimitOrderStatus) (uint64, string, map[string]TradeWithdrawInfo, error) {
+func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.LimitOrderStatus) (uint64, int, string, map[string]TradeWithdrawInfo, error) {
 	var matchedAmount uint64
 	var status string
 	var sellTokenWDAmount uint64
@@ -83,6 +83,7 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 		withdrawInfo := TradeWithdrawInfo{
 			Amount:  order.WithdrawAmount[idx],
 			TokenID: order.WithdrawTokens[idx],
+			Status:  order.WithdrawStatus[idx],
 		}
 		if len(order.WithdrawResponds) >= idx+1 {
 			withdrawInfo.RespondTx = order.WithdrawResponds[idx]
@@ -100,11 +101,26 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 			status = "withdrawing"
 		}
 	} else {
-		if len(order.RespondTxs) == 0 {
-			status = "ongoing"
-		} else {
+		if sellTokenAmount == 0 {
 			status = "success"
+		} else {
+			if len(order.RespondTxs) == 0 {
+				status = "ongoing"
+			} else {
+				status = "reject"
+			}
 		}
 	}
-	return matchedAmount, status, withdrawTxs, nil
+	statusCode := 0
+	switch status {
+	case "ongoing":
+		statusCode = 0
+	case "success":
+		statusCode = 1
+	case "reject":
+		statusCode = 2
+	case "withdrawing":
+		statusCode = 3
+	}
+	return matchedAmount, statusCode, status, withdrawTxs, nil
 }

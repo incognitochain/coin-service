@@ -126,6 +126,7 @@ type TradeDataRespond struct {
 	SellTokenID string                       `json:"selltokenid"`
 	BuyTokenID  string                       `json:"buytokenid"`
 	Status      string                       `json:"status"`
+	StatusCode  int                          `json:"statuscode"`
 	PairID      string                       `json:"pairid"`
 	PoolID      string                       `json:"poolid"`
 	Price       uint64                       `json:"price"`
@@ -141,6 +142,7 @@ type TradeDataRespond struct {
 type TradeWithdrawInfo struct {
 	Amount    uint64 `json:"amount"`
 	TokenID   string `json:"tokenid"`
+	Status    int    `json:"status"`
 	RespondTx string `json:"respondtx"`
 }
 

@@ -130,7 +130,9 @@ func tokenListWatcher() {
 					if err != nil {
 						panic(err)
 					}
-					nftToken[newK.String()] = txs[0].IsNFT
+					if len(txs) != 0 {
+						nftToken[newK.String()] = txs[0].IsNFT
+					}
 				}
 			}
 		}

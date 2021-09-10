@@ -572,7 +572,7 @@ func DBGetPdexPairs() ([]shared.PairData, error) {
 func DBUpdatePDEContribute(list []shared.ContributionData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
-		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		fitler := bson.M{"requesttxs": bson.M{operator.In: order.RequestTxs}}
 		update := bson.M{
 			"$addToSet": bson.M{"respondtxs": order.RespondTxs, "returntokens": order.ReturnTokens, "returnamount": order.ReturnAmount},
 			"$set":      bson.M{},

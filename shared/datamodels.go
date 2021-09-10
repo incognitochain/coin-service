@@ -342,20 +342,20 @@ func (model *ShieldData) Saving() error {
 }
 
 type ContributionData struct {
-	mgm.DefaultModel      `bson:",inline"`
-	RequestTx             string   `json:"requesttx" bson:"requesttx"`
-	RespondTxs            []string `json:"respondtxs" bson:"respondtxs"`
-	PairID                string   `json:"pairid" bson:"pairid"`
-	PoolID                string   `json:"poolid" bson:"poolid"`
-	PairHash              string   `json:"pairhash" bson:"pairhash"`
-	ContributeTokens      []string `json:"contributetokens" bson:"contributetokens"`
-	ContributeAmount      []uint64 `json:"contributeamount" bson:"contributeamount"`
-	ReturnTokens          []string `json:"returntokens" bson:"returntokens"`
-	ReturnAmount          []uint64 `json:"returnamount" bson:"returnamount"`
-	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
-	NFTID                 string   `json:"nftid" bson:"nftid"`
-	RequestTime           int64    `json:"requesttime" bson:"requesttime"`
-	Status                string   `json:"status" bson:"status"`
+	mgm.DefaultModel `bson:",inline"`
+	RequestTxs       []string `json:"requesttxs" bson:"requesttxs"`
+	RespondTxs       []string `json:"respondtxs" bson:"respondtxs"`
+	PairID           string   `json:"pairid" bson:"pairid"`
+	PoolID           string   `json:"poolid" bson:"poolid"`
+	PairHash         string   `json:"pairhash" bson:"pairhash"`
+	ContributeTokens []string `json:"contributetokens" bson:"contributetokens"`
+	ContributeAmount []uint64 `json:"contributeamount" bson:"contributeamount"`
+	ReturnTokens     []string `json:"returntokens" bson:"returntokens"`
+	ReturnAmount     []uint64 `json:"returnamount" bson:"returnamount"`
+	Contributor      string   `json:"contributor" bson:"contributor"`
+	NFTID            string   `json:"nftid" bson:"nftid"`
+	RequestTime      int64    `json:"requesttime" bson:"requesttime"`
+	Status           string   `json:"status" bson:"status"`
 }
 
 // func NewContributionData(requestTx, respondTx, pairID, contributorAddressStr string, respondBlock uint64) *ContributionData {

@@ -84,7 +84,7 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	matchedAmount, status, withdrawTxs, err := getTradeStatus(tradeInfo, tradeStatus)
+	matchedAmount, statusCode, status, withdrawTxs, err := getTradeStatus(tradeInfo, tradeStatus)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -101,6 +101,7 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 		Price:       tradeInfo.Price,
 		Matched:     matchedAmount,
 		Status:      status,
+		StatusCode:  statusCode,
 		Requestime:  tradeInfo.Requesttime,
 		NFTID:       tradeInfo.NFTID,
 		Fee:         tradeInfo.Fee,
@@ -165,27 +166,6 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		Result: result,
 	}
 	c.JSON(http.StatusOK, respond)
-}
-
-func (pdexv3) WaitingLiquidity(c *gin.Context) {
-	otakey := c.Query("otakey")
-	if otakey == "" {
-		errStr := "otakey can't be empty"
-		respond := APIRespond{
-			Result: nil,
-			Error:  &errStr,
-		}
-		c.JSON(http.StatusOK, respond)
-		return
-	}
-	wl, err := wallet.Base58CheckDeserialize(otakey)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	pubkey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
-	_ = pubkey
-	//TODO:
 }
 
 func (pdexv3) TradeHistory(c *gin.Context) {
@@ -253,12 +233,11 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		for _, tradeInfo := range tradeList {
 
 			matchedAmount := uint64(0)
-			status := ""
 			var tradeStatus *shared.LimitOrderStatus
 			if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
 				tradeStatus = &t
 			}
-			matchedAmount, status, withdrawTxs, err := getTradeStatus(&tradeInfo, tradeStatus)
+			matchedAmount, statusCode, status, withdrawTxs, err := getTradeStatus(&tradeInfo, tradeStatus)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -275,6 +254,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				Price:       tradeInfo.Price,
 				Matched:     matchedAmount,
 				Status:      status,
+				StatusCode:  statusCode,
 				Requestime:  tradeInfo.Requesttime,
 				NFTID:       tradeInfo.NFTID,
 				Fee:         tradeInfo.Fee,
@@ -299,6 +279,24 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 	nftID := c.Query("nftid")
 
 	result, err := database.DBGetPDEV3ContributeRespond(nftID, poolID, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) WaitingLiquidity(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	// poolid := c.Query("poolid")
+	nftid := c.Query("nftid")
+
+	result, err := database.DBGetPDEV3ContributeWaiting(nftid, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

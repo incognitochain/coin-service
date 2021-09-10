@@ -278,7 +278,7 @@ func APIGetContributeHistory(c *gin.Context) {
 	}
 	var result []DataWithLockTime
 	for _, contr := range contrDataNoDup {
-		tx, err := database.DBGetTxByHash([]string{contr.RequestTx})
+		tx, err := database.DBGetTxByHash(contr.RequestTxs)
 		if err != nil {
 			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return

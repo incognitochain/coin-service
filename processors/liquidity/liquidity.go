@@ -9,10 +9,12 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
 	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	metadataPdexv3 "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/transaction"
+	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -173,7 +175,7 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 		case metadataCommon.Pdexv3AddLiquidityRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.AddLiquidityRequest)
 			data := shared.ContributionData{
-				RequestTx:        tx.TxHash,
+				RequestTxs:       []string{tx.TxHash},
 				PoolID:           md.PoolPairID(),
 				ContributeTokens: []string{md.TokenID()},
 				ContributeAmount: []uint64{md.TokenAmount()},
@@ -183,7 +185,6 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				Status:           "waiting",
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
-
 		case metadataCommon.Pdexv3AddLiquidityResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.AddLiquidityResponse)
 			requestTx := md.TxReqID()
@@ -204,7 +205,7 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				amount = outs[0].GetValue()
 			}
 			data := shared.ContributionData{
-				RequestTx:    requestTx,
+				RequestTxs:   []string{requestTx},
 				RespondTxs:   []string{tx.TxHash},
 				ReturnTokens: []string{tokenIDStr},
 				ReturnAmount: []uint64{amount},
@@ -380,8 +381,14 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 		//PDexV2
 		case metadata.PDEContributionMeta:
 			md := txDetail.GetMetadata().(*metadata.PDEContribution)
+			wl, err := wallet.Base58CheckDeserialize(md.ContributorAddressStr)
+			if err != nil {
+				panic(err)
+			}
+			pubkey := base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
 			data := shared.ContributionData{
-				RequestTx:        tx.TxHash,
+				Contributor:      pubkey,
+				RequestTxs:       []string{tx.TxHash},
 				PairID:           md.PDEContributionPairID,
 				ContributeTokens: []string{md.TokenIDStr},
 				ContributeAmount: []uint64{md.ContributedAmount},
@@ -407,7 +414,7 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				amount = outs[0].GetValue()
 			}
 			data := shared.ContributionData{
-				RequestTx:    requestTx,
+				RequestTxs:   []string{requestTx},
 				RespondTxs:   []string{tx.TxHash},
 				ReturnTokens: []string{tokenIDStr},
 				ReturnAmount: []uint64{amount},
