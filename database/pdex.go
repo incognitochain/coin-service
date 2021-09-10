@@ -626,6 +626,9 @@ func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
 		}
 		err := mgm.Coll(&shared.PoolPairData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
+			if err.Err() == mongo.ErrNoDocuments {
+				return nil
+			}
 			return err.Err()
 		}
 	}
@@ -641,6 +644,9 @@ func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
 		}
 		err := mgm.Coll(&shared.PoolShareData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
+			if err.Err() == mongo.ErrNoDocuments {
+				return nil
+			}
 			return err.Err()
 		}
 	}
@@ -656,6 +662,9 @@ func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
 		}
 		err := mgm.Coll(&shared.LimitOrderStatus{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
+			if err.Err() == mongo.ErrNoDocuments {
+				return nil
+			}
 			return err.Err()
 		}
 	}
@@ -671,6 +680,9 @@ func DBUpdatePDEPoolStakeData(list []shared.PoolStakeData) error {
 		}
 		err := mgm.Coll(&shared.PoolStakeData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
+			if err.Err() == mongo.ErrNoDocuments {
+				return nil
+			}
 			return err.Err()
 		}
 	}
@@ -686,6 +698,9 @@ func DBUpdatePDEPoolStakerData(list []shared.PoolStakerData) error {
 		}
 		err := mgm.Coll(&shared.PoolStakerData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 		if err != nil {
+			if err.Err() == mongo.ErrNoDocuments {
+				return nil
+			}
 			return err.Err()
 		}
 	}

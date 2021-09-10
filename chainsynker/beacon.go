@@ -59,9 +59,10 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			if err != nil {
 				panic(err)
 			}
-
-			prevStateV2.PoolPairs = poolPairs
-			prevStateV2.StakingPoolsState = pdeState.Reader().StakingPools()
+			prevStateV2 = &shared.PDEStateV2{
+				PoolPairs:         poolPairs,
+				StakingPoolsState: pdeState.Reader().StakingPools(),
+			}
 		}
 
 	}
