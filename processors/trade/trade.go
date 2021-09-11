@@ -154,6 +154,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 					panic("invalid metadataPdexv3.TradeRequest")
 				}
 				sellToken = item.TokenToSell.String()
+				buyToken = item.TradePath[len(item.TradePath)-1]
 				pairID = strings.Join(item.TradePath, "-")
 				rate = item.MinAcceptableAmount / item.SellAmount
 				amount = item.SellAmount

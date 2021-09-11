@@ -201,6 +201,18 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 	var orderStatusToBeDelete []shared.LimitOrderStatus
 
 	for poolID, state := range statev2.PoolPairs {
+		poolData := shared.PoolPairData{
+			Version:      2,
+			PoolID:       poolID,
+			PairID:       state.State.Token0ID().String() + "-" + state.State.Token1ID().String(),
+			AMP:          state.State.Amplifier(),
+			TokenID1:     state.State.Token0ID().String(),
+			TokenID2:     state.State.Token1ID().String(),
+			Token1Amount: state.State.Token0RealAmount(),
+			Token2Amount: state.State.Token1RealAmount(),
+		}
+		poolPairs = append(poolPairs, poolData)
+
 		for shareID, share := range state.Shares {
 			tradingFee := make(map[string]uint64)
 			for k, v := range share.TradingFees() {
@@ -215,18 +227,6 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 			poolShare = append(poolShare, shareData)
 		}
-
-		poolData := shared.PoolPairData{
-			Version:      2,
-			PoolID:       poolID,
-			PairID:       state.State.Token0ID().String() + "-" + state.State.Token1ID().String(),
-			AMP:          state.State.Amplifier(),
-			TokenID1:     state.State.Token0ID().String(),
-			TokenID2:     state.State.Token1ID().String(),
-			Token1Amount: state.State.Token0RealAmount(),
-			Token2Amount: state.State.Token1RealAmount(),
-		}
-		poolPairs = append(poolPairs, poolData)
 
 		for _, order := range state.Orderbook.Orders {
 			newOrder := shared.LimitOrderStatus{

@@ -23,10 +23,10 @@ func main() {
 	}
 	log.Println("service mode:", shared.ServiceCfg.Mode)
 	switch shared.ServiceCfg.Mode {
-	case shared.FULLMODE:
-		chainsynker.InitChainSynker(shared.ServiceCfg)
-		go otaindexer.StartOTAIndexingFull()
-		go apiservice.StartGinService()
+	// case shared.FULLMODE:
+	// 	chainsynker.InitChainSynker(shared.ServiceCfg)
+	// 	go otaindexer.StartOTAIndexingFull()
+	// 	go apiservice.StartGinService()
 	case shared.CHAINSYNCMODE:
 		chainsynker.InitChainSynker(shared.ServiceCfg)
 		go apiservice.StartGinService()

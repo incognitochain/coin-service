@@ -27,7 +27,7 @@ func StartGinService() {
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/health", APIHealthCheck)
 
-	if shared.ServiceCfg.Mode == shared.QUERYMODE || shared.ServiceCfg.Mode == shared.FULLMODE {
+	if shared.ServiceCfg.Mode == shared.QUERYMODE {
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
@@ -121,9 +121,9 @@ func StartGinService() {
 		r.GET("/workerstat", otaindexer.GetWorkerStat)
 	}
 
-	if shared.ServiceCfg.Mode == shared.FULLMODE {
-		r.POST("/submitotakey", APISubmitOTAFullmode)
-	}
+	// if shared.ServiceCfg.Mode == shared.FULLMODE {
+	// 	r.POST("/submitotakey", APISubmitOTAFullmode)
+	// }
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
 	if err != nil {
 		panic(err)

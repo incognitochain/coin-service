@@ -57,10 +57,12 @@ func InitChainSynker(cfg shared.Config) {
 			panic(err)
 		}
 	}
+
 	err := database.DBCreateCoinV1Index()
 	if err != nil {
 		panic(err)
 	}
+
 	err = database.DBCreateCoinV2Index()
 	if err != nil {
 		panic(err)
@@ -70,16 +72,43 @@ func InitChainSynker(cfg shared.Config) {
 	if err != nil {
 		panic(err)
 	}
+
 	err = database.DBCreateTxIndex()
 	if err != nil {
 		panic(err)
 	}
+
 	err = database.DBCreateTxPendingIndex()
 	if err != nil {
 		panic(err)
 	}
 
+	err = database.DBCreateTokenIndex()
+	if err != nil {
+		panic(err)
+	}
+
 	err = database.DBCreateProcessorIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreateLiquidityIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreateShieldIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreateProcessorIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	err = database.DBCreateTradeIndex()
 	if err != nil {
 		panic(err)
 	}
