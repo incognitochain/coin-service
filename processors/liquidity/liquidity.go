@@ -111,7 +111,7 @@ func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 		"_id":      bson.M{operator.Gt: lastID},
 		"metatype": bson.M{operator.In: metas},
 	}
-	err := mgm.Coll(&shared.TxData{}).SimpleFind(result, filter, &options.FindOptions{
+	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", 1}},
 		Limit: &limit,
 	})
