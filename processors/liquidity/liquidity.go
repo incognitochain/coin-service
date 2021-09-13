@@ -18,6 +18,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -40,6 +41,7 @@ func StartProcessor() {
 			log.Println("getTxToProcess", err)
 			continue
 		}
+		log.Println("start processing LQ with", len(txList), "txs")
 
 		contribRQData, contribRPData, withdrawRQDatas, withdrawRPDatas, withdrawFeeRQDatas, withdrawFeeRPDatas, stakeRQDatas, stakeRPDatas, stakeRewardRQDatas, stakeRewardRPDatas, err := processAddLiquidity(txList)
 		if err != nil {
@@ -96,19 +98,33 @@ func StartProcessor() {
 			panic(err)
 		}
 
-		currentState.LastProcessedObjectID = txList[len(txList)-1].ID.String()
-		err = updateState()
-		if err != nil {
-			panic(err)
+		log.Println("finish processing LQ with", len(txList), "txs")
+		if len(txList) != 0 {
+			currentState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
+			err = updateState()
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }
 
 func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 	var result []shared.TxData
-	metas := []string{strconv.Itoa(metadataCommon.Pdexv3AddLiquidityRequestMeta), strconv.Itoa(metadataCommon.Pdexv3WithdrawLiquidityRequestMeta)}
+	metas := []string{strconv.Itoa(metadataCommon.Pdexv3AddLiquidityRequestMeta), strconv.Itoa(metadataCommon.Pdexv3AddLiquidityResponseMeta), strconv.Itoa(metadataCommon.Pdexv3WithdrawLiquidityRequestMeta), strconv.Itoa(metadataCommon.Pdexv3WithdrawLiquidityResponseMeta), strconv.Itoa(metadataCommon.Pdexv3WithdrawLPFeeRequestMeta), strconv.Itoa(metadataCommon.Pdexv3WithdrawLPFeeResponseMeta), strconv.Itoa(metadataCommon.Pdexv3StakingRequestMeta), strconv.Itoa(metadataCommon.Pdexv3StakingResponseMeta), strconv.Itoa(metadataCommon.Pdexv3UnstakingRequestMeta), strconv.Itoa(metadataCommon.Pdexv3UnstakingResponseMeta), strconv.Itoa(metadataCommon.Pdexv3WithdrawStakingRewardRequestMeta), strconv.Itoa(metadataCommon.Pdexv3WithdrawStakingRewardResponseMeta)}
+	metas = append(metas, []string{strconv.Itoa(metadataCommon.PDEContributionMeta), strconv.Itoa(metadataCommon.PDEContributionResponseMeta), strconv.Itoa(metadataCommon.PDEWithdrawalRequestMeta), strconv.Itoa(metadataCommon.PDEWithdrawalResponseMeta), strconv.Itoa(metadataCommon.PDEFeeWithdrawalRequestMeta), strconv.Itoa(metadataCommon.PDEFeeWithdrawalResponseMeta)}...)
+	var obID primitive.ObjectID
+	if lastID == "" {
+		obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	} else {
+		var err error
+		obID, err = primitive.ObjectIDFromHex(lastID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	filter := bson.M{
-		"_id":      bson.M{operator.Gt: lastID},
+		"_id":      bson.M{operator.Gt: obID},
 		"metatype": bson.M{operator.In: metas},
 	}
 	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
@@ -179,6 +195,9 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				PoolID:           md.PoolPairID(),
 				ContributeTokens: []string{md.TokenID()},
 				ContributeAmount: []uint64{md.TokenAmount()},
+				RespondTxs:       []string{},
+				ReturnTokens:     []string{},
+				ReturnAmount:     []uint64{},
 				NFTID:            md.NftID(),
 				PairHash:         md.PairHash(),
 				RequestTime:      tx.Locktime,
@@ -392,6 +411,9 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				PairID:           md.PDEContributionPairID,
 				ContributeTokens: []string{md.TokenIDStr},
 				ContributeAmount: []uint64{md.ContributedAmount},
+				RespondTxs:       []string{},
+				ReturnTokens:     []string{},
+				ReturnAmount:     []uint64{},
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadata.PDEContributionResponseMeta:

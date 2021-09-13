@@ -7,6 +7,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -17,6 +18,9 @@ func DBUpdateProcessorState(processor string, state string) error {
 	}
 	err := mgm.Coll(&shared.ProcessorState{}).FindOneAndUpdate(context.Background(), fitler, update, options.FindOneAndUpdate().SetUpsert(true))
 	if err != nil {
+		if err.Err() == mongo.ErrNoDocuments {
+			return nil
+		}
 		return err.Err()
 	}
 	return nil

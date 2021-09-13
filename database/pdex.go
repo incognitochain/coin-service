@@ -44,6 +44,9 @@ func DBGetPDEState() (string, error) {
 }
 
 func DBSaveTxTrade(list []shared.TradeOrderData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
@@ -81,28 +84,6 @@ func DBSaveTxTrade(list []shared.TradeOrderData) error {
 	}
 	return nil
 }
-
-// func DBUpdateTxTrade(list []shared.TradeData) error {
-// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
-// 	docs := []interface{}{}
-// 	for _, tx := range list {
-// 		update := bson.M{
-// 			"$set": tx,
-// 		}
-// 		docs = append(docs, update)
-// 	}
-// 	for idx, doc := range docs {
-// 		ctx, _ := context.WithTimeout(context.Background(), 1*shared.DB_OPERATION_TIMEOUT)
-// 		filter := bson.M{""}
-// 		_, err := mgm.Coll(&shared.TradeData{}).FindOneAndUpdate(ctx,filter,)
-
-// 		// _, err := mgm.Coll(&shared.TradeData{}).UpdateByID(ctx, list[idx].GetID(), doc)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
 
 func DBGetTxTradeFromTxRespond(respondList []string) ([]shared.TradeOrderData, error) {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondList)+10)*shared.DB_OPERATION_TIMEOUT)
@@ -151,6 +132,9 @@ func DBGetTxTradeRespond(pubkey string, limit int64, offset int64) ([]shared.TxD
 }
 
 func DBSavePDEContribute(list []shared.ContributionData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
@@ -247,6 +231,9 @@ func DBGetPDEV3ContributeWaiting(nftID string, limit int64, offset int64) ([]sha
 }
 
 func DBSavePDEWithdraw(list []shared.WithdrawContributionData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
@@ -323,6 +310,9 @@ func DBGetPDEV3WithdrawRespond(nftID, poolID string, limit int64, offset int64) 
 }
 
 func DBSavePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
@@ -401,11 +391,14 @@ func DBGetPDEV3WithdrawFeeRespond(nftID, poolID string, limit int64, offset int6
 
 func DBFindPair(prefix string) ([]shared.PoolPairData, error) {
 	var result []shared.PoolPairData
-
+	//TODO
 	return result, nil
 }
 
 func DBSaveTradeOrder(orders []shared.TradeOrderData) error {
+	if len(orders) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range orders {
@@ -462,6 +455,9 @@ func DBUpdateTradeOrder(orders []shared.TradeOrderData) error {
 }
 
 func DBUpdateCancelTradeOrderReq(orders []shared.TradeOrderData) error {
+	if len(orders) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range orders {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
@@ -477,6 +473,9 @@ func DBUpdateCancelTradeOrderReq(orders []shared.TradeOrderData) error {
 }
 
 func DBUpdateCancelTradeOrderRes(orders []shared.TradeOrderData) error {
+	if len(orders) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range orders {
 		fitler := bson.M{"canceltxs": bson.M{operator.In: order.WithdrawTxs}}
@@ -493,11 +492,14 @@ func DBUpdateCancelTradeOrderRes(orders []shared.TradeOrderData) error {
 
 func DBGetPendingOrder(pubkey, pairID string) ([]shared.TradeOrderData, error) {
 	var result []shared.TradeOrderData
-
+	//TODO
 	return result, nil
 }
 
 func DBSavePoolPairs(pools []shared.PoolPairData) error {
+	if len(pools) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(pools)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range pools {
@@ -570,12 +572,14 @@ func DBGetPdexPairs() ([]shared.PairData, error) {
 }
 
 func DBUpdatePDEContribute(list []shared.ContributionData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
 		fitler := bson.M{"requesttxs": bson.M{operator.In: order.RequestTxs}}
 		update := bson.M{
 			"$addToSet": bson.M{"respondtxs": order.RespondTxs, "returntokens": order.ReturnTokens, "returnamount": order.ReturnAmount},
-			"$set":      bson.M{},
 		}
 		err := mgm.Coll(&shared.ContributionData{}).FindOneAndUpdate(ctx, fitler, update)
 		if err != nil {
@@ -586,6 +590,9 @@ func DBUpdatePDEContribute(list []shared.ContributionData) error {
 }
 
 func DBUpdatePDEWithdraw(list []shared.WithdrawContributionData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
@@ -602,6 +609,9 @@ func DBUpdatePDEWithdraw(list []shared.WithdrawContributionData) error {
 }
 
 func DBUpdatePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
@@ -618,6 +628,9 @@ func DBUpdatePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
 }
 
 func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, pool := range list {
 		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
@@ -636,6 +649,9 @@ func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
 }
 
 func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, share := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
@@ -654,6 +670,9 @@ func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
 }
 
 func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
@@ -672,6 +691,9 @@ func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
 }
 
 func DBUpdatePDEPoolStakeData(list []shared.PoolStakeData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, stake := range list {
 		fitler := bson.M{"tokenid": bson.M{operator.Eq: stake.TokenID}}
@@ -690,6 +712,9 @@ func DBUpdatePDEPoolStakeData(list []shared.PoolStakeData) error {
 }
 
 func DBUpdatePDEPoolStakerData(list []shared.PoolStakerData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, stake := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
@@ -819,6 +844,9 @@ func DBGetStakingInfo(nftid string) ([]shared.PoolStakerData, error) {
 }
 
 func DBSavePDEStakeHistory(list []shared.PoolStakeHistoryData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
@@ -858,6 +886,9 @@ func DBSavePDEStakeHistory(list []shared.PoolStakeHistoryData) error {
 }
 
 func DBSavePDEStakeRewardHistory(list []shared.PoolStakeRewardHistoryData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
@@ -897,6 +928,9 @@ func DBSavePDEStakeRewardHistory(list []shared.PoolStakeRewardHistoryData) error
 }
 
 func DBUpdatePDEStakingHistory(list []shared.PoolStakeHistoryData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
@@ -912,6 +946,9 @@ func DBUpdatePDEStakingHistory(list []shared.PoolStakeHistoryData) error {
 }
 
 func DBUpdatePDEStakeRewardHistory(list []shared.PoolStakeRewardHistoryData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
@@ -927,6 +964,9 @@ func DBUpdatePDEStakeRewardHistory(list []shared.PoolStakeRewardHistoryData) err
 }
 
 func DBDeletePDEPoolData(list []shared.PoolPairData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, pool := range list {
 		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
@@ -939,6 +979,9 @@ func DBDeletePDEPoolData(list []shared.PoolPairData) error {
 }
 
 func DBDeletePDEPoolShareData(list []shared.PoolShareData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, share := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
@@ -951,6 +994,9 @@ func DBDeletePDEPoolShareData(list []shared.PoolShareData) error {
 }
 
 func DBDeletePDEPoolStakeData(list []shared.PoolStakeData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, stake := range list {
 		fitler := bson.M{"tokenid": bson.M{operator.Eq: stake.TokenID}}
@@ -963,6 +1009,9 @@ func DBDeletePDEPoolStakeData(list []shared.PoolStakeData) error {
 }
 
 func DBDeletePDEPoolStakerData(list []shared.PoolStakerData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, stake := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
@@ -975,6 +1024,9 @@ func DBDeletePDEPoolStakerData(list []shared.PoolStakerData) error {
 }
 
 func DBDeleteOrderProgress(list []shared.LimitOrderStatus) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, v := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: v.RequestTx}}

@@ -469,21 +469,28 @@ type TradeOrderData struct {
 	FeeToken         string   `json:"feetoken" bson:"feetoken"`
 }
 
-func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, respondTxs []string, price, amount uint64, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
+func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, price, amount uint64, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
 	return &TradeOrderData{
-		NFTID:       nftid,
-		RequestTx:   requestTx,
-		RespondTxs:  respondTxs,
-		SellTokenID: selltoken,
-		BuyTokenID:  buytoken,
-		Status:      status,
-		PoolID:      poolid,
-		PairID:      pairid,
-		Price:       price,
-		Amount:      amount,
-		Requesttime: requestTime,
-		ShardID:     shardID,
-		BlockHeight: blockHeight,
+		NFTID:            nftid,
+		RequestTx:        requestTx,
+		SellTokenID:      selltoken,
+		BuyTokenID:       buytoken,
+		Status:           status,
+		PoolID:           poolid,
+		PairID:           pairid,
+		Price:            price,
+		Amount:           amount,
+		Requesttime:      requestTime,
+		ShardID:          shardID,
+		BlockHeight:      blockHeight,
+		WithdrawResponds: []string{},
+		WithdrawTokens:   []string{},
+		WithdrawAmount:   []uint64{},
+		WithdrawTxs:      []string{},
+		WithdrawStatus:   []int{},
+		RespondTxs:       []string{},
+		RespondTokens:    []string{},
+		RespondAmount:    []uint64{},
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	metadataPdexv3 "github.com/incognitochain/incognito-chain/metadata/pdexv3"
@@ -62,19 +63,31 @@ func StartProcessor() {
 			panic(err)
 		}
 
-		currentState.LastProcessedObjectID = txList[len(txList)-1].ID.String()
-		err = updateState()
-		if err != nil {
-			panic(err)
+		if len(txList) != 0 {
+			currentState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
+			err = updateState()
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }
 
 func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 	var result []shared.TxData
-	metas := []string{}
+	metas := []string{strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta), strconv.Itoa(metadata.PDETradeRequestMeta), strconv.Itoa(metadata.Pdexv3TradeRequestMeta), strconv.Itoa(metadata.Pdexv3AddOrderRequestMeta), strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta), strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderRequestMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
+	var obID primitive.ObjectID
+	if lastID == "" {
+		obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	} else {
+		var err error
+		obID, err = primitive.ObjectIDFromHex(lastID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	filter := bson.M{
-		"_id":      bson.M{operator.Gt: lastID},
+		"_id":      bson.M{operator.Gt: obID},
 		"metatype": bson.M{operator.In: metas},
 	}
 	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
@@ -169,7 +182,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				amount = item.SellAmount
 				nftID = item.NftID.String()
 			}
-			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, nil, rate, amount, lockTime, tx.ShardID, tx.BlockHeight)
+			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, rate, amount, lockTime, tx.ShardID, tx.BlockHeight)
 			requestTrades = append(requestTrades, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta, metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
 			status := 0
@@ -191,7 +204,11 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 					status = 0
 				}
 				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
-			case metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
+			case metadata.Pdexv3TradeResponseMeta:
+				md := txDetail.GetMetadata().(*metadataPdexv3.TradeResponse)
+				status = md.Status
+				requestTx = md.RequestTxID.String()
+			case metadata.Pdexv3AddOrderResponseMeta:
 				md := txDetail.GetMetadata().(*metadataPdexv3.AddOrderResponse)
 				status = md.Status
 				requestTx = md.RequestTxID.String()

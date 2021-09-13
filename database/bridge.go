@@ -16,6 +16,9 @@ import (
 )
 
 func DBSaveTxShield(list []shared.ShieldData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
@@ -55,6 +58,9 @@ func DBSaveTxShield(list []shared.ShieldData) error {
 }
 
 func DBSaveTxUnShield(list []shared.ShieldData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, tx := range list {
@@ -133,6 +139,9 @@ func DBGetTxUnshield(pubkey, tokenID string, limit int64, offset int64) ([]share
 	return result, nil
 }
 func DBUpdateShieldData(list []shared.ShieldData) error {
+	if len(list) == 0 {
+		return nil
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, tx := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: tx.RequestTx}}

@@ -14,6 +14,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -51,20 +52,32 @@ func StartProcessor() {
 		if err != nil {
 			panic(err)
 		}
-
-		currentState.LastProcessedObjectID = txList[len(txList)-1].ID.String()
-		err = updateState()
-		if err != nil {
-			panic(err)
+		if len(txList) != 0 {
+			currentState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
+			err = updateState()
+			if err != nil {
+				panic(err)
+			}
 		}
+
 	}
 }
 
 func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 	var result []shared.TxData
-	metas := []string{}
+	metas := []string{strconv.Itoa(metadata.IssuingRequestMeta), strconv.Itoa(metadata.IssuingBSCRequestMeta), strconv.Itoa(metadata.IssuingETHRequestMeta), strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta), strconv.Itoa(metadata.IssuingBSCResponseMeta)}
+	var obID primitive.ObjectID
+	if lastID == "" {
+		obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	} else {
+		var err error
+		obID, err = primitive.ObjectIDFromHex(lastID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	filter := bson.M{
-		"_id":      bson.M{operator.Gt: lastID},
+		"_id":      bson.M{operator.Gt: obID},
 		"metatype": bson.M{operator.In: metas},
 	}
 	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{

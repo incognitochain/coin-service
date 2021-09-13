@@ -27,6 +27,8 @@ func main() {
 	// 	chainsynker.InitChainSynker(shared.ServiceCfg)
 	// 	go otaindexer.StartOTAIndexingFull()
 	// 	go apiservice.StartGinService()
+	case shared.QUERYMODE:
+		go apiservice.StartGinService()
 	case shared.CHAINSYNCMODE:
 		chainsynker.InitChainSynker(shared.ServiceCfg)
 		go apiservice.StartGinService()
