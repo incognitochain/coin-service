@@ -429,10 +429,28 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	result, err := database.DBGetPoolPairsByPoolID(req.PoolIDs)
+	list, err := database.DBGetPoolPairsByPoolID(req.PoolIDs)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
+	}
+	var result []PdexV3PoolDetail
+	for _, v := range list {
+		data := PdexV3PoolDetail{
+			PoolID:      v.PoolID,
+			Token1ID:    v.TokenID1,
+			Token2ID:    v.TokenID2,
+			Token1Value: v.Token1Amount,
+			Token2Value: v.Token2Amount,
+			AMP:         v.AMP,
+			Price:       v.Token1Amount / v.Token2Amount,
+		}
+
+		//TODO @yenle
+		// data.Volume
+		// data.PriceChange24h
+		// data.APY
+		result = append(result, data)
 	}
 	respond := APIRespond{
 		Result: result,
@@ -453,19 +471,17 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	sellToken := c.Query("selltoken")
 	buyToken := c.Query("buytoken")
 	amount := c.Query("amount")
-	feeToken := c.Query("feetoken")
-	poolID := c.Query("poolid")
+	feeInPRV := c.Query("feeinprv")
 	price := c.Query("price")
 
 	_ = sellToken
 	_ = buyToken
 	_ = amount
-	_ = feeToken
-	_ = poolID
+	_ = feeInPRV
 	_ = price
 
 	var result PdexV3EstimateTradeRespond
-
+	//TODO @yenle
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
@@ -478,6 +494,7 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 	period := c.Query("period")
 	datapoint := c.Query("datapoint")
 
+	//TODO @yenle
 	_ = poolid
 	_ = period
 	_ = datapoint
@@ -495,6 +512,7 @@ func (pdexv3) LiquidityHistory(c *gin.Context) {
 	period := c.Query("period")
 	datapoint := c.Query("datapoint")
 
+	//TODO @yenle
 	_ = poolid
 	_ = period
 	_ = datapoint
@@ -511,6 +529,7 @@ func (pdexv3) TradeVolume(c *gin.Context) {
 
 	_ = pair
 
+	//TODO @yenle
 	var result uint64
 
 	respond := APIRespond{

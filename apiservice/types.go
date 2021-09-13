@@ -97,14 +97,17 @@ type PdexV3OrderBookVolume struct {
 	Volume uint64
 }
 type PdexV3PoolDetail struct {
-	PoolID      string
-	Token1Value uint64
-	Token2Value uint64
-	Share       uint64
-	Volume      uint64
-	DayChange   uint64
-	Price       uint64
-	AMP         uint64
+	PoolID         string
+	Token1ID       string
+	Token2ID       string
+	Token1Value    uint64
+	Token2Value    uint64
+	Share          uint64
+	AMP            uint
+	Price          uint64
+	Volume         uint64
+	PriceChange24h uint64
+	APY            uint64
 }
 
 type PdexV3LiquidityHistoryRespond struct {
@@ -171,12 +174,12 @@ type PdexV3WithdrawFeeRespond struct {
 
 type PdexV3PoolShareRespond struct {
 	PoolID       string
+	TokenID1     string
+	TokenID2     string
+	Token1Amount uint64
+	Token2Amount uint64
 	Token1Reward uint64
 	Token2Reward uint64
 	Share        uint64
-	TokenID1     string
-	TokenID2     string
 	AMP          uint
-	Token1Amount uint64
-	Token2Amount uint64
 }
