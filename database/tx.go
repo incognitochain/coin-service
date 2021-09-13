@@ -57,7 +57,7 @@ func DBUpdateTxPubkeyReceiverAndTokenID(txHashes []string, pubKey, tokenID strin
 	docs := []interface{}{}
 	for _ = range txHashes {
 		update := bson.M{
-			"$addToSet": bson.M{"pubkeyreceivers": pubKey},
+			"$addToSet": bson.M{"pubkeyreceivers": bson.M{operator.Each: pubKey}},
 			"$set":      bson.M{"realtokenid": tokenID},
 		}
 		docs = append(docs, update)
@@ -182,7 +182,7 @@ func DBUpdateTxsWithPubkeyReceiver(list []shared.TxData) error {
 	docs := []interface{}{}
 	for _, tx := range list {
 		update := bson.M{
-			"$addToSet": bson.M{"pubkeyreceivers": tx.PubKeyReceivers},
+			"$addToSet": bson.M{"pubkeyreceivers": bson.M{operator.Each: tx.PubKeyReceivers}},
 		}
 		docs = append(docs, update)
 	}

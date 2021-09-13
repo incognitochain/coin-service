@@ -99,11 +99,11 @@ func updateState() error {
 		currentState = State{}
 		return nil
 	}
-	return database.DBUpdateProcessorState("liquidity", string(result))
+	return database.DBUpdateProcessorState("shield", string(result))
 }
 
 func loadState() error {
-	result, err := database.DBGetProcessorState("liquidity")
+	result, err := database.DBGetProcessorState("shield")
 	if err != nil {
 		return err
 	}

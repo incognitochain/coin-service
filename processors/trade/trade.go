@@ -40,7 +40,7 @@ func StartProcessor() {
 			log.Println("getTxToProcess", err)
 			continue
 		}
-		request, respond, cancelReq, cancelRes, err := processTradeToken(txList)
+		request, respond, withdrawReq, withdrawRes, err := processTradeToken(txList)
 		if err != nil {
 			panic(err)
 		}
@@ -53,12 +53,12 @@ func StartProcessor() {
 		if err != nil {
 			panic(err)
 		}
-		err = database.DBUpdateCancelTradeOrderReq(cancelReq)
+		err = database.DBUpdateWithdrawTradeOrderReq(withdrawReq)
 		if err != nil {
 			panic(err)
 		}
 
-		err = database.DBUpdateCancelTradeOrderRes(cancelRes)
+		err = database.DBUpdateWithdrawTradeOrderRes(withdrawRes)
 		if err != nil {
 			panic(err)
 		}
@@ -105,11 +105,11 @@ func updateState() error {
 	if err != nil {
 		panic(err)
 	}
-	return database.DBUpdateProcessorState("liquidity", string(result))
+	return database.DBUpdateProcessorState("trade", string(result))
 }
 
 func loadState() error {
-	result, err := database.DBGetProcessorState("liquidity")
+	result, err := database.DBGetProcessorState("trade")
 	if err != nil {
 		return err
 	}

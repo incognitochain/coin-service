@@ -2,6 +2,7 @@ package liquidity
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -47,7 +48,8 @@ func StartProcessor() {
 		if err != nil {
 			panic(err)
 		}
-
+		fmt.Println("contribRQData", contribRQData)
+		fmt.Println()
 		err = database.DBSavePDEContribute(contribRQData)
 		if err != nil {
 			panic(err)
@@ -75,6 +77,7 @@ func StartProcessor() {
 
 		err = database.DBUpdatePDEContributeRespond(contribRPData)
 		if err != nil {
+			fmt.Println(contribRPData)
 			panic(err)
 		}
 
