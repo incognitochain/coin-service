@@ -73,7 +73,7 @@ func StartProcessor() {
 			panic(err)
 		}
 
-		err = database.DBUpdatePDEContribute(contribRPData)
+		err = database.DBUpdatePDEContributeRespond(contribRPData)
 		if err != nil {
 			panic(err)
 		}
@@ -195,13 +195,9 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				PoolID:           md.PoolPairID(),
 				ContributeTokens: []string{md.TokenID()},
 				ContributeAmount: []uint64{md.TokenAmount()},
-				RespondTxs:       []string{},
-				ReturnTokens:     []string{},
-				ReturnAmount:     []uint64{},
 				NFTID:            md.NftID(),
 				PairHash:         md.PairHash(),
 				RequestTime:      tx.Locktime,
-				Status:           "waiting",
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadataCommon.Pdexv3AddLiquidityResponseMeta:
@@ -228,7 +224,7 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				RespondTxs:   []string{tx.TxHash},
 				ReturnTokens: []string{tokenIDStr},
 				ReturnAmount: []uint64{amount},
-				Status:       md.Status(),
+				// Status:       md.Status(),
 			}
 			contributeRespondDatas = append(contributeRespondDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityRequestMeta:

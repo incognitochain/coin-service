@@ -136,40 +136,53 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 		return nil
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
-	docs := []interface{}{}
-	for _, tx := range list {
-		tx.Creating()
-		docs = append(docs, tx)
-	}
-	_, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
-	if err != nil {
-		writeErr, ok := err.(mongo.BulkWriteException)
-		if !ok {
-			panic(err)
+	for _, order := range list {
+		fitler := bson.M{"pairhash": bson.M{operator.Eq: order.PairHash}, "nftid": bson.M{operator.Eq: order.NFTID}, "requesttxs.2": bson.M{operator.Exists: false}}
+		update := bson.M{
+			"$addToSet": bson.M{"requesttxs": order.RequestTxs, "requesttime": order.RequestTime, "poolid": order.PoolID, "pairhash": order.PairHash, "contributetokens": order.ContributeTokens, "contributeamount": order.ContributeAmount},
 		}
-		if ctx.Err() != nil {
-			t, k := ctx.Deadline()
-			log.Println("context error:", ctx.Err(), t, k)
-		}
-		er := writeErr.WriteErrors[0]
-		if er.WriteError.Code != 11000 {
-			panic(err)
-		} else {
-			for _, v := range docs {
-				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
-				_, err = mgm.Coll(&shared.ContributionData{}).InsertOne(ctx, v)
-				if err != nil {
-					writeErr, ok := err.(mongo.WriteException)
-					if !ok {
-						panic(err)
-					}
-					if !writeErr.HasErrorCode(11000) {
-						panic(err)
-					}
-				}
-			}
+		err := mgm.Coll(&shared.ContributionData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
 		}
 	}
+	return nil
+
+	// ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	// docs := []interface{}{}
+	// for _, tx := range list {
+	// 	tx.Creating()
+	// 	docs = append(docs, tx)
+	// }
+	// _, err := mgm.Coll(&shared.ContributionData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
+	// if err != nil {
+	// 	writeErr, ok := err.(mongo.BulkWriteException)
+	// 	if !ok {
+	// 		panic(err)
+	// 	}
+	// 	if ctx.Err() != nil {
+	// 		t, k := ctx.Deadline()
+	// 		log.Println("context error:", ctx.Err(), t, k)
+	// 	}
+	// 	er := writeErr.WriteErrors[0]
+	// 	if er.WriteError.Code != 11000 {
+	// 		panic(err)
+	// 	} else {
+	// 		for _, v := range docs {
+	// 			ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+	// 			_, err = mgm.Coll(&shared.ContributionData{}).InsertOne(ctx, v)
+	// 			if err != nil {
+	// 				writeErr, ok := err.(mongo.WriteException)
+	// 				if !ok {
+	// 					panic(err)
+	// 				}
+	// 				if !writeErr.HasErrorCode(11000) {
+	// 					panic(err)
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
 	return nil
 }
 
@@ -192,12 +205,12 @@ func DBGetPDEContributeRespond(address []string, limit int64, offset int64) ([]s
 	return result, nil
 }
 
-func DBGetPDEV3ContributeRespond(nftID, poolID string, limit int64, offset int64) ([]shared.ContributionData, error) {
+func DBGetPDEV3ContributeRespond(nftID string, limit int64, offset int64) ([]shared.ContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.ContributionData
-	filter := bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+	filter := bson.M{"nftid": bson.M{operator.Eq: nftID}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},
@@ -545,7 +558,7 @@ func DBGetPoolPairsByPairID(pairID string) ([]shared.PoolPairData, error) {
 	if pairID == "all" {
 		filter = bson.M{}
 	}
-	err := mgm.Coll(&shared.PoolPairData{}).SimpleFind(result, filter)
+	err := mgm.Coll(&shared.PoolPairData{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -555,7 +568,7 @@ func DBGetPoolPairsByPairID(pairID string) ([]shared.PoolPairData, error) {
 func DBGetPoolPairsByPoolID(poolID []string) ([]shared.PoolPairData, error) {
 	var result []shared.PoolPairData
 	filter := bson.M{"poolid": bson.M{operator.In: poolID}}
-	err := mgm.Coll(&shared.PoolPairData{}).SimpleFind(result, filter)
+	err := mgm.Coll(&shared.PoolPairData{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -564,14 +577,14 @@ func DBGetPoolPairsByPoolID(poolID []string) ([]shared.PoolPairData, error) {
 
 func DBGetPdexPairs() ([]shared.PairData, error) {
 	var result []shared.PairData
-	err := mgm.Coll(&shared.PairData{}).SimpleFind(result, bson.M{})
+	err := mgm.Coll(&shared.PairData{}).SimpleFind(&result, bson.M{})
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func DBUpdatePDEContribute(list []shared.ContributionData) error {
+func DBUpdatePDEContributeRespond(list []shared.ContributionData) error {
 	if len(list) == 0 {
 		return nil
 	}

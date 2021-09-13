@@ -183,3 +183,19 @@ type PdexV3PoolShareRespond struct {
 	Share        uint64
 	AMP          uint
 }
+
+type PdexV3ContributionData struct {
+	RequestTxs       []string
+	RespondTxs       []string
+	PairID           string
+	PoolID           string
+	PairHash         string
+	ContributeTokens []string
+	ContributeAmount []uint64
+	ReturnTokens     []string
+	ReturnAmount     []uint64
+	// Contributor      string
+	NFTID       string
+	RequestTime int64
+	Status      string
+}

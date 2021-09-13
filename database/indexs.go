@@ -257,6 +257,9 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "poolid", Value: bsonx.Int32(1)}, {Key: "pairid", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}},
+		},
 	}
 	_, err = mgm.Coll(&shared.PoolPairData{}).Indexes().CreateMany(context.Background(), poolPairModel)
 	if err != nil {

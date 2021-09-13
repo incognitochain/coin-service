@@ -31,10 +31,28 @@ func (pdexv3) ListPairs(c *gin.Context) {
 
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
-	result, err := database.DBGetPoolPairsByPairID(pair)
+	list, err := database.DBGetPoolPairsByPairID(pair)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
+	}
+	var result []PdexV3PoolDetail
+	for _, v := range list {
+		data := PdexV3PoolDetail{
+			PoolID:      v.PoolID,
+			Token1ID:    v.TokenID1,
+			Token2ID:    v.TokenID2,
+			Token1Value: v.Token1Amount,
+			Token2Value: v.Token2Amount,
+			AMP:         v.AMP,
+			Price:       v.Token1Amount / v.Token2Amount,
+		}
+
+		//TODO @yenle
+		// data.Volume
+		// data.PriceChange24h
+		// data.APY
+		result = append(result, data)
 	}
 	respond := APIRespond{
 		Result: result,
@@ -246,15 +264,43 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 func (pdexv3) ContributeHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	poolID := c.Query("poolid")
+	// poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
 
-	result, err := database.DBGetPDEV3ContributeRespond(nftID, poolID, int64(limit), int64(offset))
+	list, err := database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	var result []PdexV3ContributionData
 
+	for _, v := range list {
+		data := PdexV3ContributionData{
+			RequestTxs:       v.RequestTxs,
+			RespondTxs:       v.RespondTxs,
+			ContributeTokens: v.ContributeTokens,
+			ContributeAmount: v.ContributeAmount,
+			PairID:           v.PairID,
+			PairHash:         v.PairHash,
+			ReturnTokens:     v.ReturnTokens,
+			ReturnAmount:     v.ReturnAmount,
+			NFTID:            v.NFTID,
+			RequestTime:      v.RequestTime,
+			PoolID:           v.PoolID,
+			Status:           "waiting",
+		}
+		if len(v.RequestTxs) == 2 && len(v.RespondTxs) == 0 {
+			if v.ContributeTokens[0] != v.ContributeTokens[1] {
+				data.Status = "completed"
+			} else {
+				data.Status = "refunding"
+			}
+		}
+		if len(v.RespondTxs) > 0 {
+			data.Status = "refunded"
+		}
+		result = append(result, data)
+	}
 	respond := APIRespond{
 		Result: result,
 	}
@@ -482,6 +528,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 	var result PdexV3EstimateTradeRespond
 	//TODO @yenle
+	//TODO @lam
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
