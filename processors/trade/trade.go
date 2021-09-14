@@ -260,7 +260,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				WithdrawResponds: []string{tx.TxHash},
 				Status:           meta.Status,
 			}
-			cancelRespond = append(cancelTrades, order)
+			cancelRespond = append(cancelRespond, order)
 		}
 	}
 	return requestTrades, respondTrades, cancelTrades, cancelRespond, nil
