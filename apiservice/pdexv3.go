@@ -275,11 +275,21 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 	var result []PdexV3ContributionData
 
 	for _, v := range list {
+		ctrbAmount := []uint64{}
+		ctrbToken := []string{}
+		if len(v.RequestTxs) > len(v.ContributeAmount) {
+			ctrbAmount = append(ctrbAmount, v.ContributeAmount[0])
+			ctrbAmount = append(ctrbAmount, v.ContributeAmount[0])
+		}
+		if len(v.RequestTxs) > len(v.ContributeTokens) {
+			ctrbToken = append(ctrbToken, v.ContributeTokens[0])
+			ctrbToken = append(ctrbToken, v.ContributeTokens[0])
+		}
 		data := PdexV3ContributionData{
 			RequestTxs:       v.RequestTxs,
 			RespondTxs:       v.RespondTxs,
-			ContributeTokens: v.ContributeTokens,
-			ContributeAmount: v.ContributeAmount,
+			ContributeTokens: ctrbToken,
+			ContributeAmount: ctrbAmount,
 			PairID:           v.PairID,
 			PairHash:         v.PairHash,
 			ReturnTokens:     v.ReturnTokens,

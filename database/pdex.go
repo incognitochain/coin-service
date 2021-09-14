@@ -139,8 +139,8 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 	for _, order := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: order.NFTID}, "pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
 		update := bson.M{
-			"$addToSet": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
-			"$set":      bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime},
+			"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
+			"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime},
 		}
 		_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -439,7 +439,7 @@ func DBUpdateWithdrawTradeOrderReq(orders []shared.TradeOrderData) error {
 	for _, order := range orders {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$addToSet": bson.M{"withdrawtxs": bson.M{operator.Each: order.WithdrawTxs}, "withdrawtokens": bson.M{operator.Each: order.WithdrawTokens}, "withdrawamount": bson.M{operator.Each: order.WithdrawAmount}},
+			"$push": bson.M{"withdrawtxs": bson.M{operator.Each: order.WithdrawTxs}, "withdrawtokens": bson.M{operator.Each: order.WithdrawTokens}, "withdrawamount": bson.M{operator.Each: order.WithdrawAmount}},
 		}
 		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
 		if err != nil {
@@ -457,7 +457,7 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 	for _, order := range orders {
 		fitler := bson.M{"withdrawtxs": bson.M{operator.In: order.WithdrawTxs}}
 		update := bson.M{
-			"$addToSet": bson.M{"withdrawresponds": bson.M{operator.Each: order.WithdrawResponds}, "withdrawtxs": bson.M{operator.Each: order.WithdrawStatus}},
+			"$push": bson.M{"withdrawresponds": bson.M{operator.Each: order.WithdrawResponds}, "withdrawtxs": bson.M{operator.Each: order.WithdrawStatus}},
 		}
 		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
@@ -556,7 +556,7 @@ func DBUpdatePDEContributeRespond(list []shared.ContributionData) error {
 	for _, order := range list {
 		fitler := bson.M{"requesttxs": bson.M{operator.In: order.RequestTxs}}
 		update := bson.M{
-			"$addToSet": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "returntokens": bson.M{operator.Each: order.ReturnTokens}, "returnamount": bson.M{operator.Each: order.ReturnAmount}},
+			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "returntokens": bson.M{operator.Each: order.ReturnTokens}, "returnamount": bson.M{operator.Each: order.ReturnAmount}},
 		}
 		err := mgm.Coll(&shared.ContributionData{}).FindOneAndUpdate(ctx, fitler, update)
 		if err != nil {
@@ -574,8 +574,8 @@ func DBUpdatePDEWithdraw(list []shared.WithdrawContributionData) error {
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$addToSet": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "withdrawtokens": bson.M{operator.Each: order.WithdrawTokens}, "withdrawamount": bson.M{operator.Each: order.WithdrawAmount}},
-			"$set":      bson.M{"status": order.Status},
+			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "withdrawtokens": bson.M{operator.Each: order.WithdrawTokens}, "withdrawamount": bson.M{operator.Each: order.WithdrawAmount}},
+			"$set":  bson.M{"status": order.Status},
 		}
 		err := mgm.Coll(&shared.WithdrawContributionData{}).FindOneAndUpdate(ctx, fitler, update)
 		if err != nil {
@@ -593,8 +593,8 @@ func DBUpdatePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$addToSet": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "withdrawtokens": bson.M{operator.Each: order.WithdrawTokens}, "withdrawamount": bson.M{operator.Each: order.WithdrawAmount}},
-			"$set":      bson.M{"status": order.Status},
+			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "withdrawtokens": bson.M{operator.Each: order.WithdrawTokens}, "withdrawamount": bson.M{operator.Each: order.WithdrawAmount}},
+			"$set":  bson.M{"status": order.Status},
 		}
 		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update)
 		if err != nil {
