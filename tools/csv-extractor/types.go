@@ -53,7 +53,7 @@ func (*ContributeCSV) CSVheader(w io.Writer) {
 
 func (rm *ContributeCSV) CSVrow(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{strings.Join(rm.TxRequests, ","), strings.Join(rm.TxResponds, ","), rm.PairID, rm.TokenID1, rm.TokenID2, fmt.Sprintf("%v", rm.Token1Amount), fmt.Sprintf("%v", rm.Token2Amount), fmt.Sprintf("%v", rm.Token1AmountReturn), fmt.Sprintf("%v", rm.Token2AmountReturn), rm.User})
+	cw.Write([]string{strings.Join(rm.TxRequests, ";"), strings.Join(rm.TxResponds, ";"), rm.PairID, rm.TokenID1, rm.TokenID2, fmt.Sprintf("%v", rm.Token1Amount), fmt.Sprintf("%v", rm.Token2Amount), fmt.Sprintf("%v", rm.Token1AmountReturn), fmt.Sprintf("%v", rm.Token2AmountReturn), rm.User})
 	cw.Flush()
 }
 
@@ -76,6 +76,6 @@ func (*WithdrawCSV) CSVheader(w io.Writer) {
 
 func (rm *WithdrawCSV) CSVrow(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{rm.TxRequest, strings.Join(rm.TxResponds, ","), rm.TokenID1, rm.TokenID2, fmt.Sprintf("%v", rm.Token1Amount), fmt.Sprintf("%v", rm.Token2Amount), fmt.Sprintf("%v", rm.Share), rm.User})
+	cw.Write([]string{rm.TxRequest, strings.Join(rm.TxResponds, ";"), rm.TokenID1, rm.TokenID2, fmt.Sprintf("%v", rm.Token1Amount), fmt.Sprintf("%v", rm.Token2Amount), fmt.Sprintf("%v", rm.Share), rm.User})
 	cw.Flush()
 }

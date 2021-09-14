@@ -67,7 +67,7 @@ func processContribute() {
 		fmt.Println(err)
 	}
 	defer csvTradeFile.Close()
-	d := TradeCSV{}
+	d := ContributeCSV{}
 	d.CSVheader(csvTradeFile)
 	offset := int64(0)
 	for {
@@ -92,7 +92,7 @@ func processWithdraw() {
 		fmt.Println(err)
 	}
 	defer csvTradeFile.Close()
-	d := TradeCSV{}
+	d := WithdrawCSV{}
 	d.CSVheader(csvTradeFile)
 	offset := int64(0)
 	for {
