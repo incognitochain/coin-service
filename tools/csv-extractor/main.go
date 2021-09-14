@@ -201,13 +201,15 @@ func getTxContribute(offset int64) ([]ContributeCSV, error) {
 	for _, v := range ctrbSuccess {
 		data := ContributeCSV{
 			TxRequests:         []string{v.RequestTx},
-			TxResponds:         []string{v.RespondTx},
 			PairID:             v.PairID,
 			TokenID1:           v.TokenID,
 			Token1Amount:       v.Amount,
 			Token1AmountReturn: v.ReturnAmount,
 			User:               v.ContributorAddressStr,
 			status:             v.Status,
+		}
+		if v.RespondTx != "" {
+			data.TxResponds = append(data.TxResponds, v.RespondTx)
 		}
 		if d, ok := resultMap[data.PairID]; !ok {
 			resultMap[data.PairID] = data
@@ -222,9 +224,12 @@ func getTxContribute(offset int64) ([]ContributeCSV, error) {
 			if willAddReq {
 				d.TxRequests = append(d.TxRequests, v.RequestTx)
 			}
+			d.TokenID2 = data.TokenID1
 			d.Token2Amount = data.Token1Amount
 			d.Token2AmountReturn = data.Token1AmountReturn
-			d.TxResponds = append(d.TxResponds, v.RespondTx)
+			if v.RespondTx != "" {
+				d.TxResponds = append(d.TxResponds, v.RespondTx)
+			}
 			if v.Status == "matched" || v.Status == "matchedNReturned" {
 				d.status = v.Status
 			}
@@ -261,11 +266,13 @@ func getTxWithdraw(offset int64) ([]WithdrawCSV, error) {
 
 	for _, v := range wdSuccess {
 		data := WithdrawCSV{
-			TxRequest:  v.RequestTx,
-			TxResponds: v.RespondTx,
-			TokenID1:   v.TokenID1,
-			TokenID2:   v.TokenID2,
-			User:       v.ContributorAddressStr,
+			TxRequest:    v.RequestTx,
+			TxResponds:   v.RespondTx,
+			TokenID1:     v.TokenID1,
+			TokenID2:     v.TokenID2,
+			User:         v.ContributorAddressStr,
+			Token1Amount: v.Amount1,
+			Token2Amount: v.Amount2,
 		}
 		txs, err := database.DBGetTxByHash([]string{v.RequestTx})
 		if err != nil {
