@@ -604,6 +604,24 @@ func DBUpdatePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
 	return nil
 }
 
+func DBUpdatePDEPairListData(list []shared.PairData) error {
+	if len(list) == 0 {
+		return nil
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, pool := range list {
+		fitler := bson.M{"PairData": bson.M{operator.Eq: pool.PairID}}
+		update := bson.M{
+			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount},
+		}
+		_, err := mgm.Coll(&shared.PairData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
 	if len(list) == 0 {
 		return nil

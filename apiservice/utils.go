@@ -83,13 +83,15 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 		withdrawInfo := TradeWithdrawInfo{
 			Amount:  order.WithdrawAmount[idx],
 			TokenID: order.WithdrawTokens[idx],
-			Status:  order.WithdrawStatus[idx],
 		}
 		if len(order.WithdrawResponds) >= idx+1 {
 			withdrawInfo.RespondTx = order.WithdrawResponds[idx]
 			if order.WithdrawTokens[idx] == order.SellTokenID {
 				sellTokenWDAmount += order.WithdrawAmount[idx]
 			}
+			withdrawInfo.Status = order.WithdrawStatus[idx]
+		} else {
+			withdrawInfo.Status = 0
 		}
 		withdrawTxs[v] = withdrawInfo
 	}

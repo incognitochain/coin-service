@@ -514,21 +514,21 @@ func (model *TradeOrderData) Saving() error {
 type PairData struct {
 	mgm.DefaultModel `bson:",inline"`
 	PairID           string `json:"pairid" bson:"pairid"`
-	Token1           string `json:"token1" bson:"token1"`
-	Token2           string `json:"token2" bson:"token2"`
-	Token1Value      uint64 `json:"token1Value" bson:"token1Value"`
-	Token2Value      uint64 `json:"token2Value" bson:"token2Value"`
+	TokenID1         string `json:"tokenid1" bson:"tokenid1"`
+	TokenID2         string `json:"tokenid2" bson:"tokenid2"`
+	Token1Amount     uint64 `json:"token1amount" bson:"token1amount"`
+	Token2Amount     uint64 `json:"token2amount" bson:"token2amount"`
 	PoolCount        int    `json:"poolcount" bson:"poolcount"`
 }
 
 func NewPairData(pairid, token1, token2 string, poolcount int, token1value, token2value uint64) *PairData {
 	return &PairData{
-		PairID:      pairid,
-		Token1:      token1,
-		Token2:      token2,
-		Token1Value: token1value,
-		Token2Value: token2value,
-		PoolCount:   poolcount,
+		PairID:       pairid,
+		TokenID1:     token1,
+		TokenID2:     token2,
+		Token1Amount: token1value,
+		Token2Amount: token2value,
+		PoolCount:    poolcount,
 	}
 }
 

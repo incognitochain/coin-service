@@ -119,7 +119,12 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			StakingPoolsState: pdeStateV2.Reader().StakingPools(),
 		}
 
-		poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, err := processPoolPairs(stateV2, prevStateV2, beaconBestState.BeaconHeight)
+		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, err := processPoolPairs(stateV2, prevStateV2, beaconBestState.BeaconHeight)
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBUpdatePDEPairListData(pairDatas)
 		if err != nil {
 			panic(err)
 		}
@@ -187,7 +192,9 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
-func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, beaconHeight uint64) ([]shared.PoolPairData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolPairData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, error) {
+func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, beaconHeight uint64) ([]shared.PairData, []shared.PoolPairData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolPairData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, error) {
+	var pairList []shared.PairData
+	pairListMap := make(map[string][]shared.PoolPairData)
 	var poolPairs []shared.PoolPairData
 	var poolShare []shared.PoolShareData
 	var stakePools []shared.PoolStakeData
@@ -212,7 +219,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			Token2Amount: state.State.Token1RealAmount(),
 		}
 		poolPairs = append(poolPairs, poolData)
-
+		pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)
 		for shareID, share := range state.Shares {
 			tradingFee := make(map[string]uint64)
 			for k, v := range share.TradingFees() {
@@ -235,6 +242,20 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 			orderStatus = append(orderStatus, newOrder)
 		}
+	}
+
+	for pairID, pools := range pairListMap {
+		data := shared.PairData{
+			PairID:   pairID,
+			TokenID1: pools[0].TokenID1,
+			TokenID2: pools[0].TokenID2,
+		}
+
+		for _, v := range pools {
+			data.Token1Amount += v.Token1Amount
+			data.Token2Amount += v.Token2Amount
+		}
+		pairList = append(pairList, data)
 	}
 
 	//comparing with old state
@@ -357,5 +378,5 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		}
 	}
 
-	return poolPairs, poolShare, stakePools, poolStaking, orderStatus, poolPairsToBeDelete, poolShareToBeDelete, stakePoolsToBeDelete, poolStakingToBeDelete, orderStatusToBeDelete, nil
+	return pairList, poolPairs, poolShare, stakePools, poolStaking, orderStatus, poolPairsToBeDelete, poolShareToBeDelete, stakePoolsToBeDelete, poolStakingToBeDelete, orderStatusToBeDelete, nil
 }
