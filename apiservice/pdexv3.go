@@ -9,9 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
-	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
-	"github.com/incognitochain/incognito-chain/wallet"
 )
 
 type pdexv3 struct{}
@@ -166,8 +164,9 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 	nftid := c.Query("nftid")
 
 	if poolid == "" {
-		if otakey == "" {
-			errStr := "otakey can't be empty"
+		pubkey, err := extractPubkeyFromKey(otakey, true)
+		if err != nil {
+			errStr := err.Error()
 			respond := APIRespond{
 				Result: nil,
 				Error:  &errStr,
@@ -175,12 +174,6 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			c.JSON(http.StatusOK, respond)
 			return
 		}
-		wl, err := wallet.Base58CheckDeserialize(otakey)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		pubkey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 		txList, err := database.DBGetTxByMetaAndOTA(pubkey, metadata.Pdexv3TradeRequestMeta, int64(limit), int64(offset))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))

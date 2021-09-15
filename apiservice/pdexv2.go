@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
-	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/wallet"
 )
@@ -23,29 +22,45 @@ func APIGetTradeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	otakey := c.Query("otakey")
 	paymentkey := c.Query("paymentkey")
-
-	pubKeyStr := ""
-	pubKeyBytes := []byte{}
+	key := ""
+	// pubKeyStr := ""
+	// pubKeyBytes := []byte{}
+	// if otakey != "" {
+	// 	wl, err := wallet.Base58CheckDeserialize(otakey)
+	// 	if err != nil {
+	// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 		return
+	// 	}
+	// 	pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
+	// } else {
+	// 	if paymentkey == "" {
+	// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
+	// 		return
+	// 	}
+	// 	wl, err := wallet.Base58CheckDeserialize(paymentkey)
+	// 	if err != nil {
+	// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 		return
+	// 	}
+	// 	pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+	// }
+	// pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 	if otakey != "" {
-		wl, err := wallet.Base58CheckDeserialize(otakey)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
-	} else {
-		if paymentkey == "" {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
-			return
-		}
-		wl, err := wallet.Base58CheckDeserialize(paymentkey)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+		key = otakey
 	}
-	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
+	if paymentkey != "" {
+		key = paymentkey
+	}
+	pubKeyStr, err := extractPubkeyFromKey(key, false)
+	if err != nil {
+		errStr := err.Error()
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
+	}
 
 	list, err := database.DBGetTxTradeRespond(pubKeyStr, int64(limit), int64(offset))
 	if err != nil {

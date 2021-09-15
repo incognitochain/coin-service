@@ -531,16 +531,27 @@ func APIGetCoins(c *gin.Context) {
 			wl.KeySet.PaymentAddress.Pk = wl.KeySet.ReadonlyKey.Pk
 			viewKeySet = &wl.KeySet
 		} else {
-			if paymentkey == "" {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("paymentkey cant be empty")))
-				return
-			}
-			wl, err := wallet.Base58CheckDeserialize(paymentkey)
+			// if paymentkey == "" {
+			// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("paymentkey cant be empty")))
+			// 	return
+			// }
+			// wl, err := wallet.Base58CheckDeserialize(paymentkey)
+			// if err != nil {
+			// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			// 	return
+			// }
+			// pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
+			var err error
+			pubkey, err = extractPubkeyFromKey(paymentkey, false)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				errStr := err.Error()
+				respond := APIRespond{
+					Result: nil,
+					Error:  &errStr,
+				}
+				c.JSON(http.StatusOK, respond)
 				return
 			}
-			pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
 		}
 
 		coinListV1, err := database.DBGetCoinV1ByPubkey(tokenid, pubkey, int64(offset), int64(limit))

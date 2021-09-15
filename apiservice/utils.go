@@ -5,8 +5,10 @@ import (
 	"sync"
 
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/transaction"
+	"github.com/incognitochain/incognito-chain/wallet"
 )
 
 func buildGinErrorRespond(err error) *APIRespond {
@@ -125,4 +127,30 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 		statusCode = 3
 	}
 	return matchedAmount, statusCode, status, withdrawTxs, nil
+}
+
+func extractPubkeyFromKey(key string, otakeyOnly bool) (string, error) {
+	var result string
+	pubkey := []byte{}
+	if key == "" {
+		return result, errors.New("key can't be empty")
+	}
+	wl, err := wallet.Base58CheckDeserialize(key)
+	if err != nil {
+		return result, err
+	}
+	if wl.KeySet.OTAKey.GetPublicSpend() == nil {
+		if otakeyOnly == true {
+			return result, errors.New("key incorrect format")
+		}
+	} else {
+		pubkey = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
+	}
+	if wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS() == nil {
+		return result, errors.New("key incorrect format")
+	} else {
+		pubkey = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+	}
+	result = base58.EncodeCheck(pubkey)
+	return result, nil
 }

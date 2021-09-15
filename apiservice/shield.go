@@ -1,14 +1,11 @@
 package apiservice
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
-	"github.com/incognitochain/incognito-chain/common/base58"
-	"github.com/incognitochain/incognito-chain/wallet"
 )
 
 func APIGetUnshieldHistory(c *gin.Context) {
@@ -21,18 +18,28 @@ func APIGetUnshieldHistory(c *gin.Context) {
 	}
 	paymentkey := c.Query("paymentkey")
 
-	pubKeyStr := ""
-	if paymentkey == "" {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
-		return
-	}
-	wl, err := wallet.Base58CheckDeserialize(paymentkey)
+	// pubKeyStr := ""
+	// if paymentkey == "" {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
+	// 	return
+	// }
+	// wl, err := wallet.Base58CheckDeserialize(paymentkey)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
+	// pubKeyBytes := wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
+	// pubKeyStr = base58.EncodeCheck(pubKeyBytes)
+	pubKeyStr, err := extractPubkeyFromKey(paymentkey, false)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		errStr := err.Error()
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
 		return
 	}
-	pubKeyBytes := wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
-	pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 	txDataList, err := database.DBGetTxUnshield(pubKeyStr, tokenID, int64(limit), int64(offset))
 	if err != nil {
 		errStr := err.Error()
@@ -60,17 +67,28 @@ func APIGetShieldHistory(c *gin.Context) {
 	tokenID := c.Query("tokenid")
 	paymentkey := c.Query("paymentkey")
 
-	pubKeyStr := ""
-	if paymentkey == "" {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
-		return
-	}
-	wl, err := wallet.Base58CheckDeserialize(paymentkey)
+	// pubKeyStr := ""
+	// if paymentkey == "" {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
+	// 	return
+	// }
+	// wl, err := wallet.Base58CheckDeserialize(paymentkey)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
+	// pubKeyStr = base58.EncodeCheck(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
+
+	pubKeyStr, err := extractPubkeyFromKey(paymentkey, false)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		errStr := err.Error()
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
 		return
 	}
-	pubKeyStr = base58.EncodeCheck(wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS())
 
 	txShieldPairlist, err := database.DBGetTxShield(pubKeyStr, tokenID, int64(limit), int64(offset))
 	if err != nil {

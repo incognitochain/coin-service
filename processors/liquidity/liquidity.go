@@ -227,18 +227,19 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				RespondTxs:   []string{tx.TxHash},
 				ReturnTokens: []string{tokenIDStr},
 				ReturnAmount: []uint64{amount},
-				// Status:       md.Status(),
 			}
 			contributeRespondDatas = append(contributeRespondDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawLiquidityRequest)
 			data := shared.WithdrawContributionData{
-				RequestTx:   tx.TxHash,
-				NFTID:       md.NftID(),
-				RespondTxs:  []string{tx.TxHash},
-				PoolID:      md.PoolPairID(),
-				ShareAmount: md.ShareAmount(),
-				Status:      0,
+				RequestTx:      tx.TxHash,
+				NFTID:          md.NftID(),
+				PoolID:         md.PoolPairID(),
+				ShareAmount:    md.ShareAmount(),
+				Status:         0,
+				RespondTxs:     []string{},
+				WithdrawTokens: []string{},
+				WithdrawAmount: []uint64{},
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
@@ -444,12 +445,15 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 		case metadata.PDEWithdrawalRequestMeta:
 			md := txDetail.GetMetadata().(*metadata.PDEWithdrawalRequest)
 			data := shared.WithdrawContributionData{
-				RequestTx:   tx.TxHash,
-				ShareAmount: md.WithdrawalShareAmt,
-				RequestTime: tx.Locktime,
-				Status:      0,
+				RequestTx:      tx.TxHash,
+				ShareAmount:    md.WithdrawalShareAmt,
+				RequestTime:    tx.Locktime,
+				Status:         0,
+				RespondTxs:     []string{},
+				WithdrawTokens: []string{},
+				WithdrawAmount: []uint64{},
 			}
-			withdrawRespondDatas = append(withdrawRespondDatas, data)
+			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadata.PDEWithdrawalResponseMeta:
 			md := txDetail.GetMetadata().(*metadata.PDEWithdrawalResponse)
 			requestTx := md.RequestedTxID.String()
