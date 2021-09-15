@@ -27,12 +27,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	processTrade()
-	fmt.Println("done processTrade")
+	// processTrade()
+	// fmt.Println("done processTrade")
 	processContribute()
 	fmt.Println("done processContribute")
-	processWithdraw()
-	fmt.Println("done processWithdraw")
+	// processWithdraw()
+	// fmt.Println("done processWithdraw")
 }
 
 func processTrade() {
@@ -208,10 +208,11 @@ func getTxContribute(offset int64) ([]ContributeCSV, error) {
 			User:               v.ContributorAddressStr,
 			status:             v.Status,
 		}
-		if v.RespondTx != "" {
-			data.TxResponds = append(data.TxResponds, v.RespondTx)
-		}
+
 		if d, ok := resultMap[data.PairID]; !ok {
+			if v.RespondTx != "" {
+				data.TxResponds = append(data.TxResponds, v.RespondTx)
+			}
 			resultMap[data.PairID] = data
 		} else {
 			willAddReq := true
@@ -224,9 +225,16 @@ func getTxContribute(offset int64) ([]ContributeCSV, error) {
 			if willAddReq {
 				d.TxRequests = append(d.TxRequests, v.RequestTx)
 			}
-			d.TokenID2 = data.TokenID1
-			d.Token2Amount = data.Token1Amount
-			d.Token2AmountReturn = data.Token1AmountReturn
+			if d.TokenID1 == data.TokenID1 {
+				d.TokenID1 = data.TokenID1
+				d.Token1Amount = data.Token1Amount
+				d.Token1AmountReturn = data.Token1AmountReturn
+			} else {
+				d.TokenID2 = data.TokenID1
+				d.Token2Amount = data.Token1Amount
+				d.Token2AmountReturn = data.Token1AmountReturn
+			}
+
 			if v.RespondTx != "" {
 				d.TxResponds = append(d.TxResponds, v.RespondTx)
 			}
