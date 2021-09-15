@@ -199,3 +199,12 @@ type PdexV3ContributionData struct {
 	RequestTime int64
 	Status      string
 }
+
+type PdexV3PairData struct {
+	PairID       string
+	TokenID1     string
+	TokenID2     string
+	Token1Amount uint64
+	Token2Amount uint64
+	PoolCount    int
+}

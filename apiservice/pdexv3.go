@@ -15,10 +15,22 @@ import (
 type pdexv3 struct{}
 
 func (pdexv3) ListPairs(c *gin.Context) {
-	result, err := database.DBGetPdexPairs()
+	var result []PdexV3PairData
+	list, err := database.DBGetPdexPairs()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
+	}
+	for _, v := range list {
+		data := PdexV3PairData{
+			PairID:       v.PairID,
+			TokenID1:     v.TokenID1,
+			TokenID2:     v.TokenID2,
+			Token1Amount: v.Token1Amount,
+			Token2Amount: v.Token2Amount,
+			PoolCount:    v.PoolCount,
+		}
+		result = append(result, data)
 	}
 	respond := APIRespond{
 		Result: result,
