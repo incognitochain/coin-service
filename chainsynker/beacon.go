@@ -225,14 +225,16 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 
 	for poolID, state := range statev2.PoolPairs {
 		poolData := shared.PoolPairData{
-			Version:      2,
-			PoolID:       poolID,
-			PairID:       state.State.Token0ID().String() + "-" + state.State.Token1ID().String(),
-			AMP:          state.State.Amplifier(),
-			TokenID1:     state.State.Token0ID().String(),
-			TokenID2:     state.State.Token1ID().String(),
-			Token1Amount: state.State.Token0RealAmount(),
-			Token2Amount: state.State.Token1RealAmount(),
+			Version:        2,
+			PoolID:         poolID,
+			PairID:         state.State.Token0ID().String() + "-" + state.State.Token1ID().String(),
+			AMP:            state.State.Amplifier(),
+			TokenID1:       state.State.Token0ID().String(),
+			TokenID2:       state.State.Token1ID().String(),
+			Token1Amount:   state.State.Token0RealAmount(),
+			Token2Amount:   state.State.Token1RealAmount(),
+			Virtual1Amount: state.State.Token0VirtualAmount().Uint64(),
+			Virtual2Amount: state.State.Token1VirtualAmount().Uint64(),
 		}
 		poolPairs = append(poolPairs, poolData)
 		pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)

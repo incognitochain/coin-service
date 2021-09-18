@@ -321,7 +321,8 @@ func updateTradeStatus() error {
 		listToUpdate := []shared.TradeOrderData{}
 		for _, v := range list {
 			data := shared.TradeOrderData{
-				RequestTx: v.RequestTx}
+				RequestTx:     v.RequestTx,
+				WithdrawInfos: make(map[string]shared.TradeOrderWithdrawInfo)}
 			for _, wdtx := range v.WithdrawTxs {
 				a := v.WithdrawInfos[wdtx]
 				i, err := database.DBGetBeaconInstructionByTx(wdtx)
@@ -335,7 +336,6 @@ func updateTradeStatus() error {
 					a.IsRejected = true
 					data.WithdrawInfos[wdtx] = a
 					listToUpdate = append(listToUpdate, data)
-					panic("true")
 				}
 			}
 

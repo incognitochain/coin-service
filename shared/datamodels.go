@@ -562,6 +562,8 @@ type PoolPairData struct {
 	AMP              uint   `json:"amp" bson:"amp"`
 	Token1Amount     uint64 `json:"token1amount" bson:"token1amount"`
 	Token2Amount     uint64 `json:"token2amount" bson:"token2amount"`
+	Virtual1Amount   uint64 `json:"virtual1amount" bson:"virtual1amount"`
+	Virtual2Amount   uint64 `json:"virtual2amount" bson:"virtual2amount"`
 	Version          int    `json:"version" bson:"version"`
 }
 

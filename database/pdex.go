@@ -420,8 +420,8 @@ func DBUpdateTradeOrder(orders []shared.TradeOrderData) error {
 	for _, order := range orders {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$addToSet": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}},
-			"$set":      bson.M{"status": order.Status},
+			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "respondtokens": bson.M{operator.Each: order.RespondTokens}, "respondamount": bson.M{operator.Each: order.RespondAmount}},
+			"$set":  bson.M{"status": order.Status},
 		}
 		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
 		if err != nil {
@@ -631,7 +631,7 @@ func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
 	for _, pool := range list {
 		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
 		update := bson.M{
-			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "amp": pool.AMP, "version": pool.Version},
+			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "virtual1amount": pool.Virtual1Amount, "virtual2amount": pool.Virtual2Amount, "amp": pool.AMP, "version": pool.Version},
 		}
 		_, err := mgm.Coll(&shared.PoolPairData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -1243,7 +1243,7 @@ func DBGetPendingWithdrawOrder(limit int64, offset int64) ([]shared.TradeOrderDa
 		limit = int64(10000)
 	}
 	var result []shared.TradeOrderData
-	filter := bson.M{"withdrawinfos": bson.M{operator.ElemMatch: bson.M{"responds": bson.M{operator.Eq: nil}}}}
+	filter := bson.M{"withdrawinfos.$.responds": bson.M{operator.Eq: nil}, "withdrawtxs": bson.M{operator.Not: bson.M{operator.Size: 0}}, "withdrawinfos.$.isrejected": bson.M{operator.Eq: false}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"_id", 1}},

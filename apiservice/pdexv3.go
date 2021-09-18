@@ -49,13 +49,15 @@ func (pdexv3) ListPools(c *gin.Context) {
 	var result []PdexV3PoolDetail
 	for _, v := range list {
 		data := PdexV3PoolDetail{
-			PoolID:      v.PoolID,
-			Token1ID:    v.TokenID1,
-			Token2ID:    v.TokenID2,
-			Token1Value: v.Token1Amount,
-			Token2Value: v.Token2Amount,
-			AMP:         v.AMP,
-			Price:       v.Token1Amount / v.Token2Amount,
+			PoolID:        v.PoolID,
+			Token1ID:      v.TokenID1,
+			Token2ID:      v.TokenID2,
+			Token1Value:   v.Token1Amount,
+			Token2Value:   v.Token2Amount,
+			Virtual1Value: v.Virtual1Amount,
+			Virtual2Value: v.Virtual2Amount,
+			AMP:           v.AMP,
+			Price:         v.Token1Amount / v.Token2Amount,
 		}
 
 		//TODO @yenle
@@ -562,13 +564,15 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 	var result []PdexV3PoolDetail
 	for _, v := range list {
 		data := PdexV3PoolDetail{
-			PoolID:      v.PoolID,
-			Token1ID:    v.TokenID1,
-			Token2ID:    v.TokenID2,
-			Token1Value: v.Token1Amount,
-			Token2Value: v.Token2Amount,
-			AMP:         v.AMP,
-			Price:       v.Token1Amount / v.Token2Amount,
+			PoolID:        v.PoolID,
+			Token1ID:      v.TokenID1,
+			Token2ID:      v.TokenID2,
+			Token1Value:   v.Token1Amount,
+			Token2Value:   v.Token2Amount,
+			Virtual1Value: v.Virtual1Amount,
+			Virtual2Value: v.Virtual2Amount,
+			AMP:           v.AMP,
+			Price:         v.Token1Amount / v.Token2Amount,
 		}
 
 		//TODO @yenle

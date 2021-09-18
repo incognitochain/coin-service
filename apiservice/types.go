@@ -102,6 +102,8 @@ type PdexV3PoolDetail struct {
 	Token2ID       string
 	Token1Value    uint64
 	Token2Value    uint64
+	Virtual1Value  uint64
+	Virtual2Value  uint64
 	Share          uint64
 	AMP            uint
 	Price          uint64
