@@ -81,40 +81,48 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 		sellTokenAmount = int64(limitOrderStatus.Left)
 	}
 
-	for idx, v := range order.WithdrawTxs {
-		withdrawInfo := TradeWithdrawInfo{
-			Amount:  order.WithdrawAmount[idx],
-			TokenID: order.WithdrawTokens[idx],
+	for wdRQtx, v := range order.WithdrawInfos {
+		data := TradeWithdrawInfo{
+			TokenIDs: v.TokenIDs,
+			Responds: make(map[string]struct {
+				Amount    uint64
+				Status    int
+				RespondTx string
+			}),
+			IsRejected: v.IsRejected,
 		}
-		if len(order.WithdrawResponds) >= idx+1 {
-			withdrawInfo.RespondTx = order.WithdrawResponds[idx]
-			if order.WithdrawTokens[idx] == order.SellTokenID {
-				sellTokenWDAmount += order.WithdrawAmount[idx]
+		if !v.IsRejected {
+			for idx, d := range v.RespondTokens {
+				rp := data.Responds[d]
+				rp.Amount = v.RespondAmount[idx]
+				rp.RespondTx = v.Responds[idx]
+				rp.Status = v.Status[idx]
+				data.Responds[d] = rp
+
+				if d == order.SellTokenID {
+					sellTokenWDAmount += rp.Amount
+				}
 			}
-			withdrawInfo.Status = order.WithdrawStatus[idx]
-		} else {
-			withdrawInfo.Status = 0
 		}
-		withdrawTxs[v] = withdrawInfo
+
+		if len(v.TokenIDs) > len(v.RespondTokens) {
+			status = "withdrawing"
+		}
+		withdrawTxs[wdRQtx] = data
 	}
 
 	sellTokenAmount += int64(sellTokenWDAmount)
 	matchedAmount = order.Amount - uint64(sellTokenAmount)
-	if len(order.WithdrawTxs) > 0 {
-		if len(order.WithdrawTxs) > len(order.WithdrawResponds) {
-			status = "withdrawing"
-		}
+	if sellTokenAmount == 0 {
+		status = "success"
 	} else {
-		if sellTokenAmount == 0 {
-			status = "success"
+		if len(order.RespondTxs) == 0 {
+			status = "ongoing"
 		} else {
-			if len(order.RespondTxs) == 0 {
-				status = "ongoing"
-			} else {
-				status = "reject"
-			}
+			status = "reject"
 		}
 	}
+	// }
 	statusCode := 0
 	switch status {
 	case "ongoing":

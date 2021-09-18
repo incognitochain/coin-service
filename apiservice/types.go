@@ -143,10 +143,13 @@ type TradeDataRespond struct {
 }
 
 type TradeWithdrawInfo struct {
-	Amount    uint64
-	TokenID   string
-	Status    int
-	RespondTx string
+	TokenIDs   []string
+	IsRejected bool
+	Responds   map[string]struct {
+		Amount    uint64
+		Status    int
+		RespondTx string
+	}
 }
 
 type PdexV3WithdrawRespond struct {
@@ -207,4 +210,25 @@ type PdexV3PairData struct {
 	Token1Amount uint64
 	Token2Amount uint64
 	PoolCount    int
+}
+
+type PdexV3StakingPoolHistoryData struct {
+	IsStaking   bool
+	RequestTx   string
+	RespondTx   string
+	Status      int
+	TokenID     string
+	NFTID       string
+	Amount      uint64
+	Requesttime int64
+}
+
+type PdexV3StakePoolRewardHistoryData struct {
+	RequestTx   string
+	RespondTx   string
+	Status      int
+	TokenID     string
+	NFTID       string
+	Amount      uint64
+	Requesttime int64
 }

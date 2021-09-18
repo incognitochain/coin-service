@@ -1,9 +1,11 @@
 package chainsynker
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
@@ -14,6 +16,10 @@ import (
 	"github.com/incognitochain/incognito-chain/config"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
+	instruction "github.com/incognitochain/incognito-chain/instruction/pdexv3"
+	"github.com/incognitochain/incognito-chain/metadata"
+	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
+	metadataPdexv3 "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
@@ -120,6 +126,16 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		}
 
 		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, err := processPoolPairs(stateV2, prevStateV2, beaconBestState.BeaconHeight)
+		if err != nil {
+			panic(err)
+		}
+
+		instructions, err := extractBeaconInstruction(beaconBestState.BestBlock.Body.Instructions)
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBSaveInstructionBeacon(instructions)
 		if err != nil {
 			panic(err)
 		}
@@ -379,4 +395,162 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 	}
 
 	return pairList, poolPairs, poolShare, stakePools, poolStaking, orderStatus, poolPairsToBeDelete, poolShareToBeDelete, stakePoolsToBeDelete, poolStakingToBeDelete, orderStatusToBeDelete, nil
+}
+
+func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData, error) {
+	var result []shared.InstructionBeaconData
+	for _, inst := range insts {
+		data := shared.InstructionBeaconData{}
+
+		metadataType, err := strconv.Atoi(inst[0])
+		if err != nil {
+			continue // Not error, just not PDE instructions
+		}
+		data.Metatype = inst[0]
+		switch metadataType {
+		// case metadata.PDEContributionMeta:
+
+		// case metadata.PDEPRVRequiredContributionRequestMeta:
+
+		// case metadata.PDETradeRequestMeta:
+
+		// case metadata.PDECrossPoolTradeRequestMeta:
+
+		case metadata.PDEWithdrawalRequestMeta:
+			contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
+			if err != nil {
+				panic(err)
+			}
+			var withdrawalRequestAction metadata.PDEWithdrawalRequestAction
+			err = json.Unmarshal(contentBytes, &withdrawalRequestAction)
+			if err != nil {
+				panic(err)
+			}
+			data.Content = inst[3]
+			data.Status = inst[2]
+			data.TxRequest = withdrawalRequestAction.TxReqID.String()
+		case metadata.PDEFeeWithdrawalRequestMeta:
+			contentStr := inst[3]
+			contentBytes, err := base64.StdEncoding.DecodeString(contentStr)
+			if err != nil {
+				panic(err)
+			}
+			var feeWithdrawalRequestAction metadata.PDEFeeWithdrawalRequestAction
+			err = json.Unmarshal(contentBytes, &feeWithdrawalRequestAction)
+			if err != nil {
+				panic(err)
+			}
+			data.Content = inst[3]
+			data.Status = inst[2]
+			data.TxRequest = feeWithdrawalRequestAction.TxReqID.String()
+
+		// case metadata.PDETradingFeesDistributionMeta:
+
+		// case metadataCommon.Pdexv3MintBlockRewardMeta:
+
+		// case metadataCommon.Pdexv3UserMintNftRequestMeta:
+
+		// case metadataCommon.Pdexv3ModifyParamsMeta:
+
+		// case metadataCommon.Pdexv3AddLiquidityRequestMeta:
+
+		case metadataCommon.Pdexv3WithdrawLiquidityRequestMeta:
+			data.Status = inst[1]
+			data.Content = inst[2]
+			switch inst[1] {
+			case common.PDEWithdrawalRejectedChainStatus:
+				rejectWithdrawLiquidity := instruction.NewRejectWithdrawLiquidity()
+				err := rejectWithdrawLiquidity.FromStringSlice(inst)
+				if err != nil {
+					panic(err)
+				}
+				data.TxRequest = rejectWithdrawLiquidity.TxReqID().String()
+			case common.PDEWithdrawalAcceptedChainStatus:
+				acceptWithdrawLiquidity := instruction.NewAcceptWithdrawLiquidity()
+				err := acceptWithdrawLiquidity.FromStringSlice(inst)
+				if err != nil {
+					panic(err)
+				}
+				data.TxRequest = acceptWithdrawLiquidity.TxReqID().String()
+			}
+		// case metadataCommon.Pdexv3TradeRequestMeta:
+
+		case metadataCommon.Pdexv3WithdrawLPFeeRequestMeta:
+			data.Status = inst[2]
+			data.Content = inst[3]
+			var actionData metadataPdexv3.WithdrawalLPFeeContent
+			err := json.Unmarshal([]byte(inst[3]), &actionData)
+			if err != nil {
+				panic(err)
+			}
+			data.TxRequest = actionData.TxReqID.String()
+		// case metadataCommon.Pdexv3WithdrawProtocolFeeRequestMeta:
+		// 	data.Status = inst[2]
+		// 	data.Content = inst[3]
+		// 	var actionData metadataPdexv3.WithdrawalProtocolFeeContent
+		// 	err := json.Unmarshal([]byte(inst[3]), &actionData)
+		// 	if err != nil {
+		// 		panic(err)
+		// 	}
+		// 	data.TxRequest = actionData.TxReqID.String()
+		// case metadataCommon.Pdexv3AddOrderRequestMeta:
+
+		case metadataCommon.Pdexv3WithdrawOrderRequestMeta:
+			data.Status = inst[1]
+			data.Content = inst[2]
+			switch inst[1] {
+			case strconv.Itoa(metadataPdexv3.WithdrawOrderAcceptedStatus):
+				currentOrder := &instruction.Action{Content: &metadataPdexv3.AcceptedWithdrawOrder{}}
+				err := currentOrder.FromStringSlice(inst)
+				if err != nil {
+					panic(err)
+				}
+				data.TxRequest = currentOrder.RequestTxID().String()
+			case strconv.Itoa(metadataPdexv3.WithdrawOrderRejectedStatus):
+				currentOrder := &instruction.Action{Content: &metadataPdexv3.RejectedWithdrawOrder{}}
+				err := currentOrder.FromStringSlice(inst)
+				if err != nil {
+					panic(err)
+				}
+				data.TxRequest = currentOrder.RequestTxID().String()
+			}
+		// case metadataCommon.Pdexv3DistributeStakingRewardMeta:
+
+		// case metadataCommon.Pdexv3StakingRequestMeta:
+
+		case metadataCommon.Pdexv3UnstakingRequestMeta:
+			data.Status = inst[1]
+			data.Content = inst[2]
+			switch inst[1] {
+			case common.Pdexv3AcceptUnstakingStatus:
+				acceptInst := instruction.NewAcceptUnstaking()
+				err := acceptInst.FromStringSlice(inst)
+				if err != nil {
+					panic(err)
+				}
+				data.TxRequest = acceptInst.TxReqID().String()
+			case common.Pdexv3RejectUnstakingStatus:
+				rejectInst := instruction.NewRejectUnstaking()
+				err := rejectInst.FromStringSlice(inst)
+				if err != nil {
+					panic(err)
+				}
+				data.TxRequest = rejectInst.TxReqID().String()
+			}
+		case metadataCommon.Pdexv3WithdrawStakingRewardRequestMeta:
+			var actionData metadataPdexv3.WithdrawalStakingRewardContent
+			err := json.Unmarshal([]byte(inst[3]), &actionData)
+			if err != nil {
+				panic(err)
+			}
+			data.Status = inst[2]
+			data.Content = inst[3]
+			data.TxRequest = actionData.TxReqID.String()
+		default:
+			continue
+		}
+
+		result = append(result, data)
+	}
+	return result, nil
 }

@@ -233,6 +233,9 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
 		},
+		{
+			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}},
+		},
 	}
 	_, err = mgm.Coll(&shared.WithdrawContributionData{}).Indexes().CreateMany(context.Background(), wdCtrbModel)
 	if err != nil {
@@ -246,6 +249,9 @@ func DBCreateLiquidityIndex() error {
 
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}},
 		},
 	}
 	_, err = mgm.Coll(&shared.WithdrawContributionFeeData{}).Indexes().CreateMany(context.Background(), wdFeeCtrbModel)
@@ -355,6 +361,21 @@ func DBCreateProcessorIndex() error {
 		},
 	}
 	_, err := mgm.Coll(&shared.ProcessorState{}).Indexes().CreateMany(context.Background(), processorModal)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DBCreateInstructionIndex() error {
+	instructionModal := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "txrequest", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err := mgm.Coll(&shared.InstructionBeaconData{}).Indexes().CreateMany(context.Background(), instructionModal)
 	if err != nil {
 		return err
 	}

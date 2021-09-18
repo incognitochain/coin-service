@@ -44,12 +44,11 @@ func StartProcessor() {
 		}
 		log.Println("start processing LQ with", len(txList), "txs")
 
-		contribRQData, contribRPData, withdrawRQDatas, withdrawRPDatas, withdrawFeeRQDatas, withdrawFeeRPDatas, stakeRQDatas, stakeRPDatas, stakeRewardRQDatas, stakeRewardRPDatas, err := processAddLiquidity(txList)
+		contribRQData, contribRPData, withdrawRQDatas, withdrawRPDatas, withdrawFeeRQDatas, withdrawFeeRPDatas, stakeRQDatas, stakeRPDatas, stakeRewardRQDatas, stakeRewardRPDatas, err := processLiquidity(txList)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("contribRQData", contribRQData)
-		fmt.Println()
+
 		err = database.DBSavePDEContribute(contribRQData)
 		if err != nil {
 			panic(err)
@@ -109,6 +108,10 @@ func StartProcessor() {
 				panic(err)
 			}
 		}
+		err = updateLiquidityStatus()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -160,7 +163,7 @@ func loadState() error {
 	return json.UnmarshalFromString(result.State, &currentState)
 }
 
-func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shared.ContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionFeeData, []shared.WithdrawContributionFeeData, []shared.PoolStakeHistoryData, []shared.PoolStakeHistoryData, []shared.PoolStakeRewardHistoryData, []shared.PoolStakeRewardHistoryData, error) {
+func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shared.ContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionData, []shared.WithdrawContributionFeeData, []shared.WithdrawContributionFeeData, []shared.PoolStakeHistoryData, []shared.PoolStakeHistoryData, []shared.PoolStakeRewardHistoryData, []shared.PoolStakeRewardHistoryData, error) {
 
 	var contributeRequestDatas []shared.ContributionData
 	var contributeRespondDatas []shared.ContributionData
@@ -309,7 +312,7 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 				WithdrawAmount: []uint64{amount},
 				Status:         1,
 			}
-			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
+			withdrawFeeRespondDatas = append(withdrawFeeRespondDatas, data)
 		case metadataCommon.Pdexv3StakingRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.StakingRequest)
 			data := shared.PoolStakeHistoryData{
@@ -505,4 +508,139 @@ func processAddLiquidity(txList []shared.TxData) ([]shared.ContributionData, []s
 	}
 
 	return contributeRequestDatas, contributeRespondDatas, withdrawRequestDatas, withdrawRespondDatas, withdrawFeeRequestDatas, withdrawFeeRespondDatas, stakingRequestDatas, stakingRespondDatas, stakingRewardRequestDatas, stakingRewardRespondDatas, nil
+}
+
+func updateLiquidityStatus() error {
+	limit := int64(10000)
+	offset := int64(0)
+
+	for {
+		list, err := database.DBGetPendingLiquidityWithdraw(limit, offset)
+		if err != nil {
+			return err
+		}
+		if len(list) == 0 {
+			break
+		}
+		offset += int64(len(list))
+		listToUpdate := []shared.WithdrawContributionData{}
+		for _, v := range list {
+			data := shared.WithdrawContributionData{
+				RequestTx: v.RequestTx,
+			}
+			i, err := database.DBGetBeaconInstructionByTx(v.RequestTx)
+			if i == nil && err == nil {
+				continue
+			}
+			if err != nil {
+				panic(err)
+			}
+			if i.Status == "rejected" {
+				data.Status = 2
+				listToUpdate = append(listToUpdate, data)
+			}
+		}
+		err = database.DBUpdatePDELiquidityWithdrawStatus(listToUpdate)
+		if err != nil {
+			return err
+		}
+	}
+
+	offset = 0
+	for {
+		list, err := database.DBGetPendingLiquidityWithdrawFee(limit, offset)
+		if err != nil {
+			return err
+		}
+		if len(list) == 0 {
+			break
+		}
+		offset += int64(len(list))
+		listToUpdate := []shared.WithdrawContributionFeeData{}
+		for _, v := range list {
+			data := shared.WithdrawContributionFeeData{
+				RequestTx: v.RequestTx}
+			i, err := database.DBGetBeaconInstructionByTx(v.RequestTx)
+			if i == nil && err == nil {
+				continue
+			}
+			if err != nil {
+				panic(err)
+			}
+			if i.Status == "rejected" {
+				data.Status = 2
+				listToUpdate = append(listToUpdate, data)
+			}
+		}
+		err = database.DBUpdatePDELiquidityWithdrawFeeStatus(listToUpdate)
+		if err != nil {
+			return err
+		}
+	}
+
+	offset = 0
+	for {
+		list, err := database.DBGetPendingUnstakingPool(limit, offset)
+		if err != nil {
+			return err
+		}
+		if len(list) == 0 {
+			break
+		}
+		offset += int64(len(list))
+		listToUpdate := []shared.PoolStakeHistoryData{}
+		for _, v := range list {
+			data := shared.PoolStakeHistoryData{
+				RequestTx: v.RequestTx}
+			i, err := database.DBGetBeaconInstructionByTx(v.RequestTx)
+			if i == nil && err == nil {
+				continue
+			}
+			if err != nil {
+				panic(err)
+			}
+			if i.Status == "rejected" {
+				data.Status = 2
+				listToUpdate = append(listToUpdate, data)
+			}
+		}
+		err = database.DBUpdatePDEUnstakingPoolStatus(listToUpdate)
+		if err != nil {
+			return err
+		}
+	}
+
+	offset = 0
+	for {
+		list, err := database.DBGetPendingWithdrawRewardStakingPool(limit, offset)
+		if err != nil {
+			return err
+		}
+		if len(list) == 0 {
+			break
+		}
+		offset += int64(len(list))
+		listToUpdate := []shared.PoolStakeRewardHistoryData{}
+		for _, v := range list {
+			data := shared.PoolStakeRewardHistoryData{
+				RequestTx: v.RequestTx}
+			i, err := database.DBGetBeaconInstructionByTx(v.RequestTx)
+			if i == nil && err == nil {
+				continue
+			}
+			if err != nil {
+				panic(err)
+			}
+			if i.Status == "rejected" {
+				data.Status = 2
+				listToUpdate = append(listToUpdate, data)
+			}
+		}
+		err = database.DBUpdatePDEWithdrawRewardStakingStatus(listToUpdate)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

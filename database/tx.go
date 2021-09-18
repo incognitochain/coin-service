@@ -57,7 +57,7 @@ func DBUpdateTxPubkeyReceiverAndTokenID(txHashes []string, pubKey, tokenID strin
 	docs := []interface{}{}
 	for _ = range txHashes {
 		update := bson.M{
-			"$addToSet": bson.M{"pubkeyreceivers": bson.M{operator.Each: pubKey}},
+			"$addToSet": bson.M{"pubkeyreceivers": pubKey},
 			"$set":      bson.M{"realtokenid": tokenID},
 		}
 		docs = append(docs, update)
@@ -127,6 +127,20 @@ func DBGetTxByHash(txHashes []string) ([]shared.TxData, error) {
 	}
 
 	return resultFn, nil
+}
+
+func DBIsTokenNFT(tokenid string) bool {
+	filter := bson.M{"tokenid": bson.M{operator.Eq: tokenid}, "isnft": bson.M{operator.Eq: true}}
+	ctx, _ := context.WithTimeout(context.Background(), 2*shared.DB_OPERATION_TIMEOUT)
+	result := mgm.Coll(&shared.TxData{}).FindOne(ctx, filter)
+	if result.Err() != nil {
+		if result.Err() == mongo.ErrNoDocuments {
+			return false
+		} else {
+			panic(result.Err())
+		}
+	}
+	return true
 }
 
 func DBGetCountTxByPubkey(pubkey string, tokenID string, txversion int) (int64, error) {

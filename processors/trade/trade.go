@@ -2,6 +2,7 @@ package trade
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -69,6 +70,10 @@ func StartProcessor() {
 			if err != nil {
 				panic(err)
 			}
+		}
+		err = updateTradeStatus()
+		if err != nil {
+			panic(err)
 		}
 	}
 }
@@ -146,6 +151,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			rate := uint64(0)
 			amount := uint64(0)
 			nftID := ""
+			version := 1
 			switch metaDataType {
 			case metadata.PDETradeRequestMeta:
 				meta := txDetail.GetMetadata().(*metadata.PDECrossPoolTradeRequest)
@@ -171,6 +177,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				pairID = strings.Join(item.TradePath, "-")
 				rate = item.MinAcceptableAmount / item.SellAmount
 				amount = item.SellAmount
+				version = 2
 			case metadata.Pdexv3AddOrderRequestMeta:
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.AddOrderRequest)
 				if !ok {
@@ -181,8 +188,10 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				rate = item.MinAcceptableAmount / item.SellAmount
 				amount = item.SellAmount
 				nftID = item.NftID.String()
+				version = 2
 			}
 			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, rate, amount, lockTime, tx.ShardID, tx.BlockHeight)
+			trade.Version = version
 			requestTrades = append(requestTrades, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta, metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
 			status := 0
@@ -243,25 +252,98 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			respondTrades = append(respondTrades, trade)
 		case metadata.Pdexv3WithdrawOrderRequestMeta:
 			meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderRequest)
-			order := shared.TradeOrderData{
-				RequestTx:      meta.OrderID,
-				WithdrawTxs:    []string{tx.TxHash},
-				WithdrawTokens: []string{meta.TokenID.String()},
-				WithdrawAmount: []uint64{meta.Amount},
-				NFTID:          meta.NftID.String(),
-				Status:         0,
+
+			wdData := shared.TradeOrderWithdrawInfo{}
+			for tokenID, _ := range meta.Receiver {
+				wdData.TokenIDs = append(wdData.TokenIDs, tokenID.String())
 			}
+			wdData.Amount = meta.Amount
+			order := shared.TradeOrderData{
+				RequestTx:     meta.OrderID,
+				WithdrawTxs:   []string{tx.TxHash},
+				WithdrawInfos: make(map[string]shared.TradeOrderWithdrawInfo),
+				NFTID:         meta.NftID.String(),
+			}
+			order.WithdrawInfos[tx.TxHash] = wdData
 			cancelTrades = append(cancelTrades, order)
 		case metadata.Pdexv3WithdrawOrderResponseMeta:
 			meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderResponse)
 			order := shared.TradeOrderData{
-				WithdrawTxs:      []string{meta.RequestTxID.String()},
-				WithdrawStatus:   []int{meta.Status},
-				WithdrawResponds: []string{tx.TxHash},
-				Status:           meta.Status,
+				WithdrawTxs:   []string{meta.RequestTxID.String()},
+				WithdrawInfos: make(map[string]shared.TradeOrderWithdrawInfo),
+			}
+			tokenIDStr := txDetail.GetTokenID().String()
+			amount := uint64(0)
+			if txDetail.GetType() == common.TxCustomTokenPrivacyType || txDetail.GetType() == common.TxTokenConversionType {
+				txToken := txDetail.(transaction.TransactionToken)
+				if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
+					outs := txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
+					if len(outs) > 0 {
+						amount = outs[0].GetValue()
+						if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
+							txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
+							tokenIDStr = txTokenData.PropertyID.String()
+						}
+					}
+				}
+			} else {
+				outs := txDetail.GetProof().GetOutputCoins()
+				if len(outs) > 0 {
+					amount = outs[0].GetValue()
+				}
+			}
+			order.WithdrawInfos[tx.TxHash] = shared.TradeOrderWithdrawInfo{
+				Status:        []int{meta.Status},
+				Responds:      []string{tx.TxHash},
+				RespondTokens: []string{tokenIDStr},
+				RespondAmount: []uint64{amount},
 			}
 			cancelRespond = append(cancelRespond, order)
 		}
 	}
 	return requestTrades, respondTrades, cancelTrades, cancelRespond, nil
+}
+
+func updateTradeStatus() error {
+	limit := int64(10000)
+	offset := int64(0)
+
+	for {
+		list, err := database.DBGetPendingWithdrawOrder(limit, offset)
+		if err != nil {
+			return err
+		}
+		fmt.Println("DBGetPendingWithdrawOrder", len(list))
+		if len(list) == 0 {
+			break
+		}
+		offset += int64(len(list))
+		listToUpdate := []shared.TradeOrderData{}
+		for _, v := range list {
+			data := shared.TradeOrderData{
+				RequestTx: v.RequestTx}
+			for _, wdtx := range v.WithdrawTxs {
+				a := v.WithdrawInfos[wdtx]
+				i, err := database.DBGetBeaconInstructionByTx(wdtx)
+				if i == nil && err == nil {
+					continue
+				}
+				if err != nil {
+					panic(err)
+				}
+				if i.Status == "0" {
+					a.IsRejected = true
+					data.WithdrawInfos[wdtx] = a
+					listToUpdate = append(listToUpdate, data)
+					panic("true")
+				}
+			}
+
+		}
+		err = database.DBUpdatePDETradeWithdrawStatus(listToUpdate)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

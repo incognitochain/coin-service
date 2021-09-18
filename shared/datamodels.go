@@ -442,55 +442,59 @@ func (model *WithdrawContributionFeeData) Saving() error {
 	return nil
 }
 
+type TradeOrderWithdrawInfo struct {
+	TokenIDs      []string `json:"tokenids" bson:"tokenids"`
+	Amount        uint64   `json:"amount" bson:"amount"`
+	Status        []int    `json:"status" bson:"status"`
+	IsRejected    bool     `json:"isrejected" bson:"isrejected"`
+	Responds      []string `json:"responds" bson:"responds"`
+	RespondTokens []string `json:"respondtokens" bson:"respondtokens"`
+	RespondAmount []uint64 `json:"respondamount" bson:"respondamount"`
+}
 type TradeOrderData struct {
 	mgm.DefaultModel `bson:",inline"`
-	RequestTx        string   `json:"requesttx" bson:"requesttx"`
-	WithdrawResponds []string `json:"withdrawresponds" bson:"withdrawresponds"`
-	WithdrawTokens   []string `json:"withdrawtokens" bson:"withdrawtokens"`
-	WithdrawAmount   []uint64 `json:"withdrawamount" bson:"withdrawamount"`
-	WithdrawTxs      []string `json:"withdrawtxs" bson:"withdrawtxs"`
-	WithdrawStatus   []int    `json:"withdrawstatus" bson:"withdrawstatus"`
-	RespondTxs       []string `json:"respondtxs" bson:"respondtxs"`
-	RespondTokens    []string `json:"respondtokens" bson:"respondtokens"`
-	RespondAmount    []uint64 `json:"respondamount" bson:"respondamount"`
-	Status           int      `json:"status" bson:"status"`
-	SellTokenID      string   `json:"selltokenid" bson:"selltokenid"`
-	BuyTokenID       string   `json:"buytokenid" bson:"buytokenid"`
-	PairID           string   `json:"pairid" bson:"pairid"`
-	PoolID           string   `json:"poolid" bson:"poolid"`
-	Price            uint64   `json:"price" bson:"price"`
-	Amount           uint64   `json:"amount" bson:"amount"`
-	Requesttime      int64    `json:"requesttime" bson:"requesttime"`
-	NFTID            string   `json:"nftid" bson:"nftid"`
-	Receiver         string   `json:"receiver" bson:"receiver"`
-	ShardID          int      `json:"shardid" bson:"shardid"`
-	BlockHeight      uint64   `json:"blockheight" bson:"blockheight"`
-	Fee              uint64   `json:"fee" bson:"fee"`
-	FeeToken         string   `json:"feetoken" bson:"feetoken"`
+	RequestTx        string                            `json:"requesttx" bson:"requesttx"`
+	WithdrawTxs      []string                          `json:"withdrawtxs" bson:"withdrawtxs"`
+	WithdrawInfos    map[string]TradeOrderWithdrawInfo `json:"withdrawinfos" bson:"withdrawinfos"`
+	RespondTxs       []string                          `json:"respondtxs" bson:"respondtxs"`
+	RespondTokens    []string                          `json:"respondtokens" bson:"respondtokens"`
+	RespondAmount    []uint64                          `json:"respondamount" bson:"respondamount"`
+	Status           int                               `json:"status" bson:"status"`
+	SellTokenID      string                            `json:"selltokenid" bson:"selltokenid"`
+	BuyTokenID       string                            `json:"buytokenid" bson:"buytokenid"`
+	PairID           string                            `json:"pairid" bson:"pairid"`
+	PoolID           string                            `json:"poolid" bson:"poolid"`
+	Price            uint64                            `json:"price" bson:"price"`
+	Amount           uint64                            `json:"amount" bson:"amount"`
+	Requesttime      int64                             `json:"requesttime" bson:"requesttime"`
+	NFTID            string                            `json:"nftid" bson:"nftid"`
+	Receiver         string                            `json:"receiver" bson:"receiver"`
+	ShardID          int                               `json:"shardid" bson:"shardid"`
+	BlockHeight      uint64                            `json:"blockheight" bson:"blockheight"`
+	Fee              uint64                            `json:"fee" bson:"fee"`
+	FeeToken         string                            `json:"feetoken" bson:"feetoken"`
+	Version          int                               `json:"version" bson:"version"`
 }
 
 func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, price, amount uint64, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
 	return &TradeOrderData{
-		NFTID:            nftid,
-		RequestTx:        requestTx,
-		SellTokenID:      selltoken,
-		BuyTokenID:       buytoken,
-		Status:           status,
-		PoolID:           poolid,
-		PairID:           pairid,
-		Price:            price,
-		Amount:           amount,
-		Requesttime:      requestTime,
-		ShardID:          shardID,
-		BlockHeight:      blockHeight,
-		WithdrawResponds: []string{},
-		WithdrawTokens:   []string{},
-		WithdrawAmount:   []uint64{},
-		WithdrawTxs:      []string{},
-		WithdrawStatus:   []int{},
-		RespondTxs:       []string{},
-		RespondTokens:    []string{},
-		RespondAmount:    []uint64{},
+		NFTID:         nftid,
+		RequestTx:     requestTx,
+		SellTokenID:   selltoken,
+		BuyTokenID:    buytoken,
+		Status:        status,
+		PoolID:        poolid,
+		PairID:        pairid,
+		Price:         price,
+		Amount:        amount,
+		Requesttime:   requestTime,
+		ShardID:       shardID,
+		BlockHeight:   blockHeight,
+		WithdrawInfos: map[string]TradeOrderWithdrawInfo{},
+		WithdrawTxs:   []string{},
+		RespondTxs:    []string{},
+		RespondTokens: []string{},
+		RespondAmount: []uint64{},
 	}
 }
 
@@ -748,4 +752,29 @@ type LimitOrderStatus struct {
 	mgm.DefaultModel `bson:",inline"`
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
 	Left             uint64 `json:"left" bson:"left"`
+}
+
+type InstructionBeaconData struct {
+	mgm.DefaultModel `bson:",inline"`
+	Metatype         string `json:"metatype" bson:"metatype"`
+	TxRequest        string `json:"txrequest" bson:"txrequest"`
+	Content          string `json:"content" bson:"content"`
+	Status           string `json:"status" bson:"status"`
+}
+
+func (model *InstructionBeaconData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *InstructionBeaconData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
 }

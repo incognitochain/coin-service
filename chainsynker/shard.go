@@ -322,7 +322,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 						outCoin := shared.NewCoinData(beaconHeight, coinIdx, coin.Bytes(), tokenStr, publicKeyStr, "", txHash, shardID, int(coin.GetVersion()))
 						outCoin.IsNFT = isNFT
 						if isNFT {
-							outCoin.RealTokenID = txTokenData.TxNormal.GetTokenID().String()
+							outCoin.RealTokenID = tokenID
 						}
 						outCoinList = append(outCoinList, *outCoin)
 					}

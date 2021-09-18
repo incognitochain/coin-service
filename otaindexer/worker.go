@@ -303,6 +303,9 @@ func updateCoinState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, las
 			if len(keyData.KeyInfo.CoinIndex) == 0 {
 				keyData.KeyInfo.CoinIndex = make(map[string]shared.CoinInfo)
 			}
+			if len(keyData.KeyInfo.NFTIndex) == 0 {
+				keyData.KeyInfo.NFTIndex = make(map[string]shared.CoinInfo)
+			}
 			if len(keyData.KeyInfo.TotalReceiveTxs) == 0 {
 				keyData.KeyInfo.TotalReceiveTxs = make(map[string]uint64)
 			}

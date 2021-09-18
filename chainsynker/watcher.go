@@ -115,6 +115,9 @@ func tokenListWatcher() {
 			for newK, newV := range m {
 				if v, ok := tokenStates[newK]; !ok {
 					tokenStates[newK] = newV
+					if database.DBIsTokenNFT(newK.String()) {
+						nftToken[newK.String()] = true
+					}
 				} else {
 					if v.PropertyName() == "" && newV.PropertyName() != "" {
 						v.SetPropertyName(newV.PropertyName())
@@ -124,14 +127,6 @@ func tokenListWatcher() {
 					}
 					if v.Amount() == 0 && newV.Amount() > 0 {
 						v.SetAmount(newV.Amount())
-					}
-					v.AddTxs(newV.Txs())
-					txs, err := database.DBGetTxByHash([]string{newV.InitTx().String()})
-					if err != nil {
-						panic(err)
-					}
-					if len(txs) != 0 {
-						nftToken[newK.String()] = txs[0].IsNFT
 					}
 				}
 			}

@@ -114,7 +114,7 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 }
 
 func (pdexv3) PoolShare(c *gin.Context) {
-	nftID := c.Query("nftID")
+	nftID := c.Query("nftid")
 	list, err := database.DBGetShare(nftID)
 	if err != nil {
 		errStr := err.Error()
@@ -195,11 +195,46 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		for _, tx := range txList {
 			txRequest = append(txRequest, tx.TxHash)
 		}
-
-		result, err := database.DBGetTxTradeFromTxRequest(txRequest)
+		var result []TradeDataRespond
+		list, err := database.DBGetTxTradeFromTxRequest(txRequest)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
+		}
+		for _, tradeInfo := range list {
+
+			matchedAmount := uint64(0)
+			status := ""
+			switch tradeInfo.Status {
+			case 0:
+				status = "pending"
+			case 1:
+				status = "accepted"
+				matchedAmount = tradeInfo.Amount
+			case 2:
+				status = "rejected"
+			}
+
+			trade := TradeDataRespond{
+				RequestTx:   tradeInfo.RequestTx,
+				RespondTxs:  tradeInfo.RespondTxs,
+				WithdrawTxs: nil,
+				PoolID:      tradeInfo.PoolID,
+				PairID:      tradeInfo.PairID,
+				SellTokenID: tradeInfo.SellTokenID,
+				BuyTokenID:  tradeInfo.BuyTokenID,
+				Amount:      tradeInfo.Amount,
+				Price:       tradeInfo.Price,
+				Matched:     matchedAmount,
+				Status:      status,
+				StatusCode:  tradeInfo.Status,
+				Requestime:  tradeInfo.Requesttime,
+				NFTID:       tradeInfo.NFTID,
+				Fee:         tradeInfo.Fee,
+				FeeToken:    tradeInfo.FeeToken,
+				Receiver:    tradeInfo.Receiver,
+			}
+			result = append(result, trade)
 		}
 		respond := APIRespond{
 			Result: result,
@@ -454,10 +489,25 @@ func (pdexv3) StakeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	nftid := c.Query("nftid")
 	tokenid := c.Query("tokenid")
-	result, err := database.DBGetStakingPoolHistory(nftid, tokenid, int64(limit), int64(offset))
+
+	list, err := database.DBGetStakingPoolHistory(nftid, tokenid, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
+	}
+	var result []PdexV3StakingPoolHistoryData
+	for _, v := range list {
+		data := PdexV3StakingPoolHistoryData{
+			IsStaking:   v.IsStaking,
+			RequestTx:   v.RequestTx,
+			RespondTx:   v.RespondTx,
+			Status:      v.Status,
+			TokenID:     v.TokenID,
+			NFTID:       v.NFTID,
+			Amount:      v.Amount,
+			Requesttime: v.Requesttime,
+		}
+		result = append(result, data)
 	}
 	respond := APIRespond{
 		Result: result,
@@ -470,10 +520,24 @@ func (pdexv3) StakeRewardHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	nftid := c.Query("nftid")
 	tokenid := c.Query("tokenid")
-	result, err := database.DBGetStakePoolRewardHistory(nftid, tokenid, int64(limit), int64(offset))
+
+	list, err := database.DBGetStakePoolRewardHistory(nftid, tokenid, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
+	}
+	var result []PdexV3StakePoolRewardHistoryData
+	for _, v := range list {
+		data := PdexV3StakePoolRewardHistoryData{
+			RespondTx:   v.RespondTx,
+			RequestTx:   v.RequestTx,
+			Status:      v.Status,
+			TokenID:     v.TokenID,
+			NFTID:       v.NFTID,
+			Amount:      v.Amount,
+			Requesttime: v.Requesttime,
+		}
+		result = append(result, data)
 	}
 	respond := APIRespond{
 		Result: result,
