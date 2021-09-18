@@ -280,11 +280,14 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 		case metadataCommon.Pdexv3WithdrawLPFeeRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalLPFeeRequest)
 			data := shared.WithdrawContributionFeeData{
-				PoodID:      md.PoolPairID,
-				NFTID:       md.NftID.String(),
-				RequestTx:   tx.TxHash,
-				RequestTime: tx.Locktime,
-				Status:      0,
+				PoodID:         md.PoolPairID,
+				NFTID:          md.NftID.String(),
+				RequestTx:      tx.TxHash,
+				RequestTime:    tx.Locktime,
+				Status:         0,
+				RespondTxs:     []string{},
+				WithdrawTokens: []string{},
+				WithdrawAmount: []uint64{},
 			}
 			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLPFeeResponseMeta:
@@ -493,6 +496,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				WithdrawAmount: []uint64{md.WithdrawalFeeAmt},
 				RequestTime:    tx.Locktime,
 				Status:         0,
+				RespondTxs:     []string{},
 			}
 			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadata.PDEFeeWithdrawalResponseMeta:
