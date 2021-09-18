@@ -17,17 +17,19 @@ type TradeCSV struct {
 	Receive               uint64
 	TradingFee            uint64
 	User                  string
+	Unix                  string
+	FormatedDate          string
 }
 
 func (*TradeCSV) CSVheader(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{"TxRequest", "TxRespond", "SellToken", "BuyToken", "Amount", "MinAcceptableReceiver", "Receive", "TradingFee", "User"})
+	cw.Write([]string{"TxRequest", "TxRespond", "SellToken", "BuyToken", "Amount", "MinAcceptableReceiver", "Receive", "TradingFee", "User", "Unix", "FormatedDate"})
 	cw.Flush()
 }
 
 func (rm *TradeCSV) CSVrow(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{rm.TxRequest, rm.TxRespond, rm.SellToken, rm.BuyToken, fmt.Sprintf("%v", rm.Amount), fmt.Sprintf("%v", rm.MinAcceptableReceiver), fmt.Sprintf("%v", rm.Receive), fmt.Sprintf("%v", rm.TradingFee), rm.User})
+	cw.Write([]string{rm.TxRequest, rm.TxRespond, rm.SellToken, rm.BuyToken, fmt.Sprintf("%v", rm.Amount), fmt.Sprintf("%v", rm.MinAcceptableReceiver), fmt.Sprintf("%v", rm.Receive), fmt.Sprintf("%v", rm.TradingFee), rm.User, rm.Unix, rm.FormatedDate})
 	cw.Flush()
 }
 
@@ -43,17 +45,19 @@ type ContributeCSV struct {
 	Token2AmountReturn uint64
 	User               string
 	status             string
+	Unix               string
+	FormatedDate       string
 }
 
 func (*ContributeCSV) CSVheader(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{"TxRequests", "TxResponds", "PairID", "TokenID1", "TokenID2", "Token1Amount", "Token2Amount", "Token1AmountReturn", "Token2AmountReturn", "User"})
+	cw.Write([]string{"TxRequests", "TxResponds", "PairID", "TokenID1", "TokenID2", "Token1Amount", "Token2Amount", "Token1AmountReturn", "Token2AmountReturn", "User", "Unix", "FormatedDate"})
 	cw.Flush()
 }
 
 func (rm *ContributeCSV) CSVrow(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{strings.Join(rm.TxRequests, ";"), strings.Join(rm.TxResponds, ";"), rm.PairID, rm.TokenID1, rm.TokenID2, fmt.Sprintf("%v", rm.Token1Amount), fmt.Sprintf("%v", rm.Token2Amount), fmt.Sprintf("%v", rm.Token1AmountReturn), fmt.Sprintf("%v", rm.Token2AmountReturn), rm.User})
+	cw.Write([]string{strings.Join(rm.TxRequests, ";"), strings.Join(rm.TxResponds, ";"), rm.PairID, rm.TokenID1, rm.TokenID2, fmt.Sprintf("%v", rm.Token1Amount), fmt.Sprintf("%v", rm.Token2Amount), fmt.Sprintf("%v", rm.Token1AmountReturn), fmt.Sprintf("%v", rm.Token2AmountReturn), rm.User, rm.Unix, rm.FormatedDate})
 	cw.Flush()
 }
 
@@ -66,16 +70,18 @@ type WithdrawCSV struct {
 	Token2Amount uint64
 	Share        uint64
 	User         string
+	Unix         string
+	FormatedDate string
 }
 
 func (*WithdrawCSV) CSVheader(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{"TxRequest", "TxResponds", "TokenID1", "TokenID2", "Token1Amount", "Token2Amount", "Share", "User"})
+	cw.Write([]string{"TxRequest", "TxResponds", "TokenID1", "TokenID2", "Token1Amount", "Token2Amount", "Share", "User", "Unix", "FormatedDate"})
 	cw.Flush()
 }
 
 func (rm *WithdrawCSV) CSVrow(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{rm.TxRequest, strings.Join(rm.TxResponds, ";"), rm.TokenID1, rm.TokenID2, fmt.Sprintf("%v", rm.Token1Amount), fmt.Sprintf("%v", rm.Token2Amount), fmt.Sprintf("%v", rm.Share), rm.User})
+	cw.Write([]string{rm.TxRequest, strings.Join(rm.TxResponds, ";"), rm.TokenID1, rm.TokenID2, fmt.Sprintf("%v", rm.Token1Amount), fmt.Sprintf("%v", rm.Token2Amount), fmt.Sprintf("%v", rm.Share), rm.User, rm.Unix, rm.FormatedDate})
 	cw.Flush()
 }

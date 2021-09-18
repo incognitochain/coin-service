@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
@@ -27,12 +28,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// processTrade()
-	// fmt.Println("done processTrade")
+	processTrade()
+	fmt.Println("done processTrade")
 	processContribute()
 	fmt.Println("done processContribute")
-	// processWithdraw()
-	// fmt.Println("done processWithdraw")
+	processWithdraw()
+	fmt.Println("done processWithdraw")
 }
 
 func processTrade() {
@@ -142,11 +143,17 @@ func getTradeCSV(offset int64) ([]TradeCSV, error) {
 	}
 
 	for _, v := range tradeSuccess {
+
+		txReqs, _ := database.DBGetTxByHash([]string{v.RequestTx})
+		timeText := time.Unix(txReqs[0].Locktime, 0).String()
+
 		data := TradeCSV{
-			TxRequest: v.RequestTx,
-			TxRespond: v.RespondTx,
-			Receive:   v.Amount,
-			BuyToken:  v.TokenID,
+			TxRequest:    v.RequestTx,
+			TxRespond:    v.RespondTx,
+			Receive:      v.Amount,
+			BuyToken:     v.TokenID,
+			Unix:         fmt.Sprintf("%v", txReqs[0].Locktime),
+			FormatedDate: timeText,
 		}
 		txs, err := database.DBGetTxByHash([]string{v.RequestTx})
 		if err != nil {
@@ -199,6 +206,8 @@ func getTxContribute(offset int64) ([]ContributeCSV, error) {
 	resultMap := make(map[string]ContributeCSV)
 
 	for _, v := range ctrbSuccess {
+		txReqs, _ := database.DBGetTxByHash([]string{v.RequestTx})
+		timeText := time.Unix(txReqs[0].Locktime, 0).String()
 		data := ContributeCSV{
 			TxRequests:         []string{v.RequestTx},
 			PairID:             v.PairID,
@@ -207,6 +216,8 @@ func getTxContribute(offset int64) ([]ContributeCSV, error) {
 			Token1AmountReturn: v.ReturnAmount,
 			User:               v.ContributorAddressStr,
 			status:             v.Status,
+			Unix:               fmt.Sprintf("%v", txReqs[0].Locktime),
+			FormatedDate:       timeText,
 		}
 
 		if d, ok := resultMap[data.PairID]; !ok {
@@ -273,6 +284,8 @@ func getTxWithdraw(offset int64) ([]WithdrawCSV, error) {
 	}
 
 	for _, v := range wdSuccess {
+		txReqs, _ := database.DBGetTxByHash([]string{v.RequestTx})
+		timeText := time.Unix(txReqs[0].Locktime, 0).String()
 		data := WithdrawCSV{
 			TxRequest:    v.RequestTx,
 			TxResponds:   v.RespondTx,
@@ -281,6 +294,8 @@ func getTxWithdraw(offset int64) ([]WithdrawCSV, error) {
 			User:         v.ContributorAddressStr,
 			Token1Amount: v.Amount1,
 			Token2Amount: v.Amount2,
+			Unix:         fmt.Sprintf("%v", txReqs[0].Locktime),
+			FormatedDate: timeText,
 		}
 		txs, err := database.DBGetTxByHash([]string{v.RequestTx})
 		if err != nil {
