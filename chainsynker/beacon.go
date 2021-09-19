@@ -50,7 +50,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		}
 	}
 	if height != 1 {
-		poolPairs := make(map[string]*shared.PoolPairState)
 		prevBeaconFeatureStateDB, err := Localnode.GetBlockchain().GetBestStateBeaconFeatureStateDBByHeight(height-1, Localnode.GetBlockchain().GetBeaconChainDatabase())
 		if err != nil {
 			log.Println(err)
@@ -60,17 +59,15 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			log.Println(err)
 		}
-		if pdeState.Version() == 2 {
-			err = json.Unmarshal(pdeState.Reader().PoolPairs(), &poolPairs)
-			if err != nil {
-				panic(err)
-			}
-			prevStateV2 = &shared.PDEStateV2{
-				PoolPairs:         poolPairs,
-				StakingPoolsState: pdeState.Reader().StakingPools(),
-			}
+		poolPairs := make(map[string]*shared.PoolPairState)
+		err = json.Unmarshal(pdeState.Reader().PoolPairs(), &poolPairs)
+		if err != nil {
+			panic(err)
 		}
-
+		prevStateV2 = &shared.PDEStateV2{
+			PoolPairs:         poolPairs,
+			StakingPoolsState: pdeState.Reader().StakingPools(),
+		}
 	}
 	// Process PDEstate
 	stateV1, err := pdex.InitStateFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight, 1)
@@ -189,12 +186,10 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			panic(err)
 		}
-
 		err = database.DBDeleteOrderProgress(orderBookToBeDel)
 		if err != nil {
 			panic(err)
 		}
-
 	}
 
 	statePrefix := BeaconData
@@ -235,6 +230,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			Token2Amount:   state.State.Token1RealAmount(),
 			Virtual1Amount: state.State.Token0VirtualAmount().Uint64(),
 			Virtual2Amount: state.State.Token1VirtualAmount().Uint64(),
+			TotalShare:     state.State.ShareAmount(),
 		}
 		poolPairs = append(poolPairs, poolData)
 		pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)
@@ -255,8 +251,10 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 
 		for _, order := range state.Orderbook.Orders {
 			newOrder := shared.LimitOrderStatus{
-				RequestTx: order.Id(),
-				Left:      order.Token0Balance(),
+				RequestTx:     order.Id(),
+				Token1Balance: order.Token0Balance(),
+				Token2Balance: order.Token1Balance(),
+				Direction:     order.TradeDirection(),
 			}
 			orderStatus = append(orderStatus, newOrder)
 		}
@@ -274,6 +272,27 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			data.Token2Amount += v.Token2Amount
 		}
 		pairList = append(pairList, data)
+	}
+
+	for tokenID, stakeData := range statev2.StakingPoolsState {
+		poolData := shared.PoolStakeData{
+			Amount:  stakeData.Liquidity(),
+			TokenID: tokenID,
+		}
+		stakePools = append(stakePools, poolData)
+		for nftID, staker := range stakeData.Stakers() {
+			rewardMap := make(map[string]uint64)
+			for k, v := range staker.Rewards() {
+				rewardMap[k.String()] = v
+			}
+			stake := shared.PoolStakerData{
+				TokenID: tokenID,
+				NFTID:   nftID,
+				Amount:  stakeData.Liquidity(),
+				Reward:  rewardMap,
+			}
+			poolStaking = append(poolStaking, stake)
+		}
 	}
 
 	//comparing with old state
@@ -321,10 +340,10 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					}
 				}
 				for _, order := range state.Orderbook.Orders {
-					willDelete := true
+					willDelete := false
 					for _, v := range newState.Orderbook.Orders {
 						if v.Id() == order.Id() {
-							willDelete = false
+							willDelete = true
 						}
 					}
 					if willDelete {
@@ -333,64 +352,42 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 						}
 						orderStatusToBeDelete = append(orderStatusToBeDelete, newOrder)
 					}
-
 				}
 			}
 
 		}
-	}
 
-	for tokenID, stakeData := range statev2.StakingPoolsState {
-		poolData := shared.PoolStakeData{
-			Amount:  stakeData.Liquidity(),
-			TokenID: tokenID,
-		}
-		stakePools = append(stakePools, poolData)
-		for nftID, staker := range stakeData.Stakers() {
-			rewardMap := make(map[string]uint64)
-			for k, v := range staker.Rewards() {
-				rewardMap[k.String()] = v
+		for tokenID, stakeData := range prevStatev2.StakingPoolsState {
+			willDelete := false
+			if _, ok := statev2.StakingPoolsState[tokenID]; !ok {
+				willDelete = true
 			}
-			stake := shared.PoolStakerData{
-				TokenID: tokenID,
-				NFTID:   nftID,
-				Amount:  stakeData.Liquidity(),
-				Reward:  rewardMap,
-			}
-			poolStaking = append(poolStaking, stake)
-		}
-	}
-
-	for tokenID, stakeData := range prevStatev2.StakingPoolsState {
-		willDelete := false
-		if _, ok := statev2.StakingPoolsState[tokenID]; !ok {
-			willDelete = true
-		}
-		if willDelete {
-			poolData := shared.PoolStakeData{
-				TokenID: tokenID,
-			}
-			stakePoolsToBeDelete = append(stakePoolsToBeDelete, poolData)
-			for nftID, _ := range stakeData.Stakers() {
-				stake := shared.PoolStakerData{
+			if willDelete {
+				poolData := shared.PoolStakeData{
 					TokenID: tokenID,
-					NFTID:   nftID,
 				}
-				poolStakingToBeDelete = append(poolStakingToBeDelete, stake)
-			}
-		} else {
-			newStaker := statev2.StakingPoolsState[tokenID].Stakers()
-			for nftID, _ := range stakeData.Stakers() {
-				willDelete := false
-				if _, ok := newStaker[nftID]; !ok {
-					willDelete = true
-				}
-				if willDelete {
+				stakePoolsToBeDelete = append(stakePoolsToBeDelete, poolData)
+				for nftID, _ := range stakeData.Stakers() {
 					stake := shared.PoolStakerData{
 						TokenID: tokenID,
 						NFTID:   nftID,
 					}
 					poolStakingToBeDelete = append(poolStakingToBeDelete, stake)
+				}
+			} else {
+				newStaker := statev2.StakingPoolsState[tokenID].Stakers()
+				for nftID, _ := range stakeData.Stakers() {
+					willDelete := false
+					if _, ok := newStaker[nftID]; !ok {
+						willDelete = true
+					}
+					if willDelete {
+						stake := shared.PoolStakerData{
+							TokenID: tokenID,
+							NFTID:   nftID,
+						}
+						poolStakingToBeDelete = append(poolStakingToBeDelete, stake)
+					}
 				}
 			}
 		}

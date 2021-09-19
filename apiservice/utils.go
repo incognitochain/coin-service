@@ -70,15 +70,40 @@ func buildTxDetailRespond(txDataList []shared.TxData, isBase58 bool) ([]Received
 	return result, errD
 }
 
-func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.LimitOrderStatus) (uint64, int, string, map[string]TradeWithdrawInfo, error) {
+func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.LimitOrderStatus) (uint64, uint64, uint64, uint64, uint64, int, string, map[string]TradeWithdrawInfo, bool, error) {
 	var matchedAmount uint64
 	var status string
 	var sellTokenWDAmount uint64
-	var sellTokenAmount int64
-	withdrawTxs := make(map[string]TradeWithdrawInfo)
+	var buyTokenWDAmount uint64
+	var sellTokenBalance uint64
+	var buyTokenBalance uint64
+	var isCompleted bool
+	statusCode := 0
 
+	if order.IsSwap {
+		switch order.Status {
+		case 0:
+			status = "ongoing"
+		case 1:
+			status = "done"
+			matchedAmount = order.Amount
+			isCompleted = true
+		case 2:
+			status = "rejected"
+		}
+		return matchedAmount, 0, 0, 0, 0, order.Status, status, nil, isCompleted, nil
+
+	}
+
+	withdrawTxs := make(map[string]TradeWithdrawInfo)
 	if limitOrderStatus != nil {
-		sellTokenAmount = int64(limitOrderStatus.Left)
+		if limitOrderStatus.Direction == 0 {
+			sellTokenBalance = limitOrderStatus.Token1Balance
+			buyTokenBalance = limitOrderStatus.Token2Balance
+		} else {
+			sellTokenBalance = limitOrderStatus.Token2Balance
+			buyTokenBalance = limitOrderStatus.Token1Balance
+		}
 	}
 
 	for wdRQtx, v := range order.WithdrawInfos {
@@ -98,43 +123,37 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 				rp.RespondTx = v.Responds[idx]
 				rp.Status = v.Status[idx]
 				data.Responds[d] = rp
-
 				if d == order.SellTokenID {
 					sellTokenWDAmount += rp.Amount
+				}
+				if d == order.BuyTokenID {
+					buyTokenWDAmount += rp.Amount
 				}
 			}
 		}
 
-		if len(v.TokenIDs) > len(v.RespondTokens) {
+		if len(v.RespondTokens) == 0 && !v.IsRejected {
 			status = "withdrawing"
 		}
 		withdrawTxs[wdRQtx] = data
 	}
 
-	sellTokenAmount += int64(sellTokenWDAmount)
-	matchedAmount = order.Amount - uint64(sellTokenAmount)
-	if sellTokenAmount == 0 {
-		status = "success"
+	matchedAmount = order.Amount - sellTokenBalance - sellTokenWDAmount
+	if isCompleted {
+		status = "done"
 	} else {
-		if len(order.RespondTxs) == 0 {
-			status = "ongoing"
-		} else {
-			status = "reject"
-		}
+		status = "ongoing"
 	}
 	// }
-	statusCode := 0
 	switch status {
 	case "ongoing":
 		statusCode = 0
-	case "success":
+	case "done":
 		statusCode = 1
-	case "reject":
-		statusCode = 2
 	case "withdrawing":
 		statusCode = 3
 	}
-	return matchedAmount, statusCode, status, withdrawTxs, nil
+	return matchedAmount, sellTokenBalance, buyTokenBalance, sellTokenWDAmount, buyTokenWDAmount, statusCode, status, withdrawTxs, isCompleted, nil
 }
 
 func extractPubkeyFromKey(key string, otakeyOnly bool) (string, error) {

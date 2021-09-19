@@ -104,7 +104,7 @@ type PdexV3PoolDetail struct {
 	Token2Value    uint64
 	Virtual1Value  uint64
 	Virtual2Value  uint64
-	Share          uint64
+	TotalShare     uint64
 	AMP            uint
 	Price          uint64
 	Volume         uint64
@@ -125,23 +125,28 @@ type PdexV3PriceHistoryRespond struct {
 	Open      uint64
 }
 type TradeDataRespond struct {
-	RequestTx   string
-	RespondTxs  []string
-	WithdrawTxs map[string]TradeWithdrawInfo
-	SellTokenID string
-	BuyTokenID  string
-	Status      string
-	StatusCode  int
-	PairID      string
-	PoolID      string
-	Price       uint64
-	Amount      uint64
-	Matched     uint64
-	Requestime  int64
-	NFTID       string
-	Receiver    string
-	Fee         uint64
-	FeeToken    string
+	RequestTx           string
+	RespondTxs          []string
+	WithdrawTxs         map[string]TradeWithdrawInfo
+	SellTokenID         string
+	BuyTokenID          string
+	Status              string
+	StatusCode          int
+	PairID              string
+	PoolID              string
+	Price               uint64
+	Amount              uint64
+	Matched             uint64
+	Requestime          int64
+	NFTID               string
+	Receiver            string
+	Fee                 uint64
+	FeeToken            string
+	IsCompleted         bool
+	SellTokenBalance    uint64
+	BuyTokenBalance     uint64
+	SellTokenWithdrawed uint64
+	BuyTokenWithdrawed  uint64
 }
 
 type TradeWithdrawInfo struct {
@@ -187,6 +192,7 @@ type PdexV3PoolShareRespond struct {
 	Token2Reward uint64
 	Share        uint64
 	AMP          uint
+	TotalShare   uint64
 }
 
 type PdexV3ContributionData struct {

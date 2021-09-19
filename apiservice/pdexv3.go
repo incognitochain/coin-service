@@ -58,6 +58,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 			Virtual2Value: v.Virtual2Amount,
 			AMP:           v.AMP,
 			Price:         v.Token1Amount / v.Token2Amount,
+			TotalShare:    v.TotalShare,
 		}
 
 		//TODO @yenle
@@ -85,29 +86,34 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	matchedAmount, statusCode, status, withdrawTxs, err := getTradeStatus(tradeInfo, tradeStatus)
+	matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(tradeInfo, tradeStatus)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
 	result := TradeDataRespond{
-		RequestTx:   tradeInfo.RequestTx,
-		RespondTxs:  tradeInfo.RespondTxs,
-		WithdrawTxs: withdrawTxs,
-		PoolID:      tradeInfo.PoolID,
-		PairID:      tradeInfo.PairID,
-		SellTokenID: tradeInfo.SellTokenID,
-		BuyTokenID:  tradeInfo.BuyTokenID,
-		Amount:      tradeInfo.Amount,
-		Price:       tradeInfo.Price,
-		Matched:     matchedAmount,
-		Status:      status,
-		StatusCode:  statusCode,
-		Requestime:  tradeInfo.Requesttime,
-		NFTID:       tradeInfo.NFTID,
-		Fee:         tradeInfo.Fee,
-		FeeToken:    tradeInfo.FeeToken,
-		Receiver:    tradeInfo.Receiver,
+		RequestTx:           tradeInfo.RequestTx,
+		RespondTxs:          tradeInfo.RespondTxs,
+		WithdrawTxs:         withdrawTxs,
+		PoolID:              tradeInfo.PoolID,
+		PairID:              tradeInfo.PairID,
+		SellTokenID:         tradeInfo.SellTokenID,
+		BuyTokenID:          tradeInfo.BuyTokenID,
+		Amount:              tradeInfo.Amount,
+		Price:               tradeInfo.Price,
+		Matched:             matchedAmount,
+		Status:              status,
+		StatusCode:          statusCode,
+		Requestime:          tradeInfo.Requesttime,
+		NFTID:               tradeInfo.NFTID,
+		Fee:                 tradeInfo.Fee,
+		FeeToken:            tradeInfo.FeeToken,
+		Receiver:            tradeInfo.Receiver,
+		IsCompleted:         isCompleted,
+		SellTokenBalance:    sellTokenBl,
+		BuyTokenBalance:     buyTokenBl,
+		SellTokenWithdrawed: sellTokenWD,
+		BuyTokenWithdrawed:  buyTokenWD,
 	}
 	respond := APIRespond{
 		Result: result,
@@ -161,6 +167,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			TokenID2:     l[0].TokenID2,
 			Token1Amount: l[0].Token1Amount,
 			Token2Amount: l[0].Token2Amount,
+			TotalShare:   l[0].TotalShare,
 		})
 	}
 	respond := APIRespond{
@@ -207,12 +214,14 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 
 			matchedAmount := uint64(0)
 			status := ""
+			isCompleted := false
 			switch tradeInfo.Status {
 			case 0:
 				status = "pending"
 			case 1:
 				status = "accepted"
 				matchedAmount = tradeInfo.Amount
+				isCompleted = true
 			case 2:
 				status = "rejected"
 			}
@@ -235,6 +244,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				Fee:         tradeInfo.Fee,
 				FeeToken:    tradeInfo.FeeToken,
 				Receiver:    tradeInfo.Receiver,
+				IsCompleted: isCompleted,
 			}
 			result = append(result, trade)
 		}
@@ -268,29 +278,34 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
 				tradeStatus = &t
 			}
-			matchedAmount, statusCode, status, withdrawTxs, err := getTradeStatus(&tradeInfo, tradeStatus)
+			matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
 			trade := TradeDataRespond{
-				RequestTx:   tradeInfo.RequestTx,
-				RespondTxs:  tradeInfo.RespondTxs,
-				WithdrawTxs: withdrawTxs,
-				PoolID:      tradeInfo.PoolID,
-				PairID:      tradeInfo.PairID,
-				SellTokenID: tradeInfo.SellTokenID,
-				BuyTokenID:  tradeInfo.BuyTokenID,
-				Amount:      tradeInfo.Amount,
-				Price:       tradeInfo.Price,
-				Matched:     matchedAmount,
-				Status:      status,
-				StatusCode:  statusCode,
-				Requestime:  tradeInfo.Requesttime,
-				NFTID:       tradeInfo.NFTID,
-				Fee:         tradeInfo.Fee,
-				FeeToken:    tradeInfo.FeeToken,
-				Receiver:    tradeInfo.Receiver,
+				RequestTx:           tradeInfo.RequestTx,
+				RespondTxs:          tradeInfo.RespondTxs,
+				WithdrawTxs:         withdrawTxs,
+				PoolID:              tradeInfo.PoolID,
+				PairID:              tradeInfo.PairID,
+				SellTokenID:         tradeInfo.SellTokenID,
+				BuyTokenID:          tradeInfo.BuyTokenID,
+				Amount:              tradeInfo.Amount,
+				Price:               tradeInfo.Price,
+				Matched:             matchedAmount,
+				Status:              status,
+				StatusCode:          statusCode,
+				Requestime:          tradeInfo.Requesttime,
+				NFTID:               tradeInfo.NFTID,
+				Fee:                 tradeInfo.Fee,
+				FeeToken:            tradeInfo.FeeToken,
+				Receiver:            tradeInfo.Receiver,
+				IsCompleted:         isCompleted,
+				SellTokenBalance:    sellTokenBl,
+				BuyTokenBalance:     buyTokenBl,
+				SellTokenWithdrawed: sellTokenWD,
+				BuyTokenWithdrawed:  buyTokenWD,
 			}
 			result = append(result, trade)
 		}
@@ -573,6 +588,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			Virtual2Value: v.Virtual2Amount,
 			AMP:           v.AMP,
 			Price:         v.Token1Amount / v.Token2Amount,
+			TotalShare:    v.TotalShare,
 		}
 
 		//TODO @yenle

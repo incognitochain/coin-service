@@ -473,6 +473,7 @@ type TradeOrderData struct {
 	BlockHeight      uint64                            `json:"blockheight" bson:"blockheight"`
 	Fee              uint64                            `json:"fee" bson:"fee"`
 	FeeToken         string                            `json:"feetoken" bson:"feetoken"`
+	IsSwap           bool                              `json:"isswap" bson:"isswap"`
 	Version          int                               `json:"version" bson:"version"`
 }
 
@@ -564,6 +565,7 @@ type PoolPairData struct {
 	Token2Amount     uint64 `json:"token2amount" bson:"token2amount"`
 	Virtual1Amount   uint64 `json:"virtual1amount" bson:"virtual1amount"`
 	Virtual2Amount   uint64 `json:"virtual2amount" bson:"virtual2amount"`
+	TotalShare       uint64 `json:"totalshare" bson:"totalshare"`
 	Version          int    `json:"version" bson:"version"`
 }
 
@@ -753,7 +755,9 @@ func (model *ProcessorState) Saving() error {
 type LimitOrderStatus struct {
 	mgm.DefaultModel `bson:",inline"`
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
-	Left             uint64 `json:"left" bson:"left"`
+	Token1Balance    uint64 `json:"token1balance" bson:"token1balance"`
+	Token2Balance    uint64 `json:"token2balance" bson:"token2balance"`
+	Direction        byte   `json:"direction" bson:"direction"`
 }
 
 type InstructionBeaconData struct {

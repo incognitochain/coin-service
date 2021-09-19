@@ -631,7 +631,7 @@ func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
 	for _, pool := range list {
 		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
 		update := bson.M{
-			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "virtual1amount": pool.Virtual1Amount, "virtual2amount": pool.Virtual2Amount, "amp": pool.AMP, "version": pool.Version},
+			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "virtual1amount": pool.Virtual1Amount, "virtual2amount": pool.Virtual2Amount, "amp": pool.AMP, "version": pool.Version, "totalshare": pool.TotalShare},
 		}
 		_, err := mgm.Coll(&shared.PoolPairData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -667,7 +667,7 @@ func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set": bson.M{"left": order.Left},
+			"$set": bson.M{"token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction},
 		}
 		_, err := mgm.Coll(&shared.LimitOrderStatus{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
