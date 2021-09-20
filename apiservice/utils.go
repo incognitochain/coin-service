@@ -79,6 +79,7 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 	var buyTokenBalance uint64
 	var isCompleted bool
 	statusCode := 0
+	withdrawTxs := make(map[string]TradeWithdrawInfo)
 
 	if order.IsSwap {
 		switch order.Status {
@@ -95,61 +96,75 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 
 	}
 
-	withdrawTxs := make(map[string]TradeWithdrawInfo)
-	if limitOrderStatus != nil {
-		if limitOrderStatus.Direction == 0 {
-			sellTokenBalance = limitOrderStatus.Token1Balance
-			buyTokenBalance = limitOrderStatus.Token2Balance
-		} else {
-			sellTokenBalance = limitOrderStatus.Token2Balance
-			buyTokenBalance = limitOrderStatus.Token1Balance
+	if len(order.RequestTx) > 0 {
+		status = "rejected"
+		isCompleted = true
+	} else {
+		if limitOrderStatus == nil && len(order.WithdrawTxs) == 0 {
+			isCompleted = false
+			sellTokenBalance = order.Amount
 		}
-	}
 
-	for wdRQtx, v := range order.WithdrawInfos {
-		data := TradeWithdrawInfo{
-			TokenIDs: v.TokenIDs,
-			Responds: make(map[string]struct {
-				Amount    uint64
-				Status    int
-				RespondTx string
-			}),
-			IsRejected: v.IsRejected,
-		}
-		if !v.IsRejected {
-			for idx, d := range v.RespondTokens {
-				rp := data.Responds[d]
-				rp.Amount = v.RespondAmount[idx]
-				rp.RespondTx = v.Responds[idx]
-				rp.Status = v.Status[idx]
-				data.Responds[d] = rp
-				if d == order.SellTokenID {
-					sellTokenWDAmount += rp.Amount
-				}
-				if d == order.BuyTokenID {
-					buyTokenWDAmount += rp.Amount
-				}
+		if limitOrderStatus != nil {
+			if limitOrderStatus.Direction == 0 {
+				sellTokenBalance = limitOrderStatus.Token1Balance
+				buyTokenBalance = limitOrderStatus.Token2Balance
+			} else {
+				sellTokenBalance = limitOrderStatus.Token2Balance
+				buyTokenBalance = limitOrderStatus.Token1Balance
 			}
 		}
 
-		if len(v.RespondTokens) == 0 && !v.IsRejected {
-			status = "withdrawing"
+		for wdRQtx, v := range order.WithdrawInfos {
+			data := TradeWithdrawInfo{
+				TokenIDs: v.TokenIDs,
+				Responds: make(map[string]struct {
+					Amount    uint64
+					Status    int
+					RespondTx string
+				}),
+				IsRejected: v.IsRejected,
+			}
+			if !v.IsRejected {
+				for idx, d := range v.RespondTokens {
+					rp := data.Responds[d]
+					rp.Amount = v.RespondAmount[idx]
+					rp.RespondTx = v.Responds[idx]
+					rp.Status = v.Status[idx]
+					data.Responds[d] = rp
+					if d == order.SellTokenID {
+						sellTokenWDAmount += rp.Amount
+					}
+					if d == order.BuyTokenID {
+						buyTokenWDAmount += rp.Amount
+					}
+				}
+			}
+
+			if len(v.RespondTokens) == 0 && !v.IsRejected {
+				status = "withdrawing"
+			}
+			withdrawTxs[wdRQtx] = data
 		}
-		withdrawTxs[wdRQtx] = data
+		if sellTokenBalance == 0 && buyTokenBalance == 0 && len(order.WithdrawTxs) > 0 {
+			isCompleted = true
+		}
+
+		matchedAmount = order.Amount - sellTokenBalance - sellTokenWDAmount
+		if isCompleted {
+			status = "done"
+		} else {
+			status = "ongoing"
+		}
 	}
 
-	matchedAmount = order.Amount - sellTokenBalance - sellTokenWDAmount
-	if isCompleted {
-		status = "done"
-	} else {
-		status = "ongoing"
-	}
-	// }
 	switch status {
 	case "ongoing":
 		statusCode = 0
 	case "done":
 		statusCode = 1
+	case "rejected":
+		statusCode = 2
 	case "withdrawing":
 		statusCode = 3
 	}

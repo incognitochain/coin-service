@@ -715,8 +715,8 @@ func DBUpdatePDEPoolStakerData(list []shared.PoolStakerData) error {
 }
 
 func DBGetTradeInfoAndStatus(requestTx string) (*shared.TradeOrderData, *shared.LimitOrderStatus, error) {
-	var tradeInfo shared.TradeOrderData
-	var tradeStatus shared.LimitOrderStatus
+	var tradeInfo []shared.TradeOrderData
+	var tradeStatus []shared.LimitOrderStatus
 	filter := bson.M{"requesttx": bson.M{operator.Eq: requestTx}}
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&tradeInfo, filter)
 	if err != nil {
@@ -724,9 +724,12 @@ func DBGetTradeInfoAndStatus(requestTx string) (*shared.TradeOrderData, *shared.
 	}
 	err = mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&tradeStatus, filter)
 	if err != nil {
-		return &tradeInfo, nil, err
+		return &tradeInfo[0], nil, err
 	}
-	return &tradeInfo, &tradeStatus, nil
+	if len(tradeStatus) == 0 {
+		return &tradeInfo[0], nil, nil
+	}
+	return &tradeInfo[0], &tradeStatus[0], nil
 }
 
 func DBGetTradeStatus(requestTx []string) (map[string]shared.LimitOrderStatus, error) {
@@ -954,7 +957,9 @@ func DBDeletePDEPoolData(list []shared.PoolPairData) error {
 		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
 		err := mgm.Coll(&shared.PoolPairData{}).FindOneAndDelete(ctx, fitler)
 		if err != nil {
-			return err.Err()
+			if err.Err() != mongo.ErrNoDocuments {
+				return err.Err()
+			}
 		}
 	}
 	return nil
@@ -969,7 +974,9 @@ func DBDeletePDEPoolShareData(list []shared.PoolShareData) error {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
 		err := mgm.Coll(&shared.PoolShareData{}).FindOneAndDelete(ctx, fitler)
 		if err != nil {
-			return err.Err()
+			if err.Err() != mongo.ErrNoDocuments {
+				return err.Err()
+			}
 		}
 	}
 	return nil
@@ -984,7 +991,9 @@ func DBDeletePDEPoolStakeData(list []shared.PoolStakeData) error {
 		fitler := bson.M{"tokenid": bson.M{operator.Eq: stake.TokenID}}
 		err := mgm.Coll(&shared.PoolStakeData{}).FindOneAndDelete(ctx, fitler)
 		if err != nil {
-			return err.Err()
+			if err.Err() != mongo.ErrNoDocuments {
+				return err.Err()
+			}
 		}
 	}
 	return nil
@@ -999,7 +1008,9 @@ func DBDeletePDEPoolStakerData(list []shared.PoolStakerData) error {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
 		err := mgm.Coll(&shared.PoolStakerData{}).FindOneAndDelete(ctx, fitler)
 		if err != nil {
-			return err.Err()
+			if err.Err() != mongo.ErrNoDocuments {
+				return err.Err()
+			}
 		}
 	}
 	return nil
@@ -1014,7 +1025,9 @@ func DBDeleteOrderProgress(list []shared.LimitOrderStatus) error {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: v.RequestTx}}
 		err := mgm.Coll(&shared.LimitOrderStatus{}).FindOneAndDelete(ctx, fitler)
 		if err != nil {
-			return err.Err()
+			if err.Err() != mongo.ErrNoDocuments {
+				return err.Err()
+			}
 		}
 	}
 	return nil

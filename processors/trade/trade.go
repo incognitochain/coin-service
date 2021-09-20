@@ -151,6 +151,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			minaccept := uint64(0)
 			amount := uint64(0)
 			nftID := ""
+			isSwap := true
 			version := 1
 			switch metaDataType {
 			case metadata.PDETradeRequestMeta:
@@ -179,12 +180,19 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				amount = item.SellAmount
 				version = 2
 			case metadata.Pdexv3AddOrderRequestMeta:
+				isSwap = false
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.AddOrderRequest)
 				if !ok {
 					panic("invalid metadataPdexv3.AddOrderRequest")
 				}
 				sellToken = item.TokenToSell.String()
 				poolID = item.PoolPairID
+				tokenStrs := strings.Split(poolID, "-")
+				if sellToken != tokenStrs[0] {
+					buyToken = tokenStrs[0]
+				} else {
+					buyToken = tokenStrs[1]
+				}
 				minaccept = item.MinAcceptableAmount
 				amount = item.SellAmount
 				nftID = item.NftID.String()
@@ -192,6 +200,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			}
 			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, minaccept, amount, lockTime, tx.ShardID, tx.BlockHeight)
 			trade.Version = version
+			trade.IsSwap = isSwap
 			requestTrades = append(requestTrades, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta, metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
 			status := 0

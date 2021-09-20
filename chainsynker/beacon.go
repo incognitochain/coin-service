@@ -132,6 +132,25 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			panic(err)
 		}
 
+		err = database.DBDeletePDEPoolShareData(sharesDatasToBeDel)
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBDeletePDEPoolStakeData(poolStakeDatasToBeDel)
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBDeletePDEPoolStakerData(poolStakersDatasToBeDel)
+		if err != nil {
+			panic(err)
+		}
+		err = database.DBDeleteOrderProgress(orderBookToBeDel)
+		if err != nil {
+			panic(err)
+		}
+
 		err = database.DBSaveInstructionBeacon(instructions)
 		if err != nil {
 			panic(err)
@@ -168,25 +187,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		}
 
 		err = database.DBDeletePDEPoolData(poolDatasToBeDel)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBDeletePDEPoolShareData(sharesDatasToBeDel)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBDeletePDEPoolStakeData(poolStakeDatasToBeDel)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBDeletePDEPoolStakerData(poolStakersDatasToBeDel)
-		if err != nil {
-			panic(err)
-		}
-		err = database.DBDeleteOrderProgress(orderBookToBeDel)
 		if err != nil {
 			panic(err)
 		}
@@ -340,10 +340,10 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					}
 				}
 				for _, order := range state.Orderbook.Orders {
-					willDelete := false
+					willDelete := true
 					for _, v := range newState.Orderbook.Orders {
 						if v.Id() == order.Id() {
-							willDelete = true
+							willDelete = false
 						}
 					}
 					if willDelete {
