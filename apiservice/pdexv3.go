@@ -292,7 +292,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				SellTokenID:         tradeInfo.SellTokenID,
 				BuyTokenID:          tradeInfo.BuyTokenID,
 				Amount:              tradeInfo.Amount,
-				Price:               tradeInfo.Price,
+				MinAccept:           tradeInfo.MinAccept,
 				Matched:             matchedAmount,
 				Status:              status,
 				StatusCode:          statusCode,

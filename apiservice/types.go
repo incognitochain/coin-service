@@ -134,7 +134,7 @@ type TradeDataRespond struct {
 	StatusCode          int
 	PairID              string
 	PoolID              string
-	Price               uint64
+	MinAccept           uint64
 	Amount              uint64
 	Matched             uint64
 	Requestime          int64

@@ -148,7 +148,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			sellToken := ""
 			poolID := ""
 			pairID := ""
-			rate := uint64(0)
+			minaccept := uint64(0)
 			amount := uint64(0)
 			nftID := ""
 			version := 1
@@ -158,14 +158,14 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				buyToken = meta.TokenIDToBuyStr
 				sellToken = meta.TokenIDToSellStr
 				pairID = meta.TokenIDToBuyStr + "-" + meta.TokenIDToSellStr
-				rate = meta.MinAcceptableAmount / meta.SellAmount
+				minaccept = meta.MinAcceptableAmount
 				amount = meta.SellAmount
 			case metadata.PDECrossPoolTradeRequestMeta:
 				meta := txDetail.GetMetadata().(*metadata.PDETradeRequest)
 				buyToken = meta.TokenIDToBuyStr
 				sellToken = meta.TokenIDToSellStr
 				pairID = meta.TokenIDToBuyStr + "-" + meta.TokenIDToSellStr
-				rate = meta.MinAcceptableAmount / meta.SellAmount
+				minaccept = meta.MinAcceptableAmount
 				amount = meta.SellAmount
 			case metadata.Pdexv3TradeRequestMeta:
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.TradeRequest)
@@ -175,7 +175,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				sellToken = item.TokenToSell.String()
 				buyToken = item.TradePath[len(item.TradePath)-1]
 				pairID = strings.Join(item.TradePath, "-")
-				rate = item.MinAcceptableAmount / item.SellAmount
+				minaccept = item.MinAcceptableAmount
 				amount = item.SellAmount
 				version = 2
 			case metadata.Pdexv3AddOrderRequestMeta:
@@ -185,12 +185,12 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				}
 				sellToken = item.TokenToSell.String()
 				poolID = item.PoolPairID
-				rate = item.MinAcceptableAmount / item.SellAmount
+				minaccept = item.MinAcceptableAmount
 				amount = item.SellAmount
 				nftID = item.NftID.String()
 				version = 2
 			}
-			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, rate, amount, lockTime, tx.ShardID, tx.BlockHeight)
+			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, minaccept, amount, lockTime, tx.ShardID, tx.BlockHeight)
 			trade.Version = version
 			requestTrades = append(requestTrades, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta, metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
@@ -253,7 +253,13 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 		case metadata.Pdexv3WithdrawOrderRequestMeta:
 			meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderRequest)
 
-			wdData := shared.TradeOrderWithdrawInfo{}
+			wdData := shared.TradeOrderWithdrawInfo{
+				TokenIDs:      []string{},
+				Status:        []int{},
+				Responds:      []string{},
+				RespondTokens: []string{},
+				RespondAmount: []uint64{},
+			}
 			for tokenID, _ := range meta.Receiver {
 				wdData.TokenIDs = append(wdData.TokenIDs, tokenID.String())
 			}
@@ -292,7 +298,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 					amount = outs[0].GetValue()
 				}
 			}
-			order.WithdrawInfos[tx.TxHash] = shared.TradeOrderWithdrawInfo{
+			order.WithdrawInfos[meta.RequestTxID.String()] = shared.TradeOrderWithdrawInfo{
 				Status:        []int{meta.Status},
 				Responds:      []string{tx.TxHash},
 				RespondTokens: []string{tokenIDStr},

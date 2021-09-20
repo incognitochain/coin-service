@@ -464,7 +464,7 @@ type TradeOrderData struct {
 	BuyTokenID       string                            `json:"buytokenid" bson:"buytokenid"`
 	PairID           string                            `json:"pairid" bson:"pairid"`
 	PoolID           string                            `json:"poolid" bson:"poolid"`
-	Price            uint64                            `json:"price" bson:"price"`
+	MinAccept        uint64                            `json:"minaccept" bson:"minaccept"`
 	Amount           uint64                            `json:"amount" bson:"amount"`
 	Requesttime      int64                             `json:"requesttime" bson:"requesttime"`
 	NFTID            string                            `json:"nftid" bson:"nftid"`
@@ -477,7 +477,7 @@ type TradeOrderData struct {
 	Version          int                               `json:"version" bson:"version"`
 }
 
-func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, price, amount uint64, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
+func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, minAccept, amount uint64, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
 	return &TradeOrderData{
 		NFTID:         nftid,
 		RequestTx:     requestTx,
@@ -486,7 +486,7 @@ func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid str
 		Status:        status,
 		PoolID:        poolid,
 		PairID:        pairid,
-		Price:         price,
+		MinAccept:     minAccept,
 		Amount:        amount,
 		Requesttime:   requestTime,
 		ShardID:       shardID,

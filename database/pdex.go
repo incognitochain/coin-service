@@ -457,8 +457,9 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range orders {
 		fitler := bson.M{"withdrawtxs": bson.M{operator.Eq: order.WithdrawTxs[0]}}
+		prefix := "withdrawinfos." + order.WithdrawTxs[0]
 		update := bson.M{
-			"$push": bson.M{"withdrawinfos." + order.WithdrawTxs[0]: bson.M{"responds": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Responds}, "status": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Status}, "respondtokens": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondTokens}, "respondamount": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondAmount}}},
+			"$push": bson.M{prefix + ".responds": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Responds}, prefix + ".status": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Status}, prefix + ".respondtokens": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondTokens}, prefix + ".respondamount": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondAmount}},
 		}
 		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
