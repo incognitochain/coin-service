@@ -96,7 +96,7 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 
 	}
 
-	if len(order.RequestTx) > 0 {
+	if len(order.RespondTxs) > 0 {
 		status = "rejected"
 		isCompleted = true
 	} else {
