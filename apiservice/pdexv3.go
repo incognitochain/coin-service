@@ -337,10 +337,14 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		if len(v.RequestTxs) > len(v.ContributeAmount) {
 			ctrbAmount = append(ctrbAmount, v.ContributeAmount[0])
 			ctrbAmount = append(ctrbAmount, v.ContributeAmount[0])
+		} else {
+			ctrbAmount = v.ContributeAmount
 		}
 		if len(v.RequestTxs) > len(v.ContributeTokens) {
 			ctrbToken = append(ctrbToken, v.ContributeTokens[0])
 			ctrbToken = append(ctrbToken, v.ContributeTokens[0])
+		} else {
+			ctrbToken = v.ContributeTokens
 		}
 		data := PdexV3ContributionData{
 			RequestTxs:       v.RequestTxs,
