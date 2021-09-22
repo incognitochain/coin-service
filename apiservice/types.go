@@ -86,7 +86,7 @@ type ReceivedTransactionV2 struct {
 type PdexV3EstimateTradeRespond struct {
 	MaxGet uint64
 	Fee    uint64
-	Route  string
+	Route  []string
 }
 type PdexV3OrderBookRespond struct {
 	Buy  []PdexV3OrderBookVolume

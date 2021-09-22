@@ -1,13 +1,15 @@
 module github.com/incognitochain/coin-service
-
+replace github.com/incognitochain/incognito-chain => /Users/corncob/Incognito/projects/org/incognito-chain
 go 1.13
 
 require (
 	github.com/0xkumi/incognito-dev-framework v0.0.0-20210910173430-da3631336a15
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-playground/validator/v10 v10.5.0 // indirect
+	github.com/go-resty/resty/v2 v2.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/incognitochain/incognito-chain v0.0.0-20210918092435-07f0fe43e0b5

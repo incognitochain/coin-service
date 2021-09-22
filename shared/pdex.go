@@ -1,6 +1,7 @@
 package shared
 
 import (
+	jsond "encoding/json"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
 )
@@ -32,3 +33,33 @@ type PoolPairState struct {
 		Orders []*pdex.Order
 	}
 }
+
+
+type Pdexv3GetStateRPCResult struct {
+	ID     int `json:"Id"`
+	Result struct {
+		Beacontimestamp      int                    `json:"BeaconTimeStamp"`
+		Params               map[string]interface{} `json:"Params"`
+		Poolpairs            jsond.RawMessage       `json:"PoolPairs"`
+		Waitingcontributions struct {
+		} `json:"WaitingContributions"`
+		Nftids       map[string]interface{} `json:"NftIDs"`
+		Stakingpools map[string]interface{} `json:"StakingPools"`
+	} `json:"Result"`
+	Error  interface{} `json:"Error"`
+	Params []struct {
+		Beaconheight int `json:"BeaconHeight"`
+	} `json:"Params"`
+	Method  string `json:"Method"`
+	Jsonrpc string `json:"Jsonrpc"`
+}
+
+type Pdexv3PoolPairChild struct {
+	PoolID string `json:"PoolID"`
+}
+
+type Pdexv3PoolPairWithId struct {
+	rawdbv2.Pdexv3PoolPair
+	Pdexv3PoolPairChild
+}
+

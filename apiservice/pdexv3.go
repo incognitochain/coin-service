@@ -1,6 +1,8 @@
 package apiservice
 
 import (
+	"errors"
+	"github.com/davecgh/go-spew/spew"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
 )
@@ -618,19 +621,47 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 func (pdexv3) EstimateTrade(c *gin.Context) {
 	sellToken := c.Query("selltoken")
 	buyToken := c.Query("buytoken")
-	amount := c.Query("amount")
+	amountStr := c.Query("amount")
 	feeInPRV := c.Query("feeinprv")
-	price := c.Query("price")
 
-	_ = sellToken
-	_ = buyToken
-	_ = amount
+	amount, err := strconv.ParseInt(amountStr, 10, 64)
+	if err != nil || amount < 0 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid sell amount")))
+		return
+	}
+
 	_ = feeInPRV
-	_ = price
 
 	var result PdexV3EstimateTradeRespond
 	//TODO @yenle
 	//TODO @lam
+
+	pools, poolPairStates, err := pathfinder.GetPdexv3PoolData()
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+
+	chosenPath, receive := pathfinder.FindGoodTradePath(
+		4,
+		pools,
+		poolPairStates,
+		sellToken,
+		buyToken,
+		uint64(amount))
+
+	spew.Dump("chosenPath", chosenPath)
+	log.Printf("receive %d\n", receive)
+
+	result.MaxGet = receive
+	result.Route = make([]string, 0)
+	if chosenPath != nil {
+		for _, v := range chosenPath {
+			result.Route = append(result.Route, v.PoolID)
+		}
+	}
+
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,

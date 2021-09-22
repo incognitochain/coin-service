@@ -3,7 +3,7 @@
   "chaindata": "chain",
   "concurrentotacheck": 10,
   "mode": "chainsync",
-  "mongo": "mongodb://root:example@172.24.0.2:27017",
+  "mongo": "mongodb://root:example@127.0.0.1:27017",
   "mongodb": "coin",
   "chainnetwork": "local",
   "indexerid": -1,
