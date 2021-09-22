@@ -272,7 +272,6 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		}
 		var result []TradeDataRespond
 		for _, tradeInfo := range tradeList {
-
 			matchedAmount := uint64(0)
 			var tradeStatus *shared.LimitOrderStatus
 			if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
@@ -688,6 +687,104 @@ func (pdexv3) TradeVolume(c *gin.Context) {
 		}{
 			Value: result,
 		},
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) TradeDetail(c *gin.Context) {
+	txhash := c.Query("txhash")
+
+	tradeList, err := database.DBGetTxTradeFromTxRequest([]string{txhash})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	txRequest := []string{txhash}
+	tradeStatusList, err := database.DBGetTradeStatus(txRequest)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	var result []TradeDataRespond
+	for _, tradeInfo := range tradeList {
+		if tradeInfo.IsSwap {
+			matchedAmount := uint64(0)
+			status := ""
+			isCompleted := false
+			switch tradeInfo.Status {
+			case 0:
+				status = "pending"
+			case 1:
+				status = "accepted"
+				matchedAmount = tradeInfo.Amount
+				isCompleted = true
+			case 2:
+				status = "rejected"
+			}
+
+			trade := TradeDataRespond{
+				RequestTx:   tradeInfo.RequestTx,
+				RespondTxs:  tradeInfo.RespondTxs,
+				WithdrawTxs: nil,
+				PoolID:      tradeInfo.PoolID,
+				PairID:      tradeInfo.PairID,
+				SellTokenID: tradeInfo.SellTokenID,
+				BuyTokenID:  tradeInfo.BuyTokenID,
+				Amount:      tradeInfo.Amount,
+				MinAccept:   tradeInfo.MinAccept,
+				Matched:     matchedAmount,
+				Status:      status,
+				StatusCode:  tradeInfo.Status,
+				Requestime:  tradeInfo.Requesttime,
+				NFTID:       tradeInfo.NFTID,
+				Fee:         tradeInfo.Fee,
+				FeeToken:    tradeInfo.FeeToken,
+				Receiver:    tradeInfo.Receiver,
+				IsCompleted: isCompleted,
+			}
+			result = append(result, trade)
+		} else {
+			matchedAmount := uint64(0)
+			var tradeStatus *shared.LimitOrderStatus
+			if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
+				tradeStatus = &t
+			}
+			matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			trade := TradeDataRespond{
+				RequestTx:           tradeInfo.RequestTx,
+				RespondTxs:          tradeInfo.RespondTxs,
+				WithdrawTxs:         withdrawTxs,
+				PoolID:              tradeInfo.PoolID,
+				PairID:              tradeInfo.PairID,
+				SellTokenID:         tradeInfo.SellTokenID,
+				BuyTokenID:          tradeInfo.BuyTokenID,
+				Amount:              tradeInfo.Amount,
+				MinAccept:           tradeInfo.MinAccept,
+				Matched:             matchedAmount,
+				Status:              status,
+				StatusCode:          statusCode,
+				Requestime:          tradeInfo.Requesttime,
+				NFTID:               tradeInfo.NFTID,
+				Fee:                 tradeInfo.Fee,
+				FeeToken:            tradeInfo.FeeToken,
+				Receiver:            tradeInfo.Receiver,
+				IsCompleted:         isCompleted,
+				SellTokenBalance:    sellTokenBl,
+				BuyTokenBalance:     buyTokenBl,
+				SellTokenWithdrawed: sellTokenWD,
+				BuyTokenWithdrawed:  buyTokenWD,
+			}
+			result = append(result, trade)
+		}
+
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }

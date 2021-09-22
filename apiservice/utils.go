@@ -182,17 +182,18 @@ func extractPubkeyFromKey(key string, otakeyOnly bool) (string, error) {
 		return result, err
 	}
 	if wl.KeySet.OTAKey.GetPublicSpend() == nil {
-		if otakeyOnly == true {
+		if otakeyOnly {
 			return result, errors.New("key incorrect format")
+		}
+		if wl.KeySet.PaymentAddress.GetPublicSpend() == nil {
+			return result, errors.New("key incorrect format")
+		} else {
+			pubkey = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
 		}
 	} else {
 		pubkey = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
 	}
-	if wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS() == nil {
-		return result, errors.New("key incorrect format")
-	} else {
-		pubkey = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
-	}
+
 	result = base58.EncodeCheck(pubkey)
 	return result, nil
 }
