@@ -7,5 +7,6 @@
   "mongodb": "coin",
   "chainnetwork": "local",
   "indexerid": -1,
+  "fullnodeendpoint": "http://localhost:9334",
   "masterindexer": "172.24.0.6:9009"
 }
