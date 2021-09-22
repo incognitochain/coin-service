@@ -155,14 +155,14 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			version := 1
 			switch metaDataType {
 			case metadata.PDETradeRequestMeta:
-				meta := txDetail.GetMetadata().(*metadata.PDECrossPoolTradeRequest)
+				meta := txDetail.GetMetadata().(*metadata.PDETradeRequest)
 				buyToken = meta.TokenIDToBuyStr
 				sellToken = meta.TokenIDToSellStr
 				pairID = meta.TokenIDToBuyStr + "-" + meta.TokenIDToSellStr
 				minaccept = meta.MinAcceptableAmount
 				amount = meta.SellAmount
 			case metadata.PDECrossPoolTradeRequestMeta:
-				meta := txDetail.GetMetadata().(*metadata.PDETradeRequest)
+				meta := txDetail.GetMetadata().(*metadata.PDECrossPoolTradeRequest)
 				buyToken = meta.TokenIDToBuyStr
 				sellToken = meta.TokenIDToSellStr
 				pairID = meta.TokenIDToBuyStr + "-" + meta.TokenIDToSellStr
