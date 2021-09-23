@@ -4,15 +4,14 @@ import (
 	"errors"
 	"github.com/davecgh/go-spew/spew"
 	"log"
-	"math"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
-	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
+	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
 )
@@ -691,8 +690,8 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 
 		var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
 			Timestamp: tm.Unix(),
-			High:      uint64(v.High * math.Pow(10, 9)),
-			Low:       uint64(v.Low * math.Pow(10, 9)),
+			High:      uint64(v.High * 1e9),
+			Low:       uint64(v.Low * 1e9),
 		}
 		result = append(result, pdexV3PriceHistoryRespond)
 	}
