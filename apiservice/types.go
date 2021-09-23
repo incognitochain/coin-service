@@ -86,7 +86,7 @@ type ReceivedTransactionV2 struct {
 type PdexV3EstimateTradeRespond struct {
 	MaxGet uint64
 	Fee    uint64
-	Route  string
+	Route  []string
 }
 type PdexV3OrderBookRespond struct {
 	Buy  []PdexV3OrderBookVolume
@@ -113,16 +113,17 @@ type PdexV3PoolDetail struct {
 }
 
 type PdexV3LiquidityHistoryRespond struct {
-	Time   uint64
-	Volume uint64
+	Timestamp        int64
+	Token0RealAmount uint64 `json:"Token0RealAmount"`
+	Token1RealAmount uint64 `json:"Token1RealAmount"`
 }
 
 type PdexV3PriceHistoryRespond struct {
-	Timestamp uint64
+	Timestamp int64
 	High      uint64
 	Low       uint64
-	Close     uint64
-	Open      uint64
+	//Close     uint64
+	//Open      uint64
 }
 type TradeDataRespond struct {
 	RequestTx           string
