@@ -1,5 +1,5 @@
 module github.com/incognitochain/coin-service
-replace github.com/incognitochain/incognito-chain => /Users/corncob/Incognito/projects/org/incognito-chain
+
 go 1.13
 
 require (
