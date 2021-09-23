@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/davecgh/go-spew/spew"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
+	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
 )
@@ -672,51 +674,85 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 func (pdexv3) PriceHistory(c *gin.Context) {
 	poolid := c.Query("poolid")
 	period := c.Query("period")
-	datapoint := c.Query("datapoint")
+	intervals := c.Query("intervals")
 
 	//TODO @yenle
-	_ = poolid
-	_ = period
-	_ = datapoint
+	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolid, period, intervals)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
 
 	var result []PdexV3PriceHistoryRespond
+
+	for _, v := range analyticsData.Result {
+		tm, _ := time.Parse(time.RFC3339, v.Timestamp)
+
+		var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
+			Timestamp: tm.Unix(),
+			High:      uint64(v.High * math.Pow(10, 9)),
+			Low:       uint64(v.Low * math.Pow(10, 9)),
+		}
+		result = append(result, pdexV3PriceHistoryRespond)
+	}
 
 	respond := APIRespond{
 		Result: result,
 	}
+
 	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) LiquidityHistory(c *gin.Context) {
 	poolid := c.Query("poolid")
 	period := c.Query("period")
-	datapoint := c.Query("datapoint")
+	intervals := c.Query("intervals")
 
 	//TODO @yenle
-	_ = poolid
-	_ = period
-	_ = datapoint
+	analyticsData, err := analyticsquery.APIGetPDexV3PoolLiquidityHistories(poolid, period, intervals)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
 
 	var result []PdexV3LiquidityHistoryRespond
+
+	for _, v := range analyticsData.Result {
+		tm, _ := time.Parse(time.RFC3339, v.Timestamp)
+
+		var pdexV3LiquidityHistoryRespond = PdexV3LiquidityHistoryRespond{
+			Timestamp: tm.Unix(),
+			Token0RealAmount: v.Token0RealAmount,
+			Token1RealAmount: v.Token1RealAmount,
+		}
+		result = append(result, pdexV3LiquidityHistoryRespond)
+	}
+
 	respond := APIRespond{
 		Result: result,
 	}
 	c.JSON(http.StatusOK, respond)
 }
 
-func (pdexv3) TradeVolume(c *gin.Context) {
+func (pdexv3) TradeVolume24h(c *gin.Context) {
 	pair := c.Query("pair")
 
 	_ = pair
 
-	//TODO @yenle
-	var result uint64
+	analyticsData, err := analyticsquery.APIGetPDexV3TradingVolume24H(pair)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
 
 	respond := APIRespond{
 		Result: struct {
 			Value uint64
 		}{
-			Value: result,
+			Value: uint64(analyticsData.Result.Value),
 		},
 	}
 	c.JSON(http.StatusOK, respond)

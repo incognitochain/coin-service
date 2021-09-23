@@ -30,6 +30,7 @@ type Config struct {
 	MasterIndexerAddr     string `json:"masterindexer"`
 	AnalyticService       string `json:"analyticservice"`
 	FullnodeEndpoint      string `json:"fullnodeendpoint"`
+	AnalyticsAPIEndpoint  string `json:"analyticsAPIEndpoint"`
 }
 
 type ConfigJSON struct {
@@ -45,6 +46,7 @@ type ConfigJSON struct {
 	MasterIndexerAddr     string `json:"masterindexer"`
 	AnalyticService       string `json:"analyticservice"`
 	FullnodeEndpoint      string `json:"fullnodeendpoint"`
+	AnalyticsAPIEndpoint  string `json:"analyticsAPIEndpoint"`
 }
 
 func ReadConfigAndArg() {
@@ -128,6 +130,7 @@ func ReadConfigAndArg() {
 	ServiceCfg.MasterIndexerAddr = tempCfg.MasterIndexerAddr
 	ServiceCfg.AnalyticService = tempCfg.AnalyticService
 	ServiceCfg.FullnodeEndpoint = tempCfg.FullnodeEndpoint
+	ServiceCfg.AnalyticsAPIEndpoint = tempCfg.AnalyticsAPIEndpoint
 
 	common.MaxShardNumber = param.ActiveShards
 }
