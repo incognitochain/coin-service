@@ -12,7 +12,7 @@ require (
 	github.com/go-resty/resty/v2 v2.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20210923040458-42bca64ad846
+	github.com/incognitochain/incognito-chain v0.0.0-20210923145225-e4c3f17b633a
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/kr/text v0.2.0 // indirect

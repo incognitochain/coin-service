@@ -784,3 +784,25 @@ func (model *InstructionBeaconData) Saving() error {
 
 	return nil
 }
+
+type ClientAssistantData struct {
+	mgm.DefaultModel `bson:",inline"`
+	DefaultPoolID    []string `json:"defaultpoolid" bson:"defaultpoolid"`
+}
+
+func (model *ClientAssistantData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *ClientAssistantData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
