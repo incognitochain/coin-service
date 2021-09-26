@@ -66,7 +66,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 			TotalShare:    v.TotalShare,
 		}
 
-		//TODO @yenle
+		//TODO @yenle add pool volume and price change 24h
 		// data.Volume
 		// data.PriceChange24h
 		// data.APY
@@ -631,7 +631,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			TotalShare:    v.TotalShare,
 		}
 
-		//TODO @yenle
+		//TODO @yenle add pool volume and price change 24h
 		// data.Volume
 		// data.PriceChange24h
 		// data.APY
