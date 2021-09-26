@@ -3,7 +3,7 @@ module github.com/incognitochain/coin-service
 go 1.13
 
 require (
-	github.com/0xkumi/incognito-dev-framework v0.0.0-20210923043745-a2e4eb59ad06
+	github.com/0xkumi/incognito-dev-framework v0.0.0-20210924114038-b7fc644328e4
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
 	github.com/gin-contrib/gzip v0.0.3
@@ -12,7 +12,7 @@ require (
 	github.com/go-resty/resty/v2 v2.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20210923040458-42bca64ad846
+	github.com/incognitochain/incognito-chain v0.0.0-20210923145225-e4c3f17b633a
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/kr/text v0.2.0 // indirect

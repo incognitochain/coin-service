@@ -272,7 +272,12 @@ func DBGetPDEV3WithdrawRespond(nftID, poolID string, limit int64, offset int64) 
 		limit = int64(10000)
 	}
 	var result []shared.WithdrawContributionData
-	filter := bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+	filter := bson.M{}
+	if poolID != "" {
+		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+	} else {
+		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}}
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},
@@ -352,7 +357,12 @@ func DBGetPDEV3WithdrawFeeRespond(nftID, poolID string, limit int64, offset int6
 		limit = int64(10000)
 	}
 	var result []shared.WithdrawContributionFeeData
-	filter := bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+	filter := bson.M{}
+	if poolID != "" {
+		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+	} else {
+		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}}
+	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.WithdrawContributionFeeData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},

@@ -161,6 +161,7 @@ type TradeWithdrawInfo struct {
 }
 
 type PdexV3WithdrawRespond struct {
+	PoolID      string
 	RequestTx   string
 	RespondTxs  []string
 	Status      int
@@ -173,6 +174,7 @@ type PdexV3WithdrawRespond struct {
 }
 
 type PdexV3WithdrawFeeRespond struct {
+	PoolID     string
 	RequestTx  string
 	RespondTxs []string
 	Status     int

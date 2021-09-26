@@ -2,11 +2,12 @@ package apiservice
 
 import (
 	"errors"
-	"github.com/davecgh/go-spew/spew"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
@@ -324,14 +325,20 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 func (pdexv3) ContributeHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	// poolID := c.Query("poolid")
+	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
+	var err error
+	var list []shared.ContributionData
+	if poolID != "" {
 
-	list, err := database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+	} else {
+		list, err = database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
+
 	var result []PdexV3ContributionData
 
 	for _, v := range list {
@@ -405,11 +412,23 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
 	var result []PdexV3WithdrawRespond
-	list, err := database.DBGetPDEV3WithdrawRespond(nftID, poolID, int64(limit), int64(offset))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+	var err error
+	var list []shared.WithdrawContributionData
+
+	if poolID != "" {
+		list, err = database.DBGetPDEV3WithdrawRespond(nftID, poolID, int64(limit), int64(offset))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	} else {
+		list, err = database.DBGetPDEV3WithdrawRespond(nftID, "", int64(limit), int64(offset))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
+
 	for _, v := range list {
 		var token1, token2 string
 		var amount1, amount2 uint64
@@ -424,6 +443,7 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 			amount1 = v.WithdrawAmount[0]
 		}
 		result = append(result, PdexV3WithdrawRespond{
+			PoolID:      v.PoolID,
 			RequestTx:   v.RequestTx,
 			RespondTxs:  v.RespondTxs,
 			TokenID1:    token1,
@@ -447,11 +467,23 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
 	var result []PdexV3WithdrawFeeRespond
-	list, err := database.DBGetPDEV3WithdrawFeeRespond(nftID, poolID, int64(limit), int64(offset))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+	var err error
+	var list []shared.WithdrawContributionFeeData
+
+	if poolID != "" {
+		list, err = database.DBGetPDEV3WithdrawFeeRespond(nftID, poolID, int64(limit), int64(offset))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	} else {
+		list, err = database.DBGetPDEV3WithdrawFeeRespond(nftID, "", int64(limit), int64(offset))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
+
 	for _, v := range list {
 		var token1, token2 string
 		var amount1, amount2 uint64
@@ -466,6 +498,7 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 			amount1 = v.WithdrawAmount[0]
 		}
 		result = append(result, PdexV3WithdrawFeeRespond{
+			PoolID:     v.PoodID,
 			RequestTx:  v.RequestTx,
 			RespondTxs: v.RespondTxs,
 			TokenID1:   token1,
@@ -722,7 +755,7 @@ func (pdexv3) LiquidityHistory(c *gin.Context) {
 		tm, _ := time.Parse(time.RFC3339, v.Timestamp)
 
 		var pdexV3LiquidityHistoryRespond = PdexV3LiquidityHistoryRespond{
-			Timestamp: tm.Unix(),
+			Timestamp:        tm.Unix(),
 			Token0RealAmount: v.Token0RealAmount,
 			Token1RealAmount: v.Token1RealAmount,
 		}
