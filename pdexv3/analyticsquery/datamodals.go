@@ -1,10 +1,12 @@
 package analyticsquery
 
 type PDexPairRate struct {
-	High      float64 `json:"High"`
-	Low       float64 `json:"Low"`
-	Average   float64 `json:"Average"`
-	Timestamp string  `json:"Timestamp"`
+	High      uint64 `json:"High"`
+	Low       uint64 `json:"Low"`
+	Open      uint64 `json:"Open"`
+	Close     uint64 `json:"Close"`
+	Average   uint64 `json:"Average"`
+	Timestamp string `json:"Timestamp"`
 }
 
 type PDexPairRateHistoriesAPIResponse struct {
@@ -13,9 +15,12 @@ type PDexPairRateHistoriesAPIResponse struct {
 }
 
 type PDexPoolLiquidity struct {
-	Token0RealAmount uint64 `json:"Token0RealAmount"`
-	Token1RealAmount uint64 `json:"Token1RealAmount"`
-	Timestamp        string `json:"timestamp"`
+	Token0RealAmount    uint64 `json:"Token0RealAmount"`
+	Token1RealAmount    uint64 `json:"Token1RealAmount"`
+	Token0VirtualAmount uint64 `json:"Token0VirtualAmount"`
+	Token1VirtualAmount uint64 `json:"Token1VirtualAmount"`
+	ShareAmount         uint64 `json:"ShareAmount"`
+	Timestamp           string `json:"Timestamp"`
 }
 
 type PDexPoolLiquidityHistoriesAPIResponse struct {
@@ -24,7 +29,7 @@ type PDexPoolLiquidityHistoriesAPIResponse struct {
 }
 
 type PDexSummaryData struct {
-	Value float64 `json:"Value"`
+	Value uint64 `json:"Value"`
 }
 
 type PDexSummaryDataAPIResponse struct {

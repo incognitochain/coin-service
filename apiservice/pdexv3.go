@@ -667,7 +667,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	_ = feeInPRV
 
 	var result PdexV3EstimateTradeRespond
-	//TODO @yenle
+	//TODO @yenle add trading fee estimate
 	//TODO @lam
 
 	pools, poolPairStates, err := pathfinder.GetPdexv3PoolData()
@@ -708,7 +708,6 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 	period := c.Query("period")
 	intervals := c.Query("intervals")
 
-	//TODO @yenle
 	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolid, period, intervals)
 
 	if err != nil {
@@ -723,8 +722,10 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 
 		var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
 			Timestamp: tm.Unix(),
-			High:      uint64(v.High * 1e9),
-			Low:       uint64(v.Low * 1e9),
+			High:      v.High,
+			Low:       v.Low,
+			Open:      v.Open,
+			Close:     v.Close,
 		}
 		result = append(result, pdexV3PriceHistoryRespond)
 	}
@@ -741,7 +742,6 @@ func (pdexv3) LiquidityHistory(c *gin.Context) {
 	period := c.Query("period")
 	intervals := c.Query("intervals")
 
-	//TODO @yenle
 	analyticsData, err := analyticsquery.APIGetPDexV3PoolLiquidityHistories(poolid, period, intervals)
 
 	if err != nil {
@@ -758,6 +758,9 @@ func (pdexv3) LiquidityHistory(c *gin.Context) {
 			Timestamp:        tm.Unix(),
 			Token0RealAmount: v.Token0RealAmount,
 			Token1RealAmount: v.Token1RealAmount,
+			Token0VirtualAmount: v.Token0VirtualAmount,
+			Token1VirtualAmount: v.Token1VirtualAmount,
+			ShareAmount: v.ShareAmount,
 		}
 		result = append(result, pdexV3LiquidityHistoryRespond)
 	}
@@ -784,7 +787,7 @@ func (pdexv3) TradeVolume24h(c *gin.Context) {
 		Result: struct {
 			Value uint64
 		}{
-			Value: uint64(analyticsData.Result.Value),
+			Value: analyticsData.Result.Value,
 		},
 	}
 	c.JSON(http.StatusOK, respond)
