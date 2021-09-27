@@ -116,14 +116,17 @@ type PdexV3LiquidityHistoryRespond struct {
 	Timestamp        int64
 	Token0RealAmount uint64 `json:"Token0RealAmount"`
 	Token1RealAmount uint64 `json:"Token1RealAmount"`
+	Token0VirtualAmount uint64 `json:"Token0VirtualAmount"`
+	Token1VirtualAmount uint64 `json:"Token1VirtualAmount"`
+	ShareAmount uint64 `json:"ShareAmount"`
 }
 
 type PdexV3PriceHistoryRespond struct {
 	Timestamp int64
 	High      uint64
 	Low       uint64
-	//Close     uint64
-	//Open      uint64
+	Close     uint64
+	Open      uint64
 }
 type TradeDataRespond struct {
 	RequestTx           string
