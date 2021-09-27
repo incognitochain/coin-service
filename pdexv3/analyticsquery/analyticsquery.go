@@ -1,6 +1,7 @@
 package analyticsquery
 
 import (
+	"encoding/json"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/incognitochain/coin-service/shared"
 	"log"
@@ -56,4 +57,32 @@ func APIGetPDexV3TradingVolume24H(pairName string) (*PDexSummaryDataAPIResponse,
 	}
 
 	return &responseBodyData, nil
+}
+
+
+func APIGetPDexV3PairRateChanges24h(poolIDs []string) (map[string]PDexPoolLiquidity, error){
+	var responseBodyData PDexPoolRateChangesAPIResponse
+	_, err := shared.RestyClient.R().
+		EnableTrace().
+		SetHeader("Content-Type", "application/json").
+		SetBody(map[string]interface{}{
+			"poolIds": poolIDs}).
+		SetResult(&responseBodyData).
+		Get(shared.ServiceCfg.AnalyticsAPIEndpoint + AnalyticsAPIPath["PDEX_V3_PAIR_RATE_CHANGES_24H"])
+	if err != nil {
+		log.Printf("Error getting PDEX_V3_POOL_LIQUIDITY_HISTORIES: %s\n", err.Error())
+		return nil, err
+	}
+
+	pDexPoolLiquidityMap := make(map[string]PDexPoolLiquidity, 0)
+	for key, element := range responseBodyData.Result {
+		var poolLiquidity PDexPoolLiquidity
+		err = json.Unmarshal(element, &poolLiquidity)
+
+		if err != nil {
+			pDexPoolLiquidityMap[key] = poolLiquidity
+		}
+	}
+
+	return pDexPoolLiquidityMap, nil
 }

@@ -51,6 +51,19 @@ func (pdexv3) ListPools(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+
+	// Get pool pair rate changes
+	poolIds := make([]string, 0)
+	for _, v := range list {
+		poolIds = append(poolIds, v.PoolID)
+	}
+	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChanges24h(poolIds)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
 	var result []PdexV3PoolDetail
 	for _, v := range list {
 		data := PdexV3PoolDetail{
@@ -70,6 +83,11 @@ func (pdexv3) ListPools(c *gin.Context) {
 		// data.Volume
 		// data.PriceChange24h
 		// data.APY
+
+		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
+			data.PriceChange24h = poolChange.RateChangePercentage
+		}
+
 		result = append(result, data)
 	}
 	respond := APIRespond{
@@ -616,6 +634,13 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+
+	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChanges24h(req.PoolIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
 	var result []PdexV3PoolDetail
 	for _, v := range list {
 		data := PdexV3PoolDetail{
@@ -635,6 +660,12 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		// data.Volume
 		// data.PriceChange24h
 		// data.APY
+
+		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
+			data.PriceChange24h = poolChange.RateChangePercentage
+		}
+
+
 		result = append(result, data)
 	}
 	respond := APIRespond{
