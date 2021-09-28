@@ -12,8 +12,16 @@ import (
 )
 
 func DBSaveTokenInfo(list []shared.TokenInfoData) error {
-	for _, v := range list {
-		_, err := mgm.Coll(&shared.TokenInfoData{}).InsertOne(context.Background(), v)
+	docs := []interface{}{}
+	for _, tx := range list {
+		update := bson.M{
+			"$set": tx,
+		}
+		docs = append(docs, update)
+	}
+	for idx, v := range list {
+		filter := bson.M{"tokenid": bson.M{operator.Eq: v.TokenID}}
+		_, err := mgm.Coll(&shared.TokenInfoData{}).UpdateOne(context.Background(), filter, docs[idx], mgm.UpsertTrueOption())
 		if err != nil {
 			writeErr, ok := err.(mongo.WriteException)
 			if !ok {
