@@ -160,11 +160,12 @@ type TokenInfoData struct {
 	IsPrivacy        bool   `json:"isprivacy" bson:"isprivacy"`
 	IsBridge         bool   `json:"isbridge" bson:"isbridge"`
 	IsNFT            bool   `json:"isnft" bson:"isnft"`
+	ExternalID       string `json:"externalid" bson:"externalid"`
 }
 
-func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy, isbridge bool, amount uint64, isNFT bool) *TokenInfoData {
+func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy, isbridge bool, amount uint64, isNFT bool, externalid string) *TokenInfoData {
 	return &TokenInfoData{
-		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, IsBridge: isbridge, Amount: strconv.FormatUint(amount, 10), IsNFT: isNFT,
+		TokenID: tokenID, Name: name, Symbol: symbol, Image: image, IsPrivacy: isprivacy, IsBridge: isbridge, Amount: strconv.FormatUint(amount, 10), IsNFT: isNFT, ExternalID: externalid,
 	}
 }
 
@@ -787,7 +788,8 @@ func (model *InstructionBeaconData) Saving() error {
 
 type ClientAssistantData struct {
 	mgm.DefaultModel `bson:",inline"`
-	DefaultPoolID    []string `json:"defaultpoolid" bson:"defaultpoolid"`
+	DataName         string `json:"dataname" bson:"dataname"`
+	Data             string `json:"data" bson:"data"`
 }
 
 func (model *ClientAssistantData) Creating() error {
@@ -799,6 +801,57 @@ func (model *ClientAssistantData) Creating() error {
 	return nil
 }
 func (model *ClientAssistantData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type TokenPrice struct {
+	mgm.DefaultModel `bson:",inline"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	TokenName        string `json:"name" bson:"name"`
+	TokenSymbol      string `json:"symbol" bson:"symbol"`
+	Price            string `json:"price" bson:"price"`
+	Time             int64  `json:"time" bson:"time"`
+	PriceType        int    `json:"pricetype" bson:"pricetype"`
+}
+
+func (model *TokenPrice) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *TokenPrice) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type PairRanking struct {
+	mgm.DefaultModel `bson:",inline"`
+	PairID           string `json:"pairid" bson:"pairid"`
+	Value            uint64 `json:"value" bson:"value"`
+	LeadPool         string `json:"leadpool" bson:"leadpool"`
+}
+
+func (model *PairRanking) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *PairRanking) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

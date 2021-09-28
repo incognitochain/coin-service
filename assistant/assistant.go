@@ -1,5 +1,14 @@
 package assistant
 
-func StartAssistant() {
+import (
+	"log"
+	"time"
+)
 
+func StartAssistant() {
+	log.Println("starting assistant")
+	for {
+		time.Sleep(updateInterval)
+
+	}
 }

@@ -2,6 +2,7 @@ package chainsynker
 
 import (
 	"encoding/base64"
+	"fmt"
 	"log"
 	"time"
 
@@ -169,12 +170,13 @@ func tokenListWatcher() {
 			}
 			tokenList.ListCustomToken = append(tokenList.ListCustomToken, item)
 		}
-
+		externalIDs := make(map[string]string)
 		for index, _ := range tokenList.ListCustomToken {
 			tokenList.ListCustomToken[index].ListTxs = []string{}
 			tokenList.ListCustomToken[index].Image = common.Render([]byte(tokenList.ListCustomToken[index].ID))
 			for _, bridgeToken := range allBridgeTokens {
 				if tokenList.ListCustomToken[index].ID == bridgeToken.TokenID.String() {
+					externalIDs[bridgeToken.TokenID.String()] = fmt.Sprintf("%v", bridgeToken.ExternalTokenID)
 					tokenList.ListCustomToken[index].Amount = bridgeToken.Amount
 					tokenList.ListCustomToken[index].IsBridgeToken = true
 					break
@@ -184,7 +186,11 @@ func tokenListWatcher() {
 
 		var tokenInfoList []shared.TokenInfoData
 		for _, token := range tokenList.ListCustomToken {
-			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount, nftToken[token.ID])
+			externalID := ""
+			if id, ok := externalIDs[token.ID]; ok {
+				externalID = id
+			}
+			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount, nftToken[token.ID], externalID)
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
 		err = database.DBSaveTokenInfo(tokenInfoList)

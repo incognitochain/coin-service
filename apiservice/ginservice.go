@@ -114,8 +114,10 @@ func StartGinService() {
 		pdexv2Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
 		astGroup := pdexv3Group.Group("/assistance")
-		astGroup.GET("/top10pool")
-		astGroup.GET("/")
+		astGroup.GET("/top10pool", APIGetTop10)
+		astGroup.GET("/defaultpool", APIGetDefaultPool)
+		astGroup.GET("/checkrate", APICheckRate)
+
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {

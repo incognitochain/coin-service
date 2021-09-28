@@ -12,8 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
-	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/pdexv3/feeestimator"
+	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
 )
@@ -48,6 +48,12 @@ func (pdexv3) ListPairs(c *gin.Context) {
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
 	list, err := database.DBGetPoolPairsByPairID(pair)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	//TODO cache default pool
+	defaultPools, err := database.DBGetDefaultPool()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -87,6 +93,9 @@ func (pdexv3) ListPools(c *gin.Context) {
 
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
 			data.PriceChange24h = poolChange.RateChangePercentage
+		}
+		if _, found := defaultPools[v.PoolID]; found {
+			data.IsVerify = true
 		}
 
 		result = append(result, data)
@@ -666,7 +675,6 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			data.PriceChange24h = poolChange.RateChangePercentage
 		}
 
-
 		result = append(result, data)
 	}
 	respond := APIRespond{
@@ -687,9 +695,9 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 func (pdexv3) EstimateTrade(c *gin.Context) {
 	var req struct {
 		SellToken string `form:"selltoken" json:"selltoken" binding:"required"`
-		BuyToken string `form:"buytoken" json:"buytoken" binding:"required"`
-		Amount uint64 `form:"amount" json:"amount" binding:"required"`
-		FeeInPRV bool `form:"feeinprv" json:"feeinprv"`
+		BuyToken  string `form:"buytoken" json:"buytoken" binding:"required"`
+		Amount    uint64 `form:"amount" json:"amount" binding:"required"`
+		FeeInPRV  bool   `form:"feeinprv" json:"feeinprv"`
 	}
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
@@ -714,7 +722,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 	pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
 
-	if err != nil{
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not get data from RPC pdexv3_getState")))
 		return
 	}
@@ -731,7 +739,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
-
 
 	chosenPath, receive := pathfinder.FindGoodTradePath(
 		4,
@@ -755,7 +762,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 		if err != nil {
 			log.Print("can not estimate fee: ", err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not estimate fee: " + err.Error())))
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 			return
 		}
 		result.Fee = tradingFee
@@ -820,12 +827,12 @@ func (pdexv3) LiquidityHistory(c *gin.Context) {
 		tm, _ := time.Parse(time.RFC3339, v.Timestamp)
 
 		var pdexV3LiquidityHistoryRespond = PdexV3LiquidityHistoryRespond{
-			Timestamp:        tm.Unix(),
-			Token0RealAmount: v.Token0RealAmount,
-			Token1RealAmount: v.Token1RealAmount,
+			Timestamp:           tm.Unix(),
+			Token0RealAmount:    v.Token0RealAmount,
+			Token1RealAmount:    v.Token1RealAmount,
 			Token0VirtualAmount: v.Token0VirtualAmount,
 			Token1VirtualAmount: v.Token1VirtualAmount,
-			ShareAmount: v.ShareAmount,
+			ShareAmount:         v.ShareAmount,
 		}
 		result = append(result, pdexV3LiquidityHistoryRespond)
 	}
