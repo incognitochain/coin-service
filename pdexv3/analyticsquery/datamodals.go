@@ -23,6 +23,7 @@ type PDexPoolLiquidity struct {
 	Token1VirtualAmount  uint64 `json:"Token1VirtualAmount"`
 	ShareAmount          uint64 `json:"ShareAmount"`
 	RateChangePercentage uint64 `json:"RateChangePercentage"`
+	TradingVolume24h     uint64 `json:"TradingVolume24h"`
 	Timestamp            string `json:"Timestamp"`
 }
 

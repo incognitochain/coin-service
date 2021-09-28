@@ -58,7 +58,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 	for _, v := range list {
 		poolIds = append(poolIds, v.PoolID)
 	}
-	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChanges24h(poolIds)
+	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(poolIds)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -68,25 +68,26 @@ func (pdexv3) ListPools(c *gin.Context) {
 	var result []PdexV3PoolDetail
 	for _, v := range list {
 		data := PdexV3PoolDetail{
-			PoolID:        v.PoolID,
-			Token1ID:      v.TokenID1,
-			Token2ID:      v.TokenID2,
-			Token1Value:   v.Token1Amount,
-			Token2Value:   v.Token2Amount,
-			Virtual1Value: v.Virtual1Amount,
-			Virtual2Value: v.Virtual2Amount,
-			AMP:           v.AMP,
-			Price:         v.Token1Amount / v.Token2Amount,
-			TotalShare:    v.TotalShare,
+			PoolID:         v.PoolID,
+			Token1ID:       v.TokenID1,
+			Token2ID:       v.TokenID2,
+			Token1Value:    v.Token1Amount,
+			Token2Value:    v.Token2Amount,
+			Virtual1Value:  v.Virtual1Amount,
+			Virtual2Value:  v.Virtual2Amount,
+			Volume:         0,
+			PriceChange24h: 0,
+			AMP:            v.AMP,
+			Price:          v.Token1Amount / v.Token2Amount,
+			TotalShare:     v.TotalShare,
 		}
 
 		//TODO @yenle add pool volume and price change 24h
-		// data.Volume
-		// data.PriceChange24h
 		// data.APY
 
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
 			data.PriceChange24h = poolChange.RateChangePercentage
+			data.Volume = poolChange.TradingVolume24h
 		}
 
 		result = append(result, data)
@@ -636,7 +637,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		return
 	}
 
-	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChanges24h(req.PoolIDs)
+	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(req.PoolIDs)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -645,27 +646,27 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 	var result []PdexV3PoolDetail
 	for _, v := range list {
 		data := PdexV3PoolDetail{
-			PoolID:        v.PoolID,
-			Token1ID:      v.TokenID1,
-			Token2ID:      v.TokenID2,
-			Token1Value:   v.Token1Amount,
-			Token2Value:   v.Token2Amount,
-			Virtual1Value: v.Virtual1Amount,
-			Virtual2Value: v.Virtual2Amount,
-			AMP:           v.AMP,
-			Price:         v.Token1Amount / v.Token2Amount,
-			TotalShare:    v.TotalShare,
+			PoolID:         v.PoolID,
+			Token1ID:       v.TokenID1,
+			Token2ID:       v.TokenID2,
+			Token1Value:    v.Token1Amount,
+			Token2Value:    v.Token2Amount,
+			Virtual1Value:  v.Virtual1Amount,
+			Virtual2Value:  v.Virtual2Amount,
+			PriceChange24h: 0,
+			Volume:         0,
+			AMP:            v.AMP,
+			Price:          v.Token1Amount / v.Token2Amount,
+			TotalShare:     v.TotalShare,
 		}
 
 		//TODO @yenle add pool volume and price change 24h
-		// data.Volume
-		// data.PriceChange24h
 		// data.APY
 
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
 			data.PriceChange24h = poolChange.RateChangePercentage
+			data.Volume = poolChange.TradingVolume24h
 		}
-
 
 		result = append(result, data)
 	}
@@ -687,9 +688,9 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 func (pdexv3) EstimateTrade(c *gin.Context) {
 	var req struct {
 		SellToken string `form:"selltoken" json:"selltoken" binding:"required"`
-		BuyToken string `form:"buytoken" json:"buytoken" binding:"required"`
-		Amount uint64 `form:"amount" json:"amount" binding:"required"`
-		FeeInPRV bool `form:"feeinprv" json:"feeinprv"`
+		BuyToken  string `form:"buytoken" json:"buytoken" binding:"required"`
+		Amount    uint64 `form:"amount" json:"amount" binding:"required"`
+		FeeInPRV  bool   `form:"feeinprv" json:"feeinprv"`
 	}
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
@@ -709,12 +710,10 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	}
 
 	var result PdexV3EstimateTradeRespond
-	//TODO @yenle add trading fee estimate
-	//TODO @lam
 
 	pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
 
-	if err != nil{
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not get data from RPC pdexv3_getState")))
 		return
 	}
@@ -731,7 +730,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
-
 
 	chosenPath, receive := pathfinder.FindGoodTradePath(
 		4,
@@ -755,7 +753,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 		if err != nil {
 			log.Print("can not estimate fee: ", err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not estimate fee: " + err.Error())))
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 			return
 		}
 		result.Fee = tradingFee
@@ -820,12 +818,12 @@ func (pdexv3) LiquidityHistory(c *gin.Context) {
 		tm, _ := time.Parse(time.RFC3339, v.Timestamp)
 
 		var pdexV3LiquidityHistoryRespond = PdexV3LiquidityHistoryRespond{
-			Timestamp:        tm.Unix(),
-			Token0RealAmount: v.Token0RealAmount,
-			Token1RealAmount: v.Token1RealAmount,
+			Timestamp:           tm.Unix(),
+			Token0RealAmount:    v.Token0RealAmount,
+			Token1RealAmount:    v.Token1RealAmount,
 			Token0VirtualAmount: v.Token0VirtualAmount,
 			Token1VirtualAmount: v.Token1VirtualAmount,
-			ShareAmount: v.ShareAmount,
+			ShareAmount:         v.ShareAmount,
 		}
 		result = append(result, pdexV3LiquidityHistoryRespond)
 	}
