@@ -34,17 +34,16 @@ type PoolPairState struct {
 	}
 }
 
-
 type Pdexv3GetStateRPCResult struct {
 	ID     int `json:"Id"`
 	Result struct {
-		Beacontimestamp      int                    `json:"BeaconTimeStamp"`
-		Params               map[string]interface{} `json:"Params"`
-		Poolpairs            jsond.RawMessage       `json:"PoolPairs"`
+		Beacontimestamp      int              `json:"BeaconTimeStamp"`
+		Params               jsond.RawMessage `json:"Params"`
+		Poolpairs            jsond.RawMessage `json:"PoolPairs"`
 		Waitingcontributions struct {
 		} `json:"WaitingContributions"`
-		Nftids       map[string]interface{} `json:"NftIDs"`
-		Stakingpools map[string]interface{} `json:"StakingPools"`
+		Nftids       jsond.RawMessage `json:"NftIDs"`
+		Stakingpools jsond.RawMessage `json:"StakingPools"`
 	} `json:"Result"`
 	Error  interface{} `json:"Error"`
 	Params []struct {
@@ -62,4 +61,3 @@ type Pdexv3PoolPairWithId struct {
 	rawdbv2.Pdexv3PoolPair
 	Pdexv3PoolPairChild
 }
-

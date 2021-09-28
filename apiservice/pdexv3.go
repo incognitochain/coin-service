@@ -13,6 +13,7 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
+	"github.com/incognitochain/coin-service/pdexv3/feeestimator"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
 )
@@ -684,29 +685,53 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 }
 
 func (pdexv3) EstimateTrade(c *gin.Context) {
-	sellToken := c.Query("selltoken")
-	buyToken := c.Query("buytoken")
-	amountStr := c.Query("amount")
-	feeInPRV := c.Query("feeinprv")
-
-	amount, err := strconv.ParseInt(amountStr, 10, 64)
-	if err != nil || amount < 0 {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid sell amount")))
+	var req struct {
+		SellToken string `form:"selltoken" json:"selltoken" binding:"required"`
+		BuyToken string `form:"buytoken" json:"buytoken" binding:"required"`
+		Amount uint64 `form:"amount" json:"amount" binding:"required"`
+		FeeInPRV bool `form:"feeinprv" json:"feeinprv"`
+	}
+	err := c.ShouldBindQuery(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
 
-	_ = feeInPRV
+	spew.Dump(req)
+	sellToken := req.SellToken
+	buyToken := req.BuyToken
+	feeInPRV := req.FeeInPRV
+	amount := req.Amount
+
+	if amount < 0 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid sell amount")))
+		return
+	}
 
 	var result PdexV3EstimateTradeRespond
 	//TODO @yenle add trading fee estimate
 	//TODO @lam
 
-	pools, poolPairStates, err := pathfinder.GetPdexv3PoolData()
+	pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
+
+	if err != nil{
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not get data from RPC pdexv3_getState")))
+		return
+	}
+
+	pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Poolpairs)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
+
+	pdexState, err := feeestimator.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Params, pdexv3StateRPCResponse.Result.Poolpairs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+
 
 	chosenPath, receive := pathfinder.FindGoodTradePath(
 		4,
@@ -714,7 +739,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		poolPairStates,
 		sellToken,
 		buyToken,
-		uint64(amount))
+		amount)
 
 	spew.Dump("chosenPath", chosenPath)
 	log.Printf("receive %d\n", receive)
@@ -725,6 +750,15 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		for _, v := range chosenPath {
 			result.Route = append(result.Route, v.PoolID)
 		}
+		//TODO: check pointer
+		tradingFee, err := feeestimator.EstimateTradingFee(uint64(amount), sellToken, result.Route, *pdexState, feeInPRV)
+
+		if err != nil {
+			log.Print("can not estimate fee: ", err)
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not estimate fee: " + err.Error())))
+			return
+		}
+		result.Fee = tradingFee
 	}
 
 	respond := APIRespond{
