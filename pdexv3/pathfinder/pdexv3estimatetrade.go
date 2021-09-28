@@ -2,7 +2,6 @@ package pathfinder
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex/v2utils"
@@ -279,7 +278,7 @@ func marshalRPCGetState(data json.RawMessage) ([]*shared.Pdexv3PoolPairWithId, m
 	return poolPairsArr, poolPairs
 }
 
-func getPdexv3StateFromRPC() *shared.Pdexv3GetStateRPCResult {
+func GetPdexv3StateFromRPC() (*shared.Pdexv3GetStateRPCResult, error)  {
 	rpcRequestBody := `
 		{
 		  "id": 1,
@@ -302,20 +301,14 @@ func getPdexv3StateFromRPC() *shared.Pdexv3GetStateRPCResult {
 		Post(shared.ServiceCfg.FullnodeEndpoint)
 	if err != nil {
 		log.Printf("Error getting RPC 'pdexv3_getState': %s\n", err.Error())
-		return nil
+		return nil, err
 	}
 
-	return &responseBodyData
+	return &responseBodyData, nil
 }
 
-func GetPdexv3PoolData() ([]*shared.Pdexv3PoolPairWithId, map[string]*pdex.PoolPairState, error) {
-	rpcData := getPdexv3StateFromRPC()
-
-	if rpcData == nil {
-		return nil, nil, errors.New("can not get data from RPC pdexv3_getState")
-	}
-
-	pools, poolPairStates := marshalRPCGetState(rpcData.Result.Poolpairs)
+func GetPdexv3PoolDataFromRawRPCResult(message json.RawMessage) ([]*shared.Pdexv3PoolPairWithId, map[string]*pdex.PoolPairState, error) {
+	pools, poolPairStates := marshalRPCGetState(message)
 
 	return pools, poolPairStates, nil
 }
