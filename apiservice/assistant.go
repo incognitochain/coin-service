@@ -25,7 +25,7 @@ func APIGetTop10(c *gin.Context) {
 	for _, v := range list {
 		poolIDs = append(poolIDs, v.LeadPool)
 	}
-	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChanges24h(poolIDs)
+	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(poolIDs)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -58,6 +58,7 @@ func APIGetTop10(c *gin.Context) {
 
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
 			data.PriceChange24h = poolChange.RateChangePercentage
+			data.Volume = poolChange.TradingVolume24h
 		}
 		if _, found := defaultPools[v.PoolID]; found {
 			data.IsVerify = true
@@ -82,4 +83,9 @@ func APICheckRate(c *gin.Context) {
 	amount2 := c.Query("amount2")
 	amp := c.Query("amp")
 
+	_ = token1
+	_ = token2
+	_ = amount1
+	_ = amount2
+	_ = amp
 }
