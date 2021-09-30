@@ -36,6 +36,7 @@ const (
 	LIQUIDITYMODE = "liquidity"
 	SHIELDMODE    = "shield"
 	TRADEMODE     = "trade"
+	ASTMODE       = "assistant"
 )
 
 const (

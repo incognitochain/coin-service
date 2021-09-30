@@ -476,6 +476,7 @@ type TradeOrderData struct {
 	FeeToken         string                            `json:"feetoken" bson:"feetoken"`
 	IsSwap           bool                              `json:"isswap" bson:"isswap"`
 	Version          int                               `json:"version" bson:"version"`
+	TradingPath      []string                          `json:"tradingpath" bson:"tradingpath"`
 }
 
 func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, minAccept, amount uint64, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
@@ -814,9 +815,8 @@ type TokenPrice struct {
 	TokenID          string `json:"tokenid" bson:"tokenid"`
 	TokenName        string `json:"name" bson:"name"`
 	TokenSymbol      string `json:"symbol" bson:"symbol"`
-	Price            string `json:"price" bson:"price"`
+	Price            uint64 `json:"price" bson:"price"`
 	Time             int64  `json:"time" bson:"time"`
-	PriceType        int    `json:"pricetype" bson:"pricetype"`
 }
 
 func (model *TokenPrice) Creating() error {
@@ -852,6 +852,29 @@ func (model *PairRanking) Creating() error {
 	return nil
 }
 func (model *PairRanking) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type TokenMarketCap struct {
+	mgm.DefaultModel `bson:",inline"`
+	TokenSymbol      string `json:"symbol" bson:"symbol"`
+	Value            uint64 `json:"value" bson:"value"`
+}
+
+func (model *TokenMarketCap) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *TokenMarketCap) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

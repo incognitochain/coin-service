@@ -36,7 +36,7 @@ func StartProcessor() {
 	for {
 		time.Sleep(5 * time.Second)
 
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 100)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 1000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -140,6 +140,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 		if txDetail == nil {
 			panic(errors.New("invalid tx detected"))
 		}
+		// txDetail.GetTxFullBurnData()
 		switch metaDataType {
 		case metadata.PDECrossPoolTradeRequestMeta, metadata.PDETradeRequestMeta, metadata.Pdexv3TradeRequestMeta, metadata.Pdexv3AddOrderRequestMeta:
 			requestTx := txDetail.Hash().String()
@@ -153,6 +154,9 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			nftID := ""
 			isSwap := true
 			version := 1
+			feeToken := ""
+			fee := uint64(0)
+			tradingPath := []string{}
 			switch metaDataType {
 			case metadata.PDETradeRequestMeta:
 				meta := txDetail.GetMetadata().(*metadata.PDETradeRequest)
@@ -174,11 +178,52 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 					panic("invalid metadataPdexv3.TradeRequest")
 				}
 				sellToken = item.TokenToSell.String()
-				buyToken = item.TradePath[len(item.TradePath)-1]
+				if len(item.TradePath) == 1 {
+					tks := strings.Split(item.TradePath[0], "-")
+					if tks[0] == sellToken {
+						buyToken = tks[1]
+					} else {
+						buyToken = tks[0]
+					}
+				} else {
+					intermediateToken := ""
+					for idx, v := range item.TradePath {
+						if idx == len(item.TradePath)-1 {
+							tks := strings.Split(v, "-")
+							if tks[0] == intermediateToken {
+								buyToken = tks[1]
+							} else {
+								buyToken = tks[0]
+							}
+						} else {
+							tks := strings.Split(v, "-")
+							if tks[0] == intermediateToken {
+								intermediateToken = tks[1]
+							} else {
+								intermediateToken = tks[0]
+							}
+						}
+					}
+				}
+
+				if sellToken == common.PRVCoinID.String() {
+					feeToken = common.PRVCoinID.String()
+				} else {
+					// error was handled by tx validation
+					_, burnedPRVCoin, _, _, _ := txDetail.GetTxFullBurnData()
+					if burnedPRVCoin != nil {
+						feeToken = sellToken
+					} else {
+						feeToken = common.PRVCoinID.String()
+					}
+				}
+
 				pairID = strings.Join(item.TradePath, "-")
 				minaccept = item.MinAcceptableAmount
 				amount = item.SellAmount
 				version = 2
+				tradingPath = item.TradePath
+				fee = item.TradingFee
 			case metadata.Pdexv3AddOrderRequestMeta:
 				isSwap = false
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.AddOrderRequest)
@@ -201,6 +246,9 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, minaccept, amount, lockTime, tx.ShardID, tx.BlockHeight)
 			trade.Version = version
 			trade.IsSwap = isSwap
+			trade.TradingPath = tradingPath
+			trade.Fee = fee
+			trade.FeeToken = feeToken
 			requestTrades = append(requestTrades, *trade)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta, metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
 			status := 0

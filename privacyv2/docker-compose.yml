@@ -93,6 +93,18 @@ services:
     depends_on:
       - chainsync
       - mongo
+  assistant:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "assistant"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
 
   nginx-server:
     image: nginx-load-balancer

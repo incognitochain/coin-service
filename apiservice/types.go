@@ -152,6 +152,7 @@ type TradeDataRespond struct {
 	BuyTokenBalance     uint64
 	SellTokenWithdrawed uint64
 	BuyTokenWithdrawed  uint64
+	TradingPath         []string
 }
 
 type TradeWithdrawInfo struct {

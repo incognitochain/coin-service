@@ -426,16 +426,16 @@ func DBSaveTradeOrder(orders []shared.TradeOrderData) error {
 }
 
 func DBUpdateTradeOrder(orders []shared.TradeOrderData) error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range orders {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
 			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "respondtokens": bson.M{operator.Each: order.RespondTokens}, "respondamount": bson.M{operator.Each: order.RespondAmount}},
 			"$set":  bson.M{"status": order.Status},
 		}
-		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
-			return err.Err()
+			return err
 		}
 	}
 	return nil
@@ -445,16 +445,16 @@ func DBUpdateWithdrawTradeOrderReq(orders []shared.TradeOrderData) error {
 	if len(orders) == 0 {
 		return nil
 	}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range orders {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
 			"$push": bson.M{"withdrawtxs": bson.M{operator.Each: order.WithdrawTxs}},
 			"$set":  bson.M{"withdrawinfos." + order.WithdrawTxs[0]: order.WithdrawInfos[order.WithdrawTxs[0]]},
 		}
-		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
-			return err.Err()
+			return err
 		}
 	}
 	return nil
@@ -464,8 +464,8 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 	if len(orders) == 0 {
 		return nil
 	}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(orders)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range orders {
+		ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 		fitler := bson.M{"withdrawtxs": bson.M{operator.Eq: order.WithdrawTxs[0]}}
 		prefix := "withdrawinfos." + order.WithdrawTxs[0]
 		update := bson.M{

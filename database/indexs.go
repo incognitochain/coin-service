@@ -382,3 +382,18 @@ func DBCreateInstructionIndex() error {
 
 	return nil
 }
+
+func DBCreateClientAssistantIndex() error {
+	modal := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "dataname", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err := mgm.Coll(&shared.ClientAssistantData{}).Indexes().CreateMany(context.Background(), modal)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

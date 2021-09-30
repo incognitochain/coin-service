@@ -2,6 +2,7 @@ package apiservice
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -229,6 +230,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			c.JSON(http.StatusOK, respond)
 			return
 		}
+		fmt.Println("pubkey, metadata.Pdexv3TradeRequestMeta", pubkey, metadata.Pdexv3TradeRequestMeta)
 		txList, err := database.DBGetTxByMetaAndOTA(pubkey, metadata.Pdexv3TradeRequestMeta, int64(limit), int64(offset))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -259,7 +261,6 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			case 2:
 				status = "rejected"
 			}
-
 			trade := TradeDataRespond{
 				RequestTx:   tradeInfo.RequestTx,
 				RespondTxs:  tradeInfo.RespondTxs,
@@ -279,6 +280,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				FeeToken:    tradeInfo.FeeToken,
 				Receiver:    tradeInfo.Receiver,
 				IsCompleted: isCompleted,
+				TradingPath: tradeInfo.TradingPath,
 			}
 			result = append(result, trade)
 		}

@@ -6,6 +6,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/incognitochain/coin-service/apiservice"
+	"github.com/incognitochain/coin-service/assistant"
 	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/otaindexer"
@@ -43,6 +44,8 @@ func main() {
 		go shield.StartProcessor()
 	case shared.TRADEMODE:
 		go trade.StartProcessor()
+	case shared.ASTMODE:
+		go assistant.StartAssistant()
 	}
 
 	if shared.ENABLE_PROFILER {
