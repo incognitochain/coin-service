@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/kamva/mgm/v3"
@@ -57,7 +56,7 @@ func processTrade(fromTime, toTime int64) {
 			v.CSVrow(csvTradeFile)
 		}
 		fmt.Println("processed", len(list))
-		offset += int64(len(list))
+		offset += 40000
 	}
 }
 
@@ -76,14 +75,14 @@ func connectDB(dbName string, mongoAddr string) error {
 }
 
 func getTradeCSV(fromTime, toTime, offset int64) ([]TradeCSV, error) {
-	limit := int64(20000)
+	limit := int64(40000)
 	var result []TradeCSV
 	var tradeSuccess []shared.TradeData
 	var txList []shared.TxData
 	var txHashs []string
 
 	AllowDiskUse := true
-	filter := bson.M{"locktime": bson.M{operator.Gte: fromTime, operator.Lte: toTime}, "metatype": bson.M{operator.In: []string{strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta), strconv.Itoa(metadata.PDETradeRequestMeta)}}}
+	filter := bson.M{"locktime": bson.M{operator.Gte: fromTime, operator.Lt: toTime}, "metatype": bson.M{operator.In: []string{strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta), strconv.Itoa(metadata.PDETradeRequestMeta)}}}
 	err := mgm.Coll(&shared.TxData{}).SimpleFind(&txList, filter, &options.FindOptions{
 		Sort:         bson.D{{"locktime", 1}},
 		AllowDiskUse: &AllowDiskUse,
@@ -126,14 +125,10 @@ func getTradeCSV(fromTime, toTime, offset int64) ([]TradeCSV, error) {
 			Unix:         fmt.Sprintf("%v", tx.Locktime),
 			FormatedDate: timeText,
 		}
-		txs, err := database.DBGetTxByHash([]string{v.RequestTx})
-		if err != nil {
-			panic(err)
-		}
 
-		if txs[0].Metatype == strconv.Itoa(metadata.PDETradeRequestMeta) {
+		if tx.Metatype == strconv.Itoa(metadata.PDETradeRequestMeta) {
 			md := metadata.PDETradeRequest{}
-			err := json.Unmarshal([]byte(txs[0].Metadata), &md)
+			err := json.Unmarshal([]byte(tx.Metadata), &md)
 			if err != nil {
 				panic(err)
 			}
@@ -143,9 +138,9 @@ func getTradeCSV(fromTime, toTime, offset int64) ([]TradeCSV, error) {
 			data.SellToken = md.TokenIDToSellStr
 			data.User = md.TraderAddressStr
 		}
-		if txs[0].Metatype == strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta) {
+		if tx.Metatype == strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta) {
 			md := metadata.PDECrossPoolTradeRequest{}
-			err := json.Unmarshal([]byte(txs[0].Metadata), &md)
+			err := json.Unmarshal([]byte(tx.Metadata), &md)
 			if err != nil {
 				panic(err)
 			}
