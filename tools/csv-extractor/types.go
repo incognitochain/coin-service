@@ -19,6 +19,7 @@ type TradeCSV struct {
 	User                  string
 	Unix                  string
 	FormatedDate          string
+	unixint               int64
 }
 
 func (*TradeCSV) CSVheader(w io.Writer) {
