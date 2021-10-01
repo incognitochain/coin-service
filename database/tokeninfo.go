@@ -73,3 +73,13 @@ func DBGetNFTInfo() ([]shared.TokenInfoData, error) {
 	}
 	return list, nil
 }
+
+func DBGetTokenByTokenID(tokenids []string) ([]shared.TokenInfoData, error) {
+	list := []shared.TokenInfoData{}
+	filter := bson.M{"tokenid": bson.M{operator.In: tokenids}}
+	err := mgm.Coll(&shared.TokenInfoData{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}

@@ -94,7 +94,7 @@ func StartGinService() {
 		pdexv3Group.GET("/withdrawhistory", pdexv3{}.WithdrawHistory)
 		pdexv3Group.GET("/withdrawfeehistory", pdexv3{}.WithdrawFeeHistory)
 
-		pdexv3Group.GET("/stakingpool", pdexv3{}.StakingPool)
+		pdexv3Group.GET("/stakingpools", pdexv3{}.StakingPool)
 		pdexv3Group.GET("/stakeinfo", pdexv3{}.StakeInfo)
 		pdexv3Group.GET("/stakinghistory", pdexv3{}.StakeHistory)
 		pdexv3Group.GET("/stakerewardhistory", pdexv3{}.StakeRewardHistory)

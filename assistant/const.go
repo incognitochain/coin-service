@@ -3,7 +3,7 @@ package assistant
 import "time"
 
 const (
-	binancePriceURL string        = "https://api.binance.com/api/v3/ticker/price?symbol="
-	binanceMkCapURL string        = "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
-	updateInterval  time.Duration = 20 * time.Second
+	binancePriceURL   string        = "https://api.binance.com/api/v3/ticker/price?symbol="
+	coingeckoMkCapURL string        = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="
+	updateInterval    time.Duration = 20 * time.Second
 )

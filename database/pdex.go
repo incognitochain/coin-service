@@ -570,9 +570,9 @@ func DBUpdatePDEContributeRespond(list []shared.ContributionData) error {
 		update := bson.M{
 			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "returntokens": bson.M{operator.Each: order.ReturnTokens}, "returnamount": bson.M{operator.Each: order.ReturnAmount}},
 		}
-		err := mgm.Coll(&shared.ContributionData{}).FindOneAndUpdate(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
-			return err.Err()
+			return err
 		}
 	}
 	return nil
@@ -589,9 +589,9 @@ func DBUpdatePDEWithdraw(list []shared.WithdrawContributionData) error {
 			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "withdrawtokens": bson.M{operator.Each: order.WithdrawTokens}, "withdrawamount": bson.M{operator.Each: order.WithdrawAmount}},
 			"$set":  bson.M{"status": order.Status},
 		}
-		err := mgm.Coll(&shared.WithdrawContributionData{}).FindOneAndUpdate(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.WithdrawContributionData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
-			return err.Err()
+			return err
 		}
 	}
 	return nil
@@ -608,9 +608,9 @@ func DBUpdatePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
 			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "withdrawtokens": bson.M{operator.Each: order.WithdrawTokens}, "withdrawamount": bson.M{operator.Each: order.WithdrawAmount}},
 			"$set":  bson.M{"status": order.Status},
 		}
-		err := mgm.Coll(&shared.WithdrawContributionFeeData{}).FindOneAndUpdate(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.WithdrawContributionFeeData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
-			return err.Err()
+			return err
 		}
 	}
 	return nil

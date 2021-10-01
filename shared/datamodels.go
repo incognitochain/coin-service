@@ -864,6 +864,8 @@ type TokenMarketCap struct {
 	mgm.DefaultModel `bson:",inline"`
 	TokenSymbol      string `json:"symbol" bson:"symbol"`
 	Value            uint64 `json:"value" bson:"value"`
+	Rank             int    `json:"rank" bson:"rank"`
+	PriceChange      string `json:"pricechange" bson:"pricechange"`
 }
 
 func (model *TokenMarketCap) Creating() error {

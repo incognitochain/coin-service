@@ -1,6 +1,7 @@
 package apiservice
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 
@@ -75,10 +76,21 @@ func APIGetTop10(c *gin.Context) {
 func APIGetDefaultPool(c *gin.Context) {
 }
 
+const (
+	PriceChange_CorrelationSimilar = float64(0.05)
+	PriceChange_CorrelationStrong  = float64(0.2)
+	PriceChange_CorrelationAverage = float64(0.5)
+	PriceChange_CorrelationWeak    = float64(1)
+
+	PriceChange_RangeStable = float64(1)
+	PriceChange_RangeLow    = float64(2)
+	PriceChange_RangeHigh   = float64(6)
+)
+
 func APICheckRate(c *gin.Context) {
 	var result struct {
-		Rate uint64
-		AMP  int
+		Rate   uint64
+		MaxAMP int
 	}
 	token1 := c.Query("token1")
 	token2 := c.Query("token2")
@@ -99,16 +111,68 @@ func APICheckRate(c *gin.Context) {
 			return
 		}
 		if tk2Price != nil {
-			result.Rate = tk1Price.Price / tk2Price.Price
-			result.AMP = amp
-		} else {
-			result.Rate = uint64(userRate)
-			result.AMP = amp
+			tokenSymbols := []string{tk1Price.TokenSymbol, tk2Price.TokenSymbol}
+			mkcaps, err := database.DBGetTokenMkcap(tokenSymbols)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			if len(mkcaps) == 2 {
+				newAmp := 1
+				tk1PriceChange, _ := strconv.ParseFloat(mkcaps[0].PriceChange, 32)
+				tk2PriceChange, _ := strconv.ParseFloat(mkcaps[1].PriceChange, 32)
+				if (mkcaps[0].Rank <= 100) && (mkcaps[1].Rank <= 100) {
+					if tk1PriceChange*tk2PriceChange > 0 {
+						d := math.Abs(tk1PriceChange - tk2PriceChange)
+						if d < PriceChange_CorrelationWeak {
+							if d < PriceChange_CorrelationAverage {
+								newAmp = 2
+								if d < PriceChange_CorrelationStrong {
+									newAmp = 20
+									if d < PriceChange_CorrelationSimilar {
+										d2 := math.Abs(float64(mkcaps[0].Rank - mkcaps[1].Rank))
+										if d2 <= 10 {
+											newAmp = 100
+										} else {
+											if d2 <= 20 {
+												newAmp = 70
+											} else {
+												if d2 <= 30 {
+													newAmp = 40
+												} else {
+													newAmp = 25
+												}
+											}
+										}
+									}
+									// if tk1PriceChange >= PriceChange_RangeStable || tk2PriceChange >= PriceChange_RangeStable {
+									// 	newAmp -= 5
+									// }
+									// if tk1PriceChange >= PriceChange_RangeLow || tk2PriceChange >= PriceChange_RangeLow {
+									// 	newAmp -= 5
+									// }
+									// if tk1PriceChange >= PriceChange_RangeHigh || tk2PriceChange >= PriceChange_RangeHigh {
+									// 	newAmp -= 5
+									// }
+								}
+							}
+						}
+					}
+				}
+
+				result.Rate = tk1Price.Price / tk2Price.Price
+				result.MaxAMP = newAmp
+				respond := APIRespond{
+					Result: result,
+					Error:  nil,
+				}
+				c.JSON(http.StatusOK, respond)
+				return
+			}
 		}
-	} else {
-		result.Rate = uint64(userRate)
-		result.AMP = amp
 	}
+	result.Rate = uint64(userRate)
+	result.MaxAMP = amp
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,

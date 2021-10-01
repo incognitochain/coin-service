@@ -22,7 +22,7 @@ func DBGetDefaultPool() (map[string]struct{}, error) {
 		return nil, err
 	}
 	if len(datas) == 0 {
-		return nil, nil
+		return result, nil
 	}
 	err = json.Unmarshal([]byte(datas[0].Data), &list)
 	if err != nil {
@@ -141,4 +141,14 @@ func DBSaveTokenMkCap(list []shared.TokenMarketCap) error {
 		}
 	}
 	return nil
+}
+
+func DBGetTokenMkcap(symbols []string) ([]shared.TokenMarketCap, error) {
+	list := []shared.TokenMarketCap{}
+	filter := bson.M{"symbol": bson.M{operator.In: symbols}}
+	err := mgm.Coll(&shared.TokenMarketCap{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }

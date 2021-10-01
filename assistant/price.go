@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
@@ -83,45 +84,47 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 
 func getExternalTokenMarketCap() ([]shared.TokenMarketCap, error) {
 	var result []shared.TokenMarketCap
-	var binanceMK struct {
-		Data []struct {
-			CS uint64 `json:"cs"`
-			C  string `json:"c"`
-			Q  string `json:"q"`
-			B  string `json:"b"`
-		} `json:"data"`
+	var coingeckoMK []struct {
+		Symbol      string  `json:"symbol"`
+		Cap         uint64  `json:"market_cap"`
+		Rank        int     `json:"market_cap_rank"`
+		PriceChange float64 `json:"price_change_percentage_24h"`
 	}
-retry:
-	resp, err := http.Get(binanceMkCapURL)
-	if err != nil {
-		log.Println(err)
-		goto retry
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	err = json.Unmarshal(body, &binanceMK)
-	if err != nil {
-		log.Println(err)
-		return nil, nil
-	}
-	resp.Body.Close()
+	currentPage := 1
+	maxPage := 4
+	for {
+		if currentPage > maxPage {
+			break
+		}
+	retry:
+		resp, err := http.Get(coingeckoMkCapURL + strconv.Itoa(currentPage))
+		if err != nil {
+			log.Println(err)
+			goto retry
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		err = json.Unmarshal(body, &coingeckoMK)
+		if err != nil {
+			log.Println(err)
+			return nil, nil
+		}
+		resp.Body.Close()
 
-	for _, v := range binanceMK.Data {
-		if v.Q == "USDT" {
-			price, err := strconv.ParseFloat(v.C, 32)
-			if err != nil {
-				return nil, err
-			}
-			value := price * float64(v.CS)
+		for _, v := range coingeckoMK {
 			mkCap := shared.TokenMarketCap{
-				TokenSymbol: v.B,
-				Value:       uint64(value),
+				TokenSymbol: strings.ToUpper(v.Symbol),
+				Value:       v.Cap,
+				Rank:        v.Rank,
+				PriceChange: fmt.Sprintf("%g", v.PriceChange),
 			}
 			result = append(result, mkCap)
 		}
+		currentPage++
 	}
+
 	return result, nil
 }
 

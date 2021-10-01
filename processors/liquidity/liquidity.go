@@ -243,6 +243,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
 				WithdrawAmount: []uint64{},
+				RequestTime:    tx.Locktime,
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
@@ -371,10 +372,11 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 		case metadataCommon.Pdexv3WithdrawStakingRewardRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalStakingRewardRequest)
 			data := shared.PoolStakeRewardHistoryData{
-				RequestTx: tx.TxHash,
-				Status:    0,
-				TokenID:   md.StakingPoolID,
-				NFTID:     md.NftID.String(),
+				RequestTx:   tx.TxHash,
+				Status:      0,
+				TokenID:     md.StakingPoolID,
+				NFTID:       md.NftID.String(),
+				Requesttime: tx.Locktime,
 			}
 			stakingRewardRequestDatas = append(stakingRewardRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawStakingRewardResponseMeta:
@@ -420,6 +422,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RespondTxs:       []string{},
 				ReturnTokens:     []string{},
 				ReturnAmount:     []uint64{},
+				RequestTime:      tx.Locktime,
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadata.PDEContributionResponseMeta:
