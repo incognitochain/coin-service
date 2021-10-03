@@ -211,3 +211,18 @@ func DBUpdateTxsWithPubkeyReceiver(list []shared.TxData) error {
 	log.Printf("updated %v txs in %v", len(list), time.Since(startTime))
 	return nil
 }
+
+func DBGetLatestTradeTx(isswap bool) ([]shared.TradeOrderData, error) {
+	limit := int64(20)
+	currentTime := time.Now().Unix()
+	var result []shared.TradeOrderData
+	filter := bson.M{"requesttime": bson.M{operator.Lte: currentTime}, "isswap": bson.M{operator.Eq: isswap}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}

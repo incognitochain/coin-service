@@ -105,6 +105,7 @@ func StartGinService() {
 		pdexv3Group.GET("/liquidityhistory", pdexv3{}.LiquidityHistory)
 		pdexv3Group.GET("/tradevolume-24h", pdexv3{}.TradeVolume24h)
 		pdexv3Group.GET("/orderbook", pdexv3{}.GetOrderBook)
+		pdexv3Group.GET("/latestorders", pdexv3{}.GetLatestTradeOrders)
 
 		pdexv2Group := pdex.Group("/v2")
 		pdexv2Group.GET("/gettradehistory", APIGetTradeHistory)

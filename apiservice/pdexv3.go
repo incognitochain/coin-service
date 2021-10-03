@@ -696,6 +696,24 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 	_ = poolID
 }
 
+func (pdexv3) GetLatestTradeOrders(c *gin.Context) {
+	isswap := c.Query("isswap")
+	getSwap := false
+	if isswap == "true" {
+		getSwap = true
+	}
+	result, err := database.DBGetLatestTradeTx(getSwap)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
 func (pdexv3) EstimateTrade(c *gin.Context) {
 	var req struct {
 		SellToken string `form:"selltoken" json:"selltoken" binding:"required"`

@@ -200,6 +200,9 @@ func DBCreateShieldIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "pubkey", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
 		},
+		{
+			Keys: bsonx.Doc{{Key: "requesttime", Value: bsonx.Int32(1)}},
+		},
 	}
 	indexName, err := mgm.Coll(&shared.ShieldData{}).Indexes().CreateMany(context.Background(), model)
 	if err != nil {
