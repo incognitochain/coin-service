@@ -5,9 +5,13 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
+	"github.com/patrickmn/go-cache"
 )
 
+var cachedb *cache.Cache
+
 func StartAssistant() {
+	cachedb = cache.New(5*time.Minute, 5*time.Minute)
 	log.Println("starting assistant")
 	err := database.DBCreateClientAssistantIndex()
 	if err != nil {

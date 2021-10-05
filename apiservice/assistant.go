@@ -1,13 +1,20 @@
 package apiservice
 
 import (
+	"log"
 	"math"
 	"net/http"
 	"strconv"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
+	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
+)
+
+const (
+	defaultPoolsKey string = "dfpool"
 )
 
 func APIGetTop10(c *gin.Context) {
@@ -16,11 +23,18 @@ func APIGetTop10(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	//TODO cache default pool
-	defaultPools, err := database.DBGetDefaultPool()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+	var defaultPools map[string]struct{}
+	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
+		defaultPools, err = database.DBGetDefaultPool()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(defaultPoolsKey, defaultPools)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
 
 	poolIDs := []string{}
@@ -98,7 +112,7 @@ func APICheckRate(c *gin.Context) {
 	amount2, _ := strconv.Atoi(c.Query("amount2"))
 	amp, _ := strconv.Atoi(c.Query("amp"))
 
-	userRate := amount1 / amount2
+	userRate := uint64(amount1) / uint64(amount2)
 	tk1Price, err := database.DBGetTokenPrice(token1)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -169,13 +183,59 @@ func APICheckRate(c *gin.Context) {
 				c.JSON(http.StatusOK, respond)
 				return
 			}
+		} else {
+			rate, err := getRate(token1, token2)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			userRate = rate
 		}
+	} else {
+		rate, err := getRate(token1, token2)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		userRate = rate
 	}
-	result.Rate = uint64(userRate)
+	result.Rate = userRate
 	result.MaxAMP = amp
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
+}
+
+func getRate(tokenID1, tokenID2 string) (uint64, error) {
+
+	pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
+
+	if err != nil {
+		return 0, err
+	}
+
+	pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Poolpairs)
+
+	if err != nil {
+		return 0, err
+	}
+
+	// _, err = feeestimator.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Params, pdexv3StateRPCResponse.Result.Poolpairs)
+	// if err != nil {
+	// 	return 0, err
+	// }
+
+	chosenPath, receive := pathfinder.FindGoodTradePath(
+		4,
+		pools,
+		poolPairStates,
+		tokenID1,
+		tokenID2,
+		1e9)
+
+	spew.Dump("chosenPath", chosenPath)
+	log.Printf("getRate %d\n", receive)
+	return receive, nil
 }

@@ -54,12 +54,19 @@ func (pdexv3) ListPools(c *gin.Context) {
 		return
 	}
 	//TODO cache default pool
-	defaultPools, err := database.DBGetDefaultPool()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+	var defaultPools map[string]struct{}
+	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
+		defaultPools, err = database.DBGetDefaultPool()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(defaultPoolsKey, defaultPools)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
-
 	// Get pool pair rate changes
 	poolIds := make([]string, 0)
 	for _, v := range list {

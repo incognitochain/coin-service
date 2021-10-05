@@ -12,6 +12,7 @@ import (
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/patrickmn/go-cache"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -19,10 +20,13 @@ import (
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var cachedb *cache.Cache
+
+// var cache *lru.Cache
 
 func StartGinService() {
 	log.Println("initiating api-service...")
-
+	cachedb = cache.New(5*time.Minute, 5*time.Minute)
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/health", APIHealthCheck)
@@ -79,8 +83,16 @@ func StartGinService() {
 		shieldGroup.GET("/getshieldhistory", APIGetShieldHistory)
 		shieldGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
 
-		//pdex v3
+		//pdex
 		pdex := r.Group("/pdex")
+
+		pdexv2Group := pdex.Group("/v2")
+		pdexv2Group.GET("/gettradehistory", APIGetTradeHistory)
+		pdexv2Group.GET("/getpdestate", APIPDEState)
+		pdexv2Group.GET("/getcontributehistory", APIGetContributeHistory)
+		pdexv2Group.GET("/getwithdrawhistory", APIGetWithdrawHistory)
+		pdexv2Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
+
 		pdexv3Group := pdex.Group("/v3")
 		pdexv3Group.GET("/listpairs", pdexv3{}.ListPairs)
 		pdexv3Group.GET("/tradestatus", pdexv3{}.TradeStatus)
@@ -107,13 +119,6 @@ func StartGinService() {
 		pdexv3Group.GET("/orderbook", pdexv3{}.GetOrderBook)
 		pdexv3Group.GET("/latestorders", pdexv3{}.GetLatestTradeOrders)
 
-		pdexv2Group := pdex.Group("/v2")
-		pdexv2Group.GET("/gettradehistory", APIGetTradeHistory)
-		pdexv2Group.GET("/getpdestate", APIPDEState)
-		pdexv2Group.GET("/getcontributehistory", APIGetContributeHistory)
-		pdexv2Group.GET("/getwithdrawhistory", APIGetWithdrawHistory)
-		pdexv2Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
-
 		astGroup := pdexv3Group.Group("/assistance")
 		astGroup.GET("/top10pool", APIGetTop10)
 		astGroup.GET("/defaultpool", APIGetDefaultPool)
@@ -128,9 +133,6 @@ func StartGinService() {
 		r.GET("/workerstat", otaindexer.GetWorkerStat)
 	}
 
-	// if shared.ServiceCfg.Mode == shared.FULLMODE {
-	// 	r.POST("/submitotakey", APISubmitOTAFullmode)
-	// }
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
 	if err != nil {
 		panic(err)

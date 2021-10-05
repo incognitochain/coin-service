@@ -130,11 +130,17 @@ func getExternalTokenMarketCap() ([]shared.TokenMarketCap, error) {
 
 func getPairRanking() ([]shared.PairRanking, error) {
 	//get default pools for now
-	//TODO
 	var result []shared.PairRanking
-	defaultPools, err := database.DBGetDefaultPool()
-	if err != nil {
-		return nil, err
+	var defaultPools map[string]struct{}
+	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
+		defaultPools, err = database.DBGetDefaultPool()
+		if err != nil {
+			return nil, err
+		}
+		err = cacheStore(defaultPoolsKey, defaultPools)
+		if err != nil {
+			return nil, err
+		}
 	}
 	for v, _ := range defaultPools {
 		pools, err := database.DBGetPoolPairsByPoolID([]string{v})

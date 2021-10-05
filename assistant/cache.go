@@ -1,6 +1,9 @@
-package apiservice
+package assistant
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
 
 func cacheStore(key string, value interface{}) error {
 	v, err := json.Marshal(value)
