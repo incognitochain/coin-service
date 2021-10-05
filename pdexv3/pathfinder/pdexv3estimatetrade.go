@@ -280,16 +280,17 @@ func marshalRPCGetState(data json.RawMessage) ([]*shared.Pdexv3PoolPairWithId, m
 
 func GetPdexv3StateFromRPC() (*shared.Pdexv3GetStateRPCResult, error)  {
 	rpcRequestBody := `
-		{
-		  "id": 1,
-		  "jsonrpc": "1.0",
-		  "method": "pdexv3_getState",
-		  "params": [
-			{
-			  "BeaconHeight": 0
-			}
-		  ]
-		}
+{
+  "id": 1,
+  "jsonrpc": "1.0",
+  "method": "pdexv3_getState",
+  "params": [
+    {
+      "BeaconHeight": 0,
+      "Filter": {}
+    }
+  ]
+}
 	`
 
 	var responseBodyData shared.Pdexv3GetStateRPCResult
