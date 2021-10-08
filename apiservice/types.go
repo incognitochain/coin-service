@@ -106,7 +106,7 @@ type PdexV3PoolDetail struct {
 	Virtual2Value  uint64
 	TotalShare     uint64
 	AMP            uint
-	Price          uint64
+	Price          float64
 	Volume         uint64
 	PriceChange24h uint64
 	APY            uint64
@@ -198,6 +198,7 @@ type PdexV3PoolShareRespond struct {
 	Token2Amount uint64
 	Token1Reward uint64
 	Token2Reward uint64
+	PRVReward    uint64
 	Share        uint64
 	AMP          uint
 	TotalShare   uint64

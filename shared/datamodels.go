@@ -274,6 +274,7 @@ func (model *TxData) Saving() error {
 
 type PDEStateData struct {
 	mgm.DefaultModel `bson:",inline"`
+	Version          int    `json:"version" bson:"version"`
 	State            string `json:"state" bson:"state"`
 }
 
@@ -294,9 +295,10 @@ func (model *PDEStateData) Saving() error {
 	return nil
 }
 
-func NewPDEStateData(state string) *PDEStateData {
+func NewPDEStateData(state string, version int) *PDEStateData {
 	return &PDEStateData{
-		State: state,
+		Version: version,
+		State:   state,
 	}
 }
 

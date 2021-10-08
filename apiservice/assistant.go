@@ -2,7 +2,6 @@ package apiservice
 
 import (
 	"log"
-	"math"
 	"net/http"
 	"strconv"
 
@@ -63,7 +62,7 @@ func APIGetTop10(c *gin.Context) {
 			Virtual1Value: v.Virtual1Amount,
 			Virtual2Value: v.Virtual2Amount,
 			AMP:           v.AMP,
-			Price:         v.Token1Amount / v.Token2Amount,
+			Price:         float64(v.Token1Amount) / float64(v.Token2Amount),
 			TotalShare:    v.TotalShare,
 		}
 
@@ -91,19 +90,24 @@ func APIGetDefaultPool(c *gin.Context) {
 }
 
 const (
-	PriceChange_CorrelationSimilar = float64(0.05)
-	PriceChange_CorrelationStrong  = float64(0.2)
-	PriceChange_CorrelationAverage = float64(0.5)
-	PriceChange_CorrelationWeak    = float64(1)
+	// PriceChange_CorrelationSimilar = float64(0.05)
+	// PriceChange_CorrelationStrong  = float64(0.2)
+	// PriceChange_CorrelationAverage = float64(0.5)
+	// PriceChange_CorrelationWeak    = float64(1)
 
-	PriceChange_RangeStable = float64(1)
-	PriceChange_RangeLow    = float64(2)
-	PriceChange_RangeHigh   = float64(6)
+	// PriceChange_RangeStable = float64(1)
+	// PriceChange_RangeLow    = float64(2)
+	// PriceChange_RangeHigh   = float64(6)
+
+	AMP_CLASS1 = 200
+	AMP_CLASS2 = 10
+	AMP_CLASS3 = 2
+	AMP_CLASS4 = 1
 )
 
 func APICheckRate(c *gin.Context) {
 	var result struct {
-		Rate   uint64
+		Rate   float64
 		MaxAMP int
 	}
 	token1 := c.Query("token1")
@@ -112,7 +116,7 @@ func APICheckRate(c *gin.Context) {
 	amount2, _ := strconv.Atoi(c.Query("amount2"))
 	amp, _ := strconv.Atoi(c.Query("amp"))
 
-	userRate := uint64(amount1) / uint64(amount2)
+	userRate := float64(amount1) / float64(amount2)
 	tk1Price, err := database.DBGetTokenPrice(token1)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -132,49 +136,39 @@ func APICheckRate(c *gin.Context) {
 				return
 			}
 			if len(mkcaps) == 2 {
-				newAmp := 1
-				tk1PriceChange, _ := strconv.ParseFloat(mkcaps[0].PriceChange, 32)
-				tk2PriceChange, _ := strconv.ParseFloat(mkcaps[1].PriceChange, 32)
-				if (mkcaps[0].Rank <= 100) && (mkcaps[1].Rank <= 100) {
-					if tk1PriceChange*tk2PriceChange > 0 {
-						d := math.Abs(tk1PriceChange - tk2PriceChange)
-						if d < PriceChange_CorrelationWeak {
-							if d < PriceChange_CorrelationAverage {
-								newAmp = 2
-								if d < PriceChange_CorrelationStrong {
-									newAmp = 20
-									if d < PriceChange_CorrelationSimilar {
-										d2 := math.Abs(float64(mkcaps[0].Rank - mkcaps[1].Rank))
-										if d2 <= 10 {
-											newAmp = 100
-										} else {
-											if d2 <= 20 {
-												newAmp = 70
-											} else {
-												if d2 <= 30 {
-													newAmp = 40
-												} else {
-													newAmp = 25
-												}
-											}
-										}
-									}
-									// if tk1PriceChange >= PriceChange_RangeStable || tk2PriceChange >= PriceChange_RangeStable {
-									// 	newAmp -= 5
-									// }
-									// if tk1PriceChange >= PriceChange_RangeLow || tk2PriceChange >= PriceChange_RangeLow {
-									// 	newAmp -= 5
-									// }
-									// if tk1PriceChange >= PriceChange_RangeHigh || tk2PriceChange >= PriceChange_RangeHigh {
-									// 	newAmp -= 5
-									// }
-								}
-							}
+				newAmp := AMP_CLASS4
+				isTk1Stable := false
+				isTk2stable := false
+				stableCoinList, err := database.DBGetStableCoinID()
+				if err != nil {
+					c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+					return
+				}
+				for _, v := range stableCoinList {
+					if v == token1 {
+						isTk1Stable = true
+					}
+					if v == token2 {
+						isTk2stable = true
+					}
+				}
+				if isTk1Stable && isTk2stable {
+					if tk1Price == tk2Price {
+						newAmp = AMP_CLASS1
+					} else {
+						newAmp = AMP_CLASS2
+					}
+				} else {
+					if tk1Price == tk2Price {
+						newAmp = AMP_CLASS1
+					} else {
+						if (mkcaps[0].Rank <= 20) && (mkcaps[1].Rank <= 20) {
+							newAmp = AMP_CLASS3
 						}
 					}
 				}
 
-				result.Rate = tk1Price.Price / tk2Price.Price
+				result.Rate = float64(tk1Price.Price) / float64(tk2Price.Price)
 				result.MaxAMP = newAmp
 				respond := APIRespond{
 					Result: result,
@@ -208,8 +202,7 @@ func APICheckRate(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func getRate(tokenID1, tokenID2 string) (uint64, error) {
-
+func getRate(tokenID1, tokenID2 string) (float64, error) {
 	pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
 
 	if err != nil {
@@ -233,9 +226,9 @@ func getRate(tokenID1, tokenID2 string) (uint64, error) {
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		1e9)
+		1000)
 
 	spew.Dump("chosenPath", chosenPath)
 	log.Printf("getRate %d\n", receive)
-	return receive, nil
+	return float64(1000) / float64(receive), nil
 }

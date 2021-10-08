@@ -16,6 +16,7 @@ import (
 	"github.com/incognitochain/coin-service/pdexv3/feeestimator"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
 )
 
@@ -53,7 +54,6 @@ func (pdexv3) ListPools(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	//TODO cache default pool
 	var defaultPools map[string]struct{}
 	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
 		defaultPools, err = database.DBGetDefaultPool()
@@ -92,7 +92,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 			Volume:         0,
 			PriceChange24h: 0,
 			AMP:            v.AMP,
-			Price:          v.Token1Amount / v.Token2Amount,
+			Price:          float64(v.Token1Amount) / float64(v.Token2Amount),
 			TotalShare:     v.TotalShare,
 		}
 
@@ -192,18 +192,23 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		}
 		tk1Reward := uint64(0)
 		tk2Reward := uint64(0)
-
+		prvReward := uint64(0)
 		if rw, ok := v.TradingFee[l[0].TokenID1]; ok {
 			tk1Reward = rw
 		}
 		if rw, ok := v.TradingFee[l[0].TokenID2]; ok {
 			tk2Reward = rw
 		}
+
+		if rw, ok := v.TradingFee[common.PRVCoinID.String()]; ok {
+			prvReward = rw
+		}
 		result = append(result, PdexV3PoolShareRespond{
 			PoolID:       v.PoolID,
 			Share:        v.Amount,
 			Token1Reward: tk1Reward,
 			Token2Reward: tk2Reward,
+			PRVReward:    prvReward,
 			AMP:          l[0].AMP,
 			TokenID1:     l[0].TokenID1,
 			TokenID2:     l[0].TokenID2,
@@ -640,6 +645,26 @@ func (pdexv3) StakeRewardHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
+func (pdexv3) PairsDetail(c *gin.Context) {
+	var req struct {
+		PairIDs []string
+	}
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	result, err := database.DBGetPairsByID(req.PairIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: result,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
 func (pdexv3) PoolsDetail(c *gin.Context) {
 	var req struct {
 		PoolIDs []string
@@ -674,7 +699,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			PriceChange24h: 0,
 			Volume:         0,
 			AMP:            v.AMP,
-			Price:          v.Token1Amount / v.Token2Amount,
+			Price:          float64(v.Token1Amount) / float64(v.Token2Amount),
 			TotalShare:     v.TotalShare,
 		}
 

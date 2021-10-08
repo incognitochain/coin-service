@@ -100,7 +100,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		log.Println(err)
 	}
-	err = database.DBSavePDEState(pdeStr)
+	err = database.DBSavePDEState(pdeStr, 1)
 	if err != nil {
 		log.Println(err)
 	}
@@ -116,15 +116,35 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			panic(err)
 		}
+		poolPairsJSON := make(map[string]*pdex.PoolPairState)
+		err = json.Unmarshal(pdeStateV2.Reader().PoolPairs(), &poolPairsJSON)
+		if err != nil {
+			panic(err)
+		}
 
 		stateV2 = &shared.PDEStateV2{
 			PoolPairs:         poolPairs,
 			StakingPoolsState: pdeStateV2.Reader().StakingPools(),
 		}
 
+		pdeStateJSON := jsonresult.Pdexv3State{
+			BeaconTimeStamp: beaconBestState.BestBlock.Header.Timestamp,
+			PoolPairs:       &poolPairsJSON,
+			StakingPools:    &stateV2.StakingPoolsState,
+		}
+		pdeStr, err := json.MarshalToString(pdeStateJSON)
+		if err != nil {
+			log.Println(err)
+		}
+
 		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, err := processPoolPairs(stateV2, prevStateV2, beaconBestState.BeaconHeight)
 		if err != nil {
 			panic(err)
+		}
+
+		err = database.DBSavePDEState(pdeStr, 2)
+		if err != nil {
+			log.Println(err)
 		}
 
 		instructions, err := extractBeaconInstruction(beaconBestState.BestBlock.Body.Instructions)

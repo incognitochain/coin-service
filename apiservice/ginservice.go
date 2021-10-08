@@ -100,12 +100,13 @@ func StartGinService() {
 		pdexv3Group.GET("/poolshare", pdexv3{}.PoolShare)
 		// pdexv3Group.GET("/waitingliquidity", pdexv3{}.WaitingLiquidity)
 		pdexv3Group.POST("/poolsdetail", pdexv3{}.PoolsDetail)
+		pdexv3Group.POST("/pairsdetail", pdexv3{}.PairsDetail)
 		pdexv3Group.GET("/tradehistory", pdexv3{}.TradeHistory)
 		pdexv3Group.GET("/tradedetail", pdexv3{}.TradeDetail)
 		pdexv3Group.GET("/contributehistory", pdexv3{}.ContributeHistory)
 		pdexv3Group.GET("/withdrawhistory", pdexv3{}.WithdrawHistory)
 		pdexv3Group.GET("/withdrawfeehistory", pdexv3{}.WithdrawFeeHistory)
-
+		pdexv3Group.GET("/latestorders", pdexv3{}.GetLatestTradeOrders)
 		pdexv3Group.GET("/stakingpools", pdexv3{}.StakingPool)
 		pdexv3Group.GET("/stakeinfo", pdexv3{}.StakeInfo)
 		pdexv3Group.GET("/stakinghistory", pdexv3{}.StakeHistory)
@@ -117,10 +118,9 @@ func StartGinService() {
 		pdexv3Group.GET("/liquidityhistory", pdexv3{}.LiquidityHistory)
 		pdexv3Group.GET("/tradevolume-24h", pdexv3{}.TradeVolume24h)
 		pdexv3Group.GET("/orderbook", pdexv3{}.GetOrderBook)
-		pdexv3Group.GET("/latestorders", pdexv3{}.GetLatestTradeOrders)
 
 		astGroup := pdexv3Group.Group("/assistance")
-		astGroup.GET("/top10pool", APIGetTop10)
+		astGroup.GET("/top10pairs", APIGetTop10)
 		astGroup.GET("/defaultpool", APIGetDefaultPool)
 		astGroup.GET("/checkrate", APICheckRate)
 

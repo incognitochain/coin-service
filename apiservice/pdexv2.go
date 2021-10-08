@@ -13,6 +13,7 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
@@ -172,19 +173,19 @@ func reverseAny(s interface{}) {
 }
 
 func APIPDEState(c *gin.Context) {
-	// state, err := database.DBGetPDEState()
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-	// 	return
-	// }
-	// pdeState := jsonresult.CurrentPDEState{}
-	// err = json.UnmarshalFromString(state, &pdeState)
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-	// 	return
-	// }
+	state, err := database.DBGetPDEState()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	pdeState := jsonresult.CurrentPDEState{}
+	err = json.UnmarshalFromString(state, &pdeState)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
 	respond := APIRespond{
-		Result: "deprecated",
+		Result: pdeState,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

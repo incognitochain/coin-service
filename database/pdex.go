@@ -15,19 +15,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func DBSavePDEState(state string) error {
+func DBSavePDEState(state string, version int) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
-	upsert := true
-	opt := options.FindOneAndUpdateOptions{
-		Upsert: &upsert,
-	}
 	var doc interface{}
-	newState := shared.NewPDEStateData(state)
+	newState := shared.NewPDEStateData(state, version)
 	doc = newState
-	err := mgm.Coll(&shared.PDEStateData{}).FindOneAndUpdate(ctx, bson.M{}, doc, &opt)
-	if err.Err() != nil {
-		log.Println(err)
-		return err.Err()
+	filter := bson.M{"version": bson.M{operator.Eq: version}}
+	_, err := mgm.Coll(&shared.PDEStateData{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -1296,4 +1292,14 @@ func DBUpdatePDETradeWithdrawStatus(list []shared.TradeOrderData) error {
 		}
 	}
 	return nil
+}
+
+func DBGetPairsByID(list []string) ([]shared.PairData, error) {
+	var result []shared.PairData
+	filter := bson.M{"pairid": bson.M{operator.In: list}}
+	err := mgm.Coll(&shared.PairData{}).SimpleFind(&result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
