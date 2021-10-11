@@ -427,14 +427,6 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 		}
 		data.Metatype = inst[0]
 		switch metadataType {
-		// case metadata.PDEContributionMeta:
-
-		// case metadata.PDEPRVRequiredContributionRequestMeta:
-
-		// case metadata.PDETradeRequestMeta:
-
-		// case metadata.PDECrossPoolTradeRequestMeta:
-
 		case metadata.PDEWithdrawalRequestMeta:
 			contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
 			if err != nil {
@@ -462,16 +454,6 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			data.Content = inst[3]
 			data.Status = inst[2]
 			data.TxRequest = feeWithdrawalRequestAction.TxReqID.String()
-
-		// case metadata.PDETradingFeesDistributionMeta:
-
-		// case metadataCommon.Pdexv3MintBlockRewardMeta:
-
-		// case metadataCommon.Pdexv3UserMintNftRequestMeta:
-
-		// case metadataCommon.Pdexv3ModifyParamsMeta:
-
-		// case metadataCommon.Pdexv3AddLiquidityRequestMeta:
 
 		case metadataCommon.Pdexv3WithdrawLiquidityRequestMeta:
 			data.Status = inst[1]

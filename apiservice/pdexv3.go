@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -720,12 +722,82 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
+const (
+	decimal_10 = float64(10)
+	decimal_1  = float64(1)
+	decimal_01 = float64(0.1)
+)
+
 func (pdexv3) GetOrderBook(c *gin.Context) {
 	decimal := c.Query("decimal")
 	poolID := c.Query("poolid")
 
-	_ = decimal
-	_ = poolID
+	decimalFloat, err := strconv.ParseFloat(decimal, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if decimalFloat != decimal_10 && decimalFloat != decimal_1 && decimalFloat != decimal_01 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("wrong decimal")))
+		return
+	}
+	tks := strings.Split(poolID, "-")
+	pairID := tks[0] + "-" + tks[1]
+	list, err := database.DBGetPendingOrderByPairID(pairID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	var result PdexV3OrderBookRespond
+	var sellSide []shared.TradeOrderData
+	var buySide []shared.TradeOrderData
+	for _, v := range list {
+		if v.SellTokenID == tks[0] {
+			sellSide = append(sellSide, v)
+		} else {
+			buySide = append(buySide, v)
+		}
+	}
+
+	sellVolume := make(map[string]PdexV3OrderBookVolume)
+	buyVolume := make(map[string]PdexV3OrderBookVolume)
+
+	for _, v := range sellSide {
+		amount := float64(v.Amount) / float64(1e9) * decimalFloat * 10
+		group := math.Floor(amount) / 10
+		groupStr := fmt.Sprintf("%g", group)
+		if d, ok := sellVolume[groupStr]; !ok {
+			sellVolume[groupStr] = PdexV3OrderBookVolume{
+				Price:  group,
+				Volume: v.Amount,
+			}
+		} else {
+			d.Volume += v.Amount
+			sellVolume[groupStr] = d
+		}
+	}
+
+	for _, v := range buySide {
+		amount := float64(v.Amount) / float64(1e9) * decimalFloat * 10
+		group := math.Floor(amount) / 10
+		groupStr := fmt.Sprintf("%g", group)
+		if d, ok := sellVolume[groupStr]; !ok {
+			buyVolume[groupStr] = PdexV3OrderBookVolume{
+				Price:  group,
+				Volume: v.Amount,
+			}
+		} else {
+			d.Volume += v.Amount
+			buyVolume[groupStr] = d
+		}
+	}
+
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) GetLatestTradeOrders(c *gin.Context) {

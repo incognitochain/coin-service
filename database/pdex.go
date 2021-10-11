@@ -1099,6 +1099,21 @@ func DBGetPendingOrder(limit int64, offset int64) ([]shared.TradeOrderData, erro
 	return result, nil
 }
 
+func DBGetPendingOrderByPairID(pairID string) ([]shared.TradeOrderData, error) {
+	limit := int64(10000)
+	var result []shared.TradeOrderData
+	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}, "status": bson.M{operator.Eq: 0}, "isswap": bson.M{operator.Eq: false}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"_id", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func DBGetPendingLiquidityWithdraw(limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)

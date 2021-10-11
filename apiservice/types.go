@@ -93,7 +93,7 @@ type PdexV3OrderBookRespond struct {
 	Sell []PdexV3OrderBookVolume
 }
 type PdexV3OrderBookVolume struct {
-	Price  uint64
+	Price  float64
 	Volume uint64
 }
 type PdexV3PoolDetail struct {
