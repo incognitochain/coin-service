@@ -93,8 +93,9 @@ type PdexV3OrderBookRespond struct {
 	Sell []PdexV3OrderBookVolume
 }
 type PdexV3OrderBookVolume struct {
-	Price  float64
-	Volume uint64
+	Average float64
+	Price   float64
+	Volume  uint64
 }
 type PdexV3PoolDetail struct {
 	PoolID         string
@@ -199,6 +200,7 @@ type PdexV3PoolShareRespond struct {
 	Token1Reward uint64
 	Token2Reward uint64
 	PRVReward    uint64
+	DEXReward    uint64
 	Share        uint64
 	AMP          uint
 	TotalShare   uint64

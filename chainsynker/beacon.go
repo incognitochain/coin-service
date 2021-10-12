@@ -282,15 +282,17 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 
 	for pairID, pools := range pairListMap {
 		data := shared.PairData{
-			PairID:   pairID,
-			TokenID1: pools[0].TokenID1,
-			TokenID2: pools[0].TokenID2,
+			PairID:    pairID,
+			TokenID1:  pools[0].TokenID1,
+			TokenID2:  pools[0].TokenID2,
+			PoolCount: len(pools),
 		}
 
 		for _, v := range pools {
 			data.Token1Amount += v.Token1Amount
 			data.Token2Amount += v.Token2Amount
 		}
+
 		pairList = append(pairList, data)
 	}
 

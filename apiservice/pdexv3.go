@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -94,7 +95,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 			Volume:         0,
 			PriceChange24h: 0,
 			AMP:            v.AMP,
-			Price:          float64(v.Token1Amount) / float64(v.Token2Amount),
+			Price:          float64(v.Token2Amount) / float64(v.Token1Amount),
 			TotalShare:     v.TotalShare,
 		}
 
@@ -195,6 +196,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		tk1Reward := uint64(0)
 		tk2Reward := uint64(0)
 		prvReward := uint64(0)
+		dexReward := uint64(0)
 		if rw, ok := v.TradingFee[l[0].TokenID1]; ok {
 			tk1Reward = rw
 		}
@@ -205,12 +207,16 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		if rw, ok := v.TradingFee[common.PRVCoinID.String()]; ok {
 			prvReward = rw
 		}
+		if rw, ok := v.TradingFee[common.PDEXCoinID.String()]; ok {
+			dexReward = rw
+		}
 		result = append(result, PdexV3PoolShareRespond{
 			PoolID:       v.PoolID,
 			Share:        v.Amount,
 			Token1Reward: tk1Reward,
 			Token2Reward: tk2Reward,
 			PRVReward:    prvReward,
+			DEXReward:    dexReward,
 			AMP:          l[0].AMP,
 			TokenID1:     l[0].TokenID1,
 			TokenID2:     l[0].TokenID2,
@@ -656,10 +662,22 @@ func (pdexv3) PairsDetail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	result, err := database.DBGetPairsByID(req.PairIDs)
+	list, err := database.DBGetPairsByID(req.PairIDs)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
+	}
+	var result []PdexV3PairData
+	for _, v := range list {
+		data := PdexV3PairData{
+			PairID:       v.PairID,
+			TokenID1:     v.TokenID1,
+			TokenID2:     v.TokenID2,
+			Token1Amount: v.Token1Amount,
+			Token2Amount: v.Token2Amount,
+			PoolCount:    v.PoolCount,
+		}
+		result = append(result, data)
 	}
 	respond := APIRespond{
 		Result: result,
@@ -701,7 +719,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			PriceChange24h: 0,
 			Volume:         0,
 			AMP:            v.AMP,
-			Price:          float64(v.Token1Amount) / float64(v.Token2Amount),
+			Price:          float64(v.Token2Amount) / float64(v.Token1Amount),
 			TotalShare:     v.TotalShare,
 		}
 
@@ -723,9 +741,11 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 }
 
 const (
-	decimal_10 = float64(10)
-	decimal_1  = float64(1)
-	decimal_01 = float64(0.1)
+	decimal_100 = float64(100)
+	decimal_10  = float64(10)
+	decimal_1   = float64(1)
+	decimal_01  = float64(0.1)
+	decimal_001 = float64(0.01)
 )
 
 func (pdexv3) GetOrderBook(c *gin.Context) {
@@ -737,8 +757,8 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	if decimalFloat != decimal_10 && decimalFloat != decimal_1 && decimalFloat != decimal_01 {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("wrong decimal")))
+	if decimalFloat != decimal_100 && decimalFloat != decimal_10 && decimalFloat != decimal_1 && decimalFloat != decimal_01 && decimalFloat != decimal_001 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("not supported decimal")))
 		return
 	}
 	tks := strings.Split(poolID, "-")
@@ -748,6 +768,8 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+
+	fmt.Println("DBGetPendingOrderByPairID", len(list))
 
 	var result PdexV3OrderBookRespond
 	var sellSide []shared.TradeOrderData
@@ -763,36 +785,66 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 	sellVolume := make(map[string]PdexV3OrderBookVolume)
 	buyVolume := make(map[string]PdexV3OrderBookVolume)
 
+	fmt.Println("sellSide buySide", len(sellSide), len(buySide))
+
 	for _, v := range sellSide {
-		amount := float64(v.Amount) / float64(1e9) * decimalFloat * 10
-		group := math.Floor(amount) / 10
+		price := float64(v.Amount) / float64(v.MinAccept)
+		group := math.Floor(float64(price)*(1/decimalFloat)) * decimalFloat
 		groupStr := fmt.Sprintf("%g", group)
 		if d, ok := sellVolume[groupStr]; !ok {
 			sellVolume[groupStr] = PdexV3OrderBookVolume{
-				Price:  group,
-				Volume: v.Amount,
+				Price:   group,
+				Average: price,
+				Volume:  v.Amount,
 			}
 		} else {
 			d.Volume += v.Amount
+			a := (d.Average + price) / 2
+			d.Average = a
 			sellVolume[groupStr] = d
 		}
 	}
 
 	for _, v := range buySide {
-		amount := float64(v.Amount) / float64(1e9) * decimalFloat * 10
-		group := math.Floor(amount) / 10
+		price := float64(v.Amount) / float64(v.MinAccept)
+		group := math.Floor(float64(price)*(1/decimalFloat)) * decimalFloat
 		groupStr := fmt.Sprintf("%g", group)
-		if d, ok := sellVolume[groupStr]; !ok {
+		if d, ok := buyVolume[groupStr]; !ok {
 			buyVolume[groupStr] = PdexV3OrderBookVolume{
-				Price:  group,
-				Volume: v.Amount,
+				Price:   group,
+				Average: price,
+				Volume:  v.Amount,
 			}
 		} else {
 			d.Volume += v.Amount
+			a := (d.Average + price) / 2
+			d.Average = a
 			buyVolume[groupStr] = d
 		}
 	}
 
+	for _, v := range sellVolume {
+		data := PdexV3OrderBookVolume{
+			Price:   1 / v.Price,
+			Average: v.Average,
+			Volume:  v.Volume,
+		}
+		result.Sell = append(result.Sell, data)
+	}
+	for _, v := range buyVolume {
+		data := PdexV3OrderBookVolume{
+			Price:   v.Price,
+			Average: v.Average,
+			Volume:  v.Volume,
+		}
+		result.Buy = append(result.Buy, data)
+	}
+	sort.SliceStable(result.Sell, func(i, j int) bool {
+		return result.Sell[i].Price > result.Sell[j].Price
+	})
+	sort.SliceStable(result.Buy, func(i, j int) bool {
+		return result.Buy[i].Price > result.Buy[j].Price
+	})
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
@@ -1080,6 +1132,60 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 		}
 
 	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) GetRate(c *gin.Context) {
+	var req struct {
+		TokenIDs []string `json:"TokenIDs"`
+		Against  string   `json:"Against"`
+	}
+	err := c.ShouldBindJSON(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	result := make(map[string]float64)
+
+	pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not get data from RPC pdexv3_getState")))
+		return
+	}
+
+	pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Poolpairs)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+	for _, v := range req.TokenIDs {
+		a := uint64(10000)
+	retry:
+		_, receive := pathfinder.FindGoodTradePath(
+			4,
+			pools,
+			poolPairStates,
+			req.Against,
+			v, a)
+		if receive == 0 {
+			a *= 10
+			if a < 1e18 {
+				goto retry
+			}
+			result[v] = 0
+		} else {
+			result[v] = float64(a) / float64(receive)
+		}
+
+	}
+
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,

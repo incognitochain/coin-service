@@ -238,10 +238,12 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				} else {
 					buyToken = tokenStrs[1]
 				}
+				pairID = tokenStrs[0] + "-" + tokenStrs[1]
 				minaccept = item.MinAcceptableAmount
 				amount = item.SellAmount
 				nftID = item.NftID.String()
 				version = 2
+
 			}
 			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, minaccept, amount, lockTime, tx.ShardID, tx.BlockHeight)
 			trade.Version = version

@@ -111,6 +111,7 @@ func StartGinService() {
 		pdexv3Group.GET("/stakeinfo", pdexv3{}.StakeInfo)
 		pdexv3Group.GET("/stakinghistory", pdexv3{}.StakeHistory)
 		pdexv3Group.GET("/stakerewardhistory", pdexv3{}.StakeRewardHistory)
+		pdexv3Group.GET("/rate", pdexv3{}.GetRate)
 
 		//external dependency
 		pdexv3Group.GET("/estimatetrade", pdexv3{}.EstimateTrade)

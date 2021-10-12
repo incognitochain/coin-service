@@ -620,7 +620,7 @@ func DBUpdatePDEPairListData(list []shared.PairData) error {
 	for _, pool := range list {
 		fitler := bson.M{"PairData": bson.M{operator.Eq: pool.PairID}}
 		update := bson.M{
-			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount},
+			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "poolcount": pool.PoolCount},
 		}
 		_, err := mgm.Coll(&shared.PairData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {

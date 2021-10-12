@@ -1,6 +1,7 @@
 package apiservice
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -107,7 +108,7 @@ const (
 
 func APICheckRate(c *gin.Context) {
 	var result struct {
-		Rate   float64
+		Rate   string
 		MaxAMP int
 	}
 	token1 := c.Query("token1")
@@ -116,7 +117,7 @@ func APICheckRate(c *gin.Context) {
 	amount2, _ := strconv.Atoi(c.Query("amount2"))
 	amp, _ := strconv.Atoi(c.Query("amp"))
 
-	userRate := float64(amount1) / float64(amount2)
+	userRate := float64(amount2) / float64(amount1)
 	tk1Price, err := database.DBGetTokenPrice(token1)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -167,8 +168,10 @@ func APICheckRate(c *gin.Context) {
 						}
 					}
 				}
-
-				result.Rate = float64(tk1Price.Price) / float64(tk2Price.Price)
+				rate := float64(tk2Price.Price) / float64(tk1Price.Price)
+				fmt.Printf("result.Rate2 %v %v \n", float64(tk1Price.Price), float64(tk2Price.Price))
+				fmt.Printf("result.Rate2 %v \n", rate)
+				result.Rate = fmt.Sprintf("%g", rate)
 				result.MaxAMP = newAmp
 				respond := APIRespond{
 					Result: result,
@@ -183,7 +186,9 @@ func APICheckRate(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			userRate = rate
+			if rate != 0 {
+				userRate = 1 / rate
+			}
 		}
 	} else {
 		rate, err := getRate(token1, token2)
@@ -191,9 +196,12 @@ func APICheckRate(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		userRate = rate
+		if rate != 0 {
+			userRate = 1 / rate
+		}
 	}
-	result.Rate = userRate
+	fmt.Printf("result.Rate %v \n", userRate)
+	result.Rate = fmt.Sprintf("%g", userRate)
 	result.MaxAMP = amp
 	respond := APIRespond{
 		Result: result,
@@ -219,16 +227,24 @@ func getRate(tokenID1, tokenID2 string) (float64, error) {
 	// if err != nil {
 	// 	return 0, err
 	// }
-
+	a := uint64(1000)
+retry:
 	chosenPath, receive := pathfinder.FindGoodTradePath(
 		4,
 		pools,
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		1000)
+		a)
 
+	if receive == 0 {
+		a *= 10
+		if a < 1e18 {
+			goto retry
+		}
+		return 0, nil
+	}
 	spew.Dump("chosenPath", chosenPath)
-	log.Printf("getRate %d\n", receive)
-	return float64(1000) / float64(receive), nil
+	log.Printf("getRate %v %d\n", a, receive)
+	return float64(a) / float64(receive), nil
 }
