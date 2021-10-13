@@ -93,7 +93,7 @@ type PdexV3OrderBookRespond struct {
 	Sell []PdexV3OrderBookVolume
 }
 type PdexV3OrderBookVolume struct {
-	Average float64
+	average float64
 	Price   float64
 	Volume  uint64
 }
@@ -250,4 +250,10 @@ type PdexV3StakePoolRewardHistoryData struct {
 	NFTID       string
 	Amount      uint64
 	Requesttime int64
+}
+
+type PdexV3PendingOrderData struct {
+	TxRequest    string
+	Token1Amount uint64
+	Token2Amount uint64
 }

@@ -261,7 +261,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				if statusStr == "xPoolTradeAccepted" {
 					status = 1
 				} else {
-					status = 0
+					status = 2
 				}
 				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
 			case metadata.PDETradeResponseMeta:
@@ -269,16 +269,24 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				if statusStr == "accepted" {
 					status = 1
 				} else {
-					status = 0
+					status = 2
 				}
 				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
 			case metadata.Pdexv3TradeResponseMeta:
 				md := txDetail.GetMetadata().(*metadataPdexv3.TradeResponse)
-				status = md.Status
+				if md.Status == 0 {
+					status = 2
+				} else {
+					status = 1
+				}
 				requestTx = md.RequestTxID.String()
 			case metadata.Pdexv3AddOrderResponseMeta:
 				md := txDetail.GetMetadata().(*metadataPdexv3.AddOrderResponse)
-				status = md.Status
+				if md.Status == 0 {
+					status = 2
+				} else {
+					status = 1
+				}
 				requestTx = md.RequestTxID.String()
 			}
 			tokenIDStr := txDetail.GetTokenID().String()

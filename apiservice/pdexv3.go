@@ -740,13 +740,13 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-const (
-	decimal_100 = float64(100)
-	decimal_10  = float64(10)
-	decimal_1   = float64(1)
-	decimal_01  = float64(0.1)
-	decimal_001 = float64(0.01)
-)
+// const (
+// 	decimal_100 = float64(100)
+// 	decimal_10  = float64(10)
+// 	decimal_1   = float64(1)
+// 	decimal_01  = float64(0.1)
+// 	decimal_001 = float64(0.01)
+// )
 
 func (pdexv3) GetOrderBook(c *gin.Context) {
 	decimal := c.Query("decimal")
@@ -757,10 +757,6 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	if decimalFloat != decimal_100 && decimalFloat != decimal_10 && decimalFloat != decimal_1 && decimalFloat != decimal_01 && decimalFloat != decimal_001 {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("not supported decimal")))
-		return
-	}
 	tks := strings.Split(poolID, "-")
 	pairID := tks[0] + "-" + tks[1]
 	list, err := database.DBGetPendingOrderByPairID(pairID)
@@ -768,8 +764,6 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-
-	fmt.Println("DBGetPendingOrderByPairID", len(list))
 
 	var result PdexV3OrderBookRespond
 	var sellSide []shared.TradeOrderData
@@ -781,26 +775,23 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 			buySide = append(buySide, v)
 		}
 	}
-
 	sellVolume := make(map[string]PdexV3OrderBookVolume)
 	buyVolume := make(map[string]PdexV3OrderBookVolume)
 
-	fmt.Println("sellSide buySide", len(sellSide), len(buySide))
-
 	for _, v := range sellSide {
-		price := float64(v.Amount) / float64(v.MinAccept)
+		price := float64(v.MinAccept) / float64(v.Amount)
 		group := math.Floor(float64(price)*(1/decimalFloat)) * decimalFloat
 		groupStr := fmt.Sprintf("%g", group)
 		if d, ok := sellVolume[groupStr]; !ok {
 			sellVolume[groupStr] = PdexV3OrderBookVolume{
 				Price:   group,
-				Average: price,
+				average: price,
 				Volume:  v.Amount,
 			}
 		} else {
 			d.Volume += v.Amount
-			a := (d.Average + price) / 2
-			d.Average = a
+			a := (d.average + price) / 2
+			d.average = a
 			sellVolume[groupStr] = d
 		}
 	}
@@ -812,30 +803,28 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 		if d, ok := buyVolume[groupStr]; !ok {
 			buyVolume[groupStr] = PdexV3OrderBookVolume{
 				Price:   group,
-				Average: price,
+				average: price,
 				Volume:  v.Amount,
 			}
 		} else {
 			d.Volume += v.Amount
-			a := (d.Average + price) / 2
-			d.Average = a
+			a := (d.average + price) / 2
+			d.average = a
 			buyVolume[groupStr] = d
 		}
 	}
 
 	for _, v := range sellVolume {
 		data := PdexV3OrderBookVolume{
-			Price:   1 / v.Price,
-			Average: v.Average,
-			Volume:  v.Volume,
+			Price:  v.Price,
+			Volume: v.Volume,
 		}
 		result.Sell = append(result.Sell, data)
 	}
 	for _, v := range buyVolume {
 		data := PdexV3OrderBookVolume{
-			Price:   v.Price,
-			Average: v.Average,
-			Volume:  v.Volume,
+			Price:  v.Price,
+			Volume: v.Volume,
 		}
 		result.Buy = append(result.Buy, data)
 	}
@@ -1144,7 +1133,7 @@ func (pdexv3) GetRate(c *gin.Context) {
 		TokenIDs []string `json:"TokenIDs"`
 		Against  string   `json:"Against"`
 	}
-	err := c.ShouldBindJSON(req)
+	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -1186,6 +1175,59 @@ func (pdexv3) GetRate(c *gin.Context) {
 
 	}
 
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) PendingOrder(c *gin.Context) {
+	var result struct {
+		Buy  []PdexV3PendingOrderData
+		Sell []PdexV3PendingOrderData
+	}
+	var buyOrders []PdexV3PendingOrderData
+	var sellOrders []PdexV3PendingOrderData
+	poolID := c.Query("poolid")
+	tks := strings.Split(poolID, "-")
+
+	pairID := tks[0] + "-" + tks[1]
+	list, err := database.DBGetPendingOrderByPairID(pairID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	var sellSide []shared.TradeOrderData
+	var buySide []shared.TradeOrderData
+	for _, v := range list {
+		if v.SellTokenID == tks[0] {
+			sellSide = append(sellSide, v)
+		} else {
+			buySide = append(buySide, v)
+		}
+	}
+	// 0,000000153623188
+	// 0,000000153623
+	for _, v := range sellSide {
+		data := PdexV3PendingOrderData{
+			TxRequest:    v.RequestTx,
+			Token1Amount: v.Amount,
+			Token2Amount: v.MinAccept,
+		}
+		sellOrders = append(sellOrders, data)
+	}
+	for _, v := range buySide {
+		data := PdexV3PendingOrderData{
+			TxRequest:    v.RequestTx,
+			Token2Amount: v.Amount,
+			Token1Amount: v.MinAccept,
+		}
+		buyOrders = append(buyOrders, data)
+	}
+	result.Buy = buyOrders
+	result.Sell = sellOrders
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,

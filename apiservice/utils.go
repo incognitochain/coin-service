@@ -91,6 +91,7 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 			isCompleted = true
 		case 2:
 			status = "rejected"
+			isCompleted = true
 		}
 		return matchedAmount, 0, 0, 0, 0, order.Status, status, nil, isCompleted, nil
 
