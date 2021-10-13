@@ -170,7 +170,11 @@ func DBCreateTxPendingIndex() error {
 	txMdl := []mongo.IndexModel{
 		{
 			Keys:    bsonx.Doc{{Key: "txhash", Value: bsonx.Int32(1)}, {Key: "shardid", Value: bsonx.Int32(1)}},
-			Options: options.Index().SetUnique(true).SetExpireAfterSeconds(1800),
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "locktime", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(1800),
 		},
 	}
 	indexName, err := mgm.Coll(&shared.CoinPendingData{}).Indexes().CreateMany(ctx, txMdl)
