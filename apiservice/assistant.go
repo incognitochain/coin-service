@@ -67,9 +67,6 @@ func APIGetTop10(c *gin.Context) {
 			TotalShare:    v.TotalShare,
 		}
 
-		//TODO @yenle add pool volume and price change 24h
-		// data.APY
-
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
 			data.PriceChange24h = poolChange.RateChangePercentage
 			data.Volume = poolChange.TradingVolume24h

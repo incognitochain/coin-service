@@ -21,6 +21,7 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
 type pdexv3 struct{}
@@ -98,9 +99,6 @@ func (pdexv3) ListPools(c *gin.Context) {
 			Price:          float64(v.Token2Amount) / float64(v.Token1Amount),
 			TotalShare:     v.TotalShare,
 		}
-
-		//TODO @yenle add pool volume and price change 24h
-		// data.APY
 
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
 			data.PriceChange24h = poolChange.RateChangePercentage
@@ -567,11 +565,22 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 }
 
 func (pdexv3) StakingPool(c *gin.Context) {
-	result, err := database.DBGetStakePools()
+	list, err := database.DBGetStakePools()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	//TODO get APY
+	var result []PdexV3StakingPoolInfo
+	for _, v := range list {
+		data := PdexV3StakingPoolInfo{
+			Amount:  v.Amount,
+			TokenID: v.TokenID,
+			APY:     0,
+		}
+		result = append(result, data)
+	}
+
 	respond := APIRespond{
 		Result: result,
 	}
@@ -1230,6 +1239,25 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 	result.Sell = sellOrders
 	respond := APIRespond{
 		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) PDEState(c *gin.Context) {
+	state, err := database.DBGetPDEState(2)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	pdeState := jsonresult.CurrentPDEState{}
+	err = json.UnmarshalFromString(state, &pdeState)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: pdeState,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

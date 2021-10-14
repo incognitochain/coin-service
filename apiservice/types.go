@@ -257,3 +257,9 @@ type PdexV3PendingOrderData struct {
 	Token1Amount uint64
 	Token2Amount uint64
 }
+
+type PdexV3StakingPoolInfo struct {
+	TokenID string
+	Amount  uint64
+	APY     int
+}

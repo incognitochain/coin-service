@@ -17,9 +17,13 @@ import (
 
 func DBSavePDEState(state string, version int) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
-	var doc interface{}
-	newState := shared.NewPDEStateData(state, version)
-	doc = newState
+
+	doc := bson.M{
+		"$set": bson.M{
+			"version": version,
+			"state":   state,
+		},
+	}
 	filter := bson.M{"version": bson.M{operator.Eq: version}}
 	_, err := mgm.Coll(&shared.PDEStateData{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
 	if err != nil {
@@ -28,10 +32,10 @@ func DBSavePDEState(state string, version int) error {
 	return nil
 }
 
-func DBGetPDEState() (string, error) {
+func DBGetPDEState(version int) (string, error) {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
 	var result shared.PDEStateData
-	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{}, &result)
+	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{"version": bson.M{operator.Eq: version}}, &result)
 	if err != nil {
 		log.Println(err)
 		return "", err
@@ -474,12 +478,6 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 	}
 	return nil
 }
-
-// func DBGetPendingOrder(pubkey, pairID string) ([]shared.TradeOrderData, error) {
-// 	var result []shared.TradeOrderData
-// 	//TODO
-// 	return result, nil
-// }
 
 func DBSavePoolPairs(pools []shared.PoolPairData) error {
 	if len(pools) == 0 {

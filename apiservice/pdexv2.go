@@ -173,7 +173,7 @@ func reverseAny(s interface{}) {
 }
 
 func APIPDEState(c *gin.Context) {
-	state, err := database.DBGetPDEState()
+	state, err := database.DBGetPDEState(1)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
