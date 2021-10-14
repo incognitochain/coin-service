@@ -211,7 +211,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				} else {
 					// error was handled by tx validation
 					_, burnedPRVCoin, _, _, _ := txDetail.GetTxFullBurnData()
-					if burnedPRVCoin != nil {
+					if burnedPRVCoin == nil {
 						feeToken = sellToken
 					} else {
 						feeToken = common.PRVCoinID.String()
