@@ -165,6 +165,10 @@ func DBCreateTxPendingIndex() error {
 			Keys:    bsonx.Doc{{Key: "txhash", Value: bsonx.Int32(1)}, {Key: "shardid", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys:    bsonx.Doc{{Key: "created_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(1800),
+		},
 	}
 	indexName, err := mgm.Coll(&shared.CoinPendingData{}).Indexes().CreateMany(ctx, txMdl)
 	if err != nil {
