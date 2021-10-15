@@ -197,10 +197,7 @@ type PdexV3PoolShareRespond struct {
 	TokenID2     string
 	Token1Amount uint64
 	Token2Amount uint64
-	Token1Reward uint64
-	Token2Reward uint64
-	PRVReward    uint64
-	DEXReward    uint64
+	Rewards      map[string]uint64
 	Share        uint64
 	AMP          uint
 	TotalShare   uint64

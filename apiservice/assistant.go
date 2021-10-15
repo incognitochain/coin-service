@@ -84,9 +84,6 @@ func APIGetTop10(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func APIGetDefaultPool(c *gin.Context) {
-}
-
 const (
 	// PriceChange_CorrelationSimilar = float64(0.05)
 	// PriceChange_CorrelationStrong  = float64(0.2)
@@ -177,26 +174,28 @@ func APICheckRate(c *gin.Context) {
 				c.JSON(http.StatusOK, respond)
 				return
 			}
-		} else {
-			rate, err := getRate(token1, token2)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			if rate != 0 {
-				userRate = 1 / rate
-			}
 		}
-	} else {
-		rate, err := getRate(token1, token2)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		if rate != 0 {
-			userRate = 1 / rate
-		}
+		// else {
+		// 	rate, err := getRate(token1, token2)
+		// 	if err != nil {
+		// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		// 		return
+		// 	}
+		// 	if rate != 0 {
+		// 		userRate = 1 / rate
+		// 	}
+		// }
 	}
+	//  else {
+	// 	rate, err := getRate(token1, token2)
+	// 	if err != nil {
+	// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 		return
+	// 	}
+	// 	if rate != 0 {
+	// 		userRate = 1 / rate
+	// 	}
+	// }
 	fmt.Printf("result.Rate %v \n", userRate)
 	result.Rate = fmt.Sprintf("%g", userRate)
 	result.MaxAMP = amp

@@ -124,7 +124,6 @@ func StartGinService() {
 
 		astGroup := pdexv3Group.Group("/assistance")
 		astGroup.GET("/top10pairs", APIGetTop10)
-		astGroup.GET("/defaultpool", APIGetDefaultPool)
 		astGroup.GET("/checkrate", APICheckRate)
 
 	}

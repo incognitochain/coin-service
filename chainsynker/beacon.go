@@ -111,6 +111,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			log.Println(err)
 		}
+
 		poolPairs := make(map[string]*shared.PoolPairState)
 		err = json.Unmarshal(pdeStateV2.Reader().PoolPairs(), &poolPairs)
 		if err != nil {
@@ -121,7 +122,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			panic(err)
 		}
-
+		pdeStateV2.Reader().Params()
 		stateV2 = &shared.PDEStateV2{
 			PoolPairs:         poolPairs,
 			StakingPoolsState: pdeStateV2.Reader().StakingPools(),
@@ -488,14 +489,7 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			}
 			data.TxRequest = actionData.TxReqID.String()
 		// case metadataCommon.Pdexv3WithdrawProtocolFeeRequestMeta:
-		// 	data.Status = inst[2]
-		// 	data.Content = inst[3]
-		// 	var actionData metadataPdexv3.WithdrawalProtocolFeeContent
-		// 	err := json.Unmarshal([]byte(inst[3]), &actionData)
-		// 	if err != nil {
-		// 		panic(err)
-		// 	}
-		// 	data.TxRequest = actionData.TxReqID.String()
+
 		// case metadataCommon.Pdexv3AddOrderRequestMeta:
 
 		case metadataCommon.Pdexv3WithdrawOrderRequestMeta:
@@ -519,8 +513,25 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			}
 		// case metadataCommon.Pdexv3DistributeStakingRewardMeta:
 
-		// case metadataCommon.Pdexv3StakingRequestMeta:
-
+		case metadataCommon.Pdexv3StakingRequestMeta:
+			data.Status = inst[1]
+			data.Content = inst[2]
+			switch inst[1] {
+			case common.Pdexv3AcceptUnstakingStatus:
+				acceptInst := instruction.NewAcceptStaking()
+				err := acceptInst.FromStringSlice(inst)
+				if err != nil {
+					panic(err)
+				}
+				data.TxRequest = acceptInst.TxReqID().String()
+			case common.Pdexv3RejectUnstakingStatus:
+				rejectInst := instruction.NewRejectStaking()
+				err := rejectInst.FromStringSlice(inst)
+				if err != nil {
+					panic(err)
+				}
+				data.TxRequest = rejectInst.TxReqID().String()
+			}
 		case metadataCommon.Pdexv3UnstakingRequestMeta:
 			data.Status = inst[1]
 			data.Content = inst[2]

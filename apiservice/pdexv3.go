@@ -19,7 +19,6 @@ import (
 	"github.com/incognitochain/coin-service/pdexv3/feeestimator"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
-	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
@@ -191,30 +190,11 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		if len(l) == 0 {
 			continue
 		}
-		tk1Reward := uint64(0)
-		tk2Reward := uint64(0)
-		prvReward := uint64(0)
-		dexReward := uint64(0)
-		if rw, ok := v.TradingFee[l[0].TokenID1]; ok {
-			tk1Reward = rw
-		}
-		if rw, ok := v.TradingFee[l[0].TokenID2]; ok {
-			tk2Reward = rw
-		}
 
-		if rw, ok := v.TradingFee[common.PRVCoinID.String()]; ok {
-			prvReward = rw
-		}
-		if rw, ok := v.TradingFee[common.PDEXCoinID.String()]; ok {
-			dexReward = rw
-		}
 		result = append(result, PdexV3PoolShareRespond{
 			PoolID:       v.PoolID,
 			Share:        v.Amount,
-			Token1Reward: tk1Reward,
-			Token2Reward: tk2Reward,
-			PRVReward:    prvReward,
-			DEXReward:    dexReward,
+			Rewards:      v.TradingFee,
 			AMP:          l[0].AMP,
 			TokenID1:     l[0].TokenID1,
 			TokenID2:     l[0].TokenID2,

@@ -1307,6 +1307,42 @@ func DBUpdatePDETradeWithdrawStatus(list []shared.TradeOrderData) error {
 	return nil
 }
 
+func DBGetPendingRequestStakingPool(limit int64, offset int64) ([]shared.PoolStakeHistoryData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	var result []shared.PoolStakeHistoryData
+	filter := bson.M{"status": bson.M{operator.Eq: 0}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.PoolStakeHistoryData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"_id", 1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBUpdateRequestStakingPoolStatus(list []shared.PoolStakeHistoryData) error {
+	if len(list) == 0 {
+		return nil
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range list {
+		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
+		update := bson.M{
+			"$set": bson.M{"status": order.Status},
+		}
+		err := mgm.Coll(&shared.PoolStakeHistoryData{}).FindOneAndUpdate(ctx, fitler, update)
+		if err != nil {
+			return err.Err()
+		}
+	}
+	return nil
+}
+
 func DBGetPairsByID(list []string) ([]shared.PairData, error) {
 	var result []shared.PairData
 	filter := bson.M{"pairid": bson.M{operator.In: list}}

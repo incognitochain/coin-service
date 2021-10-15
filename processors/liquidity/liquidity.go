@@ -249,7 +249,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawLiquidityResponse)
 			status := 0
-			if md.Status() == "accepted" {
+			if md.Status() == common.PDEWithdrawalAcceptedChainStatus {
 				status = 1
 			} else {
 				status = 2
@@ -332,7 +332,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 		case metadataCommon.Pdexv3StakingResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.StakingResponse)
 			status := 0
-			if md.Status() == "accepted" {
+			if md.Status() == common.Pdexv3AcceptStakingStatus {
 				status = 1
 			} else {
 				status = 2
@@ -358,7 +358,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 		case metadataCommon.Pdexv3UnstakingResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.UnstakingResponse)
 			status := 0
-			if md.Status() == "accepted" {
+			if md.Status() == common.Pdexv3AcceptUnstakingStatus {
 				status = 1
 			} else {
 				status = 2
@@ -542,7 +542,7 @@ func updateLiquidityStatus() error {
 			if err != nil {
 				panic(err)
 			}
-			if i.Status == "rejected" {
+			if i.Status == common.PDEWithdrawalRejectedChainStatus {
 				data.Status = 2
 				listToUpdate = append(listToUpdate, data)
 			}
@@ -574,12 +574,47 @@ func updateLiquidityStatus() error {
 			if err != nil {
 				panic(err)
 			}
-			if i.Status == "rejected" {
+			if i.Status == metadataPdexv3.RequestRejectedChainStatus {
 				data.Status = 2
 				listToUpdate = append(listToUpdate, data)
 			}
 		}
 		err = database.DBUpdatePDELiquidityWithdrawFeeStatus(listToUpdate)
+		if err != nil {
+			return err
+		}
+	}
+
+	offset = 0
+	for {
+		list, err := database.DBGetPendingRequestStakingPool(limit, offset)
+		if err != nil {
+			return err
+		}
+		if len(list) == 0 {
+			break
+		}
+		offset += int64(len(list))
+		listToUpdate := []shared.PoolStakeHistoryData{}
+		for _, v := range list {
+			data := shared.PoolStakeHistoryData{
+				RequestTx: v.RequestTx}
+			i, err := database.DBGetBeaconInstructionByTx(v.RequestTx)
+			if i == nil && err == nil {
+				continue
+			}
+			if err != nil {
+				panic(err)
+			}
+			if i.Status == common.Pdexv3RejectStakingStatus {
+				data.Status = 2
+				listToUpdate = append(listToUpdate, data)
+			} else {
+				data.Status = 1
+				listToUpdate = append(listToUpdate, data)
+			}
+		}
+		err = database.DBUpdateRequestStakingPoolStatus(listToUpdate)
 		if err != nil {
 			return err
 		}
@@ -606,7 +641,7 @@ func updateLiquidityStatus() error {
 			if err != nil {
 				panic(err)
 			}
-			if i.Status == "rejected" {
+			if i.Status == common.Pdexv3RejectUnstakingStatus {
 				data.Status = 2
 				listToUpdate = append(listToUpdate, data)
 			}
@@ -638,7 +673,7 @@ func updateLiquidityStatus() error {
 			if err != nil {
 				panic(err)
 			}
-			if i.Status == "rejected" {
+			if i.Status == metadataPdexv3.RequestRejectedChainStatus {
 				data.Status = 2
 				listToUpdate = append(listToUpdate, data)
 			}
