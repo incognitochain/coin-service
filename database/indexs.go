@@ -173,7 +173,7 @@ func DBCreateTxPendingIndex() error {
 			Options: options.Index().SetUnique(true),
 		},
 		{
-			Keys:    bsonx.Doc{{Key: "locktime", Value: bsonx.Int32(1)}},
+			Keys:    bsonx.Doc{{Key: "created_at", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetExpireAfterSeconds(1800),
 		},
 	}
