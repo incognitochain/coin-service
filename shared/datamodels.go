@@ -276,6 +276,7 @@ type PDEStateData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Version          int    `json:"version" bson:"version"`
 	State            string `json:"state" bson:"state"`
+	Height           uint64 `json:"height" bson:"height"`
 }
 
 func (model *PDEStateData) Creating() error {
@@ -879,6 +880,54 @@ func (model *TokenMarketCap) Creating() error {
 	return nil
 }
 func (model *TokenMarketCap) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type RewardRecord struct {
+	mgm.DefaultModel `bson:",inline"`
+	DataID           string `json:"dataid" bson:"dataid"`
+	Data             string `json:"data" bson:"data"`
+	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
+}
+
+func (model *RewardRecord) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *RewardRecord) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type RewardAPYTracking struct {
+	mgm.DefaultModel `bson:",inline"`
+	DataID           string `json:"dataid" bson:"dataid"`
+	APY              uint64 `json:"apy" bson:"apy"`
+	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
+}
+
+func (model *RewardAPYTracking) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *RewardAPYTracking) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

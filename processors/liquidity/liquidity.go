@@ -2,7 +2,6 @@ package liquidity
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -11,15 +10,18 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
+	"github.com/incognitochain/incognito-chain/config"
 	"github.com/incognitochain/incognito-chain/metadata"
 	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	metadataPdexv3 "github.com/incognitochain/incognito-chain/metadata/pdexv3"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -35,15 +37,30 @@ func StartProcessor() {
 		panic(err)
 	}
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 100)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 1000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
 		}
 		log.Println("start processing LQ with", len(txList), "txs")
+		pdexState, beaconHeight, err := getPdexToProcess(currentState.LastProcessedPdexV3Height)
+		if err != nil {
+			log.Println("getPdexToProcess", err)
+			continue
+		}
 
+		var apyData []shared.RewardAPYTracking
+
+		if pdexState != nil {
+			apyData, err = processPoolRewardAPY(pdexState, beaconHeight)
+			if err != nil {
+				log.Println("getPdexToProcess", err)
+				continue
+			}
+			currentState.LastProcessedPdexV3Height = beaconHeight
+		}
 		contribRQData, contribRPData, withdrawRQDatas, withdrawRPDatas, withdrawFeeRQDatas, withdrawFeeRPDatas, stakeRQDatas, stakeRPDatas, stakeRewardRQDatas, stakeRewardRPDatas, err := processLiquidity(txList)
 		if err != nil {
 			panic(err)
@@ -74,9 +91,13 @@ func StartProcessor() {
 			panic(err)
 		}
 
+		err = database.DBUpdatePDEPoolPairRewardAPY(apyData)
+		if err != nil {
+			panic(err)
+		}
+
 		err = database.DBUpdatePDEContributeRespond(contribRPData)
 		if err != nil {
-			fmt.Println(contribRPData)
 			panic(err)
 		}
 
@@ -685,4 +706,53 @@ func updateLiquidityStatus() error {
 	}
 
 	return nil
+}
+
+func getPdexToProcess(height uint64) (*jsonresult.Pdexv3State, uint64, error) {
+	data, err := database.DBGetPDEStateWithHeight(2, height+1)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, 0, nil
+		}
+		return nil, 0, err
+	}
+	pdeState := jsonresult.Pdexv3State{}
+	err = json.UnmarshalFromString(data.State, &pdeState)
+	if err != nil {
+		return nil, 0, err
+	}
+	return &pdeState, data.Height, nil
+}
+
+func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared.RewardAPYTracking, error) {
+	var result []shared.RewardAPYTracking
+	for poolid, _ := range *pdex.PoolPairs {
+		data := shared.RewardAPYTracking{
+			DataID:       poolid,
+			BeaconHeight: height,
+		}
+		list, err := database.DBGetRewardRecordByPoolID(poolid)
+		if err != nil {
+			return nil, err
+		}
+		totalPercent := float64(0)
+		for _, v := range list {
+			d := RewardInfo{}
+			err := json.Unmarshal([]byte(v.Data), &d)
+			if err != nil {
+				return nil, err
+			}
+			if d.RewardReceiveInPRV != 0 {
+				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
+			}
+		}
+		percent := totalPercent / float64(len(list))
+		data.APY = uint64(percent * 365 * (86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
+		result = append(result, data)
+	}
+	err := database.DBDeleteRewardRecord(height)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

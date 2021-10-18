@@ -1230,7 +1230,7 @@ func (pdexv3) PDEState(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	pdeState := jsonresult.CurrentPDEState{}
+	pdeState := jsonresult.Pdexv3State{}
 	err = json.UnmarshalFromString(state, &pdeState)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))

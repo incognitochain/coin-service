@@ -15,13 +15,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func DBSavePDEState(state string, version int) error {
+func DBSavePDEState(state string, height uint64, version int) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
 
 	doc := bson.M{
 		"$set": bson.M{
 			"version": version,
 			"state":   state,
+			"height":  height,
 		},
 	}
 	filter := bson.M{"version": bson.M{operator.Eq: version}}
@@ -41,6 +42,17 @@ func DBGetPDEState(version int) (string, error) {
 		return "", err
 	}
 	return result.State, nil
+}
+
+func DBGetPDEStateWithHeight(version int, height uint64) (*shared.PDEStateData, error) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
+	var result shared.PDEStateData
+	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{"version": bson.M{operator.Eq: version}, "height": bson.M{operator.Gte: height}}, &result)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &result, nil
 }
 
 func DBSaveTxTrade(list []shared.TradeOrderData) error {
@@ -1079,6 +1091,48 @@ func DBSaveInstructionBeacon(list []shared.InstructionBeaconData) error {
 	return nil
 }
 
+func DBSaveRewardRecord(list []shared.RewardRecord) error {
+	if len(list) == 0 {
+		return nil
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	docs := []interface{}{}
+	for _, tx := range list {
+		tx.Creating()
+		docs = append(docs, tx)
+	}
+	_, err := mgm.Coll(&shared.RewardRecord{}).InsertMany(ctx, docs)
+	if err != nil {
+		writeErr, ok := err.(mongo.BulkWriteException)
+		if !ok {
+			panic(err)
+		}
+		if ctx.Err() != nil {
+			t, k := ctx.Deadline()
+			log.Println("context error:", ctx.Err(), t, k)
+		}
+		er := writeErr.WriteErrors[0]
+		if er.WriteError.Code != 11000 {
+			panic(err)
+		} else {
+			for _, v := range docs {
+				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.RewardRecord{}).InsertOne(ctx, v)
+				if err != nil {
+					writeErr, ok := err.(mongo.WriteException)
+					if !ok {
+						panic(err)
+					}
+					if !writeErr.HasErrorCode(11000) {
+						panic(err)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func DBGetPendingOrder(limit int64, offset int64) ([]shared.TradeOrderData, error) {
 	if limit == 0 {
 		limit = int64(10000)
@@ -1351,4 +1405,54 @@ func DBGetPairsByID(list []string) ([]shared.PairData, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func DBUpdatePDEPoolPairRewardAPY(list []shared.RewardAPYTracking) error {
+	if len(list) == 0 {
+		return nil
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	for _, order := range list {
+		fitler := bson.M{"dataid": bson.M{operator.Eq: order.DataID}}
+		update := bson.M{
+			"$set": bson.M{"dataid": order.DataID, "apy": order.APY, "beaconheight": order.BeaconHeight},
+		}
+		_, err := mgm.Coll(&shared.RewardAPYTracking{}).UpdateOne(ctx, fitler, update, mgm.UpsertTrueOption())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DBGetRewardRecordByPoolID(poolid string) ([]shared.RewardRecord, error) {
+	limit := int64(1000)
+	var result []shared.RewardRecord
+	filter := bson.M{"dataid": bson.M{operator.Eq: poolid}}
+	err := mgm.Coll(&shared.RewardRecord{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"beaconheight", -1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBDeleteRewardRecord(height uint64) error {
+	// if height <
+	//TODO block pre day
+	filter := bson.M{"beaconheight": bson.M{operator.Lt: height}}
+	a, err := mgm.Coll(&shared.RewardRecord{}).CountDocuments(context.Background(), filter)
+	if err != nil {
+		return err
+	}
+	if a > 2000 {
+		mgm.Coll(&shared.RewardRecord{}).DeleteMany(context.Background(), filter)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

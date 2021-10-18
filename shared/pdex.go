@@ -2,6 +2,7 @@ package shared
 
 import (
 	jsond "encoding/json"
+
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
 )
