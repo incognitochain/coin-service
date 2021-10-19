@@ -1440,19 +1440,20 @@ func DBGetRewardRecordByPoolID(poolid string) ([]shared.RewardRecord, error) {
 }
 
 func DBDeleteRewardRecord(height uint64) error {
-	// if height <
-	//TODO block pre day
-	filter := bson.M{"beaconheight": bson.M{operator.Lt: height}}
-	a, err := mgm.Coll(&shared.RewardRecord{}).CountDocuments(context.Background(), filter)
+	filter := bson.M{"beaconheight": bson.M{operator.Lte: height}}
+	_, err := mgm.Coll(&shared.RewardRecord{}).DeleteMany(context.Background(), filter)
 	if err != nil {
 		return err
 	}
-	if a > 2000 {
-		mgm.Coll(&shared.RewardRecord{}).DeleteMany(context.Background(), filter)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
+}
+
+func DBGetPDEPoolPairRewardAPY(poolid string) (*shared.RewardAPYTracking, error) {
+	var result []shared.RewardAPYTracking
+	filter := bson.M{"dataid": bson.M{operator.Eq: poolid}}
+	err := mgm.Coll(&shared.RewardRecord{}).SimpleFind(&result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return &result[0], nil
 }

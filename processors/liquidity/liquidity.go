@@ -750,9 +750,13 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		data.APY = uint64(percent * 365 * (86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
 		result = append(result, data)
 	}
-	err := database.DBDeleteRewardRecord(height)
-	if err != nil {
-		return nil, err
+	h1 := uint64((86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()) * 7)
+	if height-h1 > 0 {
+		err := database.DBDeleteRewardRecord(height - h1)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return result, nil
 }

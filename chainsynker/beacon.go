@@ -346,6 +346,56 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			poolPairsArr = append(poolPairsArr, &poolPairWithId)
 		}
 
+		for poolID, state := range statev2.StakingPoolsState {
+			rw, err := extractPDEStakingReward(poolID, statev2Inc, prevStatev2Inc, beaconHeight)
+			if err != nil {
+				panic(err)
+			}
+			rewardReceive := uint64(0)
+			tokenStakeAmount := state.Liquidity()
+
+			_, receiveStake := pathfinder.FindGoodTradePath(
+				4,
+				poolPairsArr,
+				*stateV2Json.PoolPairs,
+				poolID,
+				common.PRVCoinID.String(),
+				tokenStakeAmount)
+
+			for tk, v := range rw {
+				_, receive := pathfinder.FindGoodTradePath(
+					4,
+					poolPairsArr,
+					*stateV2Json.PoolPairs,
+					tk,
+					common.PRVCoinID.String(),
+					v)
+				rewardReceive += receive
+			}
+			var rwInfo struct {
+				RewardPerToken     map[string]uint64
+				TokenAmount        map[string]uint64
+				RewardReceiveInPRV uint64
+				TotalAmountInPRV   uint64
+			}
+			rwInfo.TokenAmount = make(map[string]uint64)
+			rwInfo.RewardPerToken = rw
+			rwInfo.TokenAmount[poolID] = tokenStakeAmount
+			rwInfo.RewardReceiveInPRV = rewardReceive
+			rwInfo.TotalAmountInPRV = receiveStake
+
+			rwInfoBytes, err := json.Marshal(rwInfo)
+			if err != nil {
+				panic(err)
+			}
+			data := shared.RewardRecord{
+				DataID:       poolID,
+				Data:         string(rwInfoBytes),
+				BeaconHeight: beaconHeight,
+			}
+			rewardRecords = append(rewardRecords, data)
+		}
+
 		for poolID, state := range statev2.PoolPairs {
 			rw, err := extractLqReward(poolID, statev2Inc, prevStatev2Inc, beaconHeight)
 			if err != nil {
@@ -702,4 +752,53 @@ func getLPFeesPerShare(pairID string, beaconHeight uint64, pdexState pdex.State)
 	pairState := pair.State()
 
 	return pair.LpFeesPerShare(), pairState.ShareAmount(), nil
+}
+
+func getStakingRewardsPerShare(
+	stakingPoolID string, beaconHeight uint64, pdexState pdex.State,
+) (map[common.Hash]*big.Int, uint64, error) {
+
+	stakingPools := pdexState.Reader().StakingPools()
+
+	if _, ok := stakingPools[stakingPoolID]; !ok {
+		return nil, 0, fmt.Errorf("Staking pool %s not found", stakingPoolID)
+	}
+
+	pool := stakingPools[stakingPoolID].Clone()
+
+	return pool.RewardsPerShare(), pool.Liquidity(), nil
+}
+
+func extractPDEStakingReward(poolID string, curState pdex.State, prevState pdex.State, beaconHeight uint64) (map[string]uint64, error) {
+	result := make(map[string]uint64)
+
+	curLPFeesPerShare, shareAmount, err := getStakingRewardsPerShare(poolID, beaconHeight, curState)
+	if err != nil {
+		return nil, err
+	}
+
+	oldLPFeesPerShare, _, err := getStakingRewardsPerShare(poolID, beaconHeight-1, prevState)
+	if err != nil {
+		oldLPFeesPerShare = map[common.Hash]*big.Int{}
+	}
+
+	for tokenID := range curLPFeesPerShare {
+		oldFees, isExisted := oldLPFeesPerShare[tokenID]
+		if !isExisted {
+			oldFees = big.NewInt(0)
+		}
+		newFees := curLPFeesPerShare[tokenID]
+
+		reward := new(big.Int).Mul(new(big.Int).Sub(newFees, oldFees), new(big.Int).SetUint64(shareAmount))
+		reward = new(big.Int).Div(reward, pdex.BaseLPFeesPerShare)
+
+		if !reward.IsUint64() {
+			return nil, fmt.Errorf("Reward of token %v is out of range", tokenID)
+		}
+		if reward.Uint64() > 0 {
+			result[tokenID.String()] = reward.Uint64()
+		}
+	}
+
+	return result, nil
 }

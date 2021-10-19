@@ -712,13 +712,17 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			TotalShare:     v.TotalShare,
 		}
 
-		//TODO @yenle add pool volume and price change 24h
-		// data.APY
-
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
 			data.PriceChange24h = poolChange.RateChangePercentage
 			data.Volume = poolChange.TradingVolume24h
 		}
+
+		apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		data.APY = apy.APY
 
 		result = append(result, data)
 	}

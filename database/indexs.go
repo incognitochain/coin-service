@@ -322,6 +322,34 @@ func DBCreateLiquidityIndex() error {
 		return err
 	}
 
+	rewardRecordModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "dataid", Value: bsonx.Int32(1)}, {Key: "beaconheight", Value: bsonx.Int32(1)}},
+		},
+
+		{
+			Keys: bsonx.Doc{{Key: "beaconheight", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.RewardRecord{}).Indexes().CreateMany(context.Background(), rewardRecordModel)
+	if err != nil {
+		return err
+	}
+
+	rewardAPYModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "dataid", Value: bsonx.Int32(1)}, {Key: "beaconheight", Value: bsonx.Int32(1)}},
+		},
+
+		{
+			Keys: bsonx.Doc{{Key: "beaconheight", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.RewardAPYTracking{}).Indexes().CreateMany(context.Background(), rewardAPYModel)
+	if err != nil {
+		return err
+	}
+
 	return nil
 
 }
