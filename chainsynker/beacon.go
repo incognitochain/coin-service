@@ -52,7 +52,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			goto retry
 		}
 	}
-	if height != 1 {
+	if height != 1 && height > config.Param().PDexParams.Pdexv3BreakPointHeight {
 		prevBeaconFeatureStateDB, err := Localnode.GetBlockchain().GetBestStateBeaconFeatureStateDBByHeight(height-1, Localnode.GetBlockchain().GetBeaconChainDatabase())
 		if err != nil {
 			log.Println(err)
@@ -126,7 +126,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			panic(err)
 		}
-		pdeStateV2.Reader().Params()
 		stateV2 = &shared.PDEStateV2{
 			PoolPairs:         poolPairs,
 			StakingPoolsState: pdeStateV2.Reader().StakingPools(),
@@ -249,6 +248,12 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 	var poolStakingToBeDelete []shared.PoolStakerData
 	var orderStatusToBeDelete []shared.LimitOrderStatus
 
+	poolPairsInc := make(map[string]*pdex.PoolPairState)
+	err := json.Unmarshal(statev2Inc.Reader().PoolPairs(), &poolPairsInc)
+	if err != nil {
+		panic(err)
+	}
+
 	for poolID, state := range statev2.PoolPairs {
 		poolData := shared.PoolPairData{
 			Version:        2,
@@ -267,7 +272,15 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)
 		for shareID, share := range state.Shares {
 			tradingFee := make(map[string]uint64)
-			for k, v := range share.TradingFees() {
+			shareIDHash, err := common.Hash{}.NewHashFromStr(shareID)
+			if err != nil {
+				panic(err)
+			}
+			rewards, err := poolPairsInc[poolID].RecomputeLPFee(*shareIDHash)
+			if err != nil {
+				panic(err)
+			}
+			for k, v := range rewards {
 				tradingFee[k.String()] = v
 			}
 			shareData := shared.PoolShareData{
@@ -313,15 +326,24 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			TokenID: tokenID,
 		}
 		stakePools = append(stakePools, poolData)
-		for nftID, staker := range stakeData.Stakers() {
+		for shareID, staker := range stakeData.Stakers() {
 			rewardMap := make(map[string]uint64)
-			for k, v := range staker.Rewards() {
+
+			shareIDHash, err := common.Hash{}.NewHashFromStr(shareID)
+			if err != nil {
+				panic(err)
+			}
+			reward, err := statev2Inc.Reader().StakingPools()[tokenID].RecomputeStakingRewards(*shareIDHash)
+			if err != nil {
+				panic(err)
+			}
+			for k, v := range reward {
 				rewardMap[k.String()] = v
 			}
 			stake := shared.PoolStakerData{
 				TokenID: tokenID,
-				NFTID:   nftID,
-				Amount:  stakeData.Liquidity(),
+				NFTID:   shareID,
+				Amount:  staker.Liquidity(),
 				Reward:  rewardMap,
 			}
 			poolStaking = append(poolStaking, stake)
