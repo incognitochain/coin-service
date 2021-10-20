@@ -180,15 +180,12 @@ type PdexV3WithdrawRespond struct {
 }
 
 type PdexV3WithdrawFeeRespond struct {
-	PoolID     string
-	RequestTx  string
-	RespondTxs []string
-	Status     int
-	TokenID1   string
-	TokenID2   string
-	Amount1    uint64
-	Amount2    uint64
-	Requestime int64
+	PoolID         string
+	RequestTx      string
+	RespondTxs     []string
+	Status         int
+	WithdrawTokens map[string]uint64
+	Requestime     int64
 }
 
 type PdexV3PoolShareRespond struct {
@@ -240,13 +237,13 @@ type PdexV3StakingPoolHistoryData struct {
 }
 
 type PdexV3StakePoolRewardHistoryData struct {
-	RequestTx   string
-	RespondTx   string
-	Status      int
-	TokenID     string
-	NFTID       string
-	Amount      uint64
-	Requesttime int64
+	RequestTx    string
+	RespondTxs   []string
+	Status       int
+	TokenID      string
+	RewardTokens map[string]uint64
+	NFTID        string
+	Requesttime  int64
 }
 
 type PdexV3PendingOrderData struct {

@@ -514,28 +514,17 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 	}
 
 	for _, v := range list {
-		var token1, token2 string
-		var amount1, amount2 uint64
-		if len(v.RespondTxs) == 2 {
-			token1 = v.WithdrawTokens[0]
-			amount1 = v.WithdrawAmount[0]
-			token2 = v.WithdrawTokens[1]
-			amount2 = v.WithdrawAmount[1]
-		}
-		if len(v.RespondTxs) == 1 {
-			token1 = v.WithdrawTokens[0]
-			amount1 = v.WithdrawAmount[0]
+		tokens := make(map[string]uint64)
+		for idx, tk := range v.WithdrawTokens {
+			tokens[tk] = v.WithdrawAmount[idx]
 		}
 		result = append(result, PdexV3WithdrawFeeRespond{
-			PoolID:     v.PoodID,
-			RequestTx:  v.RequestTx,
-			RespondTxs: v.RespondTxs,
-			TokenID1:   token1,
-			Amount1:    amount1,
-			TokenID2:   token2,
-			Amount2:    amount2,
-			Status:     v.Status,
-			Requestime: v.RequestTime,
+			PoolID:         v.PoodID,
+			RequestTx:      v.RequestTx,
+			RespondTxs:     v.RespondTxs,
+			WithdrawTokens: tokens,
+			Status:         v.Status,
+			Requestime:     v.RequestTime,
 		})
 	}
 	respond := APIRespond{
@@ -625,14 +614,18 @@ func (pdexv3) StakeRewardHistory(c *gin.Context) {
 	}
 	var result []PdexV3StakePoolRewardHistoryData
 	for _, v := range list {
+		rewards := make(map[string]uint64)
+		for idx, tk := range v.RewardTokens {
+			rewards[tk] = v.Amount[idx]
+		}
 		data := PdexV3StakePoolRewardHistoryData{
-			RespondTx:   v.RespondTx,
-			RequestTx:   v.RequestTx,
-			Status:      v.Status,
-			TokenID:     v.TokenID,
-			NFTID:       v.NFTID,
-			Amount:      v.Amount,
-			Requesttime: v.Requesttime,
+			RespondTxs:   v.RespondTxs,
+			RequestTx:    v.RequestTx,
+			Status:       v.Status,
+			TokenID:      v.TokenID,
+			NFTID:        v.NFTID,
+			RewardTokens: rewards,
+			Requesttime:  v.Requesttime,
 		}
 		result = append(result, data)
 	}

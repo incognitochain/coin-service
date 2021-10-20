@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -954,11 +955,12 @@ func DBUpdatePDEStakeRewardHistory(list []shared.PoolStakeRewardHistoryData) err
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set": bson.M{"status": order.Status, "respondtx": order.RespondTx, "amount": order.Amount},
+			"$set":  bson.M{"status": order.Status},
+			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "amount": bson.M{operator.Each: order.Amount}, "rewardtokens": bson.M{operator.Each: order.RewardTokens}},
 		}
-		err := mgm.Coll(&shared.PoolStakeRewardHistoryData{}).FindOneAndUpdate(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.PoolStakeRewardHistoryData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
-			return err.Err()
+			return err
 		}
 	}
 	return nil
@@ -1419,6 +1421,7 @@ func DBUpdatePDEPoolPairRewardAPY(list []shared.RewardAPYTracking) error {
 		}
 		_, err := mgm.Coll(&shared.RewardAPYTracking{}).UpdateOne(ctx, fitler, update, mgm.UpsertTrueOption())
 		if err != nil {
+			fmt.Println("DBUpdatePDEPoolPairRewardAPY", order)
 			return err
 		}
 	}

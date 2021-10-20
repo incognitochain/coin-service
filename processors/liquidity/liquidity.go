@@ -47,7 +47,7 @@ func StartProcessor() {
 		log.Println("start processing LQ with", len(txList), "txs")
 		pdexState, beaconHeight, err := getPdexToProcess(currentState.LastProcessedPdexV3Height)
 		if err != nil {
-			log.Println("getPdexToProcess", err)
+			log.Println("getPdexToProcess 2", err)
 			continue
 		}
 
@@ -393,36 +393,40 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 		case metadataCommon.Pdexv3WithdrawStakingRewardRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalStakingRewardRequest)
 			data := shared.PoolStakeRewardHistoryData{
-				RequestTx:   tx.TxHash,
-				Status:      0,
-				TokenID:     md.StakingPoolID,
-				NFTID:       md.NftID.String(),
-				Requesttime: tx.Locktime,
+				RequestTx:    tx.TxHash,
+				Status:       0,
+				TokenID:      md.StakingPoolID,
+				NFTID:        md.NftID.String(),
+				Requesttime:  tx.Locktime,
+				RespondTxs:   []string{},
+				Amount:       []uint64{},
+				RewardTokens: []string{},
 			}
 			stakingRewardRequestDatas = append(stakingRewardRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawStakingRewardResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalStakingRewardResponse)
-			// tokenIDStr := txDetail.GetTokenID().String()
+			tokenIDStr := txDetail.GetTokenID().String()
 			amount := uint64(0)
 			if txDetail.GetType() == common.TxCustomTokenPrivacyType || txDetail.GetType() == common.TxTokenConversionType {
 				txToken := txDetail.(transaction.TransactionToken)
 				if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
 					outs := txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
 					amount = outs[0].GetValue()
-					// if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
-					// 	txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
-					// 	tokenIDStr = txTokenData.PropertyID.String()
-					// }
+					if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
+						txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
+						tokenIDStr = txTokenData.PropertyID.String()
+					}
 				}
 			} else {
 				outs := txDetail.GetProof().GetOutputCoins()
 				amount = outs[0].GetValue()
 			}
 			data := shared.PoolStakeRewardHistoryData{
-				RequestTx: md.ReqTxID.String(),
-				RespondTx: tx.TxHash,
-				Status:    1,
-				Amount:    amount,
+				RequestTx:    md.ReqTxID.String(),
+				RespondTxs:   []string{tx.TxHash},
+				Status:       1,
+				Amount:       []uint64{amount},
+				RewardTokens: []string{tokenIDStr},
 			}
 			stakingRewardRespondDatas = append(stakingRewardRespondDatas, data)
 		//---------------------------------------------------
@@ -742,16 +746,18 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 			if err != nil {
 				return nil, err
 			}
-			if d.RewardReceiveInPRV != 0 {
+			if d.RewardReceiveInPRV > 0 && d.TotalAmountInPRV > 0 {
 				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
 			}
 		}
 		percent := totalPercent / float64(len(list))
-		data.APY = uint64(percent * 365 * (86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
+		if totalPercent != float64(0) {
+			data.APY = uint64(percent * 365 * (86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
+		}
 		result = append(result, data)
 	}
 	h1 := uint64((86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()) * 7)
-	if height-h1 > 0 {
+	if height > h1 {
 		err := database.DBDeleteRewardRecord(height - h1)
 		if err != nil {
 			return nil, err

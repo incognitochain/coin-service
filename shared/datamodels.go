@@ -660,13 +660,14 @@ func (model *PoolStakeHistoryData) Saving() error {
 
 type PoolStakeRewardHistoryData struct {
 	mgm.DefaultModel `bson:",inline"`
-	RequestTx        string `json:"requesttx" bson:"requesttx"`
-	RespondTx        string `json:"respondtx" bson:"respondtx"`
-	Status           int    `json:"status" bson:"status"`
-	TokenID          string `json:"tokenid" bson:"tokenid"`
-	NFTID            string `json:"nftid" bson:"nftid"`
-	Amount           uint64 `json:"amount" bson:"amount"`
-	Requesttime      int64  `json:"requesttime" bson:"requesttime"`
+	RequestTx        string   `json:"requesttx" bson:"requesttx"`
+	RespondTxs       []string `json:"respondtxs" bson:"respondtxs"`
+	RewardTokens     []string `json:"rewardtokens" bson:"rewardtokens"`
+	Status           int      `json:"status" bson:"status"`
+	TokenID          string   `json:"tokenid" bson:"tokenid"`
+	NFTID            string   `json:"nftid" bson:"nftid"`
+	Amount           []uint64 `json:"amount" bson:"amount"`
+	Requesttime      int64    `json:"requesttime" bson:"requesttime"`
 }
 
 func (model *PoolStakeRewardHistoryData) Creating() error {
