@@ -84,6 +84,9 @@ func (pdexv3) ListPools(c *gin.Context) {
 
 	var result []PdexV3PoolDetail
 	for _, v := range list {
+		if v.Token1Amount == 0 || v.Token2Amount == 0 {
+			continue
+		}
 		data := PdexV3PoolDetail{
 			PoolID:         v.PoolID,
 			Token1ID:       v.TokenID1,
@@ -113,6 +116,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 		Result: result,
 		Error:  nil,
 	}
+
 	c.JSON(http.StatusOK, respond)
 }
 
