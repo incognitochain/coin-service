@@ -1156,7 +1156,7 @@ func DBGetPendingOrder(limit int64, offset int64) ([]shared.TradeOrderData, erro
 func DBGetPendingOrderByPairID(pairID string) ([]shared.TradeOrderData, error) {
 	limit := int64(10000)
 	var result []shared.TradeOrderData
-	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}, "status": bson.M{operator.Eq: 0}, "isswap": bson.M{operator.Eq: false}}
+	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}, "status": bson.M{operator.Eq: 0}, "isswap": bson.M{operator.Eq: false}, "withdrawtxs": bson.M{operator.Eq: []string{}}, "respondtxs": bson.M{operator.Eq: []string{}}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"_id", 1}},
@@ -1454,7 +1454,7 @@ func DBDeleteRewardRecord(height uint64) error {
 func DBGetPDEPoolPairRewardAPY(poolid string) (*shared.RewardAPYTracking, error) {
 	var result []shared.RewardAPYTracking
 	filter := bson.M{"dataid": bson.M{operator.Eq: poolid}}
-	err := mgm.Coll(&shared.RewardRecord{}).SimpleFind(&result, filter)
+	err := mgm.Coll(&shared.RewardAPYTracking{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
 	}

@@ -106,6 +106,13 @@ func (pdexv3) ListPools(c *gin.Context) {
 			data.PriceChange24h = poolChange.RateChangePercentage
 			data.Volume = poolChange.TradingVolume24h
 		}
+
+		apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		data.APY = apy.APY
 		if _, found := defaultPools[v.PoolID]; found {
 			data.IsVerify = true
 		}
@@ -466,15 +473,15 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 		var token1, token2 string
 		var amount1, amount2 uint64
 		if len(v.RespondTxs) == 2 {
-			token1 = v.WithdrawTokens[0]
 			amount1 = v.WithdrawAmount[0]
-			token2 = v.WithdrawTokens[1]
 			amount2 = v.WithdrawAmount[1]
 		}
 		if len(v.RespondTxs) == 1 {
-			token1 = v.WithdrawTokens[0]
 			amount1 = v.WithdrawAmount[0]
 		}
+		tks := strings.Split(v.PoolID, "-")
+		token1 = tks[0]
+		token2 = tks[1]
 		result = append(result, PdexV3WithdrawRespond{
 			PoolID:      v.PoolID,
 			RequestTx:   v.RequestTx,
@@ -685,6 +692,19 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	var defaultPools map[string]struct{}
+	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
+		defaultPools, err = database.DBGetDefaultPool()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(defaultPoolsKey, defaultPools)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
 
 	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(req.PoolIDs)
 	if err != nil {
@@ -694,6 +714,9 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 
 	var result []PdexV3PoolDetail
 	for _, v := range list {
+		if v.Token1Amount == 0 || v.Token2Amount == 0 {
+			continue
+		}
 		data := PdexV3PoolDetail{
 			PoolID:         v.PoolID,
 			Token1ID:       v.TokenID1,
@@ -720,7 +743,9 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			return
 		}
 		data.APY = apy.APY
-
+		if _, found := defaultPools[v.PoolID]; found {
+			data.IsVerify = true
+		}
 		result = append(result, data)
 	}
 	respond := APIRespond{
@@ -1198,8 +1223,6 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			buySide = append(buySide, v)
 		}
 	}
-	// 0,000000153623188
-	// 0,000000153623
 	for _, v := range sellSide {
 		data := PdexV3PendingOrderData{
 			TxRequest:    v.RequestTx,
