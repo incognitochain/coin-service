@@ -17,10 +17,14 @@ func EstimateFeeInSellToken(
 		return 0, fmt.Errorf("sellAmount is 0")
 	}
 
-	// get fee rate of the first pool in trade path
-	feeRateBPS := pdexState.Params.DefaultFeeRateBPS
-	if _, ok := pdexState.Params.FeeRateBPS[tradePath[0]]; ok {
-		feeRateBPS = pdexState.Params.FeeRateBPS[tradePath[0]]
+	// get fee rate of this trade path
+	feeRateBPS := uint(0)
+	for _, pair := range tradePath {
+		poolFee := pdexState.Params.DefaultFeeRateBPS
+		if customizedFee, ok := pdexState.Params.FeeRateBPS[pair]; ok {
+			poolFee = customizedFee
+		}
+		feeRateBPS += poolFee
 	}
 
 	// find the min feeAmount that feeAmount * BPS >= sellAmount * feeRateBPS
@@ -45,10 +49,14 @@ func EstimatedFeeInPRV(
 		return 0, fmt.Errorf("sellAmount is 0")
 	}
 
-	// get fee rate of the first pool in trade path
-	feeRateBPS := pdexState.Params.DefaultFeeRateBPS
-	if _, ok := pdexState.Params.FeeRateBPS[tradePath[0]]; ok {
-		feeRateBPS = pdexState.Params.FeeRateBPS[tradePath[0]]
+	// get fee rate of this trade path
+	feeRateBPS := uint(0)
+	for _, pair := range tradePath {
+		poolFee := pdexState.Params.DefaultFeeRateBPS
+		if customizedFee, ok := pdexState.Params.FeeRateBPS[pair]; ok {
+			poolFee = customizedFee
+		}
+		feeRateBPS += poolFee
 	}
 
 	// find the min weighted fee that feeAmount * BPS >= sellAmount * feeRateBPS

@@ -28,13 +28,43 @@ func getPriceAgainstPRV(sellToken string, pdexState jsonresult.PdexState) [3]*bi
 			continue
 		}
 
+		// compare normalized PRV reserve against minPRVReserve -> compare PRV vReserve * baseAmplifer against minPRVReserve * amplifier rate
+		temp1 := big.NewInt(0).Mul(virtualPRVReserve, big.NewInt(BaseAmplifier))
+		temp2 := big.NewInt(0).Mul(big.NewInt(0).SetUint64(pdexState.Params.MinPRVReserve), big.NewInt(0).SetUint64(uint64(pair.State.Amplifier)))
+		if temp1.Cmp(temp2) < 0 {
+			continue
+		}
+
 		normalizedLiquidity := big.NewInt(0).Mul(virtualTokenReserve, virtualPRVReserve)
 		normalizedLiquidity.Mul(normalizedLiquidity, big.NewInt(BaseAmplifier))
 		normalizedLiquidity.Div(normalizedLiquidity, big.NewInt(0).SetUint64(uint64(pair.State.Amplifier)))
 		normalizedLiquidity.Mul(normalizedLiquidity, big.NewInt(BaseAmplifier))
 		normalizedLiquidity.Div(normalizedLiquidity, big.NewInt(0).SetUint64(uint64(pair.State.Amplifier)))
 
-		if normalizedLiquidity.Cmp(result[2]) == 1 {
+		isChosenPool := false
+		if result[1].IsUint64() && result[1].Uint64() == 0 {
+			isChosenPool = true
+		} else {
+			liqCmp := normalizedLiquidity.Cmp(result[2])
+			if liqCmp == 1 {
+				// for each pair of token/PRV, choose pool to maximize normalized liquidity
+				isChosenPool = true
+			} else if liqCmp == 0 {
+				// handle equalities explicitly to keep result deterministic regardless of map traversing order
+				// break equality with direct rate comparison (token / PRV)
+				temp := result
+				theirVirtualTokenReserve := temp[0]
+				theirVirtualPRVReserve := temp[1]
+				rateCmp := big.NewInt(0).Mul(virtualTokenReserve, theirVirtualPRVReserve).
+					Cmp(big.NewInt(0).Mul(theirVirtualTokenReserve, virtualPRVReserve))
+				if rateCmp == 1 {
+					// when token/PRV pools tie in liquidity, maximize token/PRV rate to the benefit of current user
+					isChosenPool = true
+				}
+			}
+		}
+
+		if isChosenPool {
 			result = [3]*big.Int{virtualTokenReserve, virtualPRVReserve, normalizedLiquidity}
 		}
 	}

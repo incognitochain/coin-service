@@ -31,9 +31,9 @@ func TestEstimator(t *testing.T) {
 				feeInPRV:   false,
 				pdexState: jsonresult.PdexState{
 					Params: jsonresult.PdexParams{
-						DefaultFeeRateBPS: 30,
+						DefaultFeeRateBPS: 15,
 						FeeRateBPS: map[string]uint{
-							"ETH-PRV": 20,
+							"ETH-PRV": 5,
 						},
 					},
 				},
@@ -49,7 +49,7 @@ func TestEstimator(t *testing.T) {
 				feeInPRV:   false,
 				pdexState: jsonresult.PdexState{
 					Params: jsonresult.PdexParams{
-						DefaultFeeRateBPS: 30,
+						DefaultFeeRateBPS: 10,
 						FeeRateBPS: map[string]uint{
 							"PRV-BTC": 20,
 						},
@@ -67,7 +67,7 @@ func TestEstimator(t *testing.T) {
 				feeInPRV:   false,
 				pdexState: jsonresult.PdexState{
 					Params: jsonresult.PdexParams{
-						DefaultFeeRateBPS: 30,
+						DefaultFeeRateBPS: 15,
 					},
 				},
 			},
@@ -100,7 +100,7 @@ func TestEstimator(t *testing.T) {
 				feeInPRV:   true,
 				pdexState: jsonresult.PdexState{
 					Params: jsonresult.PdexParams{
-						DefaultFeeRateBPS:  30,
+						DefaultFeeRateBPS:  15,
 						PRVDiscountPercent: 25,
 					},
 					PoolPairs: map[string]*jsonresult.PoolPair{
@@ -117,6 +117,34 @@ func TestEstimator(t *testing.T) {
 				},
 			},
 			output: 26, // weighted 45 ETH ~ 34 ETH ~ 34 * 3 / 4 PRV
+		},
+		{
+			name: "fee paid by PRV - has pool PRV but PRV reserve is not enough",
+			input: TestInput{
+				sellAmount: 15000,
+				sellToken:  "ETH",
+				tradePath:  []string{"ETH-USDT", "USDT-BTC"},
+				feeInPRV:   true,
+				pdexState: jsonresult.PdexState{
+					Params: jsonresult.PdexParams{
+						DefaultFeeRateBPS:  15,
+						PRVDiscountPercent: 25,
+						MinPRVReserve:      200,
+					},
+					PoolPairs: map[string]*jsonresult.PoolPair{
+						"ETH-PRV": {
+							State: jsonresult.PoolPairState{
+								Token0ID:            "ETH",
+								Token1ID:            common.PRVIDStr,
+								Token0VirtualAmount: new(big.Int).SetUint64(400),
+								Token1VirtualAmount: new(big.Int).SetUint64(300),
+								Amplifier:           20000,
+							},
+						},
+					},
+				},
+			},
+			output: 0,
 		},
 	}
 
