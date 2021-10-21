@@ -146,6 +146,24 @@ func TestEstimator(t *testing.T) {
 			},
 			output: 0,
 		},
+		{
+			name: "fee paid by PRV - sell token is PRV",
+			input: TestInput{
+				sellAmount: 15000,
+				sellToken:  common.PRVIDStr,
+				tradePath:  []string{"ETH-PRV", "ETH-BTC"},
+				feeInPRV:   true,
+				pdexState: jsonresult.PdexState{
+					Params: jsonresult.PdexParams{
+						DefaultFeeRateBPS:  15,
+						PRVDiscountPercent: 25,
+						MinPRVReserve:      200,
+					},
+					PoolPairs: map[string]*jsonresult.PoolPair{},
+				},
+			},
+			output: 34,
+		},
 	}
 
 	for _, tc := range testCases {
