@@ -8,6 +8,7 @@ type PdexParams struct {
 	DefaultFeeRateBPS  uint
 	FeeRateBPS         map[string]uint
 	PRVDiscountPercent uint
+	MinPRVReserve      uint64
 }
 
 type PoolPairState struct {
