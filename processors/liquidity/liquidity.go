@@ -739,20 +739,26 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		if err != nil {
 			return nil, err
 		}
-		totalPercent := float64(0)
+		var flist []shared.RewardRecord
 		for _, v := range list {
+			if v.BeaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
+				flist = append(flist, v)
+			}
+		}
+		totalPercent := float64(0)
+		for _, v := range flist {
 			d := RewardInfo{}
 			err := json.Unmarshal([]byte(v.Data), &d)
 			if err != nil {
 				return nil, err
 			}
 			if d.RewardReceiveInPRV > 0 && d.TotalAmountInPRV > 0 {
-				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
+				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100 / float64(config.Param().EpochParam.NumberOfBlockInEpoch))
 			}
 		}
-		percent := totalPercent / float64(len(list))
+		percent := totalPercent / float64(len(flist))
 		if totalPercent != float64(0) {
-			data.APY = uint64(percent * 365 * (86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
+			data.APY = uint64(percent * (365 * 86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds() / float64(config.Param().EpochParam.NumberOfBlockInEpoch)))
 		}
 		result = append(result, data)
 	}

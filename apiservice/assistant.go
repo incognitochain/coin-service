@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
+	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
 const (
@@ -117,6 +119,11 @@ func APICheckRate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	dcrate, err := getPdecimalRate(token1, token2)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
 	if tk1Price != nil {
 		tk2Price, err := database.DBGetTokenPrice(token2)
 		if err != nil {
@@ -175,7 +182,7 @@ func APICheckRate(c *gin.Context) {
 				return
 			}
 		} else {
-			rate, err := getRate(token1, token2)
+			rate, err := getRate(token1, token2, uint64(amount1), uint64(amount2))
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -185,7 +192,7 @@ func APICheckRate(c *gin.Context) {
 			}
 		}
 	} else {
-		rate, err := getRate(token1, token2)
+		rate, err := getRate(token1, token2, uint64(amount1), uint64(amount2))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -194,8 +201,8 @@ func APICheckRate(c *gin.Context) {
 			userRate = 1 / rate
 		}
 	}
-	fmt.Printf("result.Rate %v \n", userRate)
-	result.Rate = fmt.Sprintf("%g", userRate)
+	fmt.Printf("result.Rate %v \n", userRate*dcrate)
+	result.Rate = fmt.Sprintf("%g", userRate*dcrate)
 	result.MaxAMP = amp
 	respond := APIRespond{
 		Result: result,
@@ -204,26 +211,48 @@ func APICheckRate(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func getRate(tokenID1, tokenID2 string) (float64, error) {
-	pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
-
+func getRate(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (float64, error) {
+	data, err := database.DBGetPDEState(2)
 	if err != nil {
 		return 0, err
 	}
-
-	pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Poolpairs)
-
+	pdeState := jsonresult.Pdexv3State{}
+	err = json.UnmarshalFromString(data, &pdeState)
 	if err != nil {
 		return 0, err
 	}
+	poolPairStates := *pdeState.PoolPairs
+	var pools []*shared.Pdexv3PoolPairWithId
+	for poolId, element := range poolPairStates {
+
+		var poolPair rawdbv2.Pdexv3PoolPair
+		var poolPairWithId shared.Pdexv3PoolPairWithId
+
+		poolPair = element.State()
+		poolPairWithId = shared.Pdexv3PoolPairWithId{
+			poolPair,
+			shared.Pdexv3PoolPairChild{
+				PoolID: poolId},
+		}
+
+		pools = append(pools, &poolPairWithId)
+	}
+
+	// pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Poolpairs)
+	// if err != nil {
+	// 	return 0, err
+	// }
 
 	// _, err = feeestimator.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Params, pdexv3StateRPCResponse.Result.Poolpairs)
 	// if err != nil {
 	// 	return 0, err
 	// }
-	a := uint64(1000)
+	a := uint64(1)
+	a1 := uint64(0)
+	b := uint64(1)
+	b1 := uint64(0)
 retry:
-	chosenPath, receive := pathfinder.FindGoodTradePath(
+	_, receive := pathfinder.FindGoodTradePath(
 		4,
 		pools,
 		poolPairStates,
@@ -237,8 +266,64 @@ retry:
 			goto retry
 		}
 		return 0, nil
+	} else {
+		if a < token1Amount && receive < a1 {
+			a1 = receive
+			goto retry
+		} else {
+			if receive < a1 {
+				a /= 10
+				receive = a1
+				fmt.Println("receive", a, receive)
+			}
+		}
 	}
-	spew.Dump("chosenPath", chosenPath)
+
+retry2:
+	_, receive2 := pathfinder.FindGoodTradePath(
+		4,
+		pools,
+		poolPairStates,
+		tokenID2,
+		tokenID1,
+		b)
+
+	if receive2 == 0 {
+		b *= 10
+		if b < 1e18 {
+			goto retry2
+		}
+		return 0, nil
+	} else {
+		if b < token2Amount && receive2 < b1 {
+			b1 = receive2
+			goto retry2
+		} else {
+			if receive2 < b1 {
+				b /= 10
+				receive2 = b1
+				fmt.Println("receive2", b, receive2)
+			}
+		}
+	}
+
 	log.Printf("getRate %v %d\n", a, receive)
-	return float64(a) / float64(receive), nil
+	log.Printf("getRate %v %d\n", b, receive2)
+	return (float64(a)/float64(receive) + (1 / (float64(b) / float64(receive2)))) / 2, nil
+}
+
+func getPdecimalRate(tokenID1, tokenID2 string) (float64, error) {
+	result := float64(1)
+	tk1, err := database.DBGetTokenDecimal(tokenID1)
+	if err != nil {
+		log.Println(err)
+	}
+	tk2, err := database.DBGetTokenDecimal(tokenID1)
+	if err != nil {
+		log.Println(err)
+	}
+	if tk1 != nil && tk2 != nil {
+		result = float64(tk1.PDecimals) / float64(tk2.PDecimals)
+	}
+	return result, nil
 }

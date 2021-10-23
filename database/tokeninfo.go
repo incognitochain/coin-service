@@ -83,3 +83,40 @@ func DBGetTokenByTokenID(tokenids []string) ([]shared.TokenInfoData, error) {
 	}
 	return list, nil
 }
+
+func DBSaveTokenDecimal(list []shared.TokenPdecimal) error {
+	docs := []interface{}{}
+	for _, tx := range list {
+		update := bson.M{
+			"$set": tx,
+		}
+		docs = append(docs, update)
+	}
+	for idx, v := range list {
+		filter := bson.M{"tokenid": bson.M{operator.Eq: v.TokenID}}
+		_, err := mgm.Coll(&shared.TokenPdecimal{}).UpdateOne(context.Background(), filter, docs[idx], mgm.UpsertTrueOption())
+		if err != nil {
+			writeErr, ok := err.(mongo.WriteException)
+			if !ok {
+				panic(err)
+			}
+			if !writeErr.HasErrorCode(11000) {
+				panic(err)
+			}
+		}
+	}
+	return nil
+}
+
+func DBGetTokenDecimal(tokenID string) (*shared.TokenPdecimal, error) {
+	var result []shared.TokenPdecimal
+	filter := bson.M{"tokenid": bson.M{operator.Eq: tokenID}}
+	err := mgm.Coll(&shared.TokenPdecimal{}).SimpleFind(&result, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return &result[0], nil
+}

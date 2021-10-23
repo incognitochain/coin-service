@@ -201,6 +201,9 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		if len(l) == 0 {
 			continue
 		}
+		if (l[0].Token1Amount == 0 || l[0].Token2Amount == 0) && len(v.TradingFee) == 0 {
+			continue
+		}
 
 		result = append(result, PdexV3PoolShareRespond{
 			PoolID:       v.PoolID,
@@ -930,8 +933,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 	spew.Dump("chosenPath", chosenPath)
 	log.Printf("receive %d\n", receive)
+	dcrate, err := getPdecimalRate(sellToken, buyToken)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
 
-	result.MaxGet = receive
+	result.MaxGet = uint64(float64(receive) * dcrate)
 	result.Route = make([]string, 0)
 	if chosenPath != nil {
 		for _, v := range chosenPath {
