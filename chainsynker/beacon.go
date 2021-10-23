@@ -368,56 +368,56 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			poolPairsArr = append(poolPairsArr, &poolPairWithId)
 		}
 
-		for poolID, state := range statev2.StakingPoolsState {
-			rw, err := extractPDEStakingReward(poolID, statev2Inc, prevStatev2Inc, beaconHeight)
-			if err != nil {
-				panic(err)
-			}
-			rewardReceive := uint64(0)
-			tokenStakeAmount := state.Liquidity()
+		if beaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
+			for poolID, state := range statev2.StakingPoolsState {
+				rw, err := extractPDEStakingReward(poolID, statev2Inc, prevStatev2Inc, beaconHeight)
+				if err != nil {
+					panic(err)
+				}
+				rewardReceive := uint64(0)
+				tokenStakeAmount := state.Liquidity()
 
-			_, receiveStake := pathfinder.FindGoodTradePath(
-				4,
-				poolPairsArr,
-				*stateV2Json.PoolPairs,
-				poolID,
-				common.PRVCoinID.String(),
-				tokenStakeAmount)
-
-			for tk, v := range rw {
-				_, receive := pathfinder.FindGoodTradePath(
+				_, receiveStake := pathfinder.FindGoodTradePath(
 					4,
 					poolPairsArr,
 					*stateV2Json.PoolPairs,
-					tk,
+					poolID,
 					common.PRVCoinID.String(),
-					v)
-				rewardReceive += receive
-			}
-			var rwInfo struct {
-				RewardPerToken     map[string]uint64
-				TokenAmount        map[string]uint64
-				RewardReceiveInPRV uint64
-				TotalAmountInPRV   uint64
-			}
-			rwInfo.TokenAmount = make(map[string]uint64)
-			rwInfo.RewardPerToken = rw
-			rwInfo.TokenAmount[poolID] = tokenStakeAmount
-			rwInfo.RewardReceiveInPRV = rewardReceive
-			rwInfo.TotalAmountInPRV = receiveStake
+					tokenStakeAmount)
 
-			rwInfoBytes, err := json.Marshal(rwInfo)
-			if err != nil {
-				panic(err)
+				for tk, v := range rw {
+					_, receive := pathfinder.FindGoodTradePath(
+						4,
+						poolPairsArr,
+						*stateV2Json.PoolPairs,
+						tk,
+						common.PRVCoinID.String(),
+						v)
+					rewardReceive += receive
+				}
+				var rwInfo struct {
+					RewardPerToken     map[string]uint64
+					TokenAmount        map[string]uint64
+					RewardReceiveInPRV uint64
+					TotalAmountInPRV   uint64
+				}
+				rwInfo.TokenAmount = make(map[string]uint64)
+				rwInfo.RewardPerToken = rw
+				rwInfo.TokenAmount[poolID] = tokenStakeAmount
+				rwInfo.RewardReceiveInPRV = rewardReceive
+				rwInfo.TotalAmountInPRV = receiveStake
+
+				rwInfoBytes, err := json.Marshal(rwInfo)
+				if err != nil {
+					panic(err)
+				}
+				data := shared.RewardRecord{
+					DataID:       poolID,
+					Data:         string(rwInfoBytes),
+					BeaconHeight: beaconHeight,
+				}
+				rewardRecords = append(rewardRecords, data)
 			}
-			data := shared.RewardRecord{
-				DataID:       poolID,
-				Data:         string(rwInfoBytes),
-				BeaconHeight: beaconHeight,
-			}
-			rewardRecords = append(rewardRecords, data)
-		}
-		if beaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
 			for poolID, state := range statev2.PoolPairs {
 				rw, err := extractLqReward(poolID, statev2Inc, prevStatev2Inc, beaconHeight)
 				if err != nil {
@@ -740,6 +740,7 @@ func extractLqReward(poolID string, curState pdex.State, prevState pdex.State, b
 		oldLPFeesPerShare = map[common.Hash]*big.Int{}
 	}
 
+	fmt.Println("curLPFeesPerShare", curLPFeesPerShare, "oldLPFeesPerShare", oldLPFeesPerShare)
 	for tokenID := range curLPFeesPerShare {
 		oldFees, isExisted := oldLPFeesPerShare[tokenID]
 		if !isExisted {

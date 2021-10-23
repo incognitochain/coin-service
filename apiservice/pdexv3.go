@@ -933,8 +933,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 	spew.Dump("chosenPath", chosenPath)
 	log.Printf("receive %d\n", receive)
+	dcrate, err := getPdecimalRate(sellToken, buyToken)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
 
-	result.MaxGet = receive
+	result.MaxGet = uint64(float64(receive) * dcrate)
 	result.Route = make([]string, 0)
 	if chosenPath != nil {
 		for _, v := range chosenPath {

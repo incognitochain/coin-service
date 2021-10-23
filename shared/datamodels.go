@@ -936,3 +936,28 @@ func (model *RewardAPYTracking) Saving() error {
 
 	return nil
 }
+
+type TokenPdecimal struct {
+	mgm.DefaultModel `bson:",inline"`
+	TokenID          string `json:"TokenID" bson:"tokenid"`
+	Symbol           string `json:"Symbol" bson:"symbol"`
+	PSymbol          string `json:"PSymbol" bson:"psymbol"`
+	PDecimals        uint64 `json:"PDecimals" bson:"pdecimals"`
+}
+
+func (model *TokenPdecimal) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *TokenPdecimal) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}

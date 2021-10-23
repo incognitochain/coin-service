@@ -31,6 +31,10 @@ func StartAssistant() {
 		if err != nil {
 			panic(err)
 		}
+		pdecimals, err := updatePDecimal()
+		if err != nil {
+			panic(err)
+		}
 		err = database.DBSavePairRanking(pairRanks)
 		if err != nil {
 			panic(err)
@@ -40,6 +44,10 @@ func StartAssistant() {
 			panic(err)
 		}
 		err = database.DBSaveTokenPrice(tokensPrice)
+		if err != nil {
+			panic(err)
+		}
+		err = database.DBSaveTokenDecimal(pdecimals)
 		if err != nil {
 			panic(err)
 		}
