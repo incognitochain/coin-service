@@ -417,66 +417,68 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 			rewardRecords = append(rewardRecords, data)
 		}
+		if beaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
+			for poolID, state := range statev2.PoolPairs {
+				rw, err := extractLqReward(poolID, statev2Inc, prevStatev2Inc, beaconHeight)
+				if err != nil {
+					panic(err)
+				}
+				rewardReceive := uint64(0)
+				token1Amount := state.State.Token0RealAmount()
+				token2Amount := state.State.Token1RealAmount()
 
-		for poolID, state := range statev2.PoolPairs {
-			rw, err := extractLqReward(poolID, statev2Inc, prevStatev2Inc, beaconHeight)
-			if err != nil {
-				panic(err)
-			}
-			rewardReceive := uint64(0)
-			token1Amount := state.State.Token0RealAmount()
-			token2Amount := state.State.Token1RealAmount()
-
-			_, receive1 := pathfinder.FindGoodTradePath(
-				4,
-				poolPairsArr,
-				*stateV2Json.PoolPairs,
-				state.State.Token0ID().String(),
-				common.PRVCoinID.String(),
-				token1Amount)
-			_, receive2 := pathfinder.FindGoodTradePath(
-				4,
-				poolPairsArr,
-				*stateV2Json.PoolPairs,
-				state.State.Token1ID().String(),
-				common.PRVCoinID.String(),
-				token2Amount)
-
-			totalAmount := receive1 + receive2
-			for tk, v := range rw {
-				_, receive := pathfinder.FindGoodTradePath(
+				_, receive1 := pathfinder.FindGoodTradePath(
 					4,
 					poolPairsArr,
 					*stateV2Json.PoolPairs,
-					tk,
+					state.State.Token0ID().String(),
 					common.PRVCoinID.String(),
-					v)
-				rewardReceive += receive
-			}
-			var rwInfo struct {
-				RewardPerToken     map[string]uint64
-				TokenAmount        map[string]uint64
-				RewardReceiveInPRV uint64
-				TotalAmountInPRV   uint64
-			}
-			rwInfo.TokenAmount = make(map[string]uint64)
-			rwInfo.RewardPerToken = rw
-			rwInfo.TokenAmount[state.State.Token0ID().String()] = token1Amount
-			rwInfo.TokenAmount[state.State.Token1ID().String()] = token2Amount
-			rwInfo.RewardReceiveInPRV = rewardReceive
-			rwInfo.TotalAmountInPRV = totalAmount
+					token1Amount)
+				_, receive2 := pathfinder.FindGoodTradePath(
+					4,
+					poolPairsArr,
+					*stateV2Json.PoolPairs,
+					state.State.Token1ID().String(),
+					common.PRVCoinID.String(),
+					token2Amount)
 
-			rwInfoBytes, err := json.Marshal(rwInfo)
-			if err != nil {
-				panic(err)
+				totalAmount := receive1 + receive2
+				for tk, v := range rw {
+					_, receive := pathfinder.FindGoodTradePath(
+						4,
+						poolPairsArr,
+						*stateV2Json.PoolPairs,
+						tk,
+						common.PRVCoinID.String(),
+						v)
+					rewardReceive += receive
+				}
+				var rwInfo struct {
+					RewardPerToken     map[string]uint64
+					TokenAmount        map[string]uint64
+					RewardReceiveInPRV uint64
+					TotalAmountInPRV   uint64
+				}
+				rwInfo.TokenAmount = make(map[string]uint64)
+				rwInfo.RewardPerToken = rw
+				rwInfo.TokenAmount[state.State.Token0ID().String()] = token1Amount
+				rwInfo.TokenAmount[state.State.Token1ID().String()] = token2Amount
+				rwInfo.RewardReceiveInPRV = rewardReceive
+				rwInfo.TotalAmountInPRV = totalAmount
+
+				rwInfoBytes, err := json.Marshal(rwInfo)
+				if err != nil {
+					panic(err)
+				}
+				data := shared.RewardRecord{
+					DataID:       poolID,
+					Data:         string(rwInfoBytes),
+					BeaconHeight: beaconHeight,
+				}
+				rewardRecords = append(rewardRecords, data)
 			}
-			data := shared.RewardRecord{
-				DataID:       poolID,
-				Data:         string(rwInfoBytes),
-				BeaconHeight: beaconHeight,
-			}
-			rewardRecords = append(rewardRecords, data)
 		}
+
 		for poolID, state := range prevStatev2.PoolPairs {
 			willDelete := false
 			if _, ok := statev2.PoolPairs[poolID]; !ok {
@@ -536,7 +538,6 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 
 		}
-
 		for tokenID, stakeData := range prevStatev2.StakingPoolsState {
 			willDelete := false
 			if _, ok := statev2.StakingPoolsState[tokenID]; !ok {
@@ -734,7 +735,7 @@ func extractLqReward(poolID string, curState pdex.State, prevState pdex.State, b
 		return nil, err
 	}
 
-	oldLPFeesPerShare, _, err := getLPFeesPerShare(poolID, beaconHeight-1, prevState)
+	oldLPFeesPerShare, _, err := getLPFeesPerShare(poolID, beaconHeight-(config.Param().EpochParam.NumberOfBlockInEpoch), prevState)
 	if err != nil {
 		oldLPFeesPerShare = map[common.Hash]*big.Int{}
 	}

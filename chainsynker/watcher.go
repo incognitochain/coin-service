@@ -129,6 +129,11 @@ func tokenListWatcher() {
 					if v.Amount() == 0 && newV.Amount() > 0 {
 						v.SetAmount(newV.Amount())
 					}
+					if database.DBIsTokenNFT(newK.String()) {
+						nftToken[newK.String()] = true
+					} else {
+						tokenStates[newK] = newV
+					}
 				}
 			}
 		}
