@@ -26,15 +26,19 @@ type Node struct {
 	TokenPoolValue *big.Int
 }
 
+type SimplePoolNodeData struct {
+	Token0ID string
+	Token1ID string
+}
+
 func addEdge(
 	tokenIDStrSource string,
 	tokenIDStrDest string,
-	tokenPoolValueDest *big.Int,
 	graph map[string][]Node,
 ) {
 	dest := Node{
 		TokenIDStr:     tokenIDStrDest,
-		TokenPoolValue: tokenPoolValueDest,
+		TokenPoolValue: nil,
 	}
 	_, found := graph[tokenIDStrSource]
 	if !found {
@@ -55,23 +59,49 @@ func addEdge(
 
 // NOTEs: the built graph would be undirected graph
 func (pc *PriceCalculator) buildGraph(
-	pools []*shared.Pdexv3PoolPairWithId,
+	simplePools []*SimplePoolNodeData,
 ) {
 	pc.Graph = make(map[string][]Node)
-	for _, pool := range pools {
+	for _, pool := range simplePools {
 		addEdge(
-			pool.Token0ID().String(),
-			pool.Token1ID().String(),
-			pool.Token1VirtualAmount(),
+			pool.Token0ID,
+			pool.Token1ID,
 			pc.Graph,
 		)
 		addEdge(
-			pool.Token1ID().String(),
-			pool.Token0ID().String(),
-			pool.Token0VirtualAmount(),
+			pool.Token1ID,
+			pool.Token0ID,
 			pc.Graph,
 		)
 	}
+}
+
+
+func (pc *PriceCalculator) findPaths(
+	maxPathLen uint,
+	simplePools []*SimplePoolNodeData,
+	tokenIDStrSource string,
+	tokenIDStrDest string,
+) [][]string {
+	pc.buildGraph(simplePools)
+
+	visited := make(map[string]bool)
+	for tokenIDStr := range pc.Graph {
+		visited[tokenIDStr] = false
+	}
+
+	var path []string
+	var allPaths [][]string
+	pc.findPath(
+		maxPathLen,
+		tokenIDStrSource,
+		tokenIDStrDest,
+		visited,
+		path,
+		&allPaths,
+	)
+
+	return allPaths
 }
 
 func (pc *PriceCalculator) findPath(
@@ -80,16 +110,20 @@ func (pc *PriceCalculator) findPath(
 	tokenIDStrDest string,
 	visited map[string]bool,
 	path []string,
-	allPaths [][]string,
-) [][]string {
-	if len(allPaths) == MaxPaths {
-		return allPaths
+	allPaths *[][]string,
+) {
+	if len(*allPaths) == MaxPaths {
+		log.Println("MaxPaths exceeded")
+		return
 	}
 	path = append(path, tokenIDStrSource)
 	visited[tokenIDStrSource] = true
 
 	if tokenIDStrSource == tokenIDStrDest {
-		allPaths = append(allPaths, path[:])
+		// Beware, we need to make deep copy of path array
+		newPath := make([]string, len(path))
+		copy(newPath, path)
+		*allPaths = append(*allPaths, newPath)
 	} else if len(path) < int(maxPathLen) {
 		nodes, found := pc.Graph[tokenIDStrSource]
 		if found {
@@ -97,38 +131,14 @@ func (pc *PriceCalculator) findPath(
 				if visited[node.TokenIDStr] {
 					continue
 				}
-				allPaths = pc.findPath(maxPathLen, node.TokenIDStr, tokenIDStrDest, visited, path, allPaths)
+				pc.findPath(maxPathLen, node.TokenIDStr, tokenIDStrDest, visited, path, allPaths)
 			}
 		}
 	}
 	path = path[:len(path)-1]
 	visited[tokenIDStrSource] = false
-	return allPaths
 }
 
-func (pc *PriceCalculator) findPaths(
-	maxPathLen uint,
-	pools []*shared.Pdexv3PoolPairWithId,
-	tokenIDStrSource string,
-	tokenIDStrDest string,
-) [][]string {
-	pc.buildGraph(pools)
-
-	visited := make(map[string]bool)
-	for tokenIDStr := range pc.Graph {
-		visited[tokenIDStr] = false
-	}
-	var path []string
-	var allPaths [][]string
-	return pc.findPath(
-		maxPathLen,
-		tokenIDStrSource,
-		tokenIDStrDest,
-		visited,
-		path,
-		allPaths,
-	)
-}
 
 func trade(
 	pool *shared.Pdexv3PoolPairWithId,
@@ -217,7 +227,16 @@ func FindGoodTradePath(
 		Graph: make(map[string][]Node),
 	}
 
-	allPaths := pc.findPaths(maxPathLen, pools, tokenIDStrSource, tokenIDStrDest)
+	simplePools := make([]*SimplePoolNodeData, 0)
+
+	for _, pool := range pools {
+		simplePools = append(simplePools, &SimplePoolNodeData{
+			Token0ID: pool.Token0ID().String(),
+			Token1ID: pool.Token1ID().String(),
+		})
+	}
+
+	allPaths := pc.findPaths(maxPathLen, simplePools, tokenIDStrSource, tokenIDStrDest)
 
 	if len(allPaths) == 0 {
 		return []*shared.Pdexv3PoolPairWithId{}, 0
@@ -245,6 +264,8 @@ func FindGoodTradePath(
 			chosenPath = pathByPool
 		}
 	}
+	// TODO: improvement, calculate amount after fee
+
 	return chosenPath, maxReceive
 }
 
