@@ -1103,6 +1103,7 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 				FeeToken:    tradeInfo.FeeToken,
 				Receiver:    tradeInfo.Receiver,
 				IsCompleted: isCompleted,
+				TradingPath: tradeInfo.TradingPath,
 			}
 			result = append(result, trade)
 		} else {
