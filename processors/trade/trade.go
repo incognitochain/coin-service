@@ -186,7 +186,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 						buyToken = tks[0]
 					}
 				} else {
-					intermediateToken := ""
+					intermediateToken := sellToken
 					for idx, v := range item.TradePath {
 						if idx == len(item.TradePath)-1 {
 							tks := strings.Split(v, "-")
