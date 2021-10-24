@@ -187,8 +187,9 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 					}
 				} else {
 					intermediateToken := sellToken
-					for idx, v := range item.TradePath {
-						if idx == len(item.TradePath)-1 {
+					for idx := len(item.TradePath) - 1; idx >= 0; idx-- {
+						v := item.TradePath[idx]
+						if idx == 0 {
 							tks := strings.Split(v, "-")
 							if tks[0] == intermediateToken {
 								buyToken = tks[1]
@@ -204,6 +205,23 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 							}
 						}
 					}
+					// for idx, v := range item.TradePath {
+					// 	if idx == len(item.TradePath)-1 {
+					// 		tks := strings.Split(v, "-")
+					// 		if tks[0] == intermediateToken {
+					// 			buyToken = tks[1]
+					// 		} else {
+					// 			buyToken = tks[0]
+					// 		}
+					// 	} else {
+					// 		tks := strings.Split(v, "-")
+					// 		if tks[0] == intermediateToken {
+					// 			intermediateToken = tks[1]
+					// 		} else {
+					// 			intermediateToken = tks[0]
+					// 		}
+					// 	}
+					// }
 				}
 
 				if sellToken == common.PRVCoinID.String() {
