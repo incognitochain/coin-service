@@ -254,7 +254,7 @@ func getRate(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (floa
 	b1 := uint64(0)
 retry:
 	_, receive := pathfinder.FindGoodTradePath(
-		4,
+		5,
 		pools,
 		poolPairStates,
 		tokenID1,
@@ -282,7 +282,7 @@ retry:
 
 retry2:
 	_, receive2 := pathfinder.FindGoodTradePath(
-		4,
+		5,
 		pools,
 		poolPairStates,
 		tokenID2,

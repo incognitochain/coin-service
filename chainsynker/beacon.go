@@ -378,7 +378,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				tokenStakeAmount := state.Liquidity()
 
 				_, receiveStake := pathfinder.FindGoodTradePath(
-					4,
+					5,
 					poolPairsArr,
 					*stateV2Json.PoolPairs,
 					poolID,
@@ -387,7 +387,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 
 				for tk, v := range rw {
 					_, receive := pathfinder.FindGoodTradePath(
-						4,
+						5,
 						poolPairsArr,
 						*stateV2Json.PoolPairs,
 						tk,
@@ -428,14 +428,14 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				token2Amount := state.State.Token1RealAmount()
 
 				_, receive1 := pathfinder.FindGoodTradePath(
-					4,
+					5,
 					poolPairsArr,
 					*stateV2Json.PoolPairs,
 					state.State.Token0ID().String(),
 					common.PRVCoinID.String(),
 					token1Amount)
 				_, receive2 := pathfinder.FindGoodTradePath(
-					4,
+					5,
 					poolPairsArr,
 					*stateV2Json.PoolPairs,
 					state.State.Token1ID().String(),
@@ -445,7 +445,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				totalAmount := receive1 + receive2
 				for tk, v := range rw {
 					_, receive := pathfinder.FindGoodTradePath(
-						4,
+						5,
 						poolPairsArr,
 						*stateV2Json.PoolPairs,
 						tk,

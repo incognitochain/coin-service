@@ -924,7 +924,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	}
 
 	chosenPath, receive := pathfinder.FindGoodTradePath(
-		4,
+		5,
 		pools,
 		poolPairStates,
 		sellToken,
@@ -1181,7 +1181,7 @@ func (pdexv3) GetRate(c *gin.Context) {
 		a := uint64(10000)
 	retry:
 		_, receive := pathfinder.FindGoodTradePath(
-			4,
+			5,
 			pools,
 			poolPairStates,
 			req.Against,
