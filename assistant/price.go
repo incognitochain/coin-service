@@ -49,7 +49,8 @@ retry:
 	resp.Body.Close()
 	value, err := strconv.ParseFloat(price.Price, 32)
 	if err != nil {
-		return 0, err
+		log.Println("getExternalPrice", tokenSymbol, err)
+		return 0, nil
 	}
 	return value, nil
 }
