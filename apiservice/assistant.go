@@ -3,6 +3,7 @@ package apiservice
 import (
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -172,7 +173,7 @@ func APICheckRate(c *gin.Context) {
 				rate := float64(tk2Price.Price) / float64(tk1Price.Price)
 				fmt.Printf("result.Rate2 %v %v \n", float64(tk1Price.Price), float64(tk2Price.Price))
 				fmt.Printf("result.Rate2 %v \n", rate)
-				result.Rate = fmt.Sprintf("%g", rate)
+				result.Rate = fmt.Sprintf("%g", rate*dcrate)
 				result.MaxAMP = newAmp
 				respond := APIRespond{
 					Result: result,
@@ -267,7 +268,7 @@ retry:
 		}
 		return 0, nil
 	} else {
-		if a < token1Amount && receive < a1 {
+		if a < token1Amount && receive > a1 {
 			a1 = receive
 			goto retry
 		} else {
@@ -295,7 +296,7 @@ retry2:
 		}
 		return 0, nil
 	} else {
-		if b < token2Amount && receive2 < b1 {
+		if b < token2Amount && receive2 > b1 {
 			b1 = receive2
 			goto retry2
 		} else {
@@ -313,17 +314,23 @@ retry2:
 }
 
 func getPdecimalRate(tokenID1, tokenID2 string) (float64, error) {
-	result := float64(1)
+	tk1Decimal := 1
+	tk2Decimal := 1
 	tk1, err := database.DBGetTokenDecimal(tokenID1)
 	if err != nil {
 		log.Println(err)
 	}
-	tk2, err := database.DBGetTokenDecimal(tokenID1)
+	tk2, err := database.DBGetTokenDecimal(tokenID2)
 	if err != nil {
 		log.Println(err)
 	}
-	if tk1 != nil && tk2 != nil {
-		result = float64(tk1.PDecimals) / float64(tk2.PDecimals)
+	if tk1 != nil {
+		tk1Decimal = int(tk1.PDecimals)
 	}
+	if tk2 != nil {
+		tk2Decimal = int(tk2.PDecimals)
+	}
+	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
+	fmt.Println("getPdecimalRate", result)
 	return result, nil
 }
