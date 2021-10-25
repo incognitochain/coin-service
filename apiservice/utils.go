@@ -147,8 +147,14 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 			}
 			withdrawTxs[wdRQtx] = data
 		}
-		if sellTokenBalance == 0 && buyTokenBalance == 0 && len(order.WithdrawTxs) > 0 {
+		if sellTokenBalance == 0 && buyTokenBalance == 0 && len(order.WithdrawInfos) > 0 {
 			isCompleted = true
+		}
+
+		if len(order.WithdrawInfos) == 1 {
+			if _, ok := order.WithdrawInfos[order.RequestTx]; ok {
+				isCompleted = true
+			}
 		}
 
 		matchedAmount = order.Amount - sellTokenBalance - sellTokenWDAmount

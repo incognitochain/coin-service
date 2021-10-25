@@ -87,6 +87,11 @@ func (pdexv3) ListPools(c *gin.Context) {
 		if v.Token1Amount == 0 || v.Token2Amount == 0 {
 			continue
 		}
+		dcrate, err := getPdecimalRate(v.TokenID1, v.TokenID2)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 		data := PdexV3PoolDetail{
 			PoolID:         v.PoolID,
 			Token1ID:       v.TokenID1,
@@ -98,7 +103,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 			Volume:         0,
 			PriceChange24h: 0,
 			AMP:            v.AMP,
-			Price:          float64(v.Token2Amount) / float64(v.Token1Amount),
+			Price:          (float64(v.Token2Amount) / float64(v.Token1Amount)) * dcrate,
 			TotalShare:     v.TotalShare,
 		}
 
@@ -720,6 +725,11 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		if v.Token1Amount == 0 || v.Token2Amount == 0 {
 			continue
 		}
+		dcrate, err := getPdecimalRate(v.TokenID1, v.TokenID2)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 		data := PdexV3PoolDetail{
 			PoolID:         v.PoolID,
 			Token1ID:       v.TokenID1,
@@ -731,7 +741,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			PriceChange24h: 0,
 			Volume:         0,
 			AMP:            v.AMP,
-			Price:          float64(v.Token2Amount) / float64(v.Token1Amount),
+			Price:          (float64(v.Token2Amount) / float64(v.Token1Amount)) * dcrate,
 			TotalShare:     v.TotalShare,
 		}
 

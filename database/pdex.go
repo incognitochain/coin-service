@@ -484,9 +484,27 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 		update := bson.M{
 			"$push": bson.M{prefix + ".responds": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Responds}, prefix + ".status": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Status}, prefix + ".respondtokens": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondTokens}, prefix + ".respondamount": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondAmount}},
 		}
-		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
+		result, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
 			return err
+		}
+		// fully matched auto-gen response
+		if result.MatchedCount == 0 {
+			ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
+			fitler := bson.M{"requesttx": bson.M{operator.Eq: order.WithdrawTxs[0]}}
+			// prefix := "withdrawinfos." + order.WithdrawTxs[0]
+			// update := bson.M{
+			// 	"$push": bson.M{prefix + ".responds": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Responds}, prefix + ".status": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Status}, prefix + ".respondtokens": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondTokens}, prefix + ".respondamount": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondAmount}},
+			// }
+			update := bson.M{
+				"$set": bson.M{
+					"withdrawinfos": order.WithdrawInfos,
+				},
+			}
+			_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
