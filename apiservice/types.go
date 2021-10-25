@@ -133,6 +133,8 @@ type PdexV3PriceHistoryRespond struct {
 type TradeDataRespond struct {
 	RequestTx           string
 	RespondTxs          []string
+	RespondTokens       []string
+	RespondAmounts      []uint64
 	WithdrawTxs         map[string]TradeWithdrawInfo
 	SellTokenID         string
 	BuyTokenID          string
