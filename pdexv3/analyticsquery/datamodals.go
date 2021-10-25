@@ -3,11 +3,11 @@ package analyticsquery
 import "encoding/json"
 
 type PDexPairRate struct {
-	High      uint64 `json:"High"`
-	Low       uint64 `json:"Low"`
-	Open      uint64 `json:"Open"`
-	Close     uint64 `json:"Close"`
-	Average   uint64 `json:"Average"`
+	High      float64 `json:"High"`
+	Low       float64 `json:"Low"`
+	Open      float64 `json:"Open"`
+	Close     float64 `json:"Close"`
+	Average   float64 `json:"Average"`
 	Timestamp string `json:"Timestamp"`
 }
 
@@ -17,13 +17,13 @@ type PDexPairRateHistoriesAPIResponse struct {
 }
 
 type PDexPoolLiquidity struct {
-	Token0RealAmount     uint64 `json:"Token0RealAmount"`
-	Token1RealAmount     uint64 `json:"Token1RealAmount"`
-	Token0VirtualAmount  uint64 `json:"Token0VirtualAmount"`
-	Token1VirtualAmount  uint64 `json:"Token1VirtualAmount"`
-	ShareAmount          uint64 `json:"ShareAmount"`
-	RateChangePercentage uint64 `json:"RateChangePercentage"`
-	TradingVolume24h     uint64 `json:"TradingVolume24h"`
+	Token0RealAmount     float64 `json:"Token0RealAmount"`
+	Token1RealAmount     float64 `json:"Token1RealAmount"`
+	Token0VirtualAmount  float64 `json:"Token0VirtualAmount"`
+	Token1VirtualAmount  float64 `json:"Token1VirtualAmount"`
+	ShareAmount          float64 `json:"ShareAmount"`
+	RateChangePercentage float64 `json:"RateChangePercentage"`
+	TradingVolume24h     float64 `json:"TradingVolume24h"`
 	Timestamp            string `json:"Timestamp"`
 }
 
@@ -38,7 +38,7 @@ type PDexPoolRateChangesAPIResponse struct {
 }
 
 type PDexSummaryData struct {
-	Value uint64 `json:"Value"`
+	Value float64 `json:"Value"`
 }
 
 type PDexSummaryDataAPIResponse struct {

@@ -108,27 +108,27 @@ type PdexV3PoolDetail struct {
 	TotalShare     uint64
 	AMP            uint
 	Price          float64
-	Volume         uint64
-	PriceChange24h uint64
+	Volume         float64
+	PriceChange24h float64
 	APY            uint64
 	IsVerify       bool
 }
 
 type PdexV3LiquidityHistoryRespond struct {
 	Timestamp           int64
-	Token0RealAmount    uint64 `json:"Token0RealAmount"`
-	Token1RealAmount    uint64 `json:"Token1RealAmount"`
-	Token0VirtualAmount uint64 `json:"Token0VirtualAmount"`
-	Token1VirtualAmount uint64 `json:"Token1VirtualAmount"`
-	ShareAmount         uint64 `json:"ShareAmount"`
+	Token0RealAmount    float64 `json:"Token0RealAmount"`
+	Token1RealAmount    float64 `json:"Token1RealAmount"`
+	Token0VirtualAmount float64 `json:"Token0VirtualAmount"`
+	Token1VirtualAmount float64 `json:"Token1VirtualAmount"`
+	ShareAmount         float64 `json:"ShareAmount"`
 }
 
 type PdexV3PriceHistoryRespond struct {
 	Timestamp int64
-	High      uint64
-	Low       uint64
-	Close     uint64
-	Open      uint64
+	High      float64
+	Low       float64
+	Close     float64
+	Open      float64
 }
 type TradeDataRespond struct {
 	RequestTx           string

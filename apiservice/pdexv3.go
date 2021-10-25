@@ -1086,7 +1086,7 @@ func (pdexv3) TradeVolume24h(c *gin.Context) {
 
 	respond := APIRespond{
 		Result: struct {
-			Value uint64
+			Value float64
 		}{
 			Value: analyticsData.Result.Value,
 		},
