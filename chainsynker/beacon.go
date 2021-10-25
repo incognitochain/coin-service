@@ -135,6 +135,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			BeaconTimeStamp: beaconBestState.BestBlock.Header.Timestamp,
 			PoolPairs:       &poolPairsJSON,
 			StakingPools:    &stateV2.StakingPoolsState,
+			Params:          pdeStateV2.Reader().Params(),
 		}
 		pdeStr, err := json.MarshalToString(pdeStateJSON)
 		if err != nil {
