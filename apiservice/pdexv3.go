@@ -279,6 +279,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				isCompleted = true
 			case 2:
 				status = "rejected"
+				isCompleted = true
 			}
 			trade := TradeDataRespond{
 				RequestTx:      tradeInfo.RequestTx,
@@ -1123,6 +1124,7 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 				isCompleted = true
 			case 2:
 				status = "rejected"
+				isCompleted = true
 			}
 
 			trade := TradeDataRespond{

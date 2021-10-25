@@ -1175,7 +1175,7 @@ func DBGetPendingOrderByPairID(pairID string) ([]shared.TradeOrderData, error) {
 	limit := int64(10000)
 	var result []shared.TradeOrderData
 	emptyMap := make(map[string]shared.TradeOrderWithdrawInfo)
-	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}, "status": bson.M{operator.Eq: 0}, "isswap": bson.M{operator.Eq: false}, "withdrawtxs": bson.M{operator.Eq: []string{}, "withdrawinfos": bson.M{operator.Eq: emptyMap}}, "respondtxs": bson.M{operator.Eq: []string{}}}
+	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}, "status": bson.M{operator.Eq: 0}, "isswap": bson.M{operator.Eq: false}, "withdrawtxs": bson.M{operator.Eq: []string{}}, "withdrawinfos": bson.M{operator.Eq: emptyMap}, "respondtxs": bson.M{operator.Eq: []string{}}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"_id", 1}},
