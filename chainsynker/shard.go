@@ -402,7 +402,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			panic(err)
 		}
-
 		metaDataType := tx.GetMetadataType()
 		switch metaDataType {
 		case metadata.PDECrossPoolTradeRequestMeta, metadata.PDETradeRequestMeta:
@@ -412,7 +411,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				payment := meta.TraderAddressStr
 				wl, err := wallet.Base58CheckDeserialize(payment)
 				if err != nil {
-					panic(err)
+					log.Println(err)
+					continue
 				}
 				pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
 			case metadata.PDETradeRequestMeta:
@@ -420,7 +420,8 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				payment := meta.TraderAddressStr
 				wl, err := wallet.Base58CheckDeserialize(payment)
 				if err != nil {
-					panic(err)
+					log.Println(err)
+					continue
 				}
 				pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
 			}
