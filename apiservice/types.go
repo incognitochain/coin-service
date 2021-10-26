@@ -251,9 +251,11 @@ type PdexV3StakePoolRewardHistoryData struct {
 }
 
 type PdexV3PendingOrderData struct {
-	TxRequest    string
-	Token1Amount uint64
-	Token2Amount uint64
+	TxRequest     string
+	Token1Amount  uint64
+	Token2Amount  uint64
+	Token1Balance uint64
+	Token2Balance uint64
 }
 
 type PdexV3StakingPoolInfo struct {

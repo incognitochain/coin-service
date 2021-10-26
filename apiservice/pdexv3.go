@@ -1297,30 +1297,56 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 
 	var sellSide []shared.LimitOrderStatus
 	var buySide []shared.LimitOrderStatus
+	txRequestList := []string{}
+	orderList := make(map[string]shared.TradeOrderData)
 	for _, v := range list {
 		if v.Direction == 0 {
 			sellSide = append(sellSide, v)
 		} else {
 			buySide = append(buySide, v)
 		}
+		txRequestList = append(txRequestList, v.RequestTx)
+	}
+
+	l, err := database.DBGetTxTradeFromTxRequest(txRequestList)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	for _, v := range l {
+		orderList[v.RequestTx] = v
 	}
 	for _, v := range sellSide {
-		tk1Amount, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
-		tk2Amount, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
+		tk1Balance, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
+		tk2Balance, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
+		if tk1Balance == 0 {
+			continue
+		}
+		tk1Amount, _ := strconv.ParseUint(orderList[v.RequestTx].Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(orderList[v.RequestTx].MinAccept, 10, 64)
 		data := PdexV3PendingOrderData{
-			TxRequest:    v.RequestTx,
-			Token1Amount: tk1Amount,
-			Token2Amount: tk2Amount,
+			TxRequest:     v.RequestTx,
+			Token1Balance: tk1Balance,
+			Token2Balance: tk2Balance,
+			Token1Amount:  tk1Amount,
+			Token2Amount:  tk2Amount,
 		}
 		sellOrders = append(sellOrders, data)
 	}
 	for _, v := range buySide {
-		tk1Amount, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
-		tk2Amount, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
+		tk1Balance, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
+		tk2Balance, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
+		if tk2Balance == 0 {
+			continue
+		}
+		tk1Amount, _ := strconv.ParseUint(orderList[v.RequestTx].Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(orderList[v.RequestTx].MinAccept, 10, 64)
 		data := PdexV3PendingOrderData{
-			TxRequest:    v.RequestTx,
-			Token1Amount: tk1Amount,
-			Token2Amount: tk2Amount,
+			TxRequest:     v.RequestTx,
+			Token1Balance: tk1Balance,
+			Token2Balance: tk2Balance,
+			Token1Amount:  tk2Amount,
+			Token2Amount:  tk1Amount,
 		}
 		buyOrders = append(buyOrders, data)
 	}
