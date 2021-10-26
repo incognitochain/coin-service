@@ -3,6 +3,7 @@ package pathfinder
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/incognitochain/coin-service/shared"
@@ -290,6 +291,39 @@ func FindGoodTradePath(
 	// TODO: improvement, calculate amount after fee
 
 	return chosenPath, maxReceive
+}
+
+func FindSellAmount(
+	maxPathLen uint,
+	pools []*shared.Pdexv3PoolPairWithId,
+	poolPairStates map[string]*pdex.PoolPairState,
+	tokenIDStrSource string,
+	tokenIDStrDest string,
+	expectedBuyAmount uint64,
+) ([]*shared.Pdexv3PoolPairWithId, uint64) {
+	left := uint64(1)
+	right := uint64(math.MaxUint64)
+	sellAmount := uint64(0)
+	bestPath := []*shared.Pdexv3PoolPairWithId{}
+	for left <= right {
+		mid := left + (right-left)/2
+		path, receive := FindGoodTradePath(maxPathLen, pools, poolPairStates, tokenIDStrSource, tokenIDStrDest, mid)
+		if receive == 0 {
+			if sellAmount == 0 {
+				right = mid - 1
+			} else {
+				left = mid + 1
+			}
+		} else if receive >= expectedBuyAmount {
+			sellAmount = mid
+			bestPath = path
+			right = mid - 1
+		} else {
+			left = mid + 1
+		}
+	}
+
+	return bestPath, sellAmount
 }
 
 func marshalRPCGetState(data json.RawMessage) ([]*shared.Pdexv3PoolPairWithId, map[string]*pdex.PoolPairState) {
