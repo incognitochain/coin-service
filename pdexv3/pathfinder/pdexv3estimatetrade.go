@@ -54,7 +54,7 @@ func addEdge(
 		for _, existedDest := range graph[tokenIDStrSource] {
 			if existedDest.TokenIDStr == dest.TokenIDStr {
 				if existedDest.TokenPoolValue.Cmp(dest.TokenPoolValue) < 0 {
-					existedDest.TokenPoolValue = dest.TokenPoolValue
+					*existedDest.TokenPoolValue = *dest.TokenPoolValue
 				}
 				isExisted = true
 				break
