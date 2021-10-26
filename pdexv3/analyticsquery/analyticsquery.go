@@ -79,7 +79,7 @@ func APIGetPDexV3PairRateChangesAndVolume24h(poolIDs []string) (map[string]PDexP
 		var poolLiquidity PDexPoolLiquidity
 		err = json.Unmarshal(element, &poolLiquidity)
 
-		if err != nil {
+		if err == nil {
 			pDexPoolLiquidityMap[key] = poolLiquidity
 		}
 	}
