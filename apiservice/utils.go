@@ -2,6 +2,7 @@ package apiservice
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 
 	"github.com/incognitochain/coin-service/shared"
@@ -80,14 +81,14 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 	var isCompleted bool
 	statusCode := 0
 	withdrawTxs := make(map[string]TradeWithdrawInfo)
-
+	orderAmount, _ := strconv.ParseUint(order.Amount, 10, 64)
 	if order.IsSwap {
 		switch order.Status {
 		case 0:
 			status = "ongoing"
 		case 1:
 			status = "done"
-			matchedAmount = order.Amount
+			matchedAmount = orderAmount
 			isCompleted = true
 		case 2:
 			status = "rejected"
@@ -103,16 +104,16 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 	} else {
 		if limitOrderStatus == nil && len(order.WithdrawTxs) == 0 {
 			isCompleted = false
-			sellTokenBalance = order.Amount
+			sellTokenBalance = orderAmount
 		}
 
 		if limitOrderStatus != nil {
 			if limitOrderStatus.Direction == 0 {
-				sellTokenBalance = limitOrderStatus.Token1Balance
-				buyTokenBalance = limitOrderStatus.Token2Balance
+				sellTokenBalance, _ = strconv.ParseUint(limitOrderStatus.Token1Balance, 10, 64)
+				buyTokenBalance, _ = strconv.ParseUint(limitOrderStatus.Token2Balance, 10, 64)
 			} else {
-				sellTokenBalance = limitOrderStatus.Token2Balance
-				buyTokenBalance = limitOrderStatus.Token1Balance
+				sellTokenBalance, _ = strconv.ParseUint(limitOrderStatus.Token2Balance, 10, 64)
+				buyTokenBalance, _ = strconv.ParseUint(limitOrderStatus.Token1Balance, 10, 64)
 			}
 		}
 
@@ -157,7 +158,7 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 			}
 		}
 
-		matchedAmount = order.Amount - sellTokenBalance - sellTokenWDAmount
+		matchedAmount = orderAmount - sellTokenBalance - sellTokenWDAmount
 		if isCompleted {
 			status = "done"
 		} else {

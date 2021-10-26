@@ -297,9 +297,11 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		for _, order := range state.Orderbook.Orders {
 			newOrder := shared.LimitOrderStatus{
 				RequestTx:     order.Id(),
-				Token1Balance: order.Token0Balance(),
-				Token2Balance: order.Token1Balance(),
+				Token1Balance: fmt.Sprintf("%v", order.Token0Balance()),
+				Token2Balance: fmt.Sprintf("%v", order.Token1Balance()),
 				Direction:     order.TradeDirection(),
+				PoolID:        poolID,
+				PairID:        poolData.PairID,
 			}
 			orderStatus = append(orderStatus, newOrder)
 		}
@@ -348,6 +350,18 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				Reward:  rewardMap,
 			}
 			poolStaking = append(poolStaking, stake)
+		}
+	}
+	for tokenID, _ := range prevStatev2.StakingPoolsState {
+		willDelete := false
+		if _, ok := statev2Inc.Reader().Params().StakingPoolsShare[tokenID]; !ok {
+			willDelete = true
+		}
+		if willDelete {
+			poolData := shared.PoolStakeData{
+				TokenID: tokenID,
+			}
+			stakePoolsToBeDelete = append(stakePoolsToBeDelete, poolData)
 		}
 	}
 

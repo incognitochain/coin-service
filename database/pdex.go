@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -409,6 +410,8 @@ func DBSaveTradeOrder(orders []shared.TradeOrderData) error {
 	if err != nil {
 		writeErr, ok := err.(mongo.BulkWriteException)
 		if !ok {
+			d, _ := json.Marshal(docs)
+			fmt.Println(string(d))
 			panic(err)
 		}
 		if ctx.Err() != nil {
@@ -701,9 +704,10 @@ func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
+
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set": bson.M{"token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction},
 		}
 		_, err := mgm.Coll(&shared.LimitOrderStatus{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -1478,4 +1482,14 @@ func DBGetPDEPoolPairRewardAPY(poolid string) (*shared.RewardAPYTracking, error)
 		return nil, err
 	}
 	return &result[0], nil
+}
+
+func DBGetLimitOrderStatusByPairID(pairid string) ([]shared.LimitOrderStatus, error) {
+	var tradeStatus []shared.LimitOrderStatus
+	filter := bson.M{"pairid": bson.M{operator.Eq: pairid}}
+	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&tradeStatus, filter)
+	if err != nil {
+		return nil, err
+	}
+	return tradeStatus, nil
 }

@@ -108,14 +108,14 @@ func APIGetTradeHistory(c *gin.Context) {
 				Status:        statusStr,
 				ReceiveAmount: make(map[string]uint64),
 			}
-			newTxDetail.ReceiveAmount[v.BuyTokenID] = v.Amount
+			newTxDetail.ReceiveAmount[v.BuyTokenID], _ = strconv.ParseUint(v.Amount, 10, 64)
 			txsMap[v.RequestTx] = len(result)
 			result = append(result, &newTxDetail)
 			txsRequest = append(txsRequest, v.RequestTx)
 		} else {
 			txdetail := result[idx]
 			txdetail.RespondTx = append(txdetail.RespondTx, v.RespondTxs...)
-			txdetail.ReceiveAmount[v.BuyTokenID] = v.Amount
+			txdetail.ReceiveAmount[v.BuyTokenID], _ = strconv.ParseUint(v.Amount, 10, 64)
 		}
 	}
 
