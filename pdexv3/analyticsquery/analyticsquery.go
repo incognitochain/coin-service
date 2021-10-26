@@ -68,7 +68,7 @@ func APIGetPDexV3PairRateChangesAndVolume24h(poolIDs []string) (map[string]PDexP
 		SetBody(map[string]interface{}{
 			"poolIds": poolIDs}).
 		SetResult(&responseBodyData).
-		Get(shared.ServiceCfg.AnalyticsAPIEndpoint + AnalyticsAPIPath["PDEX_V3_TRADING_VOLUME_AND_PAIR_RATE_CHANGES_24H"])
+		Post(shared.ServiceCfg.AnalyticsAPIEndpoint + AnalyticsAPIPath["PDEX_V3_TRADING_VOLUME_AND_PAIR_RATE_CHANGES_24H"])
 	if err != nil {
 		log.Printf("Error getting PDEX_V3_POOL_LIQUIDITY_HISTORIES: %s\n", err.Error())
 		return nil, err
