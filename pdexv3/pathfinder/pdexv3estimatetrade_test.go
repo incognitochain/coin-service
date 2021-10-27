@@ -101,7 +101,7 @@ func TestFindGoodTradePath(t *testing.T) {
 		},
 	}
 
-	allPaths := pc.findPaths(maxPathLen, pools, tokenIDStrSource, tokenIDStrDest)
+	allPaths := pc.findPaths(maxPathLen + 1, pools, tokenIDStrSource, tokenIDStrDest)
 
 	fmt.Printf("Found %d paths\n", len(allPaths))
 	for _, path := range allPaths {
