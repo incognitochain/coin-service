@@ -1011,7 +1011,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		sellAmount = foundSellAmount
 		receive = buyAmount
 
-		result.SellAmount = (float64(receive) / dcrate)
+		result.SellAmount = float64(foundSellAmount) / dcrate
 		result.MaxGet = float64(receive)
 	}
 
