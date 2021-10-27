@@ -178,6 +178,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 					panic("invalid metadataPdexv3.TradeRequest")
 				}
 				sellToken = item.TokenToSell.String()
+				pairID = strings.Join(item.TradePath, "-")
 				if len(item.TradePath) == 1 {
 					tks := strings.Split(item.TradePath[0], "-")
 					if tks[0] == sellToken {
@@ -186,42 +187,26 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 						buyToken = tks[0]
 					}
 				} else {
-					intermediateToken := sellToken
-					for idx := len(item.TradePath) - 1; idx >= 0; idx-- {
-						v := item.TradePath[idx]
-						if idx == 0 {
-							tks := strings.Split(v, "-")
-							if tks[0] == intermediateToken {
-								buyToken = tks[1]
-							} else {
-								buyToken = tks[0]
+					tksMap := make(map[string]bool)
+					for _, path := range item.TradePath {
+						tks := strings.Split(path, "-")
+						for idx, v := range tks {
+							if idx+1 == len(tks) {
+								continue
 							}
-						} else {
-							tks := strings.Split(v, "-")
-							if tks[0] == intermediateToken {
-								intermediateToken = tks[1]
+							if _, ok := tksMap[v]; ok {
+								tksMap[v] = false
 							} else {
-								intermediateToken = tks[0]
+								tksMap[v] = true
 							}
 						}
+
 					}
-					// for idx, v := range item.TradePath {
-					// 	if idx == len(item.TradePath)-1 {
-					// 		tks := strings.Split(v, "-")
-					// 		if tks[0] == intermediateToken {
-					// 			buyToken = tks[1]
-					// 		} else {
-					// 			buyToken = tks[0]
-					// 		}
-					// 	} else {
-					// 		tks := strings.Split(v, "-")
-					// 		if tks[0] == intermediateToken {
-					// 			intermediateToken = tks[1]
-					// 		} else {
-					// 			intermediateToken = tks[0]
-					// 		}
-					// 	}
-					// }
+					for k, v := range tksMap {
+						if v && k != sellToken {
+							buyToken = k
+						}
+					}
 				}
 
 				if sellToken == common.PRVCoinID.String() {
@@ -236,7 +221,6 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 					}
 				}
 
-				pairID = strings.Join(item.TradePath, "-")
 				minaccept = item.MinAcceptableAmount
 				amount = item.SellAmount
 				version = 2
