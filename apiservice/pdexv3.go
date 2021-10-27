@@ -923,6 +923,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		SellAmount uint64 `form:"sellamount" json:"sellamount"`
 		BuyAmount  uint64 `form:"buyamount" json:"buyamount"`
 		FeeInPRV   bool   `form:"feeinprv" json:"feeinprv"`
+		Pdecimal   bool   `form:"pdecimal" json:"pdecimal"`
 	}
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
@@ -975,28 +976,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
-	// pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not get data from RPC pdexv3_getState")))
-	// 	return
-	// }
-
-	// pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Poolpairs)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-	// 	return
-	// }
-
-	// pdexState, err := feeestimator.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Params, pdexv3StateRPCResponse.Result.Poolpairs)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-	// 	return
-	// }
-
-	dcrate, err := getPdecimalRate(buyToken, sellToken)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+	dcrate := float64(1)
+	if req.Pdecimal {
+		dcrate, err = getPdecimalRate(buyToken, sellToken)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	}
 
 	var chosenPath []*shared.Pdexv3PoolPairWithId
@@ -1011,8 +997,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			sellToken,
 			buyToken,
 			sellAmount)
-		result.SellAmount = sellAmount
-		result.MaxGet = uint64(float64(receive) * dcrate)
+		result.SellAmount = float64(sellAmount)
+		result.MaxGet = float64(receive) * dcrate
 
 	} else {
 		chosenPath, foundSellAmount = pathfinder.FindSellAmount(
@@ -1025,10 +1011,9 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		sellAmount = foundSellAmount
 		receive = buyAmount
 
-		result.SellAmount = uint64(float64(receive) / dcrate)
-		result.MaxGet = receive
+		result.SellAmount = (float64(receive) / dcrate)
+		result.MaxGet = float64(receive)
 	}
-
 
 	result.Route = make([]string, 0)
 	if chosenPath != nil {
