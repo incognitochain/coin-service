@@ -13,6 +13,7 @@ import (
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
+	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
@@ -254,7 +255,7 @@ func getRate(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (floa
 	b1 := uint64(0)
 retry:
 	_, receive := pathfinder.FindGoodTradePath(
-		5,
+		pdexv3Meta.MaxTradePathLength,
 		pools,
 		poolPairStates,
 		tokenID1,
@@ -282,7 +283,7 @@ retry:
 
 retry2:
 	_, receive2 := pathfinder.FindGoodTradePath(
-		5,
+		pdexv3Meta.MaxTradePathLength,
 		pools,
 		poolPairStates,
 		tokenID2,

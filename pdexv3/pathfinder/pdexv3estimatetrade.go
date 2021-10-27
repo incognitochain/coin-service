@@ -3,14 +3,18 @@ package pathfinder
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"sort"
+
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex/v2utils"
 	"github.com/incognitochain/incognito-chain/privacy"
 
-	"github.com/incognitochain/incognito-chain/blockchain/pdex"
-	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
 	"log"
 	"math/big"
+
+	"github.com/incognitochain/incognito-chain/blockchain/pdex"
+	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
 )
 
 const (
@@ -27,18 +31,21 @@ type Node struct {
 }
 
 type SimplePoolNodeData struct {
-	Token0ID string
-	Token1ID string
+	Token0ID  string
+	Token1ID  string
+	Token0Liq *big.Int
+	Token1Liq *big.Int
 }
 
 func addEdge(
 	tokenIDStrSource string,
 	tokenIDStrDest string,
+	tokenLiqSource *big.Int,
 	graph map[string][]Node,
 ) {
 	dest := Node{
 		TokenIDStr:     tokenIDStrDest,
-		TokenPoolValue: nil,
+		TokenPoolValue: tokenLiqSource,
 	}
 	_, found := graph[tokenIDStrSource]
 	if !found {
@@ -47,6 +54,9 @@ func addEdge(
 		isExisted := false
 		for _, existedDest := range graph[tokenIDStrSource] {
 			if existedDest.TokenIDStr == dest.TokenIDStr {
+				if existedDest.TokenPoolValue.Cmp(dest.TokenPoolValue) < 0 {
+					*existedDest.TokenPoolValue = *dest.TokenPoolValue
+				}
 				isExisted = true
 				break
 			}
@@ -66,16 +76,24 @@ func (pc *PriceCalculator) buildGraph(
 		addEdge(
 			pool.Token0ID,
 			pool.Token1ID,
+			pool.Token0Liq,
 			pc.Graph,
 		)
 		addEdge(
 			pool.Token1ID,
 			pool.Token0ID,
+			pool.Token1Liq,
 			pc.Graph,
 		)
 	}
-}
 
+	// sort by descending order of liquidity
+	for _, nodeDests := range pc.Graph {
+		sort.SliceStable(nodeDests, func(i, j int) bool {
+			return nodeDests[i].TokenPoolValue.Cmp(nodeDests[j].TokenPoolValue) > 0
+		})
+	}
+}
 
 func (pc *PriceCalculator) findPaths(
 	maxPathLen uint,
@@ -124,7 +142,7 @@ func (pc *PriceCalculator) findPath(
 		newPath := make([]string, len(path))
 		copy(newPath, path)
 		*allPaths = append(*allPaths, newPath)
-	} else if len(path) < int(maxPathLen) {
+	} else if len(path) <= int(maxPathLen) {
 		nodes, found := pc.Graph[tokenIDStrSource]
 		if found {
 			for _, node := range nodes {
@@ -138,7 +156,6 @@ func (pc *PriceCalculator) findPath(
 	path = path[:len(path)-1]
 	visited[tokenIDStrSource] = false
 }
-
 
 func trade(
 	pool *shared.Pdexv3PoolPairWithId,
@@ -230,9 +247,16 @@ func FindGoodTradePath(
 	simplePools := make([]*SimplePoolNodeData, 0)
 
 	for _, pool := range pools {
+		token0Liq := new(big.Int).Mul(pool.Token0VirtualAmount(), big.NewInt(int64(BaseAmplifier)))
+		token0Liq.Div(token0Liq, new(big.Int).SetUint64(uint64(pool.Amplifier())))
+		token1Liq := new(big.Int).Mul(pool.Token1VirtualAmount(), big.NewInt(int64(BaseAmplifier)))
+		token1Liq.Div(token1Liq, new(big.Int).SetUint64(uint64(pool.Amplifier())))
+
 		simplePools = append(simplePools, &SimplePoolNodeData{
-			Token0ID: pool.Token0ID().String(),
-			Token1ID: pool.Token1ID().String(),
+			Token0ID:  pool.Token0ID().String(),
+			Token1ID:  pool.Token1ID().String(),
+			Token0Liq: token0Liq,
+			Token1Liq: token1Liq,
 		})
 	}
 
@@ -269,6 +293,39 @@ func FindGoodTradePath(
 	return chosenPath, maxReceive
 }
 
+func FindSellAmount(
+	maxPathLen uint,
+	pools []*shared.Pdexv3PoolPairWithId,
+	poolPairStates map[string]*pdex.PoolPairState,
+	tokenIDStrSource string,
+	tokenIDStrDest string,
+	expectedBuyAmount uint64,
+) ([]*shared.Pdexv3PoolPairWithId, uint64) {
+	left := uint64(1)
+	right := uint64(math.MaxUint64)
+	sellAmount := uint64(0)
+	bestPath := []*shared.Pdexv3PoolPairWithId{}
+	for left <= right {
+		mid := left + (right-left)/2
+		path, receive := FindGoodTradePath(maxPathLen, pools, poolPairStates, tokenIDStrSource, tokenIDStrDest, mid)
+		if receive == 0 {
+			if sellAmount == 0 {
+				right = mid - 1
+			} else {
+				left = mid + 1
+			}
+		} else if receive >= expectedBuyAmount {
+			sellAmount = mid
+			bestPath = path
+			right = mid - 1
+		} else {
+			left = mid + 1
+		}
+	}
+
+	return bestPath, sellAmount
+}
+
 func marshalRPCGetState(data json.RawMessage) ([]*shared.Pdexv3PoolPairWithId, map[string]*pdex.PoolPairState) {
 
 	poolPairs := make(map[string]*pdex.PoolPairState)
@@ -299,7 +356,7 @@ func marshalRPCGetState(data json.RawMessage) ([]*shared.Pdexv3PoolPairWithId, m
 	return poolPairsArr, poolPairs
 }
 
-func GetPdexv3StateFromRPC() (*shared.Pdexv3GetStateRPCResult, error)  {
+func GetPdexv3StateFromRPC() (*shared.Pdexv3GetStateRPCResult, error) {
 	rpcRequestBody := `
 {
   "id": 1,

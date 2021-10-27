@@ -2,8 +2,10 @@ package pathfinder
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFindGoodTradePath(t *testing.T) {
@@ -20,44 +22,84 @@ func TestFindGoodTradePath(t *testing.T) {
 
 	pools = []*SimplePoolNodeData{
 		{
-			Token0ID: "1",
-			Token1ID: "2"},
+			Token0ID:  "1",
+			Token1ID:  "2",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(20),
+		},
 		{
-			Token0ID: "1",
-			Token1ID: "5"},
+			Token0ID:  "1",
+			Token1ID:  "5",
+			Token0Liq: big.NewInt(20),
+			Token1Liq: big.NewInt(20),
+		},
 		{
-			Token0ID: "1",
-			Token1ID: "9"},
+			Token0ID:  "1",
+			Token1ID:  "9",
+			Token0Liq: big.NewInt(15),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "2",
-			Token1ID: "3"},
+			Token0ID:  "2",
+			Token1ID:  "3",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "2",
-			Token1ID: "6"},
+			Token0ID:  "2",
+			Token1ID:  "6",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "2",
-			Token1ID: "10"},
+			Token0ID:  "2",
+			Token1ID:  "10",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "3",
-			Token1ID: "4"},
+			Token0ID:  "3",
+			Token1ID:  "4",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "4",
-			Token1ID: "6"},
+			Token0ID:  "4",
+			Token1ID:  "6",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(15),
+		},
 		{
-			Token0ID: "5",
-			Token1ID: "6"},
+			Token0ID:  "5",
+			Token1ID:  "6",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "5",
-			Token1ID: "8"},
+			Token0ID:  "5",
+			Token1ID:  "8",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "6",
-			Token1ID: "7"},
+			Token0ID:  "6",
+			Token1ID:  "7",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "8",
-			Token1ID: "10"},
+			Token0ID:  "8",
+			Token1ID:  "10",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
 		{
-			Token0ID: "9",
-			Token1ID: "10"}}
+			Token0ID:  "9",
+			Token1ID:  "10",
+			Token0Liq: big.NewInt(10),
+			Token1Liq: big.NewInt(10),
+		},
+	}
 
 	allPaths := pc.findPaths(maxPathLen, pools, tokenIDStrSource, tokenIDStrDest)
 

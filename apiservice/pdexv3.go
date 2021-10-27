@@ -20,6 +20,7 @@ import (
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
+	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
@@ -917,10 +918,11 @@ func (pdexv3) GetLatestTradeOrders(c *gin.Context) {
 
 func (pdexv3) EstimateTrade(c *gin.Context) {
 	var req struct {
-		SellToken string `form:"selltoken" json:"selltoken" binding:"required"`
-		BuyToken  string `form:"buytoken" json:"buytoken" binding:"required"`
-		Amount    uint64 `form:"amount" json:"amount" binding:"required"`
-		FeeInPRV  bool   `form:"feeinprv" json:"feeinprv"`
+		SellToken  string `form:"selltoken" json:"selltoken" binding:"required"`
+		BuyToken   string `form:"buytoken" json:"buytoken" binding:"required"`
+		SellAmount uint64 `form:"sellamount" json:"sellamount"`
+		BuyAmount  uint64 `form:"buyamount" json:"buyamount"`
+		FeeInPRV   bool   `form:"feeinprv" json:"feeinprv"`
 	}
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
@@ -932,10 +934,15 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	sellToken := req.SellToken
 	buyToken := req.BuyToken
 	feeInPRV := req.FeeInPRV
-	amount := req.Amount
+	sellAmount := req.SellAmount
+	buyAmount := req.BuyAmount
 
-	if amount < 0 {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid sell amount")))
+	if sellAmount <= 0 && buyAmount <= 0 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("sellAmount and buyAmount must be >=0")))
+		return
+	}
+	if sellAmount > 0 && buyAmount > 0 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("only accept sellAmount or buyAmount value individually")))
 		return
 	}
 
@@ -986,34 +993,54 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	// 	return
 	// }
 
-	chosenPath, receive := pathfinder.FindGoodTradePath(
-		5,
-		pools,
-		poolPairStates,
-		sellToken,
-		buyToken,
-		amount)
-
-	spew.Dump("chosenPath", chosenPath)
-	log.Printf("receive %d\n", receive)
 	dcrate, err := getPdecimalRate(buyToken, sellToken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
 
-	result.MaxGet = uint64(float64(receive) * dcrate)
+	var chosenPath []*shared.Pdexv3PoolPairWithId
+	var foundSellAmount uint64
+	var receive uint64
+
+	if sellAmount > 0 {
+		chosenPath, receive = pathfinder.FindGoodTradePath(
+			pdexv3Meta.MaxTradePathLength,
+			pools,
+			poolPairStates,
+			sellToken,
+			buyToken,
+			sellAmount)
+		result.SellAmount = sellAmount
+		result.MaxGet = uint64(float64(receive) * dcrate)
+
+	} else {
+		chosenPath, foundSellAmount = pathfinder.FindSellAmount(
+			pdexv3Meta.MaxTradePathLength,
+			pools,
+			poolPairStates,
+			sellToken,
+			buyToken,
+			sellAmount)
+		sellAmount = foundSellAmount
+		receive = buyAmount
+
+		result.SellAmount = uint64(float64(receive) / dcrate)
+		result.MaxGet = receive
+	}
+
+
 	result.Route = make([]string, 0)
 	if chosenPath != nil {
 		for _, v := range chosenPath {
 			result.Route = append(result.Route, v.PoolID)
 		}
 		//TODO: check pointer
-		tradingFee, err := feeestimator.EstimateTradingFee(uint64(amount), sellToken, result.Route, *pdexState, feeInPRV)
+		tradingFee, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, result.Route, *pdexState, feeInPRV)
 
 		if err != nil {
 			log.Print("can not estimate fee: ", err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
+			c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 			return
 		}
 		result.Fee = tradingFee
@@ -1254,7 +1281,7 @@ func (pdexv3) GetRate(c *gin.Context) {
 		a := uint64(10000)
 	retry:
 		_, receive := pathfinder.FindGoodTradePath(
-			5,
+			pdexv3Meta.MaxTradePathLength,
 			pools,
 			poolPairStates,
 			req.Against,
