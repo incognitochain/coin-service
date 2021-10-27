@@ -263,7 +263,8 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				version = 2
 
 			}
-			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, minaccept, amount, lockTime, tx.ShardID, tx.BlockHeight)
+
+			trade := shared.NewTradeOrderData(requestTx, sellToken, buyToken, poolID, pairID, nftID, 0, fmt.Sprintf("%v", minaccept), fmt.Sprintf("%v", amount), lockTime, tx.ShardID, tx.BlockHeight)
 			trade.Version = version
 			trade.IsSwap = isSwap
 			trade.TradingPath = tradingPath
@@ -289,7 +290,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				} else {
 					status = 2
 				}
-				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
+				requestTx = txDetail.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
 			case metadata.Pdexv3TradeResponseMeta:
 				md := txDetail.GetMetadata().(*metadataPdexv3.TradeResponse)
 				if md.Status == 0 {

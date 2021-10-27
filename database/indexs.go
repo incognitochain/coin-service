@@ -147,6 +147,9 @@ func DBCreateTxIndex() error {
 			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "pubkeyreceivers", Value: bsonx.Int32(1)}, {Key: "txversion", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
 		},
 		{
+			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "isnft", Value: bsonx.Int32(1)}},
+		},
+		{
 			Keys: bsonx.Doc{{Key: "realtokenid", Value: bsonx.Int32(1)}, {Key: "pubkeyreceivers", Value: bsonx.Int32(1)}, {Key: "txversion", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
 		},
 		{
@@ -388,6 +391,16 @@ func DBCreateTradeIndex() error {
 	orderStatusModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "requesttx", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "poolid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 5),
 		},
 	}
 	_, err = mgm.Coll(&shared.LimitOrderStatus{}).Indexes().CreateMany(context.Background(), orderStatusModel)

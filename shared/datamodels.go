@@ -392,7 +392,7 @@ type WithdrawContributionData struct {
 	RespondTxs            []string `json:"respondtxs" bson:"respondtxs"`
 	WithdrawTokens        []string `json:"withdrawtokens" bson:"withdrawtokens"`
 	WithdrawAmount        []uint64 `json:"withdrawamount" bson:"withdrawamount"`
-	ShareAmount           uint64   `json:"shareamount" bson:"shareamount"`
+	ShareAmount           string   `json:"shareamount" bson:"shareamount"`
 	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
 	RequestTime           int64    `json:"requesttime" bson:"requesttime"`
 	NFTID                 string   `json:"nftid" bson:"nftid"`
@@ -468,8 +468,8 @@ type TradeOrderData struct {
 	BuyTokenID       string                            `json:"buytokenid" bson:"buytokenid"`
 	PairID           string                            `json:"pairid" bson:"pairid"`
 	PoolID           string                            `json:"poolid" bson:"poolid"`
-	MinAccept        uint64                            `json:"minaccept" bson:"minaccept"`
-	Amount           uint64                            `json:"amount" bson:"amount"`
+	MinAccept        string                            `json:"minaccept" bson:"minaccept"`
+	Amount           string                            `json:"amount" bson:"amount"`
 	Requesttime      int64                             `json:"requesttime" bson:"requesttime"`
 	NFTID            string                            `json:"nftid" bson:"nftid"`
 	Receiver         string                            `json:"receiver" bson:"receiver"`
@@ -482,7 +482,7 @@ type TradeOrderData struct {
 	TradingPath      []string                          `json:"tradingpath" bson:"tradingpath"`
 }
 
-func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, minAccept, amount uint64, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
+func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, minAccept, amount string, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
 	return &TradeOrderData{
 		NFTID:         nftid,
 		RequestTx:     requestTx,
@@ -760,10 +760,29 @@ func (model *ProcessorState) Saving() error {
 
 type LimitOrderStatus struct {
 	mgm.DefaultModel `bson:",inline"`
+	PoolID           string `json:"poolid" bson:"poolid"`
+	PairID           string `json:"pairid" bson:"pairid"`
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
-	Token1Balance    uint64 `json:"token1balance" bson:"token1balance"`
-	Token2Balance    uint64 `json:"token2balance" bson:"token2balance"`
+	Token1Balance    string `json:"token1balance" bson:"token1balance"`
+	Token2Balance    string `json:"token2balance" bson:"token2balance"`
 	Direction        byte   `json:"direction" bson:"direction"`
+}
+
+func (model *LimitOrderStatus) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *LimitOrderStatus) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type InstructionBeaconData struct {

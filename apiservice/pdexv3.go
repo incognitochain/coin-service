@@ -149,6 +149,8 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
+	minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
 	result := TradeDataRespond{
 		RequestTx:           tradeInfo.RequestTx,
 		RespondTxs:          tradeInfo.RespondTxs,
@@ -159,8 +161,8 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 		PairID:              tradeInfo.PairID,
 		SellTokenID:         tradeInfo.SellTokenID,
 		BuyTokenID:          tradeInfo.BuyTokenID,
-		Amount:              tradeInfo.Amount,
-		MinAccept:           tradeInfo.MinAccept,
+		Amount:              amount,
+		MinAccept:           minAccept,
 		Matched:             matchedAmount,
 		Status:              status,
 		StatusCode:          statusCode,
@@ -275,12 +277,14 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				status = "pending"
 			case 1:
 				status = "accepted"
-				matchedAmount = tradeInfo.Amount
+				matchedAmount, _ = strconv.ParseUint(tradeInfo.Amount, 10, 64)
 				isCompleted = true
 			case 2:
 				status = "rejected"
 				isCompleted = true
 			}
+			amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
+			minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
 			trade := TradeDataRespond{
 				RequestTx:      tradeInfo.RequestTx,
 				RespondTxs:     tradeInfo.RespondTxs,
@@ -291,8 +295,8 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				PairID:         tradeInfo.PairID,
 				SellTokenID:    tradeInfo.SellTokenID,
 				BuyTokenID:     tradeInfo.BuyTokenID,
-				Amount:         tradeInfo.Amount,
-				MinAccept:      tradeInfo.MinAccept,
+				Amount:         amount,
+				MinAccept:      minAccept,
 				Matched:        matchedAmount,
 				Status:         status,
 				StatusCode:     tradeInfo.Status,
@@ -340,6 +344,8 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
+			amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
+			minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
 			trade := TradeDataRespond{
 				RequestTx:           tradeInfo.RequestTx,
 				RespondTxs:          tradeInfo.RespondTxs,
@@ -350,8 +356,8 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				PairID:              tradeInfo.PairID,
 				SellTokenID:         tradeInfo.SellTokenID,
 				BuyTokenID:          tradeInfo.BuyTokenID,
-				Amount:              tradeInfo.Amount,
-				MinAccept:           tradeInfo.MinAccept,
+				Amount:              amount,
+				MinAccept:           minAccept,
 				Matched:             matchedAmount,
 				Status:              status,
 				StatusCode:          statusCode,
@@ -497,6 +503,11 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 		tks := strings.Split(v.PoolID, "-")
 		token1 = tks[0]
 		token2 = tks[1]
+		shareAmount, err := strconv.ParseUint(v.ShareAmount, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 		result = append(result, PdexV3WithdrawRespond{
 			PoolID:      v.PoolID,
 			RequestTx:   v.RequestTx,
@@ -506,7 +517,7 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 			TokenID2:    token2,
 			Amount2:     amount2,
 			Status:      v.Status,
-			ShareAmount: v.ShareAmount,
+			ShareAmount: shareAmount,
 			Requestime:  v.RequestTime,
 		})
 	}
@@ -565,13 +576,19 @@ func (pdexv3) StakingPool(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	//TODO get APY
+
 	var result []PdexV3StakingPoolInfo
 	for _, v := range list {
+
+		apy, err := database.DBGetPDEPoolPairRewardAPY(v.TokenID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 		data := PdexV3StakingPoolInfo{
 			Amount:  v.Amount,
 			TokenID: v.TokenID,
-			APY:     0,
+			APY:     int(apy.APY),
 		}
 		result = append(result, data)
 	}
@@ -814,17 +831,19 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 	buyVolume := make(map[string]PdexV3OrderBookVolume)
 
 	for _, v := range sellSide {
-		price := float64(v.MinAccept) / float64(v.Amount)
+		amount, _ := strconv.ParseUint(v.Amount, 10, 64)
+		minAccept, _ := strconv.ParseUint(v.MinAccept, 10, 64)
+		price := float64(minAccept) / float64(amount)
 		group := math.Floor(float64(price)*(1/decimalFloat)) * decimalFloat
 		groupStr := fmt.Sprintf("%g", group)
 		if d, ok := sellVolume[groupStr]; !ok {
 			sellVolume[groupStr] = PdexV3OrderBookVolume{
 				Price:   group,
 				average: price,
-				Volume:  v.Amount,
+				Volume:  amount,
 			}
 		} else {
-			d.Volume += v.Amount
+			d.Volume += amount
 			a := (d.average + price) / 2
 			d.average = a
 			sellVolume[groupStr] = d
@@ -832,17 +851,19 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 	}
 
 	for _, v := range buySide {
-		price := float64(v.Amount) / float64(v.MinAccept)
+		amount, _ := strconv.ParseUint(v.Amount, 10, 64)
+		minAccept, _ := strconv.ParseUint(v.MinAccept, 10, 64)
+		price := float64(amount) / float64(minAccept)
 		group := math.Floor(float64(price)*(1/decimalFloat)) * decimalFloat
 		groupStr := fmt.Sprintf("%g", group)
 		if d, ok := buyVolume[groupStr]; !ok {
 			buyVolume[groupStr] = PdexV3OrderBookVolume{
 				Price:   group,
 				average: price,
-				Volume:  v.Amount,
+				Volume:  amount,
 			}
 		} else {
-			d.Volume += v.Amount
+			d.Volume += amount
 			a := (d.average + price) / 2
 			d.average = a
 			buyVolume[groupStr] = d
@@ -975,7 +996,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 	spew.Dump("chosenPath", chosenPath)
 	log.Printf("receive %d\n", receive)
-	dcrate, err := getPdecimalRate(sellToken, buyToken)
+	dcrate, err := getPdecimalRate(buyToken, sellToken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -1111,6 +1132,10 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 	}
 	var result []TradeDataRespond
 	for _, tradeInfo := range tradeList {
+
+		amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
+		minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
+
 		if tradeInfo.IsSwap {
 			matchedAmount := uint64(0)
 			status := ""
@@ -1120,7 +1145,7 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 				status = "pending"
 			case 1:
 				status = "accepted"
-				matchedAmount = tradeInfo.Amount
+				matchedAmount = amount
 				isCompleted = true
 			case 2:
 				status = "rejected"
@@ -1137,8 +1162,8 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 				PairID:         tradeInfo.PairID,
 				SellTokenID:    tradeInfo.SellTokenID,
 				BuyTokenID:     tradeInfo.BuyTokenID,
-				Amount:         tradeInfo.Amount,
-				MinAccept:      tradeInfo.MinAccept,
+				Amount:         amount,
+				MinAccept:      minAccept,
 				Matched:        matchedAmount,
 				Status:         status,
 				StatusCode:     tradeInfo.Status,
@@ -1172,8 +1197,8 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 				PairID:              tradeInfo.PairID,
 				SellTokenID:         tradeInfo.SellTokenID,
 				BuyTokenID:          tradeInfo.BuyTokenID,
-				Amount:              tradeInfo.Amount,
-				MinAccept:           tradeInfo.MinAccept,
+				Amount:              amount,
+				MinAccept:           minAccept,
 				Matched:             matchedAmount,
 				Status:              status,
 				StatusCode:          statusCode,
@@ -1264,34 +1289,64 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 	tks := strings.Split(poolID, "-")
 
 	pairID := tks[0] + "-" + tks[1]
-	list, err := database.DBGetPendingOrderByPairID(pairID)
+	list, err := database.DBGetLimitOrderStatusByPairID(pairID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
 
-	var sellSide []shared.TradeOrderData
-	var buySide []shared.TradeOrderData
+	var sellSide []shared.LimitOrderStatus
+	var buySide []shared.LimitOrderStatus
+	txRequestList := []string{}
+	orderList := make(map[string]shared.TradeOrderData)
 	for _, v := range list {
-		if v.SellTokenID == tks[0] {
+		if v.Direction == 0 {
 			sellSide = append(sellSide, v)
 		} else {
 			buySide = append(buySide, v)
 		}
+		txRequestList = append(txRequestList, v.RequestTx)
+	}
+
+	l, err := database.DBGetTxTradeFromTxRequest(txRequestList)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	for _, v := range l {
+		orderList[v.RequestTx] = v
 	}
 	for _, v := range sellSide {
+		tk1Balance, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
+		tk2Balance, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
+		if tk1Balance == 0 {
+			continue
+		}
+		tk1Amount, _ := strconv.ParseUint(orderList[v.RequestTx].Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(orderList[v.RequestTx].MinAccept, 10, 64)
 		data := PdexV3PendingOrderData{
-			TxRequest:    v.RequestTx,
-			Token1Amount: v.Amount,
-			Token2Amount: v.MinAccept,
+			TxRequest:     v.RequestTx,
+			Token1Balance: tk1Balance,
+			Token2Balance: tk2Balance,
+			Token1Amount:  tk1Amount,
+			Token2Amount:  tk2Amount,
 		}
 		sellOrders = append(sellOrders, data)
 	}
 	for _, v := range buySide {
+		tk1Balance, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
+		tk2Balance, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
+		if tk2Balance == 0 {
+			continue
+		}
+		tk1Amount, _ := strconv.ParseUint(orderList[v.RequestTx].Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(orderList[v.RequestTx].MinAccept, 10, 64)
 		data := PdexV3PendingOrderData{
-			TxRequest:    v.RequestTx,
-			Token2Amount: v.Amount,
-			Token1Amount: v.MinAccept,
+			TxRequest:     v.RequestTx,
+			Token1Balance: tk1Balance,
+			Token2Balance: tk2Balance,
+			Token1Amount:  tk2Amount,
+			Token2Amount:  tk1Amount,
 		}
 		buyOrders = append(buyOrders, data)
 	}

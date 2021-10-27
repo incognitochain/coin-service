@@ -2,6 +2,7 @@ package liquidity
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -259,7 +260,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTx:      tx.TxHash,
 				NFTID:          md.NftID(),
 				PoolID:         md.PoolPairID(),
-				ShareAmount:    md.ShareAmount(),
+				ShareAmount:    fmt.Sprintf("%v", md.ShareAmount()),
 				Status:         0,
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
@@ -480,7 +481,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			md := txDetail.GetMetadata().(*metadata.PDEWithdrawalRequest)
 			data := shared.WithdrawContributionData{
 				RequestTx:      tx.TxHash,
-				ShareAmount:    md.WithdrawalShareAmt,
+				ShareAmount:    fmt.Sprintf("%v", md.WithdrawalShareAmt),
 				RequestTime:    tx.Locktime,
 				Status:         0,
 				RespondTxs:     []string{},
@@ -531,9 +532,11 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			md := txDetail.GetMetadata().(*metadata.PDEFeeWithdrawalResponse)
 			requestTx := md.RequestedTxID.String()
 			data := shared.WithdrawContributionFeeData{
-				RequestTx:  requestTx,
-				RespondTxs: []string{tx.TxHash},
-				Status:     1,
+				RequestTx:      requestTx,
+				RespondTxs:     []string{tx.TxHash},
+				Status:         1,
+				WithdrawTokens: []string{},
+				WithdrawAmount: []uint64{},
 			}
 			withdrawFeeRespondDatas = append(withdrawFeeRespondDatas, data)
 		}
@@ -731,6 +734,38 @@ func getPdexToProcess(height uint64) (*jsonresult.Pdexv3State, uint64, error) {
 func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared.RewardAPYTracking, error) {
 	var result []shared.RewardAPYTracking
 	for poolid, _ := range *pdex.PoolPairs {
+		data := shared.RewardAPYTracking{
+			DataID:       poolid,
+			BeaconHeight: height,
+		}
+		list, err := database.DBGetRewardRecordByPoolID(poolid)
+		if err != nil {
+			return nil, err
+		}
+		var flist []shared.RewardRecord
+		for _, v := range list {
+			if v.BeaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
+				flist = append(flist, v)
+			}
+		}
+		totalPercent := float64(0)
+		for _, v := range flist {
+			d := RewardInfo{}
+			err := json.Unmarshal([]byte(v.Data), &d)
+			if err != nil {
+				return nil, err
+			}
+			if d.RewardReceiveInPRV > 0 && d.TotalAmountInPRV > 0 {
+				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100 / float64(config.Param().EpochParam.NumberOfBlockInEpoch))
+			}
+		}
+		percent := totalPercent / float64(len(flist))
+		if totalPercent != float64(0) {
+			data.APY = uint64(percent * (365 * 86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds() / float64(config.Param().EpochParam.NumberOfBlockInEpoch)))
+		}
+		result = append(result, data)
+	}
+	for poolid, _ := range *pdex.StakingPools {
 		data := shared.RewardAPYTracking{
 			DataID:       poolid,
 			BeaconHeight: height,
