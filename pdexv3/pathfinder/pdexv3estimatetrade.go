@@ -142,7 +142,7 @@ func (pc *PriceCalculator) findPath(
 		newPath := make([]string, len(path))
 		copy(newPath, path)
 		*allPaths = append(*allPaths, newPath)
-	} else if len(path) < int(maxPathLen) {
+	} else if len(path) <= int(maxPathLen) {
 		nodes, found := pc.Graph[tokenIDStrSource]
 		if found {
 			for _, node := range nodes {
