@@ -1007,7 +1007,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			poolPairStates,
 			sellToken,
 			buyToken,
-			sellAmount)
+			buyAmount)
 		sellAmount = foundSellAmount
 		receive = buyAmount
 
