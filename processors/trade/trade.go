@@ -351,18 +351,20 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			}
 			wdData.Amount = meta.Amount
 			order := shared.TradeOrderData{
-				RequestTx:     meta.OrderID,
-				WithdrawTxs:   []string{tx.TxHash},
-				WithdrawInfos: make(map[string]shared.TradeOrderWithdrawInfo),
-				NFTID:         meta.NftID.String(),
+				RequestTx:        meta.OrderID,
+				WithdrawTxs:      []string{tx.TxHash},
+				WithdrawPendings: []string{tx.TxHash},
+				WithdrawInfos:    make(map[string]shared.TradeOrderWithdrawInfo),
+				NFTID:            meta.NftID.String(),
 			}
 			order.WithdrawInfos[tx.TxHash] = wdData
 			cancelTrades = append(cancelTrades, order)
 		case metadata.Pdexv3WithdrawOrderResponseMeta:
 			meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderResponse)
 			order := shared.TradeOrderData{
-				WithdrawTxs:   []string{meta.RequestTxID.String()},
-				WithdrawInfos: make(map[string]shared.TradeOrderWithdrawInfo),
+				WithdrawTxs:      []string{meta.RequestTxID.String()},
+				WithdrawPendings: []string{meta.RequestTxID.String()},
+				WithdrawInfos:    make(map[string]shared.TradeOrderWithdrawInfo),
 			}
 			tokenIDStr := txDetail.GetTokenID().String()
 			amount := uint64(0)
@@ -405,7 +407,6 @@ func updateTradeStatus() error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("DBGetPendingWithdrawOrder", len(list))
 		if len(list) == 0 {
 			break
 		}
@@ -413,12 +414,16 @@ func updateTradeStatus() error {
 		listToUpdate := []shared.TradeOrderData{}
 		for _, v := range list {
 			data := shared.TradeOrderData{
-				RequestTx:     v.RequestTx,
-				WithdrawInfos: make(map[string]shared.TradeOrderWithdrawInfo)}
+				RequestTx:        v.RequestTx,
+				WithdrawInfos:    v.WithdrawInfos,
+				WithdrawPendings: []string{},
+			}
+
 			for _, wdtx := range v.WithdrawTxs {
 				a := v.WithdrawInfos[wdtx]
 				i, err := database.DBGetBeaconInstructionByTx(wdtx)
 				if i == nil && err == nil {
+					fmt.Println("wdtx", wdtx)
 					continue
 				}
 				if err != nil {
@@ -427,10 +432,10 @@ func updateTradeStatus() error {
 				if i.Status == "0" {
 					a.IsRejected = true
 					data.WithdrawInfos[wdtx] = a
+					data.WithdrawPendings = append(data.WithdrawPendings, wdtx)
 					listToUpdate = append(listToUpdate, data)
 				}
 			}
-
 		}
 		err = database.DBUpdatePDETradeWithdrawStatus(listToUpdate)
 		if err != nil {

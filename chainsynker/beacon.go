@@ -78,7 +78,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		log.Println(err)
 	}
-
 	// var stateV1 *shared.PDEStateV1
 	var stateV2 *shared.PDEStateV2
 
@@ -108,7 +107,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	if err != nil {
 		log.Println(err)
 	}
-
 	//process stateV2
 	if beaconBestState.BeaconHeight >= config.Param().PDexParams.Pdexv3BreakPointHeight {
 		pdeStateV2, err := pdex.InitStateFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight, 2)

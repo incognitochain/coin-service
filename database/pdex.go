@@ -465,8 +465,9 @@ func DBUpdateWithdrawTradeOrderReq(orders []shared.TradeOrderData) error {
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$push": bson.M{"withdrawtxs": bson.M{operator.Each: order.WithdrawTxs}},
-			"$set":  bson.M{"withdrawinfos." + order.WithdrawTxs[0]: order.WithdrawInfos[order.WithdrawTxs[0]]},
+			"$push":     bson.M{"withdrawtxs": bson.M{operator.Each: order.WithdrawTxs}},
+			"$addToSet": bson.M{"withdrawpendings": bson.M{operator.Each: order.WithdrawPendings}},
+			"$set":      bson.M{"withdrawinfos." + order.WithdrawTxs[0]: order.WithdrawInfos[order.WithdrawTxs[0]]},
 		}
 		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
@@ -486,6 +487,7 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 		prefix := "withdrawinfos." + order.WithdrawTxs[0]
 		update := bson.M{
 			"$push": bson.M{prefix + ".responds": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Responds}, prefix + ".status": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Status}, prefix + ".respondtokens": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondTokens}, prefix + ".respondamount": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondAmount}},
+			"$pull": bson.M{"withdrawpendings": bson.M{operator.In: order.WithdrawPendings}},
 		}
 		result, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
@@ -495,10 +497,6 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 		if result.MatchedCount == 0 {
 			ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 			fitler := bson.M{"requesttx": bson.M{operator.Eq: order.WithdrawTxs[0]}}
-			// prefix := "withdrawinfos." + order.WithdrawTxs[0]
-			// update := bson.M{
-			// 	"$push": bson.M{prefix + ".responds": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Responds}, prefix + ".status": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Status}, prefix + ".respondtokens": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondTokens}, prefix + ".respondamount": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondAmount}},
-			// }
 			update := bson.M{
 				"$set": bson.M{
 					"withdrawinfos": order.WithdrawInfos,
@@ -1336,18 +1334,17 @@ func DBUpdatePDEWithdrawRewardStakingStatus(list []shared.PoolStakeRewardHistory
 }
 
 func DBGetBeaconInstructionByTx(txhash string) (*shared.InstructionBeaconData, error) {
-	var result shared.InstructionBeaconData
+	var results []shared.InstructionBeaconData
 	filter := bson.M{"txrequest": bson.M{operator.Eq: txhash}}
-	ctx, _ := context.WithTimeout(context.Background(), 2*shared.DB_OPERATION_TIMEOUT)
-	data := mgm.Coll(&shared.InstructionBeaconData{}).FindOne(ctx, filter)
-	if data.Err() != nil {
-		if data.Err() == mongo.ErrNoDocuments {
-			return nil, nil
-		}
-		return nil, data.Err()
+	// ctx, _ := context.WithTimeout(context.Background(), 2*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.InstructionBeaconData{}).SimpleFind(&results, filter)
+	if err != nil {
+		return nil, err
 	}
-	data.Decode(&result)
-	return &result, nil
+	if len(results) == 0 {
+		return nil, nil
+	}
+	return &results[0], nil
 }
 
 func DBGetPendingWithdrawOrder(limit int64, offset int64) ([]shared.TradeOrderData, error) {
@@ -1355,7 +1352,7 @@ func DBGetPendingWithdrawOrder(limit int64, offset int64) ([]shared.TradeOrderDa
 		limit = int64(10000)
 	}
 	var result []shared.TradeOrderData
-	filter := bson.M{"withdrawinfos.$.responds": bson.M{operator.Eq: nil}, "withdrawtxs": bson.M{operator.Not: bson.M{operator.Size: 0}}, "withdrawinfos.$.isrejected": bson.M{operator.Eq: false}}
+	filter := bson.M{"withdrawpendings": bson.M{operator.Not: bson.M{operator.Size: 0}}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"_id", 1}},
@@ -1376,11 +1373,12 @@ func DBUpdatePDETradeWithdrawStatus(list []shared.TradeOrderData) error {
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set": bson.M{"withdrawinfos": order.WithdrawInfos},
+			"$set":  bson.M{"withdrawinfos": order.WithdrawInfos},
+			"$pull": bson.M{"withdrawpendings": bson.M{operator.In: order.WithdrawPendings}},
 		}
-		err := mgm.Coll(&shared.TradeOrderData{}).FindOneAndUpdate(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
-			return err.Err()
+			return err
 		}
 	}
 	return nil

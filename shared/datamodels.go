@@ -459,6 +459,7 @@ type TradeOrderData struct {
 	mgm.DefaultModel `bson:",inline"`
 	RequestTx        string                            `json:"requesttx" bson:"requesttx"`
 	WithdrawTxs      []string                          `json:"withdrawtxs" bson:"withdrawtxs"`
+	WithdrawPendings []string                          `json:"withdrawpendings" bson:"withdrawpendings"`
 	WithdrawInfos    map[string]TradeOrderWithdrawInfo `json:"withdrawinfos" bson:"withdrawinfos"`
 	RespondTxs       []string                          `json:"respondtxs" bson:"respondtxs"`
 	RespondTokens    []string                          `json:"respondtokens" bson:"respondtokens"`
@@ -484,23 +485,24 @@ type TradeOrderData struct {
 
 func NewTradeOrderData(requestTx, selltoken, buytoken, poolid, pairid, nftid string, status int, minAccept, amount string, requestTime int64, shardID int, blockHeight uint64) *TradeOrderData {
 	return &TradeOrderData{
-		NFTID:         nftid,
-		RequestTx:     requestTx,
-		SellTokenID:   selltoken,
-		BuyTokenID:    buytoken,
-		Status:        status,
-		PoolID:        poolid,
-		PairID:        pairid,
-		MinAccept:     minAccept,
-		Amount:        amount,
-		Requesttime:   requestTime,
-		ShardID:       shardID,
-		BlockHeight:   blockHeight,
-		WithdrawInfos: map[string]TradeOrderWithdrawInfo{},
-		WithdrawTxs:   []string{},
-		RespondTxs:    []string{},
-		RespondTokens: []string{},
-		RespondAmount: []uint64{},
+		NFTID:            nftid,
+		RequestTx:        requestTx,
+		SellTokenID:      selltoken,
+		BuyTokenID:       buytoken,
+		Status:           status,
+		PoolID:           poolid,
+		PairID:           pairid,
+		MinAccept:        minAccept,
+		Amount:           amount,
+		Requesttime:      requestTime,
+		ShardID:          shardID,
+		BlockHeight:      blockHeight,
+		WithdrawInfos:    map[string]TradeOrderWithdrawInfo{},
+		WithdrawTxs:      []string{},
+		WithdrawPendings: []string{},
+		RespondTxs:       []string{},
+		RespondTokens:    []string{},
+		RespondAmount:    []uint64{},
 	}
 }
 
