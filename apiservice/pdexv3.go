@@ -211,7 +211,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		if len(l) == 0 {
 			continue
 		}
-		if (l[0].Token1Amount == 0 || l[0].Token2Amount == 0) && len(v.TradingFee) == 0 {
+		if (v.Amount == 0) && len(v.TradingFee) == 0 {
 			continue
 		}
 

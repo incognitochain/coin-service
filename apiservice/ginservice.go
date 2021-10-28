@@ -153,7 +153,16 @@ func APIHealthCheck(c *gin.Context) {
 		if (now - blockTime) >= (5 * time.Minute).Nanoseconds() {
 			status = shared.HEALTH_STATUS_NOK
 		}
-		shardsHeight[-1] = fmt.Sprintf("%v", chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
+		statePrefix := chainsynker.BeaconData
+		v, err := chainsynker.Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
+		if err != nil {
+			log.Println(err)
+		}
+		beaconHeight, err := strconv.Atoi(string(v))
+		if err != nil {
+			beaconHeight = 0
+		}
+		shardsHeight[-1] = fmt.Sprintf("%v|%v", beaconHeight, chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
 		for i := 0; i < chainsynker.Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 			chainheight := chainsynker.Localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
 			height, _ := chainsynker.Localnode.GetShardState(i)

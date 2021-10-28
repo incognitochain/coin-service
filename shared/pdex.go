@@ -2,9 +2,12 @@ package shared
 
 import (
 	jsond "encoding/json"
+	"math/big"
 
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
+	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 )
 
 type CurrentPDEState struct {
@@ -22,15 +25,18 @@ type PDEStateV1 struct {
 }
 
 type PDEStateV2 struct {
-	WaitingContributions map[string]*rawdbv2.Pdexv3Contribution
-	PoolPairs            map[string]*PoolPairState         //
-	StakingPoolsState    map[string]*pdex.StakingPoolState // tokenID -> StakingPoolState
-	Params               pdex.Params
+	// WaitingContributions map[string]*rawdbv2.Pdexv3Contribution
+	PoolPairs         map[string]*PoolPairState         //
+	StakingPoolsState map[string]*pdex.StakingPoolState // tokenID -> StakingPoolState
+	Params            *statedb.Pdexv3Params
 }
 type PoolPairState struct {
-	State     rawdbv2.Pdexv3PoolPair
-	Shares    map[string]*pdex.Share
-	Orderbook struct {
+	// ProtocolFees    map[common.Hash]uint64
+	// StakingPoolFees map[common.Hash]uint64
+	LpFeesPerShare map[common.Hash]*big.Int
+	State          rawdbv2.Pdexv3PoolPair
+	Shares         map[string]*pdex.Share
+	Orderbook      struct {
 		Orders []*pdex.Order
 	}
 }

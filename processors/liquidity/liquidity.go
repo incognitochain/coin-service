@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
@@ -738,16 +739,21 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 			DataID:       poolid,
 			BeaconHeight: height,
 		}
-		list, err := database.DBGetRewardRecordByPoolID(poolid)
+		blocks := int64(7 * 86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+		if blocks > 50000 {
+			blocks = 50000
+		}
+		list, err := database.DBGetRewardRecordByPoolID(poolid, blocks)
 		if err != nil {
 			return nil, err
 		}
 		var flist []shared.RewardRecord
-		for _, v := range list {
-			if v.BeaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
-				flist = append(flist, v)
-			}
-		}
+		flist = list
+		// for _, v := range list {
+		// 	if v.BeaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
+		// 		flist = append(flist, v)
+		// 	}
+		// }
 		totalPercent := float64(0)
 		for _, v := range flist {
 			d := RewardInfo{}
@@ -756,7 +762,12 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 				return nil, err
 			}
 			if d.RewardReceiveInPRV > 0 && d.TotalAmountInPRV > 0 {
-				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100 / float64(config.Param().EpochParam.NumberOfBlockInEpoch))
+				s := strings.Split(v.DataID, "-")
+				if len(s) == 1 {
+					totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
+				} else {
+					totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100 / float64(config.Param().EpochParam.NumberOfBlockInEpoch))
+				}
 			}
 		}
 		percent := totalPercent / float64(len(flist))
@@ -770,30 +781,31 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 			DataID:       poolid,
 			BeaconHeight: height,
 		}
-		list, err := database.DBGetRewardRecordByPoolID(poolid)
+		blocks := int64(7 * 86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+		if blocks > 50000 {
+			blocks = 50000
+		}
+		list, err := database.DBGetRewardRecordByPoolID(poolid, blocks)
 		if err != nil {
 			return nil, err
 		}
-		var flist []shared.RewardRecord
-		for _, v := range list {
-			if v.BeaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
-				flist = append(flist, v)
-			}
-		}
 		totalPercent := float64(0)
-		for _, v := range flist {
+		// totalLen := 0
+		for _, v := range list {
 			d := RewardInfo{}
 			err := json.Unmarshal([]byte(v.Data), &d)
 			if err != nil {
 				return nil, err
 			}
 			if d.RewardReceiveInPRV > 0 && d.TotalAmountInPRV > 0 {
-				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100 / float64(config.Param().EpochParam.NumberOfBlockInEpoch))
+				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
 			}
 		}
-		percent := totalPercent / float64(len(flist))
+		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
-			data.APY = uint64(percent * (365 * 86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds() / float64(config.Param().EpochParam.NumberOfBlockInEpoch)))
+			p := uint64(percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
+			// data.APY = uint64(math.Pow(float64(1+p/12), 12) - 1)
+			data.APY = uint64(p)
 		}
 		result = append(result, data)
 	}
@@ -807,3 +819,9 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 
 	return result, nil
 }
+
+// {
+//     _id: ObjectId('61738d224113530007d94594'),
+//     dataname: 'defaultpools',
+//     data: '["0000000000000000000000000000000000000000000000000000000000000004-00000000000000000000000000000000000000000000000000000000000115dc-b0c7e3d446f1596809537e7cfaa54ff17113fcca70a6c077d956bfa9b24053e1","0000000000000000000000000000000000000000000000000000000000000004-0000000000000000000000000000000000000000000000000000000000000da1-c50e58985fbbef030e48aaa4b77c67467f40163f2a85ccdcba5022c09a35dbea","0000000000000000000000000000000000000000000000000000000000000004-00000000000000000000000000000000000000000000000000000000000b115d-564f13e6d322ca9cbbcf1bac8114fe5ccca320311d4cccd5deafea7fa2f3143b","0000000000000000000000000000000000000000000000000000000000000b7c-00000000000000000000000000000000000000000000000000000000000115d7-ec4445da6fc74897b218380df6288de207a3fc35e6024e8768f9db149aa83996","000000000000000000000000000000000000000000000000000000000000e776-00000000000000000000000000000000000000000000000000000000000115d7-fcc1f3f237714f0e70305b889a89ef2ea0416bf2da8b22cf32a42cc19c1f993b","0000000000000000000000000000000000000000000000000000000000011112-00000000000000000000000000000000000000000000000000000000000115d7-e6e15edbf106cae57240f47f3d1e43f46b7fb1a4cbf797d435a555c4abe371a1","00000000000000000000000000000000000000000000000000000000000115d7-00000000000000000000000000000000000000000000000000000000000b115d-e84f1b5c68589f080be4bbf7ec5d7d2961f3e8d2c983d180948bdd7e003322e8","00000000000000000000000000000000000000000000000000000000000115d7-00000000000000000000000000000000000000000000000000000000000115dc-b60d0efa2833a13bdf1ec626c84d1aabe167f06a45d02e5086f169a0bc447704","0000000000000000000000000000000000000000000000000000000000000da1-00000000000000000000000000000000000000000000000000000000000115d7-3bb65c31d4b6bdaf8725daed128c10cd641b2ab59479274529f5818bd9e2cefa","00000000000000000000000000000000000000000000000000000000000115d7-00000000000000000000000000000000000000000000000000000000000b115d-e84f1b5c68589f080be4bbf7ec5d7d2961f3e8d2c983d180948bdd7e003322e8","000000000000000000000000000000000000000000000000000000000000e776-000000000000000000000000000000000000000000000000000000000111e776-34093916821e51f2314eb653bf5af793c7e10bff3cd2c7bf2651e964a55b50e5"]'
+// }

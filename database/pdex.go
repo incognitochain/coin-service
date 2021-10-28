@@ -991,13 +991,15 @@ func DBDeletePDEPoolData(list []shared.PoolPairData) error {
 		return nil
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	poolIDs := []string{}
 	for _, pool := range list {
-		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
-		err := mgm.Coll(&shared.PoolPairData{}).FindOneAndDelete(ctx, fitler)
-		if err != nil {
-			if err.Err() != mongo.ErrNoDocuments {
-				return err.Err()
-			}
+		poolIDs = append(poolIDs, pool.PoolID)
+	}
+	fitler := bson.M{"poolid": bson.M{operator.In: poolIDs}}
+	_, err := mgm.Coll(&shared.PoolPairData{}).DeleteMany(ctx, fitler)
+	if err != nil {
+		if err != mongo.ErrNoDocuments {
+			return err
 		}
 	}
 	return nil
@@ -1010,10 +1012,10 @@ func DBDeletePDEPoolShareData(list []shared.PoolShareData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, share := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
-		err := mgm.Coll(&shared.PoolShareData{}).FindOneAndDelete(ctx, fitler)
+		_, err := mgm.Coll(&shared.PoolShareData{}).DeleteOne(ctx, fitler)
 		if err != nil {
-			if err.Err() != mongo.ErrNoDocuments {
-				return err.Err()
+			if err != mongo.ErrNoDocuments {
+				return err
 			}
 		}
 	}
@@ -1027,10 +1029,10 @@ func DBDeletePDEPoolStakeData(list []shared.PoolStakeData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, stake := range list {
 		fitler := bson.M{"tokenid": bson.M{operator.Eq: stake.TokenID}}
-		err := mgm.Coll(&shared.PoolStakeData{}).FindOneAndDelete(ctx, fitler)
+		_, err := mgm.Coll(&shared.PoolStakeData{}).DeleteOne(ctx, fitler)
 		if err != nil {
-			if err.Err() != mongo.ErrNoDocuments {
-				return err.Err()
+			if err != mongo.ErrNoDocuments {
+				return err
 			}
 		}
 	}
@@ -1044,10 +1046,10 @@ func DBDeletePDEPoolStakerData(list []shared.PoolStakerData) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, stake := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
-		err := mgm.Coll(&shared.PoolStakerData{}).FindOneAndDelete(ctx, fitler)
+		_, err := mgm.Coll(&shared.PoolStakerData{}).DeleteOne(ctx, fitler)
 		if err != nil {
-			if err.Err() != mongo.ErrNoDocuments {
-				return err.Err()
+			if err != mongo.ErrNoDocuments {
+				return err
 			}
 		}
 	}
@@ -1061,10 +1063,10 @@ func DBDeleteOrderProgress(list []shared.LimitOrderStatus) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, v := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: v.RequestTx}}
-		err := mgm.Coll(&shared.LimitOrderStatus{}).FindOneAndDelete(ctx, fitler)
+		_, err := mgm.Coll(&shared.LimitOrderStatus{}).DeleteOne(ctx, fitler)
 		if err != nil {
-			if err.Err() != mongo.ErrNoDocuments {
-				return err.Err()
+			if err != mongo.ErrNoDocuments {
+				return err
 			}
 		}
 	}
@@ -1449,8 +1451,7 @@ func DBUpdatePDEPoolPairRewardAPY(list []shared.RewardAPYTracking) error {
 	return nil
 }
 
-func DBGetRewardRecordByPoolID(poolid string) ([]shared.RewardRecord, error) {
-	limit := int64(1000)
+func DBGetRewardRecordByPoolID(poolid string, limit int64) ([]shared.RewardRecord, error) {
 	var result []shared.RewardRecord
 	filter := bson.M{"dataid": bson.M{operator.Eq: poolid}}
 	err := mgm.Coll(&shared.RewardRecord{}).SimpleFind(&result, filter, &options.FindOptions{

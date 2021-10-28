@@ -28,7 +28,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var json = jsoniter.ConfigFastest
 var Localnode interface {
 	OnReceive(msgType int, f func(msg interface{}))
 	GetUserDatabase() *leveldb.DB

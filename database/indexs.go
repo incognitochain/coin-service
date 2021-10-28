@@ -157,6 +157,9 @@ func DBCreateTxIndex() error {
 		},
 
 		{
+			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}},
+		},
+		{
 			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
 		},
 	}
@@ -359,6 +362,16 @@ func DBCreateLiquidityIndex() error {
 		},
 	}
 	_, err = mgm.Coll(&shared.TokenPdecimal{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)
+	if err != nil {
+		return err
+	}
+
+	pdexStateModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "version", Value: bsonx.Int32(1)}, {Key: "height", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.PDEStateData{}).Indexes().CreateMany(context.Background(), pdexStateModel)
 	if err != nil {
 		return err
 	}
