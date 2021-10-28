@@ -93,7 +93,7 @@ func EstimatedFeeInPRV(
 func EstimateTradingFee(
 	sellAmount uint64, sellToken string, tradePath []string, pdexState jsonresult.PdexState, useFeeInPRV bool,
 ) (uint64, error) {
-	if useFeeInPRV {
+	if useFeeInPRV || sellToken == common.PRVIDStr{
 		return EstimatedFeeInPRV(sellAmount, sellToken, tradePath, pdexState)
 	} else {
 		return EstimateFeeInSellToken(sellAmount, sellToken, tradePath, pdexState)
