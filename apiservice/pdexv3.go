@@ -1025,7 +1025,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 		if err != nil {
 			log.Print("can not estimate fee: ", err)
-			c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
+			c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 			return
 		}
 		result.Fee = tradingFee
