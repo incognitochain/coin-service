@@ -791,6 +791,8 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		}
 		totalPercent := float64(0)
 		// totalLen := 0
+		totalAmount := uint64(0)
+		totalReceive := uint64(0)
 		for _, v := range list {
 			d := RewardInfo{}
 			err := json.Unmarshal([]byte(v.Data), &d)
@@ -800,7 +802,13 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 			if d.RewardReceiveInPRV > 0 && d.TotalAmountInPRV > 0 {
 				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
 			}
+			totalReceive += d.RewardReceiveInPRV
+			totalAmount += d.TotalAmountInPRV
 		}
+		data.TotalAmount = totalAmount
+		data.TotalReceive = totalReceive
+		apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+		data.APY2 = uint64(apy2)
 		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
 			p := uint64(percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))

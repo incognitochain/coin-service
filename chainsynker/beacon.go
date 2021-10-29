@@ -63,10 +63,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	// Process PDEstatev1
 	if beaconBestState.BeaconHeight < config.Param().PDexParams.Pdexv3BreakPointHeight {
 		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
-		// state, err := pdex.InitStateFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight, 1)
-		// if err != nil {
-		// 	log.Println(err)
-		// }
 		tradingFees := state.Reader().TradingFees()
 		shares := state.Reader().Shares()
 
@@ -239,70 +235,86 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		if err != nil {
 			panic(err)
 		}
-		wg.Add(2)
+		wg.Add(11)
 		go func() {
 			err = database.DBUpdatePDEPairListData(pairDatas)
 			if err != nil {
 				panic(err)
 			}
-
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBUpdatePDEPoolPairData(poolDatas)
 			if err != nil {
 				panic(err)
 			}
-
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBUpdatePDEPoolShareData(sharesDatas)
 			if err != nil {
 				panic(err)
 			}
-
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBUpdatePDEPoolStakeData(poolStakeDatas)
 			if err != nil {
 				panic(err)
 			}
-
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBUpdatePDEPoolStakerData(poolStakersDatas)
 			if err != nil {
 				panic(err)
 			}
-
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBUpdateOrderProgress(orderBook)
 			if err != nil {
 				panic(err)
 			}
-			log.Printf("save pdex state 11 %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 			wg.Done()
 		}()
 		go func() {
-
 			err = database.DBDeletePDEPoolData(poolDatasToBeDel)
 			if err != nil {
 				panic(err)
 			}
-
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBDeletePDEPoolShareData(sharesDatasToBeDel)
 			if err != nil {
 				panic(err)
 			}
-
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBDeletePDEPoolStakeData(poolStakeDatasToBeDel)
 			if err != nil {
 				panic(err)
 			}
-
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBDeletePDEPoolStakerData(poolStakersDatasToBeDel)
 			if err != nil {
 				panic(err)
 			}
+			wg.Done()
+		}()
+		go func() {
 			err = database.DBDeleteOrderProgress(orderBookToBeDel)
 			if err != nil {
 				panic(err)
 			}
-
-			log.Printf("save pdex state 22 %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 			wg.Done()
 		}()
 		wg.Wait()
+		log.Printf("save pdex state 11 %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 
 	}
 

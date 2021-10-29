@@ -269,7 +269,7 @@ retry:
 		}
 		return 0, nil
 	} else {
-		if a < token1Amount && receive > a1 {
+		if a < token1Amount && receive > a1*10 {
 			a1 = receive
 			goto retry
 		} else {
@@ -297,7 +297,7 @@ retry2:
 		}
 		return 0, nil
 	} else {
-		if b < token2Amount && receive2 > b1 {
+		if b < token2Amount && receive2 > b1*10 {
 			b1 = receive2
 			goto retry2
 		} else {
