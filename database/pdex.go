@@ -49,7 +49,7 @@ func DBGetPDEState(version int) (string, error) {
 func DBGetPDEStateWithHeight(version int, height uint64) (*shared.PDEStateData, error) {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
 	var result shared.PDEStateData
-	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{"version": bson.M{operator.Eq: version}, "height": bson.M{operator.Gte: height}}, &result)
+	err := mgm.Coll(&shared.PDEStateData{}).FirstWithCtx(ctx, bson.M{"version": bson.M{operator.Eq: version}, "height": bson.M{operator.Gt: height}}, &result)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -390,8 +390,8 @@ func DBGetPDEV3WithdrawFeeRespond(nftID, poolID string, limit int64, offset int6
 	return result, nil
 }
 
-func DBFindPair(prefix string) ([]shared.PoolPairData, error) {
-	var result []shared.PoolPairData
+func DBFindPair(prefix string) ([]shared.PoolInfoData, error) {
+	var result []shared.PoolInfoData
 	//TODO
 	return result, nil
 }
@@ -511,7 +511,7 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 	return nil
 }
 
-func DBSavePoolPairs(pools []shared.PoolPairData) error {
+func DBSavePoolPairs(pools []shared.PoolInfoData) error {
 	if len(pools) == 0 {
 		return nil
 	}
@@ -521,7 +521,7 @@ func DBSavePoolPairs(pools []shared.PoolPairData) error {
 		tx.Creating()
 		docs = append(docs, tx)
 	}
-	_, err := mgm.Coll(&shared.PoolPairData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
+	_, err := mgm.Coll(&shared.PoolInfoData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 	if err != nil {
 		writeErr, ok := err.(mongo.BulkWriteException)
 		if !ok {
@@ -538,7 +538,7 @@ func DBSavePoolPairs(pools []shared.PoolPairData) error {
 			for idx, v := range docs {
 				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
 				filter := bson.M{"txhash": bson.M{operator.Eq: pools[idx].PoolID}}
-				_, err = mgm.Coll(&shared.PoolPairData{}).UpdateOne(ctx, filter, v, mgm.UpsertTrueOption())
+				_, err = mgm.Coll(&shared.PoolInfoData{}).UpdateOne(ctx, filter, v, mgm.UpsertTrueOption())
 				if err != nil {
 					writeErr, ok := err.(mongo.WriteException)
 					if !ok {
@@ -554,32 +554,32 @@ func DBSavePoolPairs(pools []shared.PoolPairData) error {
 	return nil
 }
 
-func DBGetPoolPairsByPairID(pairID string) ([]shared.PoolPairData, error) {
-	var result []shared.PoolPairData
+func DBGetPoolPairsByPairID(pairID string) ([]shared.PoolInfoData, error) {
+	var result []shared.PoolInfoData
 	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}, "version": bson.M{operator.Eq: 2}}
 	if pairID == "all" {
 		filter = bson.M{}
 	}
-	err := mgm.Coll(&shared.PoolPairData{}).SimpleFind(&result, filter)
+	err := mgm.Coll(&shared.PoolInfoData{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func DBGetPoolPairsByPoolID(poolID []string) ([]shared.PoolPairData, error) {
-	var result []shared.PoolPairData
+func DBGetPoolPairsByPoolID(poolID []string) ([]shared.PoolInfoData, error) {
+	var result []shared.PoolInfoData
 	filter := bson.M{"poolid": bson.M{operator.In: poolID}}
-	err := mgm.Coll(&shared.PoolPairData{}).SimpleFind(&result, filter)
+	err := mgm.Coll(&shared.PoolInfoData{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func DBGetPdexPairs() ([]shared.PairData, error) {
-	var result []shared.PairData
-	err := mgm.Coll(&shared.PairData{}).SimpleFind(&result, bson.M{})
+func DBGetPdexPairs() ([]shared.PairInfoData, error) {
+	var result []shared.PairInfoData
+	err := mgm.Coll(&shared.PairInfoData{}).SimpleFind(&result, bson.M{})
 	if err != nil {
 		return nil, err
 	}
@@ -642,17 +642,17 @@ func DBUpdatePDEWithdrawFee(list []shared.WithdrawContributionFeeData) error {
 	return nil
 }
 
-func DBUpdatePDEPairListData(list []shared.PairData) error {
+func DBUpdatePDEPairListData(list []shared.PairInfoData) error {
 	if len(list) == 0 {
 		return nil
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, pool := range list {
-		fitler := bson.M{"PairData": bson.M{operator.Eq: pool.PairID}}
+		fitler := bson.M{"pairid": bson.M{operator.Eq: pool.PairID}}
 		update := bson.M{
 			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "poolcount": pool.PoolCount},
 		}
-		_, err := mgm.Coll(&shared.PairData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
+		_, err := mgm.Coll(&shared.PairInfoData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
 			return err
 		}
@@ -660,7 +660,7 @@ func DBUpdatePDEPairListData(list []shared.PairData) error {
 	return nil
 }
 
-func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
+func DBUpdatePDEPoolInfoData(list []shared.PoolInfoData) error {
 	if len(list) == 0 {
 		return nil
 	}
@@ -670,7 +670,7 @@ func DBUpdatePDEPoolPairData(list []shared.PoolPairData) error {
 		update := bson.M{
 			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "virtual1amount": pool.Virtual1Amount, "virtual2amount": pool.Virtual2Amount, "amp": pool.AMP, "version": pool.Version, "totalshare": pool.TotalShare},
 		}
-		_, err := mgm.Coll(&shared.PoolPairData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
+		_, err := mgm.Coll(&shared.PoolInfoData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
 			return err
 		}
@@ -986,7 +986,7 @@ func DBUpdatePDEStakeRewardHistory(list []shared.PoolStakeRewardHistoryData) err
 	return nil
 }
 
-func DBDeletePDEPoolData(list []shared.PoolPairData) error {
+func DBDeletePDEPoolData(list []shared.PoolInfoData) error {
 	if len(list) == 0 {
 		return nil
 	}
@@ -996,7 +996,7 @@ func DBDeletePDEPoolData(list []shared.PoolPairData) error {
 		poolIDs = append(poolIDs, pool.PoolID)
 	}
 	fitler := bson.M{"poolid": bson.M{operator.In: poolIDs}}
-	_, err := mgm.Coll(&shared.PoolPairData{}).DeleteMany(ctx, fitler)
+	_, err := mgm.Coll(&shared.PoolInfoData{}).DeleteMany(ctx, fitler)
 	if err != nil {
 		if err != mongo.ErrNoDocuments {
 			return err
@@ -1422,10 +1422,10 @@ func DBUpdateRequestStakingPoolStatus(list []shared.PoolStakeHistoryData) error 
 	return nil
 }
 
-func DBGetPairsByID(list []string) ([]shared.PairData, error) {
-	var result []shared.PairData
+func DBGetPairsByID(list []string) ([]shared.PairInfoData, error) {
+	var result []shared.PairInfoData
 	filter := bson.M{"pairid": bson.M{operator.In: list}}
-	err := mgm.Coll(&shared.PairData{}).SimpleFind(&result, filter)
+	err := mgm.Coll(&shared.PairInfoData{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -1440,7 +1440,7 @@ func DBUpdatePDEPoolPairRewardAPY(list []shared.RewardAPYTracking) error {
 	for _, order := range list {
 		fitler := bson.M{"dataid": bson.M{operator.Eq: order.DataID}}
 		update := bson.M{
-			"$set": bson.M{"dataid": order.DataID, "apy": order.APY, "beaconheight": order.BeaconHeight},
+			"$set": bson.M{"dataid": order.DataID, "apy": order.APY, "beaconheight": order.BeaconHeight, "apy2": order.APY2, "totalreceive": order.TotalReceive, "totalamount": order.TotalAmount},
 		}
 		_, err := mgm.Coll(&shared.RewardAPYTracking{}).UpdateOne(ctx, fitler, update, mgm.UpsertTrueOption())
 		if err != nil {

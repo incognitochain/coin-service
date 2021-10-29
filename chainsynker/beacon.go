@@ -244,7 +244,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			wg.Done()
 		}()
 		go func() {
-			err = database.DBUpdatePDEPoolPairData(poolDatas)
+			err = database.DBUpdatePDEPoolInfoData(poolDatas)
 			if err != nil {
 				panic(err)
 			}
@@ -331,17 +331,17 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
-func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, stateV2Json *jsonresult.Pdexv3State, beaconHeight uint64) ([]shared.PairData, []shared.PoolPairData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolPairData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.RewardRecord, error) {
-	var pairList []shared.PairData
-	pairListMap := make(map[string][]shared.PoolPairData)
-	var poolPairs []shared.PoolPairData
+func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, stateV2Json *jsonresult.Pdexv3State, beaconHeight uint64) ([]shared.PairInfoData, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.RewardRecord, error) {
+	var pairList []shared.PairInfoData
+	pairListMap := make(map[string][]shared.PoolInfoData)
+	var poolPairs []shared.PoolInfoData
 	var poolShare []shared.PoolShareData
 	var stakePools []shared.PoolStakeData
 	var poolStaking []shared.PoolStakerData
 	var orderStatus []shared.LimitOrderStatus
 	var rewardRecords []shared.RewardRecord
 
-	var poolPairsToBeDelete []shared.PoolPairData
+	var poolPairsToBeDelete []shared.PoolInfoData
 	var poolShareToBeDelete []shared.PoolShareData
 	var stakePoolsToBeDelete []shared.PoolStakeData
 	var poolStakingToBeDelete []shared.PoolStakerData
@@ -350,18 +350,18 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 	wg.Add(2)
 	go func() {
 		for poolID, state := range statev2.PoolPairs {
-			poolData := shared.PoolPairData{
+			poolData := shared.PoolInfoData{
 				Version:        2,
 				PoolID:         poolID,
 				PairID:         state.State.Token0ID().String() + "-" + state.State.Token1ID().String(),
 				AMP:            state.State.Amplifier(),
 				TokenID1:       state.State.Token0ID().String(),
 				TokenID2:       state.State.Token1ID().String(),
-				Token1Amount:   state.State.Token0RealAmount(),
-				Token2Amount:   state.State.Token1RealAmount(),
-				Virtual1Amount: state.State.Token0VirtualAmount().Uint64(),
-				Virtual2Amount: state.State.Token1VirtualAmount().Uint64(),
-				TotalShare:     state.State.ShareAmount(),
+				Token1Amount:   fmt.Sprintf("%v", state.State.Token0RealAmount()),
+				Token2Amount:   fmt.Sprintf("%v", state.State.Token1RealAmount()),
+				Virtual1Amount: fmt.Sprintf("%v", state.State.Token0VirtualAmount().Uint64()),
+				Virtual2Amount: fmt.Sprintf("%v", state.State.Token1VirtualAmount().Uint64()),
+				TotalShare:     fmt.Sprintf("%v", state.State.ShareAmount()),
 			}
 			poolPairs = append(poolPairs, poolData)
 			pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)
@@ -401,18 +401,22 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 		}
 		for pairID, pools := range pairListMap {
-			data := shared.PairData{
+			data := shared.PairInfoData{
 				PairID:    pairID,
 				TokenID1:  pools[0].TokenID1,
 				TokenID2:  pools[0].TokenID2,
 				PoolCount: len(pools),
 			}
-
+			tk1Amount := uint64(0)
+			tk2Amount := uint64(0)
 			for _, v := range pools {
-				data.Token1Amount += v.Token1Amount
-				data.Token2Amount += v.Token2Amount
+				a1, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
+				a2, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
+				tk1Amount += a1
+				tk2Amount += a2
 			}
-
+			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
+			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
 			pairList = append(pairList, data)
 		}
 		wg.Done()
@@ -604,7 +608,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				}
 				if willDelete {
 					tkState := state.State
-					poolData := shared.PoolPairData{
+					poolData := shared.PoolInfoData{
 						Version: 2,
 						PoolID:  poolID,
 						PairID:  tkState.Token0ID().String() + "-" + tkState.Token1ID().String(),

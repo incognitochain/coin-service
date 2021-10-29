@@ -103,11 +103,12 @@ func APIGetShieldHistory(c *gin.Context) {
 
 	var result []DataWithLockTime
 	for _, v := range txShieldPairlist {
+		amount, _ := strconv.ParseUint(v.Amount, 10, 64)
 		result = append(result, DataWithLockTime{
 			TxBridgeDetail: TxBridgeDetail{
 				Bridge:          v.Bridge,
 				TokenID:         v.TokenID,
-				Amount:          v.Amount,
+				Amount:          amount,
 				RespondTx:       v.RespondTx,
 				RequestTx:       v.RequestTx,
 				IsDecentralized: v.IsDecentralized,

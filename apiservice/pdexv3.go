@@ -34,12 +34,15 @@ func (pdexv3) ListPairs(c *gin.Context) {
 		return
 	}
 	for _, v := range list {
+
+		tk1Amount, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
 		data := PdexV3PairData{
 			PairID:       v.PairID,
 			TokenID1:     v.TokenID1,
 			TokenID2:     v.TokenID2,
-			Token1Amount: v.Token1Amount,
-			Token2Amount: v.Token2Amount,
+			Token1Amount: tk1Amount,
+			Token2Amount: tk2Amount,
 			PoolCount:    v.PoolCount,
 		}
 		result = append(result, data)
@@ -85,7 +88,9 @@ func (pdexv3) ListPools(c *gin.Context) {
 
 	var result []PdexV3PoolDetail
 	for _, v := range list {
-		if v.Token1Amount == 0 || v.Token2Amount == 0 {
+		tk1Amount, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
+		if tk1Amount == 0 || tk2Amount == 0 {
 			continue
 		}
 		dcrate, err := getPdecimalRate(v.TokenID1, v.TokenID2)
@@ -93,19 +98,22 @@ func (pdexv3) ListPools(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
+		tk1VA, _ := strconv.ParseUint(v.Virtual1Amount, 10, 64)
+		tk2VA, _ := strconv.ParseUint(v.Virtual2Amount, 10, 64)
+		totalShare, _ := strconv.ParseUint(v.TotalShare, 10, 64)
 		data := PdexV3PoolDetail{
 			PoolID:         v.PoolID,
 			Token1ID:       v.TokenID1,
 			Token2ID:       v.TokenID2,
-			Token1Value:    v.Token1Amount,
-			Token2Value:    v.Token2Amount,
-			Virtual1Value:  v.Virtual1Amount,
-			Virtual2Value:  v.Virtual2Amount,
+			Token1Value:    tk1Amount,
+			Token2Value:    tk2Amount,
+			Virtual1Value:  tk1VA,
+			Virtual2Value:  tk2VA,
 			Volume:         0,
 			PriceChange24h: 0,
 			AMP:            v.AMP,
-			Price:          (float64(v.Token2Amount) / float64(v.Token1Amount)) * dcrate,
-			TotalShare:     v.TotalShare,
+			Price:          (float64(tk2Amount) / float64(tk1Amount)) * dcrate,
+			TotalShare:     totalShare,
 		}
 
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
@@ -118,7 +126,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		data.APY = apy.APY
+		data.APY = uint64(apy.APY)
 		if _, found := defaultPools[v.PoolID]; found {
 			data.IsVerify = true
 		}
@@ -215,6 +223,10 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			continue
 		}
 
+		tk1Amount, _ := strconv.ParseUint(l[0].Token1Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(l[0].Token2Amount, 10, 64)
+		totalShare, _ := strconv.ParseUint(l[0].TotalShare, 10, 64)
+
 		result = append(result, PdexV3PoolShareRespond{
 			PoolID:       v.PoolID,
 			Share:        v.Amount,
@@ -222,9 +234,9 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			AMP:          l[0].AMP,
 			TokenID1:     l[0].TokenID1,
 			TokenID2:     l[0].TokenID2,
-			Token1Amount: l[0].Token1Amount,
-			Token2Amount: l[0].Token2Amount,
-			TotalShare:   l[0].TotalShare,
+			Token1Amount: tk1Amount,
+			Token2Amount: tk2Amount,
+			TotalShare:   totalShare,
 		})
 	}
 	respond := APIRespond{
@@ -407,10 +419,15 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		ctrbAmount := []uint64{}
 		ctrbToken := []string{}
 		if len(v.RequestTxs) > len(v.ContributeAmount) {
-			ctrbAmount = append(ctrbAmount, v.ContributeAmount[0])
-			ctrbAmount = append(ctrbAmount, v.ContributeAmount[0])
+			a, _ := strconv.ParseUint(v.ContributeAmount[0], 10, 64)
+			ctrbAmount = append(ctrbAmount, a)
+			ctrbAmount = append(ctrbAmount, a)
 		} else {
-			ctrbAmount = v.ContributeAmount
+			for _, v := range v.ContributeAmount {
+				a, _ := strconv.ParseUint(v, 10, 64)
+				ctrbAmount = append(ctrbAmount, a)
+			}
+
 		}
 		if len(v.RequestTxs) > len(v.ContributeTokens) {
 			ctrbToken = append(ctrbToken, v.ContributeTokens[0])
@@ -418,6 +435,12 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		} else {
 			ctrbToken = v.ContributeTokens
 		}
+		returnAmount := []uint64{}
+		for _, v := range v.ReturnAmount {
+			a, _ := strconv.ParseUint(v, 10, 64)
+			returnAmount = append(returnAmount, a)
+		}
+
 		data := PdexV3ContributionData{
 			RequestTxs:       v.RequestTxs,
 			RespondTxs:       v.RespondTxs,
@@ -426,7 +449,7 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 			PairID:           v.PairID,
 			PairHash:         v.PairHash,
 			ReturnTokens:     v.ReturnTokens,
-			ReturnAmount:     v.ReturnAmount,
+			ReturnAmount:     returnAmount,
 			NFTID:            v.NFTID,
 			RequestTime:      v.RequestTime,
 			PoolID:           v.PoolID,
@@ -495,11 +518,11 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 		var token1, token2 string
 		var amount1, amount2 uint64
 		if len(v.RespondTxs) == 2 {
-			amount1 = v.WithdrawAmount[0]
-			amount2 = v.WithdrawAmount[1]
+			amount1, _ = strconv.ParseUint(v.WithdrawAmount[0], 10, 64)
+			amount2, _ = strconv.ParseUint(v.WithdrawAmount[1], 10, 64)
 		}
 		if len(v.RespondTxs) == 1 {
-			amount1 = v.WithdrawAmount[0]
+			amount1, _ = strconv.ParseUint(v.WithdrawAmount[0], 10, 64)
 		}
 		tks := strings.Split(v.PoolID, "-")
 		token1 = tks[0]
@@ -554,7 +577,7 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 	for _, v := range list {
 		tokens := make(map[string]uint64)
 		for idx, tk := range v.WithdrawTokens {
-			tokens[tk] = v.WithdrawAmount[idx]
+			tokens[tk], _ = strconv.ParseUint(v.WithdrawAmount[idx], 10, 64)
 		}
 		result = append(result, PdexV3WithdrawFeeRespond{
 			PoolID:         v.PoodID,
@@ -695,12 +718,14 @@ func (pdexv3) PairsDetail(c *gin.Context) {
 	}
 	var result []PdexV3PairData
 	for _, v := range list {
+		tk1Amount, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
 		data := PdexV3PairData{
 			PairID:       v.PairID,
 			TokenID1:     v.TokenID1,
 			TokenID2:     v.TokenID2,
-			Token1Amount: v.Token1Amount,
-			Token2Amount: v.Token2Amount,
+			Token1Amount: tk1Amount,
+			Token2Amount: tk2Amount,
 			PoolCount:    v.PoolCount,
 		}
 		result = append(result, data)
@@ -747,7 +772,9 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 
 	var result []PdexV3PoolDetail
 	for _, v := range list {
-		if v.Token1Amount == 0 || v.Token2Amount == 0 {
+		tk1Amount, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
+		if tk1Amount == 0 || tk2Amount == 0 {
 			continue
 		}
 		dcrate, err := getPdecimalRate(v.TokenID1, v.TokenID2)
@@ -755,19 +782,22 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
+		tk1VA, _ := strconv.ParseUint(v.Virtual1Amount, 10, 64)
+		tk2VA, _ := strconv.ParseUint(v.Virtual2Amount, 10, 64)
+		totalShare, _ := strconv.ParseUint(v.TotalShare, 10, 64)
 		data := PdexV3PoolDetail{
 			PoolID:         v.PoolID,
 			Token1ID:       v.TokenID1,
 			Token2ID:       v.TokenID2,
-			Token1Value:    v.Token1Amount,
-			Token2Value:    v.Token2Amount,
-			Virtual1Value:  v.Virtual1Amount,
-			Virtual2Value:  v.Virtual2Amount,
+			Token1Value:    tk1Amount,
+			Token2Value:    tk2Amount,
+			Virtual1Value:  tk1VA,
+			Virtual2Value:  tk2VA,
 			PriceChange24h: 0,
 			Volume:         0,
 			AMP:            v.AMP,
-			Price:          (float64(v.Token2Amount) / float64(v.Token1Amount)) * dcrate,
-			TotalShare:     v.TotalShare,
+			Price:          (float64(tk2Amount) / float64(tk1Amount)) * dcrate,
+			TotalShare:     totalShare,
 		}
 
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
@@ -780,7 +810,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		data.APY = apy.APY
+		data.APY = uint64(apy.APY)
 		if _, found := defaultPools[v.PoolID]; found {
 			data.IsVerify = true
 		}
@@ -1020,7 +1050,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		result.SellAmount = float64(foundSellAmount) / dcrate
 		result.MaxGet = float64(receive)
 	}
-
 
 	result.Route = make([]string, 0)
 	if chosenPath != nil {

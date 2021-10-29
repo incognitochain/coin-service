@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
@@ -223,7 +222,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTxs:       []string{tx.TxHash},
 				PoolID:           md.PoolPairID(),
 				ContributeTokens: []string{md.TokenID()},
-				ContributeAmount: []uint64{md.TokenAmount()},
+				ContributeAmount: []string{fmt.Sprintf("%v", md.TokenAmount())},
 				NFTID:            md.NftID(),
 				PairHash:         md.PairHash(),
 				RequestTime:      tx.Locktime,
@@ -252,7 +251,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTxs:   []string{requestTx},
 				RespondTxs:   []string{tx.TxHash},
 				ReturnTokens: []string{tokenIDStr},
-				ReturnAmount: []uint64{amount},
+				ReturnAmount: []string{fmt.Sprintf("%v", amount)},
 			}
 			contributeRespondDatas = append(contributeRespondDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityRequestMeta:
@@ -265,7 +264,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				Status:         0,
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
-				WithdrawAmount: []uint64{},
+				WithdrawAmount: []string{},
 				RequestTime:    tx.Locktime,
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
@@ -297,7 +296,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTx:      md.TxReqID(),
 				RespondTxs:     []string{tx.TxHash},
 				WithdrawTokens: []string{tokenIDStr},
-				WithdrawAmount: []uint64{amount},
+				WithdrawAmount: []string{fmt.Sprintf("%v", amount)},
 				Status:         status,
 			}
 			withdrawRespondDatas = append(withdrawRespondDatas, data)
@@ -311,7 +310,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				Status:         0,
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
-				WithdrawAmount: []uint64{},
+				WithdrawAmount: []string{},
 			}
 			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLPFeeResponseMeta:
@@ -336,7 +335,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTx:      md.ReqTxID.String(),
 				RespondTxs:     []string{tx.TxHash},
 				WithdrawTokens: []string{tokenIDStr},
-				WithdrawAmount: []uint64{amount},
+				WithdrawAmount: []string{fmt.Sprintf("%v", amount)},
 				Status:         1,
 			}
 			withdrawFeeRespondDatas = append(withdrawFeeRespondDatas, data)
@@ -445,10 +444,10 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTxs:       []string{tx.TxHash},
 				PairID:           md.PDEContributionPairID,
 				ContributeTokens: []string{md.TokenIDStr},
-				ContributeAmount: []uint64{md.ContributedAmount},
+				ContributeAmount: []string{fmt.Sprintf("%v", md.ContributedAmount)},
 				RespondTxs:       []string{},
 				ReturnTokens:     []string{},
-				ReturnAmount:     []uint64{},
+				ReturnAmount:     []string{},
 				RequestTime:      tx.Locktime,
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
@@ -475,7 +474,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTxs:   []string{requestTx},
 				RespondTxs:   []string{tx.TxHash},
 				ReturnTokens: []string{tokenIDStr},
-				ReturnAmount: []uint64{amount},
+				ReturnAmount: []string{fmt.Sprintf("%v", amount)},
 			}
 			contributeRespondDatas = append(contributeRespondDatas, data)
 		case metadata.PDEWithdrawalRequestMeta:
@@ -487,7 +486,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				Status:         0,
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
-				WithdrawAmount: []uint64{},
+				WithdrawAmount: []string{},
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadata.PDEWithdrawalResponseMeta:
@@ -514,7 +513,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RespondTxs:     []string{tx.TxHash},
 				Status:         1,
 				WithdrawTokens: []string{tokenIDStr},
-				WithdrawAmount: []uint64{amount},
+				WithdrawAmount: []string{fmt.Sprintf("%v", amount)},
 			}
 			withdrawRespondDatas = append(withdrawRespondDatas, data)
 		case metadata.PDEFeeWithdrawalRequestMeta:
@@ -523,7 +522,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTx: tx.TxHash,
 				// pdexv2 PRV only fee
 				WithdrawTokens: []string{common.PRVCoinID.String()},
-				WithdrawAmount: []uint64{md.WithdrawalFeeAmt},
+				WithdrawAmount: []string{fmt.Sprintf("%v", md.WithdrawalFeeAmt)},
 				RequestTime:    tx.Locktime,
 				Status:         0,
 				RespondTxs:     []string{},
@@ -537,7 +536,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RespondTxs:     []string{tx.TxHash},
 				Status:         1,
 				WithdrawTokens: []string{},
-				WithdrawAmount: []uint64{},
+				WithdrawAmount: []string{},
 			}
 			withdrawFeeRespondDatas = append(withdrawFeeRespondDatas, data)
 		}
@@ -739,7 +738,7 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 			DataID:       poolid,
 			BeaconHeight: height,
 		}
-		blocks := int64(7 * 86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+		blocks := int64((30 * 60) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
 		if blocks > 50000 {
 			blocks = 50000
 		}
@@ -747,32 +746,35 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		if err != nil {
 			return nil, err
 		}
-		var flist []shared.RewardRecord
-		flist = list
-		// for _, v := range list {
-		// 	if v.BeaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
-		// 		flist = append(flist, v)
-		// 	}
-		// }
+		totalAmount := uint64(0)
+		totalReceive := uint64(0)
 		totalPercent := float64(0)
-		for _, v := range flist {
+		heightBc := uint64(0)
+		for _, v := range list {
 			d := RewardInfo{}
 			err := json.Unmarshal([]byte(v.Data), &d)
 			if err != nil {
 				return nil, err
 			}
 			if d.RewardReceiveInPRV > 0 && d.TotalAmountInPRV > 0 {
-				s := strings.Split(v.DataID, "-")
-				if len(s) == 1 {
-					totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
-				} else {
-					totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100 / float64(config.Param().EpochParam.NumberOfBlockInEpoch))
-				}
+				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
+			}
+			totalReceive += d.RewardReceiveInPRV
+			if v.BeaconHeight > heightBc {
+				totalAmount = d.TotalAmountInPRV
+				heightBc = v.BeaconHeight
 			}
 		}
-		percent := totalPercent / float64(len(flist))
+		data.TotalAmount = totalAmount
+		data.TotalReceive = totalReceive
+		apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+		data.APY2 = apy2
+		fmt.Println("poolid", poolid, apy2, totalReceive, totalAmount)
+		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
-			data.APY = uint64(percent * (365 * 86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds() / float64(config.Param().EpochParam.NumberOfBlockInEpoch)))
+			p := (percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
+			// data.APY = uint64(math.Pow(float64(1+p/12), 12) - 1)
+			data.APY = p
 		}
 		result = append(result, data)
 	}
@@ -781,7 +783,7 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 			DataID:       poolid,
 			BeaconHeight: height,
 		}
-		blocks := int64(7 * 86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+		blocks := int64((30 * 60) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
 		if blocks > 50000 {
 			blocks = 50000
 		}
@@ -793,6 +795,7 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		// totalLen := 0
 		totalAmount := uint64(0)
 		totalReceive := uint64(0)
+		heightBc := uint64(0)
 		for _, v := range list {
 			d := RewardInfo{}
 			err := json.Unmarshal([]byte(v.Data), &d)
@@ -803,17 +806,20 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 				totalPercent += (float64(d.RewardReceiveInPRV) / float64(d.TotalAmountInPRV) * 100)
 			}
 			totalReceive += d.RewardReceiveInPRV
-			totalAmount += d.TotalAmountInPRV
+			if v.BeaconHeight > heightBc {
+				totalAmount = d.TotalAmountInPRV
+				heightBc = v.BeaconHeight
+			}
 		}
 		data.TotalAmount = totalAmount
 		data.TotalReceive = totalReceive
 		apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
-		data.APY2 = uint64(apy2)
+		data.APY2 = apy2
 		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
-			p := uint64(percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
+			p := (percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
 			// data.APY = uint64(math.Pow(float64(1+p/12), 12) - 1)
-			data.APY = uint64(p)
+			data.APY = p
 		}
 		result = append(result, data)
 	}
@@ -827,9 +833,3 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 
 	return result, nil
 }
-
-// {
-//     _id: ObjectId('61738d224113530007d94594'),
-//     dataname: 'defaultpools',
-//     data: '["0000000000000000000000000000000000000000000000000000000000000004-00000000000000000000000000000000000000000000000000000000000115dc-b0c7e3d446f1596809537e7cfaa54ff17113fcca70a6c077d956bfa9b24053e1","0000000000000000000000000000000000000000000000000000000000000004-0000000000000000000000000000000000000000000000000000000000000da1-c50e58985fbbef030e48aaa4b77c67467f40163f2a85ccdcba5022c09a35dbea","0000000000000000000000000000000000000000000000000000000000000004-00000000000000000000000000000000000000000000000000000000000b115d-564f13e6d322ca9cbbcf1bac8114fe5ccca320311d4cccd5deafea7fa2f3143b","0000000000000000000000000000000000000000000000000000000000000b7c-00000000000000000000000000000000000000000000000000000000000115d7-ec4445da6fc74897b218380df6288de207a3fc35e6024e8768f9db149aa83996","000000000000000000000000000000000000000000000000000000000000e776-00000000000000000000000000000000000000000000000000000000000115d7-fcc1f3f237714f0e70305b889a89ef2ea0416bf2da8b22cf32a42cc19c1f993b","0000000000000000000000000000000000000000000000000000000000011112-00000000000000000000000000000000000000000000000000000000000115d7-e6e15edbf106cae57240f47f3d1e43f46b7fb1a4cbf797d435a555c4abe371a1","00000000000000000000000000000000000000000000000000000000000115d7-00000000000000000000000000000000000000000000000000000000000b115d-e84f1b5c68589f080be4bbf7ec5d7d2961f3e8d2c983d180948bdd7e003322e8","00000000000000000000000000000000000000000000000000000000000115d7-00000000000000000000000000000000000000000000000000000000000115dc-b60d0efa2833a13bdf1ec626c84d1aabe167f06a45d02e5086f169a0bc447704","0000000000000000000000000000000000000000000000000000000000000da1-00000000000000000000000000000000000000000000000000000000000115d7-3bb65c31d4b6bdaf8725daed128c10cd641b2ab59479274529f5818bd9e2cefa","00000000000000000000000000000000000000000000000000000000000115d7-00000000000000000000000000000000000000000000000000000000000b115d-e84f1b5c68589f080be4bbf7ec5d7d2961f3e8d2c983d180948bdd7e003322e8","000000000000000000000000000000000000000000000000000000000000e776-000000000000000000000000000000000000000000000000000000000111e776-34093916821e51f2314eb653bf5af793c7e10bff3cd2c7bf2651e964a55b50e5"]'
-// }

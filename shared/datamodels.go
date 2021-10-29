@@ -307,7 +307,7 @@ type ShieldData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Bridge           string `json:"bridge" bson:"bridge"`
 	TokenID          string `json:"tokenid" bson:"tokenid"`
-	Amount           uint64 `json:"amount" bson:"amount"`
+	Amount           string `json:"amount" bson:"amount"`
 	RespondTx        string `json:"respondtx" bson:"respondtx"`
 	RequestTx        string `json:"requesttx" bson:"requesttx"`
 	IsDecentralized  bool   `json:"isdecentralized" bson:"isdecentralized"`
@@ -316,7 +316,7 @@ type ShieldData struct {
 	RequestTime      int64  `json:"requesttime" bson:"requesttime"`
 }
 
-func NewShieldData(requestTx, respondTx, tokenID, bridge, pubkey string, isDecentralized bool, amount, height uint64, requestTime int64) *ShieldData {
+func NewShieldData(requestTx, respondTx, tokenID, bridge, pubkey string, isDecentralized bool, amount string, height uint64, requestTime int64) *ShieldData {
 	return &ShieldData{
 		RespondTx:       respondTx,
 		RequestTx:       requestTx,
@@ -353,20 +353,14 @@ type ContributionData struct {
 	PoolID           string   `json:"poolid" bson:"poolid"`
 	PairHash         string   `json:"pairhash" bson:"pairhash"`
 	ContributeTokens []string `json:"contributetokens" bson:"contributetokens"`
-	ContributeAmount []uint64 `json:"contributeamount" bson:"contributeamount"`
+	ContributeAmount []string `json:"contributeamount" bson:"contributeamount"`
 	ReturnTokens     []string `json:"returntokens" bson:"returntokens"`
-	ReturnAmount     []uint64 `json:"returnamount" bson:"returnamount"`
+	ReturnAmount     []string `json:"returnamount" bson:"returnamount"`
 	Contributor      string   `json:"contributor" bson:"contributor"`
 	NFTID            string   `json:"nftid" bson:"nftid"`
 	RequestTime      int64    `json:"requesttime" bson:"requesttime"`
 	Status           string   `json:"status" bson:"status"`
 }
-
-// func NewContributionData(requestTx, respondTx, pairID, contributorAddressStr string, respondBlock uint64) *ContributionData {
-// 	return &ContributionData{
-// 		RequestTx: requestTx, RespondTx: respondTx, PairID: pairID, ContributorAddressStr: contributorAddressStr, Respondblock: respondBlock,
-// 	}
-// }
 
 func (model *ContributionData) Creating() error {
 	// Call the DefaultModel Creating hook
@@ -391,7 +385,7 @@ type WithdrawContributionData struct {
 	RequestTx             string   `json:"requesttx" bson:"requesttx"`
 	RespondTxs            []string `json:"respondtxs" bson:"respondtxs"`
 	WithdrawTokens        []string `json:"withdrawtokens" bson:"withdrawtokens"`
-	WithdrawAmount        []uint64 `json:"withdrawamount" bson:"withdrawamount"`
+	WithdrawAmount        []string `json:"withdrawamount" bson:"withdrawamount"`
 	ShareAmount           string   `json:"shareamount" bson:"shareamount"`
 	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
 	RequestTime           int64    `json:"requesttime" bson:"requesttime"`
@@ -423,7 +417,7 @@ type WithdrawContributionFeeData struct {
 	Status                int      `json:"status" bson:"status"`
 	PoodID                string   `json:"poolid" bson:"poolid"`
 	WithdrawTokens        []string `json:"withdrawtokens" bson:"withdrawtokens"`
-	WithdrawAmount        []uint64 `json:"withdrawamount" bson:"withdrawamount"`
+	WithdrawAmount        []string `json:"withdrawamount" bson:"withdrawamount"`
 	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
 	RequestTime           int64    `json:"requesttime" bson:"requesttime"`
 	NFTID                 string   `json:"nftid" bson:"nftid"`
@@ -523,18 +517,18 @@ func (model *TradeOrderData) Saving() error {
 	return nil
 }
 
-type PairData struct {
+type PairInfoData struct {
 	mgm.DefaultModel `bson:",inline"`
 	PairID           string `json:"pairid" bson:"pairid"`
 	TokenID1         string `json:"tokenid1" bson:"tokenid1"`
 	TokenID2         string `json:"tokenid2" bson:"tokenid2"`
-	Token1Amount     uint64 `json:"token1amount" bson:"token1amount"`
-	Token2Amount     uint64 `json:"token2amount" bson:"token2amount"`
+	Token1Amount     string `json:"token1amount" bson:"token1amount"`
+	Token2Amount     string `json:"token2amount" bson:"token2amount"`
 	PoolCount        int    `json:"poolcount" bson:"poolcount"`
 }
 
-func NewPairData(pairid, token1, token2 string, poolcount int, token1value, token2value uint64) *PairData {
-	return &PairData{
+func NewPairData(pairid, token1, token2 string, poolcount int, token1value, token2value string) *PairInfoData {
+	return &PairInfoData{
 		PairID:       pairid,
 		TokenID1:     token1,
 		TokenID2:     token2,
@@ -544,7 +538,7 @@ func NewPairData(pairid, token1, token2 string, poolcount int, token1value, toke
 	}
 }
 
-func (model *PairData) Creating() error {
+func (model *PairInfoData) Creating() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Creating(); err != nil {
 		return err
@@ -552,7 +546,7 @@ func (model *PairData) Creating() error {
 
 	return nil
 }
-func (model *PairData) Saving() error {
+func (model *PairInfoData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err
@@ -561,23 +555,23 @@ func (model *PairData) Saving() error {
 	return nil
 }
 
-type PoolPairData struct {
+type PoolInfoData struct {
 	mgm.DefaultModel `bson:",inline"`
 	PoolID           string `json:"poolid" bson:"poolid"`
 	PairID           string `json:"pairid" bson:"pairid"`
 	TokenID1         string `json:"tokenid1" bson:"tokenid1"`
 	TokenID2         string `json:"tokenid2" bson:"tokenid2"`
 	AMP              uint   `json:"amp" bson:"amp"`
-	Token1Amount     uint64 `json:"token1amount" bson:"token1amount"`
-	Token2Amount     uint64 `json:"token2amount" bson:"token2amount"`
-	Virtual1Amount   uint64 `json:"virtual1amount" bson:"virtual1amount"`
-	Virtual2Amount   uint64 `json:"virtual2amount" bson:"virtual2amount"`
-	TotalShare       uint64 `json:"totalshare" bson:"totalshare"`
+	Token1Amount     string `json:"token1amount" bson:"token1amount"`
+	Token2Amount     string `json:"token2amount" bson:"token2amount"`
+	Virtual1Amount   string `json:"virtual1amount" bson:"virtual1amount"`
+	Virtual2Amount   string `json:"virtual2amount" bson:"virtual2amount"`
+	TotalShare       string `json:"totalshare" bson:"totalshare"`
 	Version          int    `json:"version" bson:"version"`
 }
 
-func NewPoolPairData(poolid, pairid, token1, token2 string, amp uint, token1amount, token2amount uint64) *PoolPairData {
-	return &PoolPairData{
+func NewPoolInfoData(poolid, pairid, token1, token2 string, amp uint, token1amount, token2amount string) *PoolInfoData {
+	return &PoolInfoData{
 		PoolID:       poolid,
 		PairID:       pairid,
 		TokenID1:     token1,
@@ -588,7 +582,7 @@ func NewPoolPairData(poolid, pairid, token1, token2 string, amp uint, token1amou
 	}
 }
 
-func (model *PoolPairData) Creating() error {
+func (model *PoolInfoData) Creating() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Creating(); err != nil {
 		return err
@@ -596,7 +590,7 @@ func (model *PoolPairData) Creating() error {
 
 	return nil
 }
-func (model *PoolPairData) Saving() error {
+func (model *PoolInfoData) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err
@@ -936,12 +930,12 @@ func (model *RewardRecord) Saving() error {
 
 type RewardAPYTracking struct {
 	mgm.DefaultModel `bson:",inline"`
-	DataID           string `json:"dataid" bson:"dataid"`
-	APY              uint64 `json:"apy" bson:"apy"`
-	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
-	TotalReceive     uint64 `json:"totalreceive" bson:"totalreceive"`
-	TotalAmount      uint64 `json:"totalamount" bson:"totalamount"`
-	APY2             uint64 `json:"apy2" bson:"apy2"`
+	DataID           string  `json:"dataid" bson:"dataid"`
+	APY              float64 `json:"apy" bson:"apy"`
+	BeaconHeight     uint64  `json:"beaconheight" bson:"beaconheight"`
+	TotalReceive     uint64  `json:"totalreceive" bson:"totalreceive"`
+	TotalAmount      uint64  `json:"totalamount" bson:"totalamount"`
+	APY2             float64 `json:"apy2" bson:"apy2"`
 }
 
 func (model *RewardAPYTracking) Creating() error {

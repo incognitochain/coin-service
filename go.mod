@@ -10,7 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20211028051015-0b23a195f246
+	github.com/incognitochain/incognito-chain v0.0.0-20211029100659-bb4f804ad634
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -191,7 +191,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 	stathat.com/c/consistent v1.0.0 // indirect
 )
-
-//replace (
-//	github.com/incognitochain/incognito-chain => /Users/truonglamchau/go/src/github.com/incognitochain/incognito-chain
-//)

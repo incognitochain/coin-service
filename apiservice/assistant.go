@@ -58,17 +58,32 @@ func APIGetTop10(c *gin.Context) {
 	}
 	var result []PdexV3PoolDetail
 	for _, v := range poolList {
+		tk1Amount, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
+		tk2Amount, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
+		if tk1Amount == 0 || tk2Amount == 0 {
+			continue
+		}
+		dcrate, err := getPdecimalRate(v.TokenID1, v.TokenID2)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		tk1VA, _ := strconv.ParseUint(v.Virtual1Amount, 10, 64)
+		tk2VA, _ := strconv.ParseUint(v.Virtual2Amount, 10, 64)
+		totalShare, _ := strconv.ParseUint(v.TotalShare, 10, 64)
 		data := PdexV3PoolDetail{
-			PoolID:        v.PoolID,
-			Token1ID:      v.TokenID1,
-			Token2ID:      v.TokenID2,
-			Token1Value:   v.Token1Amount,
-			Token2Value:   v.Token2Amount,
-			Virtual1Value: v.Virtual1Amount,
-			Virtual2Value: v.Virtual2Amount,
-			AMP:           v.AMP,
-			Price:         float64(v.Token1Amount) / float64(v.Token2Amount),
-			TotalShare:    v.TotalShare,
+			PoolID:         v.PoolID,
+			Token1ID:       v.TokenID1,
+			Token2ID:       v.TokenID2,
+			Token1Value:    tk1Amount,
+			Token2Value:    tk2Amount,
+			Virtual1Value:  tk1VA,
+			Virtual2Value:  tk2VA,
+			PriceChange24h: 0,
+			Volume:         0,
+			AMP:            v.AMP,
+			Price:          (float64(tk2Amount) / float64(tk1Amount)) * dcrate,
+			TotalShare:     totalShare,
 		}
 
 		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {

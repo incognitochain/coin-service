@@ -2,6 +2,7 @@ package shield
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -150,7 +151,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 					bridge = "bsc"
 				}
 			}
-			shieldData := shared.NewShieldData(requestTx, "", tokenIDStr, bridge, "", isDecentralized, amount, tx.BlockHeight, tx.Locktime)
+			shieldData := shared.NewShieldData(requestTx, "", tokenIDStr, bridge, "", isDecentralized, fmt.Sprintf("%v", amount), tx.BlockHeight, tx.Locktime)
 			requestData = append(respondData, *shieldData)
 		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 			switch metaDataType {
@@ -196,7 +197,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 					}
 				}
 			}
-			shieldData := shared.NewShieldData(requestTx, tx.TxHash, tokenIDStr, bridge, "", isDecentralized, amount, tx.BlockHeight, 0)
+			shieldData := shared.NewShieldData(requestTx, tx.TxHash, tokenIDStr, bridge, "", isDecentralized, fmt.Sprintf("%v", amount), tx.BlockHeight, 0)
 			respondData = append(respondData, *shieldData)
 		}
 
