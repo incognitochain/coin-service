@@ -12,6 +12,24 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func DBRemoveDefaultPool(pools []string) error {
+	filter := bson.M{"dataname": bson.M{operator.Eq: "defaultpools"}}
+	update := bson.M{
+		"$pull": bson.M{operator.In: pools},
+	}
+	_, err := mgm.Coll(&shared.ClientAssistantData{}).UpdateOne(context.Background(), filter, update)
+	return err
+}
+
+func DBSetDefaultPool(pools []string) error {
+	filter := bson.M{"dataname": bson.M{operator.Eq: "defaultpools"}}
+	update := bson.M{
+		"$addToSet": bson.M{operator.Each: pools},
+	}
+	_, err := mgm.Coll(&shared.ClientAssistantData{}).UpdateOne(context.Background(), filter, update)
+	return err
+}
+
 func DBGetDefaultPool() (map[string]struct{}, error) {
 	var datas []shared.ClientAssistantData
 	var list []string
