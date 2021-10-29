@@ -35,6 +35,7 @@ type IncPdexState struct {
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("start processing coin for block %v beacon\n", height)
 	startTime := time.Now()
+
 	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 	blk := beaconBestState.BestBlock
 	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
@@ -61,10 +62,11 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("beaconFeatureStateDB loaded for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 	// Process PDEstatev1
 	if beaconBestState.BeaconHeight < config.Param().PDexParams.Pdexv3BreakPointHeight {
-		state, err := pdex.InitStateFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight, 1)
-		if err != nil {
-			log.Println(err)
-		}
+		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
+		// state, err := pdex.InitStateFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight, 1)
+		// if err != nil {
+		// 	log.Println(err)
+		// }
 		tradingFees := state.Reader().TradingFees()
 		shares := state.Reader().Shares()
 
@@ -123,10 +125,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 				if err != nil {
 					panic(err)
 				}
-				poolPairs, err := initPoolPairStatesFromDB(prevBeaconFeatureStateDB)
-				if err != nil {
-					panic(err)
-				}
 				for stakingPoolID := range params.StakingPoolsShare() {
 					stakers, liquidity, err := initStakers(stakingPoolID, prevBeaconFeatureStateDB)
 					if err != nil {
@@ -138,7 +136,10 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					}
 					prevStateV2.StakingPoolsState[stakingPoolID] = pdex.NewStakingPoolStateWithValue(liquidity, stakers, rewardsPerShare)
 				}
-
+				poolPairs, err := initPoolPairStatesFromDB(prevBeaconFeatureStateDB)
+				if err != nil {
+					panic(err)
+				}
 				pools := make(map[string]*shared.PoolPairState)
 				d, err := json.Marshal(poolPairs)
 				if err != nil {
@@ -153,11 +154,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			wg.Done()
 		}()
 		go func() {
-			// pdeStateV2, err := pdex.InitStateFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight, 2)
-			// if err != nil {
-			// 	log.Println(err)
-			// }
-
 			params, err := statedb.GetPdexv3Params(beaconFeatureStateDB)
 			if err != nil {
 				panic(err)
@@ -880,7 +876,6 @@ func extractLqReward(poolID string, curPools map[string]*shared.PoolPairState, p
 }
 
 func getLPFeesPerShare(pairID string, pools map[string]*shared.PoolPairState) (map[common.Hash]*big.Int, uint64, error) {
-
 	if _, ok := pools[pairID]; !ok {
 		return nil, 0, fmt.Errorf("Pool pair %s not found", pairID)
 	}

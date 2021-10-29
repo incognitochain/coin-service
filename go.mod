@@ -191,3 +191,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 	stathat.com/c/consistent v1.0.0 // indirect
 )
+
+replace (
+	github.com/incognitochain/incognito-chain => /Users/truonglamchau/go/src/github.com/incognitochain/incognito-chain
+)
