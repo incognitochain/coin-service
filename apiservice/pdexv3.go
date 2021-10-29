@@ -989,7 +989,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	var foundSellAmount uint64
 	var receive uint64
 
-	spew.Dump(pools, poolPairStates, sellAmount, sellToken, buyAmount)
+	spew.Dump(pools, poolPairStates, sellAmount, sellToken, buyAmount, pdexv3Meta.MaxTradePathLength)
 	if sellAmount > 0 {
 		chosenPath, receive = pathfinder.FindGoodTradePath(
 			pdexv3Meta.MaxTradePathLength,

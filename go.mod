@@ -192,6 +192,6 @@ require (
 	stathat.com/c/consistent v1.0.0 // indirect
 )
 
-replace (
-	github.com/incognitochain/incognito-chain => /Users/truonglamchau/go/src/github.com/incognitochain/incognito-chain
-)
+//replace (
+//	github.com/incognitochain/incognito-chain => /Users/truonglamchau/go/src/github.com/incognitochain/incognito-chain
+//)
