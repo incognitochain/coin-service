@@ -148,9 +148,9 @@ func DBUpdateShieldData(list []shared.ShieldData) error {
 		update := bson.M{
 			"$set": bson.M{"requesttx": tx.RequestTx, "amount": tx.Amount, "respondtx": tx.RespondTx},
 		}
-		err := mgm.Coll(&shared.ShieldData{}).FindOneAndUpdate(ctx, fitler, update, options.FindOneAndUpdate().SetUpsert(true))
+		_, err := mgm.Coll(&shared.ShieldData{}).UpdateOne(ctx, fitler, update, mgm.UpsertTrueOption())
 		if err != nil {
-			return err.Err()
+			return err
 		}
 	}
 	return nil
