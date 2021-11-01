@@ -29,6 +29,11 @@ retry:
 	if retryTimes > 2 {
 		return 0, nil
 	}
+	tk := strings.ToUpper(tokenSymbol)
+	switch tk {
+	case "USDT", "USDC":
+		return 1, nil
+	}
 	resp, err := http.Get(binancePriceURL + tokenSymbol + "USDT")
 	if err != nil {
 		log.Println(err)
@@ -62,18 +67,29 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 		return nil, err
 	}
 	for _, v := range bridgeTokens {
-		price, err := getExternalPrice(v.Symbol)
+		d, err := database.DBGetTokenDecimal(v.TokenID)
 		if err != nil {
 			return nil, err
+		}
+		price := float64(0)
+		if d != nil {
+			price, err = getExternalPrice(d.Symbol)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			price, err = getExternalPrice(v.Symbol)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if price == 0 {
 			fmt.Printf("price for token %v is 0\n", v.TokenID)
 			continue
 		}
-		priceNano := price * float64(1e9)
 		tokenPrice := shared.TokenPrice{
 			TokenID:     v.TokenID,
-			Price:       uint64(priceNano),
+			Price:       fmt.Sprintf("%g", price),
 			TokenName:   v.Name,
 			TokenSymbol: v.Symbol,
 			Time:        time.Now().Unix(),

@@ -834,7 +834,7 @@ type TokenPrice struct {
 	TokenID          string `json:"tokenid" bson:"tokenid"`
 	TokenName        string `json:"name" bson:"name"`
 	TokenSymbol      string `json:"symbol" bson:"symbol"`
-	Price            uint64 `json:"price" bson:"price"`
+	Price            string `json:"price" bson:"price"`
 	Time             int64  `json:"time" bson:"time"`
 }
 

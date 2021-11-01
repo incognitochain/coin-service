@@ -154,8 +154,19 @@ func APICheckRate(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
+			newAmp := AMP_CLASS4
+			tk1Price, err := strconv.ParseFloat(tk1Price.Price, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			tk2Price, err := strconv.ParseFloat(tk2Price.Price, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+
 			if len(mkcaps) == 2 {
-				newAmp := AMP_CLASS4
 				isTk1Stable := false
 				isTk2stable := false
 				stableCoinList, err := database.DBGetStableCoinID()
@@ -186,18 +197,18 @@ func APICheckRate(c *gin.Context) {
 						}
 					}
 				}
-				rate := float64(tk2Price.Price) / float64(tk1Price.Price)
-				fmt.Printf("result.Rate2 %v %v \n", float64(tk1Price.Price), float64(tk2Price.Price))
-				fmt.Printf("result.Rate2 %v \n", rate)
-				result.Rate = fmt.Sprintf("%g", rate*dcrate)
-				result.MaxAMP = newAmp
-				respond := APIRespond{
-					Result: result,
-					Error:  nil,
-				}
-				c.JSON(http.StatusOK, respond)
-				return
 			}
+			rate := float64(tk1Price) / float64(tk2Price)
+			fmt.Printf("result.Rate2 %g %g \n", tk1Price, tk2Price)
+			fmt.Printf("result.Rate2 %g \n", rate)
+			result.Rate = fmt.Sprintf("%g", rate)
+			result.MaxAMP = newAmp
+			respond := APIRespond{
+				Result: result,
+				Error:  nil,
+			}
+			c.JSON(http.StatusOK, respond)
+			return
 		} else {
 			rate, err := getRate(token1, token2, uint64(amount1), uint64(amount2))
 			if err != nil {
