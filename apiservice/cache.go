@@ -1,6 +1,9 @@
 package apiservice
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 func cacheStore(key string, value interface{}) error {
 	v, err := json.Marshal(value)
@@ -8,6 +11,15 @@ func cacheStore(key string, value interface{}) error {
 		return err
 	}
 	cachedb.SetDefault(key, string(v))
+	return nil
+}
+
+func cacheStoreCustom(key string, value interface{}, t time.Duration) error {
+	v, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	cachedb.Set(key, string(v), t)
 	return nil
 }
 

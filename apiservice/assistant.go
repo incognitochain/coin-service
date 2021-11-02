@@ -2,10 +2,12 @@ package apiservice
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
@@ -199,8 +201,6 @@ func APICheckRate(c *gin.Context) {
 				}
 			}
 			rate := float64(tk1Price) / float64(tk2Price)
-			fmt.Printf("result.Rate2 %g %g \n", tk1Price, tk2Price)
-			fmt.Printf("result.Rate2 %g \n", rate)
 			result.Rate = fmt.Sprintf("%g", rate)
 			result.MaxAMP = newAmp
 			respond := APIRespond{
@@ -229,7 +229,6 @@ func APICheckRate(c *gin.Context) {
 			userRate = 1 / rate
 		}
 	}
-	fmt.Printf("result.Rate %v \n", userRate*dcrate)
 	result.Rate = fmt.Sprintf("%g", userRate*dcrate)
 	result.MaxAMP = amp
 	respond := APIRespond{
@@ -362,4 +361,39 @@ func getPdecimalRate(tokenID1, tokenID2 string) (float64, error) {
 	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
 	fmt.Println("getPdecimalRate", result)
 	return result, nil
+}
+
+func APIGetPdecimal(c *gin.Context) {
+	data := []byte{}
+	err := cacheGet("pdecimal", &data)
+	if err != nil {
+		log.Println(err)
+	} else {
+		respond := APIRespond{
+			Result: data,
+			Error:  nil,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+	resp, err := http.Get(shared.ServiceCfg.ExternalDecimals)
+	if err != nil {
+		errStr := err.Error()
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	go cacheStoreCustom("pdecimal", body, 5*time.Minute)
+	respond := APIRespond{
+		Result: body,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
 }

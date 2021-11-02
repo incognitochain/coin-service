@@ -558,7 +558,7 @@ func DBGetPoolPairsByPairID(pairID string) ([]shared.PoolInfoData, error) {
 	var result []shared.PoolInfoData
 	filter := bson.M{"pairid": bson.M{operator.Eq: pairID}, "version": bson.M{operator.Eq: 2}}
 	if pairID == "all" {
-		filter = bson.M{}
+		filter = bson.M{"version": bson.M{operator.Eq: 2}}
 	}
 	err := mgm.Coll(&shared.PoolInfoData{}).SimpleFind(&result, filter)
 	if err != nil {

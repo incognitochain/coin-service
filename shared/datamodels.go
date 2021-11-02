@@ -958,6 +958,7 @@ func (model *RewardAPYTracking) Saving() error {
 type TokenPdecimal struct {
 	mgm.DefaultModel `bson:",inline"`
 	TokenID          string `json:"TokenID" bson:"tokenid"`
+	Name             string `json:"Name" bson:"name"`
 	Symbol           string `json:"Symbol" bson:"symbol"`
 	PSymbol          string `json:"PSymbol" bson:"psymbol"`
 	PDecimals        uint64 `json:"PDecimals" bson:"pdecimals"`

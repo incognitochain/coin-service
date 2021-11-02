@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -56,6 +57,22 @@ func (pdexv3) ListPairs(c *gin.Context) {
 
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
+	if pair == "all" {
+		var result []PdexV3PoolDetail
+		err := cacheGet("ListPools-all", &result)
+		if err != nil {
+			fmt.Println("cacheStoreCustom failed")
+			log.Println(err)
+		} else {
+			fmt.Println("cacheStoreCustom success 1111")
+			respond := APIRespond{
+				Result: result,
+				Error:  nil,
+			}
+			c.JSON(http.StatusOK, respond)
+			return
+		}
+	}
 	list, err := database.DBGetPoolPairsByPairID(pair)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -87,57 +104,74 @@ func (pdexv3) ListPools(c *gin.Context) {
 	}
 
 	var result []PdexV3PoolDetail
+	var wg sync.WaitGroup
+	wg.Add(len(list))
+	resultCh := make(chan PdexV3PoolDetail, len(list))
 	for _, v := range list {
-		tk1Amount, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
-		tk2Amount, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
-		if tk1Amount == 0 || tk2Amount == 0 {
-			continue
-		}
-		dcrate, err := getPdecimalRate(v.TokenID1, v.TokenID2)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		go func(d shared.PoolInfoData) {
+			var data *PdexV3PoolDetail
+			defer func() {
+				wg.Done()
+				if data != nil {
+					resultCh <- *data
+				}
+			}()
+			tk1Amount, _ := strconv.ParseUint(d.Token1Amount, 10, 64)
+			tk2Amount, _ := strconv.ParseUint(d.Token2Amount, 10, 64)
+			if tk1Amount == 0 || tk2Amount == 0 {
+				return
+			}
+			dcrate, err := getPdecimalRate(d.TokenID1, d.TokenID2)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			tk1VA, _ := strconv.ParseUint(d.Virtual1Amount, 10, 64)
+			tk2VA, _ := strconv.ParseUint(d.Virtual2Amount, 10, 64)
+			totalShare, _ := strconv.ParseUint(d.TotalShare, 10, 64)
+			data = &PdexV3PoolDetail{
+				PoolID:         d.PoolID,
+				Token1ID:       d.TokenID1,
+				Token2ID:       d.TokenID2,
+				Token1Value:    tk1Amount,
+				Token2Value:    tk2Amount,
+				Virtual1Value:  tk1VA,
+				Virtual2Value:  tk2VA,
+				Volume:         0,
+				PriceChange24h: 0,
+				AMP:            d.AMP,
+				Price:          (float64(tk2Amount) / float64(tk1Amount)) * dcrate,
+				TotalShare:     totalShare,
+			}
+
+			if poolChange, found := poolLiquidityChanges[d.PoolID]; found {
+				data.PriceChange24h = poolChange.RateChangePercentage
+				data.Volume = poolChange.TradingVolume24h
+			}
+
+			apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			data.APY = uint64(apy.APY)
+			if _, found := defaultPools[d.PoolID]; found {
+				data.IsVerify = true
+			}
 			return
-		}
-		tk1VA, _ := strconv.ParseUint(v.Virtual1Amount, 10, 64)
-		tk2VA, _ := strconv.ParseUint(v.Virtual2Amount, 10, 64)
-		totalShare, _ := strconv.ParseUint(v.TotalShare, 10, 64)
-		data := PdexV3PoolDetail{
-			PoolID:         v.PoolID,
-			Token1ID:       v.TokenID1,
-			Token2ID:       v.TokenID2,
-			Token1Value:    tk1Amount,
-			Token2Value:    tk2Amount,
-			Virtual1Value:  tk1VA,
-			Virtual2Value:  tk2VA,
-			Volume:         0,
-			PriceChange24h: 0,
-			AMP:            v.AMP,
-			Price:          (float64(tk2Amount) / float64(tk1Amount)) * dcrate,
-			TotalShare:     totalShare,
-		}
-
-		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
-			data.PriceChange24h = poolChange.RateChangePercentage
-			data.Volume = poolChange.TradingVolume24h
-		}
-
-		apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		data.APY = uint64(apy.APY)
-		if _, found := defaultPools[v.PoolID]; found {
-			data.IsVerify = true
-		}
-
-		result = append(result, data)
+		}(v)
 	}
+	wg.Wait()
+	close(resultCh)
+	for v := range resultCh {
+		result = append(result, v)
+	}
+	go cacheStoreCustom("ListPools-all", result, 10*time.Second)
+	fmt.Println("cacheStoreCustom success")
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
 	}
-
 	c.JSON(http.StatusOK, respond)
 }
 

@@ -72,11 +72,15 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 			return nil, err
 		}
 		price := float64(0)
+		tkname := v.Name
+		tkSymbol := v.Symbol
 		if d != nil {
 			price, err = getExternalPrice(d.Symbol)
 			if err != nil {
 				return nil, err
 			}
+			tkname = d.Name
+			tkSymbol = d.Symbol
 		} else {
 			price, err = getExternalPrice(v.Symbol)
 			if err != nil {
@@ -90,8 +94,8 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 		tokenPrice := shared.TokenPrice{
 			TokenID:     v.TokenID,
 			Price:       fmt.Sprintf("%g", price),
-			TokenName:   v.Name,
-			TokenSymbol: v.Symbol,
+			TokenName:   tkname,
+			TokenSymbol: tkSymbol,
 			Time:        time.Now().Unix(),
 		}
 		result = append(result, tokenPrice)

@@ -18,7 +18,6 @@ func StartAssistant() {
 		panic(err)
 	}
 	for {
-		time.Sleep(updateInterval)
 		tokensPrice, err := getBridgeTokenExternalPrice()
 		if err != nil {
 			panic(err)
@@ -51,6 +50,6 @@ func StartAssistant() {
 		if err != nil {
 			panic(err)
 		}
-
+		time.Sleep(updateInterval)
 	}
 }

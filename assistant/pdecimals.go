@@ -15,6 +15,7 @@ func updatePDecimal() ([]shared.TokenPdecimal, error) {
 		var decimal struct {
 			Result []struct {
 				TokenID   string `json:"TokenID"`
+				Name      string `json:"Name"`
 				Symbol    string `json:"Symbol"`
 				PSymbol   string `json:"PSymbol"`
 				PDecimals uint64 `json:"PDecimals"`
@@ -46,6 +47,7 @@ func updatePDecimal() ([]shared.TokenPdecimal, error) {
 		for _, v := range decimal.Result {
 			result = append(result, shared.TokenPdecimal{
 				TokenID:   v.TokenID,
+				Name:      v.Name,
 				Symbol:    v.Symbol,
 				PSymbol:   v.PSymbol,
 				PDecimals: v.PDecimals,
