@@ -1480,6 +1480,9 @@ func DBGetPDEPoolPairRewardAPY(poolid string) (*shared.RewardAPYTracking, error)
 	if err != nil {
 		return nil, err
 	}
+	if len(result) == 0 {
+		return nil, nil
+	}
 	return &result[0], nil
 }
 

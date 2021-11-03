@@ -154,7 +154,9 @@ func (pdexv3) ListPools(c *gin.Context) {
 				log.Println(err)
 				return
 			}
-			data.APY = uint64(apy.APY)
+			if apy != nil {
+				data.APY = uint64(apy.APY)
+			}
 			if _, found := defaultPools[d.PoolID]; found {
 				data.IsVerify = true
 			}
@@ -659,10 +661,16 @@ func (pdexv3) StakingPool(c *gin.Context) {
 
 func (pdexv3) StakeInfo(c *gin.Context) {
 	nftid := c.Query("nftid")
-	result, err := database.DBGetStakingInfo(nftid)
+	list, err := database.DBGetStakingInfo(nftid)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
+	}
+	var result []shared.PoolStakerData
+	for _, v := range list {
+		if v.Amount != 0 {
+			result = append(result, v)
+		}
 	}
 	respond := APIRespond{
 		Result: result,
@@ -844,7 +852,9 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		data.APY = uint64(apy.APY)
+		if apy != nil {
+			data.APY = uint64(apy.APY)
+		}
 		if _, found := defaultPools[v.PoolID]; found {
 			data.IsVerify = true
 		}
@@ -1319,14 +1329,23 @@ func (pdexv3) GetRate(c *gin.Context) {
 
 	result := make(map[string]float64)
 
-	pdexv3StateRPCResponse, err := pathfinder.GetPdexv3StateFromRPC()
-
+	state, err := database.DBGetPDEState(2)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(errors.New("can not get data from RPC pdexv3_getState")))
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
 
-	pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Poolpairs)
+	data := `{"Result":` + state + `}`
+
+	var responseBodyData shared.Pdexv3GetStateRPCResult
+
+	err = json.UnmarshalFromString(data, &responseBodyData)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
+
+	pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(responseBodyData.Result.Poolpairs)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))

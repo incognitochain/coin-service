@@ -260,7 +260,7 @@ func FindGoodTradePath(
 		})
 	}
 
-	allPaths := pc.findPaths(maxPathLen + 1, simplePools, tokenIDStrSource, tokenIDStrDest)
+	allPaths := pc.findPaths(maxPathLen+1, simplePools, tokenIDStrSource, tokenIDStrDest)
 
 	if len(allPaths) == 0 {
 		return []*shared.Pdexv3PoolPairWithId{}, 0
@@ -356,35 +356,35 @@ func marshalRPCGetState(data json.RawMessage) ([]*shared.Pdexv3PoolPairWithId, m
 	return poolPairsArr, poolPairs
 }
 
-func GetPdexv3StateFromRPC() (*shared.Pdexv3GetStateRPCResult, error) {
-	rpcRequestBody := `
-{
-  "id": 1,
-  "jsonrpc": "1.0",
-  "method": "pdexv3_getState",
-  "params": [
-    {
-      "BeaconHeight": 0,
-      "Filter": {}
-    }
-  ]
-}
-	`
+// func GetPdexv3StateFromRPC() (*shared.Pdexv3GetStateRPCResult, error) {
+// 	rpcRequestBody := `
+// {
+//   "id": 1,
+//   "jsonrpc": "1.0",
+//   "method": "pdexv3_getState",
+//   "params": [
+//     {
+//       "BeaconHeight": 0,
+//       "Filter": {}
+//     }
+//   ]
+// }
+// 	`
 
-	var responseBodyData shared.Pdexv3GetStateRPCResult
-	_, err := shared.RestyClient.R().
-		EnableTrace().
-		SetHeader("Content-Type", "application/json").
-		SetBody(rpcRequestBody).
-		SetResult(&responseBodyData).
-		Post(shared.ServiceCfg.FullnodeEndpoint)
-	if err != nil {
-		log.Printf("Error getting RPC 'pdexv3_getState': %s\n", err.Error())
-		return nil, err
-	}
+// 	var responseBodyData shared.Pdexv3GetStateRPCResult
+// 	_, err := shared.RestyClient.R().
+// 		EnableTrace().
+// 		SetHeader("Content-Type", "application/json").
+// 		SetBody(rpcRequestBody).
+// 		SetResult(&responseBodyData).
+// 		Post(shared.ServiceCfg.FullnodeEndpoint)
+// 	if err != nil {
+// 		log.Printf("Error getting RPC 'pdexv3_getState': %s\n", err.Error())
+// 		return nil, err
+// 	}
 
-	return &responseBodyData, nil
-}
+// 	return &responseBodyData, nil
+// }
 
 func GetPdexv3PoolDataFromRawRPCResult(message json.RawMessage) ([]*shared.Pdexv3PoolPairWithId, map[string]*pdex.PoolPairState, error) {
 	pools, poolPairStates := marshalRPCGetState(message)
