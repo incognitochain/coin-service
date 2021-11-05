@@ -140,7 +140,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 				Volume:         0,
 				PriceChange24h: 0,
 				AMP:            d.AMP,
-				Price:          (float64(tk2Amount) / float64(tk1Amount)) * dcrate,
+				Price:          calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100) * dcrate,
 				TotalShare:     totalShare,
 			}
 
@@ -668,7 +668,7 @@ func (pdexv3) StakeInfo(c *gin.Context) {
 	}
 	var result []shared.PoolStakerData
 	for _, v := range list {
-		if v.Amount != 0 {
+		if v.Amount != 0 || len(v.Reward) != 0 {
 			result = append(result, v)
 		}
 	}
@@ -838,7 +838,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			PriceChange24h: 0,
 			Volume:         0,
 			AMP:            v.AMP,
-			Price:          (float64(tk2Amount) / float64(tk1Amount)) * dcrate,
+			Price:          calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100) * dcrate,
 			TotalShare:     totalShare,
 		}
 

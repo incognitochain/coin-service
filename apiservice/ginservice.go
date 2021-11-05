@@ -98,7 +98,7 @@ func StartGinService() {
 		pdexv3Group.GET("/tradestatus", pdexv3{}.TradeStatus)
 		pdexv3Group.GET("/listpools", pdexv3{}.ListPools)
 		pdexv3Group.GET("/poolshare", pdexv3{}.PoolShare)
-		// pdexv3Group.GET("/waitingliquidity", pdexv3{}.WaitingLiquidity)
+
 		pdexv3Group.POST("/poolsdetail", pdexv3{}.PoolsDetail)
 		pdexv3Group.POST("/pairsdetail", pdexv3{}.PairsDetail)
 		pdexv3Group.GET("/tradehistory", pdexv3{}.TradeHistory)

@@ -102,9 +102,9 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 		status = "rejected"
 		isCompleted = true
 	} else {
-		if limitOrderStatus == nil && len(order.WithdrawTxs) == 0 {
+		if limitOrderStatus == nil && len(order.WithdrawInfos) == 0 {
 			isCompleted = false
-			sellTokenBalance = orderAmount
+			orderAmount = 0
 		}
 
 		if limitOrderStatus != nil {
@@ -204,4 +204,11 @@ func extractPubkeyFromKey(key string, otakeyOnly bool) (string, error) {
 
 	result = base58.EncodeCheck(pubkey)
 	return result, nil
+}
+
+func calcAMPRate(virtA, virtB, sellAmount float64) float64 {
+	var result float64
+	k := virtA * virtB
+	result = virtB - (k / (virtA + sellAmount))
+	return result / sellAmount
 }

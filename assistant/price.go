@@ -163,10 +163,16 @@ func getPairRanking() ([]shared.PairRanking, error) {
 			return nil, err
 		}
 	}
+	if len(defaultPools) == 0 {
+		return nil, nil
+	}
 	for v, _ := range defaultPools {
 		pools, err := database.DBGetPoolPairsByPoolID([]string{v})
 		if err != nil {
 			return nil, err
+		}
+		if len(pools) == 0 {
+			continue
 		}
 		pairRank := shared.PairRanking{
 			LeadPool: v,
