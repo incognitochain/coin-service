@@ -1131,16 +1131,22 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 	}
 
 	var result []PdexV3PriceHistoryRespond
+	tokenIDs := strings.Split(poolid, "-")
+	dcrate, err := getPdecimalRate(tokenIDs[0], tokenIDs[1])
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	for _, v := range analyticsData.Result {
 		tm, _ := time.Parse(time.RFC3339, v.Timestamp)
 
 		var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
 			Timestamp: tm.Unix(),
-			High:      v.High,
-			Low:       v.Low,
-			Open:      v.Open,
-			Close:     v.Close,
+			High:      v.High * dcrate,
+			Low:       v.Low * dcrate,
+			Open:      v.Open * dcrate,
+			Close:     v.Close * dcrate,
 		}
 		result = append(result, pdexV3PriceHistoryRespond)
 	}

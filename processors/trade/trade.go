@@ -46,6 +46,7 @@ func StartProcessor() {
 			panic(err)
 		}
 
+		fmt.Println("len(request)", len(request), len(respond), len(withdrawReq), len(withdrawRes))
 		err = database.DBSaveTradeOrder(request)
 		if err != nil {
 			panic(err)
