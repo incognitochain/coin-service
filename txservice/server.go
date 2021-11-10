@@ -230,15 +230,55 @@ func statusMode() {
 		log.Fatalln(err)
 	}
 
-	interval := time.NewTicker(40 * time.Second)
-	for {
-		<-interval.C
-		txList, err := getAllFailedTx()
-		if err != nil {
-			log.Println(err)
-			continue
+	go func() {
+		//re
+		for {
+			txList, err := getAllPendingTx()
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			for _, v := range txList {
+				if time.Since(v.CreatedAt) > 10*time.Minute {
+					txhash := v.TxHash
+					inBlock, err := getTxStatusFullNode(txhash)
+					if err != nil {
+						log.Println(err)
+						time.Sleep(4 * time.Second)
+						return
+					}
+					if inBlock {
+						err = updateTxStatus(txhash, txStatusSuccess, "")
+						if err != nil {
+							log.Println(err)
+							return
+						}
+					} else {
+						if time.Since(v.CreatedAt) > 30*time.Minute {
+							err = updateTxStatus(txhash, txStatusFailed, "")
+							if err != nil {
+								log.Println(err)
+							}
+							return
+						}
+						time.Sleep(4 * time.Second)
+						return
+					}
+				}
+			}
+			time.Sleep(20 * time.Second)
 		}
-		log.Println(txList)
+	}()
+
+	interval2 := time.NewTicker(40 * time.Second)
+	for {
+		<-interval2.C
+		// txList, err := getAllFailedTx()
+		// if err != nil {
+		// 	log.Println(err)
+		// 	continue
+		// }
+		// log.Println(txList)
 		// notifyViaSlack() or something
 	}
 }

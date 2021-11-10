@@ -40,6 +40,18 @@ func getAllFailedTx() ([]TxData, error) {
 	}
 	return result, nil
 }
+
+func getAllPendingTx() ([]TxData, error) {
+	var result []TxData
+	filter := bson.M{"status": bson.M{operator.In: []string{txStatusBroadcasted}}}
+	ctx, _ := context.WithTimeout(context.Background(), 100*time.Second)
+	err := mgm.Coll(&TxData{}).SimpleFindWithCtx(ctx, &result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func getTx(txhash string) (*TxData, error) {
 	var result TxData
 	filter := bson.M{"txhash": bson.M{operator.Eq: txhash}}
