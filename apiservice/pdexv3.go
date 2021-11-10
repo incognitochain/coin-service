@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
@@ -1005,7 +1003,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		return
 	}
 
-	spew.Dump(req)
 	sellToken := req.SellToken
 	buyToken := req.BuyToken
 	feeInPRV := req.FeeInPRV
@@ -1063,7 +1060,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	var foundSellAmount uint64
 	var receive uint64
 
-	spew.Dump(pools, poolPairStates, sellAmount, sellToken, buyAmount, pdexv3Meta.MaxTradePathLength)
 	if sellAmount > 0 {
 		chosenPath, receive = pathfinder.FindGoodTradePath(
 			pdexv3Meta.MaxTradePathLength,
@@ -1072,8 +1068,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			sellToken,
 			buyToken,
 			sellAmount)
-		spew.Dump("chosenPath", chosenPath)
-		spew.Dump("MaxGet before multiply", receive)
 
 		result.SellAmount = float64(sellAmount)
 		result.MaxGet = float64(receive) * dcrate
@@ -1088,8 +1082,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			buyAmount)
 		sellAmount = foundSellAmount
 		receive = buyAmount
-		spew.Dump("chosenPath", chosenPath)
-		spew.Dump("foundSellAmount before multiply", foundSellAmount)
 
 		result.SellAmount = float64(foundSellAmount) / dcrate
 		result.MaxGet = float64(receive)

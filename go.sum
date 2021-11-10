@@ -3,8 +3,6 @@ cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
 github.com/0xBahamoot/go-bigcompressor v1.0.5 h1:pLCZKFs+B8A3+XR6W6ThPpTKtullwmnI2qC2Dk/G6cw=
 github.com/0xBahamoot/go-bigcompressor v1.0.5/go.mod h1:cKlrkmkD9923X8Jkk4l8YEmsnkjhc8MD7U6N+4+ymz0=
-github.com/0xkumi/incognito-dev-framework v0.0.0-20211028070758-757779365ae1 h1:gEZHahQ6QFgn6FzGJOzzN6n4wrneu4VNIz7JrO4N/7E=
-github.com/0xkumi/incognito-dev-framework v0.0.0-20211028070758-757779365ae1/go.mod h1:zfT7PZyE5mZUOAfmoi8W0WwhrlUissnUAYKD1d1dJ8s=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20211109015858-a6a327d79d5a h1:64KwJMxjN170WoO2eUb5bCV6r7NpuqGdPstp0ZGVEXc=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20211109015858-a6a327d79d5a/go.mod h1:zfT7PZyE5mZUOAfmoi8W0WwhrlUissnUAYKD1d1dJ8s=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
@@ -71,8 +69,6 @@ github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3Ee
 github.com/cosmos/go-bip39 v0.0.0-20180819234021-555e2067c45d h1:49RLWk1j44Xu4fjHb6JFYmeUnDORVwHNkDxaQ0ctCVU=
 github.com/cosmos/go-bip39 v0.0.0-20180819234021-555e2067c45d/go.mod h1:tSxLoYXyBmiFeKpvmq4dzayMdCjCnu8uqmCysIGBT2Y=
 github.com/cpuguy83/go-md2man v1.0.10/go.mod h1:SmD6nW6nTyfqj6ABTjUi3V3JVMnlJmwcJI5acqYI6dE=
-github.com/cristalhq/base64 v0.1.2 h1:edsefYyYDiac7Ytdh2xdaiiSSJzcI2f0yIkdGEf1qY0=
-github.com/cristalhq/base64 v0.1.2/go.mod h1:sy4+2Hale2KbtSqkzpdMeYTP/IrB+HCvxVHWsh2VSYk=
 github.com/davecgh/go-spew v0.0.0-20171005155431-ecdeabc65495/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
@@ -233,14 +229,7 @@ github.com/incognitochain/go-libp2p-grpc v0.0.0-20181024123959-d1f24bf49b50 h1:+
 github.com/incognitochain/go-libp2p-grpc v0.0.0-20181024123959-d1f24bf49b50/go.mod h1:5riooInEdamsXRruHSbk5aScSOFvreGwiYCdLOPOETY=
 github.com/incognitochain/go-libp2p-pubsub v0.2.7-0.20210126072501-9870234752e4 h1:OUGl26tgtimTN+oxaNe6iP6WCdiw4dQfAzQ0wvmW4Do=
 github.com/incognitochain/go-libp2p-pubsub v0.2.7-0.20210126072501-9870234752e4/go.mod h1:VBmC+rS6BugyDYO7nSLQQVZ3AbHRGeyE4o8kT1zuvXo=
-github.com/incognitochain/incognito-chain v0.0.0-20211028051015-0b23a195f246 h1:7Gfew1f8FWPXN4KoOH+XPrROZfLd9YGBkASI/1dEros=
 github.com/incognitochain/incognito-chain v0.0.0-20211028051015-0b23a195f246/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
-github.com/incognitochain/incognito-chain v0.0.0-20211029100659-bb4f804ad634 h1:KeHqUYXG51kGZrfVWS7jmIQEvV+UW1o2LXAl+1/VCfI=
-github.com/incognitochain/incognito-chain v0.0.0-20211029100659-bb4f804ad634/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
-github.com/incognitochain/incognito-chain v0.0.0-20211101100913-38766c25e384 h1:3SwnpYenKydH3fhPvuD50QhkaWKyTqD3scuXKZRzKDM=
-github.com/incognitochain/incognito-chain v0.0.0-20211101100913-38766c25e384/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
-github.com/incognitochain/incognito-chain v0.0.0-20211103013103-20108e1c9b5e h1:IZ4pCVl8aSMrQxx0mVy8YEoZSPCqjH727D2I/jJLYNY=
-github.com/incognitochain/incognito-chain v0.0.0-20211103013103-20108e1c9b5e/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
 github.com/incognitochain/incognito-chain v0.0.0-20211103083746-61e5bea16e52 h1:e/y5ZHgHsl9G5qf4xsUZw2g7rPU3SwfHeCpCZ5aA4z8=
 github.com/incognitochain/incognito-chain v0.0.0-20211103083746-61e5bea16e52/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=

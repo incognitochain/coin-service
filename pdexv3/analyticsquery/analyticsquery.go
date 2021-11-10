@@ -2,7 +2,6 @@ package analyticsquery
 
 import (
 	"encoding/json"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/incognitochain/coin-service/shared"
 	"log"
 )
@@ -21,7 +20,6 @@ func APIGetPDexV3PairRateHistories(poolid string, period string, intervals strin
 		log.Printf("Error getting PDEX_V3_PAIR_RATE_HISTORIES: %s\n", err.Error())
 		return nil, err
 	}
-	spew.Dump(responseBodyData)
 	return &responseBodyData, nil
 }
 
