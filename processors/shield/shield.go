@@ -82,7 +82,7 @@ func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 		"metatype": bson.M{operator.In: metas},
 	}
 	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
-		Sort:  bson.D{{"_id", 1}},
+		Sort:  bson.D{{"locktime", 1}},
 		Limit: &limit,
 	})
 	if err != nil {
@@ -121,15 +121,16 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 
 	for _, tx := range shieldTxs {
 		metaDataType, _ := strconv.Atoi(tx.Metatype)
-		requestTx := ""
+		requestTx := tx.TxHash
 		bridge := ""
 		isDecentralized := false
 		switch metaDataType {
 		case metadata.IssuingRequestMeta, metadata.IssuingBSCRequestMeta, metadata.IssuingETHRequestMeta:
 			tokenIDStr := ""
 			amount := uint64(0)
+			pubkey := ""
 			switch metaDataType {
-			case metadata.IssuingResponseMeta:
+			case metadata.IssuingRequestMeta:
 				meta := metadata.IssuingRequest{}
 				err := json.Unmarshal([]byte(tx.Metadata), &meta)
 				if err != nil {
@@ -138,6 +139,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 				tokenIDStr = meta.TokenID.String()
 				amount = meta.DepositedAmount
 				bridge = "btc"
+				pubkey = meta.ReceiverAddress.String()
 			case metadata.IssuingBSCRequestMeta, metadata.IssuingETHRequestMeta:
 				meta := metadata.IssuingEVMRequest{}
 				err := json.Unmarshal([]byte(tx.Metadata), &meta)
@@ -151,8 +153,8 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 					bridge = "bsc"
 				}
 			}
-			shieldData := shared.NewShieldData(requestTx, "", tokenIDStr, bridge, "", isDecentralized, fmt.Sprintf("%v", amount), tx.BlockHeight, tx.Locktime)
-			requestData = append(respondData, *shieldData)
+			shieldData := shared.NewShieldData(requestTx, "", tokenIDStr, bridge, pubkey, isDecentralized, fmt.Sprintf("%v", amount), tx.BlockHeight, tx.Locktime)
+			requestData = append(requestData, *shieldData)
 		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
 			switch metaDataType {
 			case metadata.IssuingResponseMeta:

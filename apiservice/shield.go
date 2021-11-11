@@ -1,6 +1,7 @@
 package apiservice
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -118,6 +119,40 @@ func APIGetShieldHistory(c *gin.Context) {
 	}
 	respond := APIRespond{
 		Result: result,
+		Error:  nil,
+	}
+
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetTxShield(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	fromtime, _ := strconv.Atoi(c.Query("fromtime"))
+	// fromtime, err := strconv.ParseUint(fromtimeStr, 10, 64)
+	// if err != nil {
+	// 	errStr := err.Error()
+	// 	respond := APIRespond{
+	// 		Result: nil,
+	// 		Error:  &errStr,
+	// 	}
+
+	// 	c.JSON(http.StatusOK, respond)
+	// 	return
+	// }
+	fmt.Println("APIGetTxShield", offset, fromtime)
+	list, err := database.DBGetShieldWithRespond(uint64(fromtime), int64(offset))
+	if err != nil {
+		errStr := err.Error()
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+	respond := APIRespond{
+		Result: list,
 		Error:  nil,
 	}
 

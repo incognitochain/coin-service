@@ -148,10 +148,28 @@ func DBUpdateShieldData(list []shared.ShieldData) error {
 		update := bson.M{
 			"$set": bson.M{"requesttx": tx.RequestTx, "amount": tx.Amount, "respondtx": tx.RespondTx},
 		}
-		_, err := mgm.Coll(&shared.ShieldData{}).UpdateOne(ctx, fitler, update, mgm.UpsertTrueOption())
+		_, err := mgm.Coll(&shared.ShieldData{}).UpdateOne(ctx, fitler, update)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func DBGetShieldWithRespond(fromtime uint64, offset int64) ([]shared.TxData, error) {
+	var result []shared.TxData
+	query := []string{strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta), strconv.Itoa(metadata.IssuingBSCResponseMeta)}
+	limit := int64(1000)
+	filter := bson.M{"metatype": bson.M{operator.In: query}, "locktime": bson.M{operator.Gt: fromtime}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", 1}},
+		Limit: &limit,
+		Skip:  &offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

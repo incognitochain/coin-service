@@ -35,8 +35,12 @@ type IncPdexState struct {
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("start processing coin for block %v beacon\n", height)
 	startTime := time.Now()
-
-	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
+	var beaconBestState *blockchain.BeaconBestState
+	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
+		beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
+	} else {
+		beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, true)
+	}
 	blk := beaconBestState.BestBlock
 	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
 	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
@@ -61,7 +65,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	}
 	log.Printf("beaconFeatureStateDB loaded for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 	// Process PDEstatev1
-	if beaconBestState.BeaconHeight < config.Param().PDexParams.Pdexv3BreakPointHeight {
+	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
 		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
 		tradingFees := state.Reader().TradingFees()
 		shares := state.Reader().Shares()
@@ -848,6 +852,8 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			data.Status = inst[2]
 			data.Content = inst[3]
 			data.TxRequest = actionData.TxReqID.String()
+		case metadataCommon.IssuingResponseMeta:
+			//TODO: add shield respond
 		default:
 			continue
 		}
