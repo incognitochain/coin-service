@@ -239,19 +239,18 @@ func statusMode() {
 				continue
 			}
 			for _, v := range txList {
-				if time.Since(v.CreatedAt) > 10*time.Minute {
+				if time.Since(v.CreatedAt) > 5*time.Minute {
 					txhash := v.TxHash
 					inBlock, err := getTxStatusFullNode(txhash)
 					if err != nil {
 						log.Println(err)
-						time.Sleep(4 * time.Second)
-						return
+						continue
 					}
 					if inBlock {
 						err = updateTxStatus(txhash, txStatusSuccess, "")
 						if err != nil {
 							log.Println(err)
-							return
+							continue
 						}
 					} else {
 						if time.Since(v.CreatedAt) > 30*time.Minute {
@@ -259,10 +258,8 @@ func statusMode() {
 							if err != nil {
 								log.Println(err)
 							}
-							return
+							continue
 						}
-						time.Sleep(4 * time.Second)
-						return
 					}
 				}
 			}
