@@ -77,6 +77,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 		return
 	}
 	var defaultPools map[string]struct{}
+	var priorityTokens []string
 	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
 		defaultPools, err = database.DBGetDefaultPool()
 		if err != nil {
@@ -84,6 +85,18 @@ func (pdexv3) ListPools(c *gin.Context) {
 			return
 		}
 		err = cacheStore(defaultPoolsKey, defaultPools)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
+	if err := cacheGet(tokenPriorityKey, priorityTokens); err != nil {
+		priorityTokens, err = database.DBGetTokenPriority()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(tokenPriorityKey, priorityTokens)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -124,13 +137,31 @@ func (pdexv3) ListPools(c *gin.Context) {
 				log.Println(err)
 				return
 			}
+			token1ID := d.TokenID1
+			token2ID := d.TokenID2
 			tk1VA, _ := strconv.ParseUint(d.Virtual1Amount, 10, 64)
 			tk2VA, _ := strconv.ParseUint(d.Virtual2Amount, 10, 64)
 			totalShare, _ := strconv.ParseUint(d.TotalShare, 10, 64)
+
+			willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
+			if willSwap {
+				token1ID = d.TokenID2
+				token2ID = d.TokenID1
+				tk1VA, _ = strconv.ParseUint(d.Virtual2Amount, 10, 64)
+				tk2VA, _ = strconv.ParseUint(d.Virtual1Amount, 10, 64)
+				tk1Amount, _ = strconv.ParseUint(d.Token2Amount, 10, 64)
+				tk2Amount, _ = strconv.ParseUint(d.Token1Amount, 10, 64)
+				dcrate, err = getPdecimalRate(d.TokenID2, d.TokenID1)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+			}
+
 			data = &PdexV3PoolDetail{
 				PoolID:         d.PoolID,
-				Token1ID:       d.TokenID1,
-				Token2ID:       d.TokenID2,
+				Token1ID:       token1ID,
+				Token2ID:       token2ID,
 				Token1Value:    tk1Amount,
 				Token2Value:    tk2Amount,
 				Virtual1Value:  tk1VA,
@@ -239,6 +270,16 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		return
 	}
 	var result []PdexV3PoolShareRespond
+	priorityTokens, err := database.DBGetTokenPriority()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	err = cacheStore(tokenPriorityKey, priorityTokens)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
 	for _, v := range list {
 		l, err := database.DBGetPoolPairsByPoolID([]string{v.PoolID})
 		if err != nil {
@@ -256,18 +297,27 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		if (v.Amount == 0) && len(v.TradingFee) == 0 {
 			continue
 		}
-
+		token1ID := l[0].TokenID1
+		token2ID := l[0].TokenID2
 		tk1Amount, _ := strconv.ParseUint(l[0].Token1Amount, 10, 64)
 		tk2Amount, _ := strconv.ParseUint(l[0].Token2Amount, 10, 64)
 		totalShare, _ := strconv.ParseUint(l[0].TotalShare, 10, 64)
+
+		willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
+		if willSwap {
+			token1ID = l[0].TokenID2
+			token2ID = l[0].TokenID1
+			tk1Amount, _ = strconv.ParseUint(l[0].Token2Amount, 10, 64)
+			tk2Amount, _ = strconv.ParseUint(l[0].Token1Amount, 10, 64)
+		}
 
 		result = append(result, PdexV3PoolShareRespond{
 			PoolID:       v.PoolID,
 			Share:        v.Amount,
 			Rewards:      v.TradingFee,
 			AMP:          l[0].AMP,
-			TokenID1:     l[0].TokenID1,
-			TokenID2:     l[0].TokenID2,
+			TokenID1:     token1ID,
+			TokenID2:     token2ID,
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
 			TotalShare:   totalShare,
@@ -791,6 +841,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		return
 	}
 	var defaultPools map[string]struct{}
+	var priorityTokens []string
 	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
 		defaultPools, err = database.DBGetDefaultPool()
 		if err != nil {
@@ -798,6 +849,18 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			return
 		}
 		err = cacheStore(defaultPoolsKey, defaultPools)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
+	if err := cacheGet(tokenPriorityKey, priorityTokens); err != nil {
+		priorityTokens, err = database.DBGetTokenPriority()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(tokenPriorityKey, priorityTokens)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -822,13 +885,31 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
+		token1ID := v.TokenID1
+		token2ID := v.TokenID2
 		tk1VA, _ := strconv.ParseUint(v.Virtual1Amount, 10, 64)
 		tk2VA, _ := strconv.ParseUint(v.Virtual2Amount, 10, 64)
 		totalShare, _ := strconv.ParseUint(v.TotalShare, 10, 64)
+
+		willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
+		if willSwap {
+			token1ID = v.TokenID2
+			token2ID = v.TokenID1
+			tk1VA, _ = strconv.ParseUint(v.Virtual2Amount, 10, 64)
+			tk2VA, _ = strconv.ParseUint(v.Virtual1Amount, 10, 64)
+			tk1Amount, _ = strconv.ParseUint(v.Token2Amount, 10, 64)
+			tk2Amount, _ = strconv.ParseUint(v.Token1Amount, 10, 64)
+			dcrate, err = getPdecimalRate(v.TokenID2, v.TokenID1)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+		}
+
 		data := PdexV3PoolDetail{
 			PoolID:         v.PoolID,
-			Token1ID:       v.TokenID1,
-			Token2ID:       v.TokenID2,
+			Token1ID:       token1ID,
+			Token2ID:       token2ID,
 			Token1Value:    tk1Amount,
 			Token2Value:    tk2Amount,
 			Virtual1Value:  tk1VA,

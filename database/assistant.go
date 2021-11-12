@@ -188,3 +188,21 @@ func DBGetStableCoinID() ([]string, error) {
 	}
 	return list, nil
 }
+
+func DBGetTokenPriority() ([]string, error) {
+	var result []string
+	var datas []shared.ClientAssistantData
+	filter := bson.M{"dataname": bson.M{operator.Eq: "prioritytoken"}}
+	err := mgm.Coll(&shared.ClientAssistantData{}).SimpleFind(&datas, filter)
+	if err != nil {
+		return nil, err
+	}
+	if len(datas) == 0 {
+		return result, nil
+	}
+	err = json.Unmarshal([]byte(datas[0].Data), &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}

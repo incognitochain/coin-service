@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	defaultPoolsKey string = "dfpool"
+	defaultPoolsKey  string = "dfpool"
+	tokenPriorityKey string = "tkpriority"
 )
 
 func APIGetTop10(c *gin.Context) {

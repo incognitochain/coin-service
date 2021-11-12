@@ -212,3 +212,19 @@ func calcAMPRate(virtA, virtB, sellAmount float64) float64 {
 	result = virtB - (k / (virtA + sellAmount))
 	return result / sellAmount
 }
+
+func willSwapTokenPlace(token1ID, token2ID string, tokenPriorityList []string) bool {
+	token1Idxs := -1
+	token2Idxs := -1
+	for idx, v := range tokenPriorityList {
+		if token1ID == v {
+			token1Idxs = idx
+		}
+	}
+	for idx, v := range tokenPriorityList {
+		if token2ID == v {
+			token2Idxs = idx
+		}
+	}
+	return token1Idxs > token2Idxs
+}
