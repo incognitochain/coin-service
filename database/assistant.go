@@ -206,3 +206,16 @@ func DBGetTokenPriority() ([]string, error) {
 	}
 	return result, nil
 }
+
+func DBGetBasePriceToken() (string, error) {
+	var datas []shared.ClientAssistantData
+	filter := bson.M{"dataname": bson.M{operator.Eq: "bptoken"}}
+	err := mgm.Coll(&shared.ClientAssistantData{}).SimpleFind(&datas, filter)
+	if err != nil {
+		return "", err
+	}
+	if len(datas) == 0 {
+		return "", nil
+	}
+	return datas[0].Data, nil
+}

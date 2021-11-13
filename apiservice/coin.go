@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
@@ -238,11 +239,61 @@ func APIGetRandomCommitments(c *gin.Context) {
 }
 
 func APIGetTokenList(c *gin.Context) {
-	datalist, err := database.DBGetTokenInfo()
+	var datalist []TokenInfo
+	err := cacheGet(tokenInfoKey, &datalist)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-		return
+	}
+	if datalist == nil {
+		tokenList, err := database.DBGetTokenInfo()
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+			return
+		}
+
+		extraTokenInfo, err := database.DBGetAllExtraTokenInfo()
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+			return
+		}
+		extraTokenInfoMap := make(map[string]shared.ExtraTokenInfo)
+		for _, v := range extraTokenInfo {
+			extraTokenInfoMap[v.TokenID] = v
+		}
+		for _, v := range tokenList {
+			currPrice, _ := strconv.ParseFloat(v.CurrentPrice, 64)
+			pastPrice, _ := strconv.ParseFloat(v.PastPrice, 64)
+			price24h := currPrice - pastPrice
+			data := TokenInfo{
+				TokenID:        v.TokenID,
+				Name:           v.Name,
+				Image:          v.Image,
+				IsPrivacy:      v.IsPrivacy,
+				IsBridge:       v.IsBridge,
+				ExternalID:     v.ExternalID,
+				CurrentPrice:   currPrice,
+				PriceChange24h: price24h,
+				PDecimals:      v.PDecimals,
+			}
+			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
+				data.Decimals = etki.Decimals
+				data.ContractID = etki.ContractID
+				data.Status = etki.Status
+				data.Type = etki.Type
+				data.CurrencyType = etki.CurrencyType
+				data.Default = etki.Default
+				data.Verified = etki.Verified
+				data.UserID = etki.UserID
+				data.ListChildToken = etki.ListChildToken
+			}
+			datalist = append(datalist, data)
+		}
+		err = cacheStoreCustom(tokenInfoKey, datalist, 30*time.Second)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	respond := APIRespond{
 		Result: datalist,

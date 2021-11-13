@@ -1,17 +1,21 @@
 package assistant
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
+	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
 func getExternalPrice(tokenSymbol string) (float64, error) {
@@ -67,7 +71,7 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 		return nil, err
 	}
 	for _, v := range bridgeTokens {
-		d, err := database.DBGetTokenDecimal(v.TokenID)
+		d, err := database.DBGetExtraTokenInfo(v.TokenID)
 		if err != nil {
 			return nil, err
 		}
@@ -180,5 +184,158 @@ func getPairRanking() ([]shared.PairRanking, error) {
 		}
 		result = append(result, pairRank)
 	}
+	return result, nil
+}
+
+func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
+	var result []shared.TokenInfoData
+
+	baseToken, err := database.DBGetBasePriceToken()
+	if err != nil {
+		return nil, err
+	}
+	if baseToken == "" {
+		return nil, nil
+	}
+	tokenList, err := database.DBGetTokenInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range tokenList {
+		if v.CurrentPrice != "" {
+			if time.Since(v.UpdatedAt) < 30*time.Minute {
+				continue
+			}
+		}
+		rate, err := getRate(v.TokenID, baseToken, 1, 1)
+		if err != nil {
+			log.Println("getInternalTokenPrice", err)
+			continue
+		}
+		dcrate, err := getPdecimalRate(v.TokenID, baseToken)
+		if err != nil {
+			log.Println("getPdecimalRate", err)
+			continue
+		}
+		v.PastPrice = v.CurrentPrice
+		v.CurrentPrice = fmt.Sprintf("%g", rate*dcrate)
+		result = append(result, v)
+	}
+	return result, nil
+}
+
+func getRate(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (float64, error) {
+	data, err := database.DBGetPDEState(2)
+	if err != nil {
+		return 0, err
+	}
+	pdeState := jsonresult.Pdexv3State{}
+	err = json.UnmarshalFromString(data, &pdeState)
+	if err != nil {
+		return 0, err
+	}
+	poolPairStates := *pdeState.PoolPairs
+	var pools []*shared.Pdexv3PoolPairWithId
+	for poolId, element := range poolPairStates {
+
+		var poolPair rawdbv2.Pdexv3PoolPair
+		var poolPairWithId shared.Pdexv3PoolPairWithId
+
+		poolPair = element.State()
+		poolPairWithId = shared.Pdexv3PoolPairWithId{
+			poolPair,
+			shared.Pdexv3PoolPairChild{
+				PoolID: poolId},
+		}
+
+		pools = append(pools, &poolPairWithId)
+	}
+	a := uint64(1)
+	a1 := uint64(0)
+	b := uint64(1)
+	b1 := uint64(0)
+retry:
+	_, receive := pathfinder.FindGoodTradePath(
+		pdexv3Meta.MaxTradePathLength,
+		pools,
+		poolPairStates,
+		tokenID1,
+		tokenID2,
+		a)
+
+	if receive == 0 {
+		a *= 10
+		if a < 1e18 {
+			goto retry
+		}
+		return 0, nil
+	} else {
+		if a < token1Amount && receive > a1*10 {
+			a *= 10
+			a1 = receive
+			goto retry
+		} else {
+			if receive < a1 {
+				a /= 10
+				receive = a1
+				fmt.Println("receive", a, receive)
+			}
+		}
+	}
+
+retry2:
+	_, receive2 := pathfinder.FindGoodTradePath(
+		pdexv3Meta.MaxTradePathLength,
+		pools,
+		poolPairStates,
+		tokenID2,
+		tokenID1,
+		b)
+
+	if receive2 == 0 {
+		b *= 10
+		if b < 1e18 {
+			goto retry2
+		}
+		return 0, nil
+	} else {
+		if b < token2Amount && receive2 > b1*10 {
+			b *= 10
+			b1 = receive2
+			goto retry2
+		} else {
+			if receive2 < b1 {
+				b /= 10
+				receive2 = b1
+				fmt.Println("receive2", b, receive2)
+			}
+		}
+	}
+
+	log.Printf("getRate %v %d\n", a, receive)
+	log.Printf("getRate %v %d\n", b, receive2)
+	return (float64(a)/float64(receive) + (1 / (float64(b) / float64(receive2)))) / 2, nil
+}
+
+func getPdecimalRate(tokenID1, tokenID2 string) (float64, error) {
+	tk1Decimal := 1
+	tk2Decimal := 1
+	tk1, err := database.DBGetExtraTokenInfo(tokenID1)
+	if err != nil {
+		log.Println(err)
+	}
+	tk2, err := database.DBGetExtraTokenInfo(tokenID2)
+	if err != nil {
+		log.Println(err)
+	}
+	if tk1 != nil {
+		tk1Decimal = int(tk1.PDecimals)
+	}
+	if tk2 != nil {
+		tk2Decimal = int(tk2.PDecimals)
+	}
+	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
+	fmt.Println("getPdecimalRate", result)
 	return result, nil
 }

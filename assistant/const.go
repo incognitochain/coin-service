@@ -1,6 +1,10 @@
 package assistant
 
-import "time"
+import (
+	"time"
+
+	jsoniter "github.com/json-iterator/go"
+)
 
 const (
 	binancePriceURL   string        = "https://api.binance.com/api/v3/ticker/price?symbol="
@@ -10,3 +14,5 @@ const (
 const (
 	defaultPoolsKey string = "dfpool"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary

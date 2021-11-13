@@ -262,3 +262,25 @@ type PdexV3StakingPoolInfo struct {
 	Amount  uint64
 	APY     int
 }
+
+type TokenInfo struct {
+	TokenID        string
+	Name           string
+	Symbol         string
+	Image          string
+	IsPrivacy      bool
+	IsBridge       bool
+	ExternalID     string
+	PriceChange24h float64
+	CurrentPrice   float64
+	PDecimals      int
+	Decimals       uint64
+	ContractID     string
+	Status         int
+	Type           int
+	CurrencyType   int
+	Default        bool
+	Verified       bool
+	UserID         int
+	ListChildToken string
+}

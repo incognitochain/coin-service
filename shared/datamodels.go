@@ -161,6 +161,9 @@ type TokenInfoData struct {
 	IsBridge         bool   `json:"isbridge" bson:"isbridge"`
 	IsNFT            bool   `json:"isnft" bson:"isnft"`
 	ExternalID       string `json:"externalid" bson:"externalid"`
+	PastPrice        string `json:"pastprice" bson:"pastprice"`
+	CurrentPrice     string `json:"currentprice" bson:"currentprice"`
+	PDecimals        int    `json:"pdecimals" bson:"pdecimals"`
 }
 
 func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy, isbridge bool, amount uint64, isNFT bool, externalid string) *TokenInfoData {
@@ -955,16 +958,25 @@ func (model *RewardAPYTracking) Saving() error {
 	return nil
 }
 
-type TokenPdecimal struct {
+type ExtraTokenInfo struct {
 	mgm.DefaultModel `bson:",inline"`
 	TokenID          string `json:"TokenID" bson:"tokenid"`
 	Name             string `json:"Name" bson:"name"`
 	Symbol           string `json:"Symbol" bson:"symbol"`
 	PSymbol          string `json:"PSymbol" bson:"psymbol"`
 	PDecimals        uint64 `json:"PDecimals" bson:"pdecimals"`
+	Decimals         uint64 `json:"Decimals" bson:"decimals"`
+	ContractID       string `json:"ContractID" bson:"contractid"`
+	Status           int    `json:"Status" bson:"status"`
+	Type             int    `json:"Type" bson:"type"`
+	CurrencyType     int    `json:"CurrencyType" bson:"currencytype"`
+	Default          bool   `json:"Default" bson:"default"`
+	Verified         bool   `json:"Verified" bson:"verified"`
+	UserID           int    `json:"UserID" bson:"userid"`
+	ListChildToken   string `json:"ListChildToken" bson:"listchildtoken"`
 }
 
-func (model *TokenPdecimal) Creating() error {
+func (model *ExtraTokenInfo) Creating() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Creating(); err != nil {
 		return err
@@ -972,7 +984,7 @@ func (model *TokenPdecimal) Creating() error {
 
 	return nil
 }
-func (model *TokenPdecimal) Saving() error {
+func (model *ExtraTokenInfo) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

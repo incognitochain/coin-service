@@ -1,7 +1,6 @@
 package assistant
 
 import (
-	"encoding/json"
 	"errors"
 )
 

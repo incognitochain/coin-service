@@ -22,6 +22,7 @@ import (
 const (
 	defaultPoolsKey  string = "dfpool"
 	tokenPriorityKey string = "tkpriority"
+	tokenInfoKey     string = "tokenInfo"
 )
 
 func APIGetTop10(c *gin.Context) {
@@ -265,16 +266,6 @@ func getRate(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (floa
 
 		pools = append(pools, &poolPairWithId)
 	}
-
-	// pools, poolPairStates, err := pathfinder.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Poolpairs)
-	// if err != nil {
-	// 	return 0, err
-	// }
-
-	// _, err = feeestimator.GetPdexv3PoolDataFromRawRPCResult(pdexv3StateRPCResponse.Result.Params, pdexv3StateRPCResponse.Result.Poolpairs)
-	// if err != nil {
-	// 	return 0, err
-	// }
 	a := uint64(1)
 	a1 := uint64(0)
 	b := uint64(1)
@@ -345,11 +336,11 @@ retry2:
 func getPdecimalRate(tokenID1, tokenID2 string) (float64, error) {
 	tk1Decimal := 1
 	tk2Decimal := 1
-	tk1, err := database.DBGetTokenDecimal(tokenID1)
+	tk1, err := database.DBGetExtraTokenInfo(tokenID1)
 	if err != nil {
 		log.Println(err)
 	}
-	tk2, err := database.DBGetTokenDecimal(tokenID2)
+	tk2, err := database.DBGetExtraTokenInfo(tokenID2)
 	if err != nil {
 		log.Println(err)
 	}
