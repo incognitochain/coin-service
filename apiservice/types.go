@@ -264,23 +264,32 @@ type PdexV3StakingPoolInfo struct {
 }
 
 type TokenInfo struct {
-	TokenID        string
-	Name           string
-	Symbol         string
-	Image          string
-	IsPrivacy      bool
-	IsBridge       bool
-	ExternalID     string
-	PriceChange24h float64
-	CurrentPrice   float64
-	PDecimals      int
-	Decimals       uint64
-	ContractID     string
-	Status         int
-	Type           int
-	CurrencyType   int
-	Default        bool
-	Verified       bool
-	UserID         int
-	ListChildToken string
+	TokenID            string
+	Name               string
+	Symbol             string
+	Image              string
+	IsPrivacy          bool
+	IsBridge           bool
+	ExternalID         string
+	PDecimals          int
+	Decimals           uint64
+	ContractID         string
+	Status             int
+	Type               int
+	CurrencyType       int
+	Default            bool
+	Verified           bool
+	UserID             int
+	ListChildToken     string
+	PSymbol            string
+	OriginalSymbol     string
+	LiquidityReward    uint64
+	PriceUsd           float64 `json:"PriceUsd"`
+	PercentChange1h    string  `json:"PercentChange1h"`
+	PercentChangePrv1h string  `json:"PercentChangePrv1h"`
+	PercentChange24h   string  `json:"PercentChange24h"`
+	CurrentPrvPool     uint64  `json:"CurrentPrvPool"`
+	PricePrv           float64 `json:"PricePrv"`
+	Volume24           uint64  `json:"volume24"`
+	ParentID           int     `json:"ParentID"`
 }

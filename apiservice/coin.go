@@ -3,6 +3,7 @@ package apiservice
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"math/rand"
@@ -265,20 +266,25 @@ func APIGetTokenList(c *gin.Context) {
 		for _, v := range tokenList {
 			currPrice, _ := strconv.ParseFloat(v.CurrentPrice, 64)
 			pastPrice, _ := strconv.ParseFloat(v.PastPrice, 64)
-			price24h := currPrice - pastPrice
+			percent24h := float64(0)
+			if pastPrice != 0 && currPrice != 0 {
+				percent24h = ((pastPrice - currPrice) / currPrice) * 100
+			}
 			data := TokenInfo{
-				TokenID:        v.TokenID,
-				Name:           v.Name,
-				Image:          v.Image,
-				IsPrivacy:      v.IsPrivacy,
-				IsBridge:       v.IsBridge,
-				ExternalID:     v.ExternalID,
-				CurrentPrice:   currPrice,
-				PriceChange24h: price24h,
-				PDecimals:      v.PDecimals,
+				TokenID:          v.TokenID,
+				Name:             v.Name,
+				Image:            v.Image,
+				IsPrivacy:        v.IsPrivacy,
+				IsBridge:         v.IsBridge,
+				ExternalID:       v.ExternalID,
+				PriceUsd:         currPrice,
+				PercentChange24h: fmt.Sprintf("%.2f", percent24h),
 			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 				data.Decimals = etki.Decimals
+				data.Symbol = etki.Symbol
+				data.PSymbol = etki.PSymbol
+				data.PDecimals = int(etki.PDecimals)
 				data.ContractID = etki.ContractID
 				data.Status = etki.Status
 				data.Type = etki.Type
@@ -287,6 +293,17 @@ func APIGetTokenList(c *gin.Context) {
 				data.Verified = etki.Verified
 				data.UserID = etki.UserID
 				data.ListChildToken = etki.ListChildToken
+				data.PercentChange1h = etki.PercentChange1h
+				data.PercentChangePrv1h = etki.PercentChangePrv1h
+				data.CurrentPrvPool = etki.CurrentPrvPool
+				data.PricePrv = etki.PricePrv
+				data.Volume24 = etki.Volume24
+				data.ParentID = etki.ParentID
+				data.OriginalSymbol = etki.OriginalSymbol
+				data.LiquidityReward = etki.LiquidityReward
+				if data.PriceUsd == 0 {
+					data.PriceUsd = etki.PriceUsd
+				}
 			}
 			datalist = append(datalist, data)
 		}

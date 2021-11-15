@@ -163,7 +163,6 @@ type TokenInfoData struct {
 	ExternalID       string `json:"externalid" bson:"externalid"`
 	PastPrice        string `json:"pastprice" bson:"pastprice"`
 	CurrentPrice     string `json:"currentprice" bson:"currentprice"`
-	PDecimals        int    `json:"pdecimals" bson:"pdecimals"`
 }
 
 func NewTokenInfoData(tokenID, name, symbol, image string, isprivacy, isbridge bool, amount uint64, isNFT bool, externalid string) *TokenInfoData {
@@ -973,7 +972,18 @@ type ExtraTokenInfo struct {
 	Default          bool   `json:"Default" bson:"default"`
 	Verified         bool   `json:"Verified" bson:"verified"`
 	UserID           int    `json:"UserID" bson:"userid"`
-	ListChildToken   string `json:"ListChildToken" bson:"listchildtoken"`
+
+	PriceUsd           float64 `json:"PriceUsd" bson:"priceusd"`
+	PercentChange1h    string  `json:"PercentChange1h" bson:"percentchange1h"`
+	PercentChangePrv1h string  `json:"PercentChangePrv1h" bson:"percentchangeprv1h"`
+	CurrentPrvPool     uint64  `json:"CurrentPrvPool" bson:"currentprvpool"`
+	PricePrv           float64 `json:"priceprv" bson:"priceprv"`
+	Volume24           uint64  `json:"volume24" bson:"volume24"`
+	ParentID           int     `json:"ParentID" bson:"parentid"`
+	OriginalSymbol     string  `json:"OriginalSymbol" bson:"originalsymbol"`
+	LiquidityReward    uint64  `json:"LiquidityReward" bson:"liquidityreward"`
+
+	ListChildToken string `json:"ListChildToken" bson:"listchildtoken"`
 }
 
 func (model *ExtraTokenInfo) Creating() error {

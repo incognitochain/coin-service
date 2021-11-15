@@ -13,20 +13,30 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 	if shared.ServiceCfg.ExternalDecimals != "" {
 		var decimal struct {
 			Result []struct {
-				TokenID        string        `json:"TokenID"`
-				Name           string        `json:"Name"`
-				Symbol         string        `json:"Symbol"`
-				PSymbol        string        `json:"PSymbol"`
-				PDecimals      uint64        `json:"PDecimals"`
-				Decimals       uint64        `json:"Decimals"`
-				ContractID     string        `json:"ContractID"`
-				Status         int           `json:"Status"`
-				Type           int           `json:"Type"`
-				CurrencyType   int           `json:"CurrencyType"`
-				Default        bool          `json:"Default"`
-				Verified       bool          `json:"Verified"`
-				UserID         int           `json:"UserID"`
-				ListChildToken []interface{} `json:"ListChildToken"`
+				TokenID            string        `json:"TokenID"`
+				Name               string        `json:"Name"`
+				Symbol             string        `json:"Symbol"`
+				PSymbol            string        `json:"PSymbol"`
+				PDecimals          uint64        `json:"PDecimals"`
+				Decimals           uint64        `json:"Decimals"`
+				ContractID         string        `json:"ContractID"`
+				Status             int           `json:"Status"`
+				Type               int           `json:"Type"`
+				CurrencyType       int           `json:"CurrencyType"`
+				Default            bool          `json:"Default"`
+				Verified           bool          `json:"Verified"`
+				UserID             int           `json:"UserID"`
+				ListChildToken     []interface{} `json:"ListChildToken"`
+				PriceUsd           float64       `json:"PriceUsd"`
+				PercentChange1h    string        `json:"PercentChange1h"`
+				PercentChangePrv1h string        `json:"PercentChangePrv1h"`
+				CurrentPrvPool     uint64        `json:"CurrentPrvPool"`
+				PricePrv           float64       `json:"PricePrv"`
+				Volume24           uint64        `json:"volume24"`
+				ParentID           int           `json:"ParentID"`
+
+				OriginalSymbol  string `json:"OriginalSymbol"`
+				LiquidityReward uint64 `json:"LiquidityReward"`
 			}
 			Error string `json:"Error"`
 		}
@@ -58,20 +68,29 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				return nil, err
 			}
 			result = append(result, shared.ExtraTokenInfo{
-				TokenID:        v.TokenID,
-				Name:           v.Name,
-				Symbol:         v.Symbol,
-				PSymbol:        v.PSymbol,
-				PDecimals:      v.PDecimals,
-				Decimals:       v.Decimals,
-				ContractID:     v.ContractID,
-				Status:         v.Status,
-				Type:           v.Type,
-				CurrencyType:   v.CurrencyType,
-				Default:        v.Default,
-				Verified:       v.Verified,
-				UserID:         v.UserID,
-				ListChildToken: string(listChildTkBytes),
+				TokenID:            v.TokenID,
+				Name:               v.Name,
+				Symbol:             v.Symbol,
+				PSymbol:            v.PSymbol,
+				PDecimals:          v.PDecimals,
+				Decimals:           v.Decimals,
+				ContractID:         v.ContractID,
+				Status:             v.Status,
+				Type:               v.Type,
+				CurrencyType:       v.CurrencyType,
+				Default:            v.Default,
+				Verified:           v.Verified,
+				UserID:             v.UserID,
+				ListChildToken:     string(listChildTkBytes),
+				PriceUsd:           v.PriceUsd,
+				PercentChange1h:    v.PercentChange1h,
+				PercentChangePrv1h: v.PercentChangePrv1h,
+				CurrentPrvPool:     v.CurrentPrvPool,
+				PricePrv:           v.PricePrv,
+				Volume24:           v.Volume24,
+				ParentID:           v.ParentID,
+				OriginalSymbol:     v.OriginalSymbol,
+				LiquidityReward:    v.LiquidityReward,
 			})
 		}
 		return result, nil

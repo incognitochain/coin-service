@@ -204,7 +204,7 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 
 	for _, v := range tokenList {
 		if v.CurrentPrice != "" {
-			if time.Since(v.UpdatedAt) < 30*time.Minute {
+			if time.Since(v.UpdatedAt) < 10*time.Minute {
 				continue
 			}
 		}

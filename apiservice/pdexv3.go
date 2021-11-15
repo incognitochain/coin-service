@@ -946,14 +946,6 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-// const (
-// 	decimal_100 = float64(100)
-// 	decimal_10  = float64(10)
-// 	decimal_1   = float64(1)
-// 	decimal_01  = float64(0.1)
-// 	decimal_001 = float64(0.01)
-// )
-
 func (pdexv3) GetOrderBook(c *gin.Context) {
 	decimal := c.Query("decimal")
 	poolID := c.Query("poolid")
@@ -963,6 +955,19 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	var priorityTokens []string
+	if err := cacheGet(tokenPriorityKey, priorityTokens); err != nil {
+		priorityTokens, err = database.DBGetTokenPriority()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(tokenPriorityKey, priorityTokens)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
 	tks := strings.Split(poolID, "-")
 	pairID := tks[0] + "-" + tks[1]
 	list, err := database.DBGetPendingOrderByPairID(pairID)
@@ -970,7 +975,8 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-
+	willSwap := willSwapTokenPlace(tks[0], tks[1], priorityTokens)
+	_ = willSwap
 	var result PdexV3OrderBookRespond
 	var sellSide []shared.TradeOrderData
 	var buySide []shared.TradeOrderData
@@ -1461,6 +1467,19 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 	var sellOrders []PdexV3PendingOrderData
 	poolID := c.Query("poolid")
 	tks := strings.Split(poolID, "-")
+	var priorityTokens []string
+	if err := cacheGet(tokenPriorityKey, priorityTokens); err != nil {
+		priorityTokens, err = database.DBGetTokenPriority()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(tokenPriorityKey, priorityTokens)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
 
 	pairID := tks[0] + "-" + tks[1]
 	list, err := database.DBGetLimitOrderStatusByPairID(pairID)
@@ -1468,6 +1487,7 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	willSwap := willSwapTokenPlace(tks[0], tks[1], priorityTokens)
 
 	var sellSide []shared.LimitOrderStatus
 	var buySide []shared.LimitOrderStatus
@@ -1505,6 +1525,15 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			Token1Amount:  tk1Amount,
 			Token2Amount:  tk2Amount,
 		}
+		if willSwap {
+			data = PdexV3PendingOrderData{
+				TxRequest:     v.RequestTx,
+				Token1Balance: tk2Balance,
+				Token2Balance: tk1Balance,
+				Token1Amount:  tk1Amount,
+				Token2Amount:  tk2Amount,
+			}
+		}
 		sellOrders = append(sellOrders, data)
 	}
 	for _, v := range buySide {
@@ -1522,10 +1551,24 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			Token1Amount:  tk2Amount,
 			Token2Amount:  tk1Amount,
 		}
+		if willSwap {
+			data = PdexV3PendingOrderData{
+				TxRequest:     v.RequestTx,
+				Token1Balance: tk2Balance,
+				Token2Balance: tk1Balance,
+				Token1Amount:  tk1Amount,
+				Token2Amount:  tk2Amount,
+			}
+		}
 		buyOrders = append(buyOrders, data)
 	}
+
 	result.Buy = buyOrders
 	result.Sell = sellOrders
+	if willSwap {
+		result.Buy = sellOrders
+		result.Sell = buyOrders
+	}
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,

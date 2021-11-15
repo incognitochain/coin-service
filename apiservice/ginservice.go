@@ -87,12 +87,12 @@ func StartGinService() {
 		//pdex
 		pdex := r.Group("/pdex")
 
-		pdexv2Group := pdex.Group("/v2")
-		pdexv2Group.GET("/gettradehistory", APIGetTradeHistory)
-		pdexv2Group.GET("/getpdestate", APIPDEState)
-		pdexv2Group.GET("/getcontributehistory", APIGetContributeHistory)
-		pdexv2Group.GET("/getwithdrawhistory", APIGetWithdrawHistory)
-		pdexv2Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
+		pdexv1Group := pdex.Group("/v1")
+		pdexv1Group.GET("/gettradehistory", APIGetTradeHistory)
+		pdexv1Group.GET("/getpdestate", APIPDEState)
+		pdexv1Group.GET("/getcontributehistory", APIGetContributeHistory)
+		pdexv1Group.GET("/getwithdrawhistory", APIGetWithdrawHistory)
+		pdexv1Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
 		pdexv3Group := pdex.Group("/v3")
 		pdexv3Group.GET("/listpairs", pdexv3{}.ListPairs)
