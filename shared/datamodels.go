@@ -981,7 +981,7 @@ type ExtraTokenInfo struct {
 	Volume24           uint64  `json:"volume24" bson:"volume24"`
 	ParentID           int     `json:"ParentID" bson:"parentid"`
 	OriginalSymbol     string  `json:"OriginalSymbol" bson:"originalsymbol"`
-	LiquidityReward    uint64  `json:"LiquidityReward" bson:"liquidityreward"`
+	LiquidityReward    float64 `json:"LiquidityReward" bson:"liquidityreward"`
 
 	ListChildToken string `json:"ListChildToken" bson:"listchildtoken"`
 }

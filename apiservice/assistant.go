@@ -291,7 +291,7 @@ retry:
 			a1 = receive
 			goto retry
 		} else {
-			if receive < a1 {
+			if receive < a1*10 {
 				a /= 10
 				receive = a1
 				fmt.Println("receive", a, receive)
@@ -320,7 +320,7 @@ retry2:
 			b1 = receive2
 			goto retry2
 		} else {
-			if receive2 < b1 {
+			if receive2 < b1*10 {
 				b /= 10
 				receive2 = b1
 				fmt.Println("receive2", b, receive2)

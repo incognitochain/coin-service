@@ -203,12 +203,7 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 	}
 
 	for _, v := range tokenList {
-		if v.CurrentPrice != "" {
-			if time.Since(v.UpdatedAt) < 10*time.Minute {
-				continue
-			}
-		}
-		rate, err := getRate(v.TokenID, baseToken, 1, 1)
+		rate, err := getRate(baseToken, v.TokenID, 1, 1)
 		if err != nil {
 			log.Println("getInternalTokenPrice", err)
 			continue
@@ -218,8 +213,13 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 			log.Println("getPdecimalRate", err)
 			continue
 		}
-		v.PastPrice = v.CurrentPrice
-		v.CurrentPrice = fmt.Sprintf("%g", rate*dcrate)
+
+		rate = rate * dcrate
+		v.CurrentPrice = fmt.Sprintf("%g", rate)
+		if time.Since(v.UpdatedAt) >= 24*time.Hour {
+			v.PastPrice = v.CurrentPrice
+			v.UpdatedAt = time.Now().UTC()
+		}
 		result = append(result, v)
 	}
 	return result, nil
@@ -271,12 +271,12 @@ retry:
 		}
 		return 0, nil
 	} else {
-		if a < token1Amount && receive > a1*10 {
+		if receive > a1*10 {
 			a *= 10
 			a1 = receive
 			goto retry
 		} else {
-			if receive < a1 {
+			if receive < a1*10 {
 				a /= 10
 				receive = a1
 				fmt.Println("receive", a, receive)
@@ -300,21 +300,18 @@ retry2:
 		}
 		return 0, nil
 	} else {
-		if b < token2Amount && receive2 > b1*10 {
+		if receive2 > b1*10 {
 			b *= 10
 			b1 = receive2
 			goto retry2
 		} else {
-			if receive2 < b1 {
+			if receive2 < b1*10 {
 				b /= 10
 				receive2 = b1
 				fmt.Println("receive2", b, receive2)
 			}
 		}
 	}
-
-	log.Printf("getRate %v %d\n", a, receive)
-	log.Printf("getRate %v %d\n", b, receive2)
 	return (float64(a)/float64(receive) + (1 / (float64(b) / float64(receive2)))) / 2, nil
 }
 

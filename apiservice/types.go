@@ -250,11 +250,12 @@ type PdexV3StakePoolRewardHistoryData struct {
 }
 
 type PdexV3PendingOrderData struct {
-	TxRequest     string
-	Token1Amount  uint64
-	Token2Amount  uint64
-	Token1Balance uint64
-	Token2Balance uint64
+	TxRequest    string
+	Token1Amount uint64
+	Token2Amount uint64
+	Token1Remain uint64
+	Token2Remain uint64
+	Rate         float64
 }
 
 type PdexV3StakingPoolInfo struct {
@@ -280,10 +281,10 @@ type TokenInfo struct {
 	Default            bool
 	Verified           bool
 	UserID             int
-	ListChildToken     string
+	ListChildToken     []TokenInfo
 	PSymbol            string
 	OriginalSymbol     string
-	LiquidityReward    uint64
+	LiquidityReward    float64
 	PriceUsd           float64 `json:"PriceUsd"`
 	PercentChange1h    string  `json:"PercentChange1h"`
 	PercentChangePrv1h string  `json:"PercentChangePrv1h"`
@@ -292,4 +293,7 @@ type TokenInfo struct {
 	PricePrv           float64 `json:"PricePrv"`
 	Volume24           uint64  `json:"volume24"`
 	ParentID           int     `json:"ParentID"`
+
+	DefaultPoolPair  string
+	DefaultPairToken string
 }

@@ -155,7 +155,7 @@ func DBUpdateTokenInfoPrice(tokenList []shared.TokenInfoData) error {
 	for _, tk := range tokenList {
 		update := bson.M{
 			"$set": bson.M{
-				"updated_at":   time.Now().UTC(),
+				"updated_at":   tk.UpdatedAt,
 				"pastprice":    tk.PastPrice,
 				"currentprice": tk.CurrentPrice,
 			},

@@ -32,6 +32,8 @@ type IncPdexState struct {
 	Param        *statedb.Pdexv3Params
 }
 
+var pdexV3State pdex.State
+
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 	log.Printf("start processing coin for block %v beacon\n", height)
 	startTime := time.Now()
@@ -111,12 +113,11 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 		pdeStateJSON := jsonresult.Pdexv3State{}
 		var pdeStr string
 		var wg sync.WaitGroup
-		wg.Add(2)
-		go func() {
-			if height > config.Param().PDexParams.Pdexv3BreakPointHeight {
-				prevStateV2 = &shared.PDEStateV2{
-					StakingPoolsState: make(map[string]*pdex.StakingPoolState),
-				}
+		if height > config.Param().PDexParams.Pdexv3BreakPointHeight {
+			prevStateV2 = &shared.PDEStateV2{
+				StakingPoolsState: make(map[string]*pdex.StakingPoolState),
+			}
+			if pdexV3State == nil {
 				prevBeaconFeatureStateDB, err := Localnode.GetBlockchain().GetBestStateBeaconFeatureStateDBByHeight(height-1, Localnode.GetBlockchain().GetBeaconChainDatabase())
 				if err != nil {
 					log.Println(err)
@@ -150,60 +151,64 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 					panic(err)
 				}
 				prevStateV2.PoolPairs = pools
-			}
-			wg.Done()
-		}()
-		go func() {
-			params, err := statedb.GetPdexv3Params(beaconFeatureStateDB)
-			if err != nil {
-				panic(err)
-			}
-			poolPairs, err := initPoolPairStatesFromDB(beaconFeatureStateDB)
-			if err != nil {
-				panic(err)
-			}
-			for stakingPoolID := range params.StakingPoolsShare() {
-				stakers, liquidity, err := initStakers(stakingPoolID, beaconFeatureStateDB)
+			} else {
+				prevPdexv3State := pdexV3State.Clone()
+				pools := make(map[string]*shared.PoolPairState)
+				err = json.Unmarshal(prevPdexv3State.Reader().PoolPairs(), &pools)
 				if err != nil {
 					panic(err)
 				}
-				rewardsPerShare, err := statedb.GetPdexv3StakingPoolRewardsPerShare(beaconFeatureStateDB, stakingPoolID)
-				if err != nil {
-					panic(err)
-				}
-				stateV2.StakingPoolsState[stakingPoolID] = pdex.NewStakingPoolStateWithValue(liquidity, stakers, rewardsPerShare)
+				prevStateV2.PoolPairs = pools
+				prevStateV2.StakingPoolsState = prevPdexv3State.Reader().StakingPools()
 			}
-			pools := make(map[string]*shared.PoolPairState)
-			poolPairsBytes, err := json.Marshal(poolPairs)
-			if err != nil {
-				panic(err)
-			}
-			err = json.Unmarshal(poolPairsBytes, &pools)
-			if err != nil {
-				panic(err)
-			}
-			stateV2.PoolPairs = pools
-			stateV2.Params = params
 
-			poolPairsJSON := make(map[string]*pdex.PoolPairState)
-			err = json.Unmarshal(poolPairsBytes, &poolPairsJSON)
+		}
+		if pdexV3State == nil {
+			pdeStates, err := pdex.InitStatesFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight)
 			if err != nil {
 				panic(err)
 			}
-			paramsBytes, err := json.Marshal(stateV2.Params)
-			if err != nil {
-				panic(err)
-			}
-			paramJSON := pdex.Params{}
-			err = json.Unmarshal(paramsBytes, &paramJSON)
-			if err != nil {
-				panic(err)
-			}
+			pdexV3State = pdeStates[2]
+		}
+
+		pdeStateEnv := pdex.
+			NewStateEnvBuilder().
+			BuildBeaconInstructions(blk.Body.Instructions).
+			BuildStateDB(beaconFeatureStateDB).
+			BuildPrevBeaconHeight(blk.Header.Height - 1).
+			BuildBCHeightBreakPointPrivacyV2(config.Param().BCHeightBreakPointPrivacyV2).
+			BuildPdexv3BreakPoint(config.Param().PDexParams.Pdexv3BreakPointHeight).
+			Build()
+		err = pdexV3State.Process(pdeStateEnv)
+		if err != nil {
+			panic(err)
+		}
+		pdexV3State.ClearCache()
+		params := pdexV3State.Reader().Params()
+		pdexV3State.Reader().PoolPairs()
+		stateV2.StakingPoolsState = pdexV3State.Reader().StakingPools()
+		pools := make(map[string]*shared.PoolPairState)
+		err = json.Unmarshal(pdexV3State.Reader().PoolPairs(), &pools)
+		if err != nil {
+			panic(err)
+		}
+		stateV2.PoolPairs = pools
+		stateV2.Params = params
+
+		poolPairsJSON := make(map[string]*pdex.PoolPairState)
+		err = json.Unmarshal(pdexV3State.Reader().PoolPairs(), &poolPairsJSON)
+		if err != nil {
+			panic(err)
+		}
+
+		wg.Add(2)
+		go func() {
+			paramJSON := pdexV3State.Reader().Params().Clone()
 			pdeStateJSON = jsonresult.Pdexv3State{
 				BeaconTimeStamp: beaconBestState.BestBlock.Header.Timestamp,
 				PoolPairs:       &poolPairsJSON,
 				StakingPools:    &stateV2.StakingPoolsState,
-				Params:          &paramJSON,
+				Params:          paramJSON,
 			}
 			pdeStr, err = json.MarshalToString(pdeStateJSON)
 			if err != nil {
@@ -211,35 +216,52 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
 			}
 			wg.Done()
 		}()
+
+		var instructions []shared.InstructionBeaconData
+		go func() {
+			log.Printf("extractBeaconInstruction %v \n", blk.GetHeight())
+			instructions, err = extractBeaconInstruction(beaconBestState.BestBlock.Body.Instructions)
+			if err != nil {
+				panic(err)
+			}
+			wg.Done()
+		}()
 		wg.Wait()
+
 		log.Printf("prepare state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, beaconBestState.BeaconHeight)
 		if err != nil {
 			panic(err)
 		}
 
-		instructions, err := extractBeaconInstruction(beaconBestState.BestBlock.Body.Instructions)
-		if err != nil {
-			panic(err)
-		}
+		wg.Add(14)
+		go func() {
+			log.Printf("done process state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+			err = database.DBSavePDEState(pdeStr, height, 2)
+			if err != nil {
+				log.Println(err)
+			}
+			log.Printf("save pdex state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 
-		log.Printf("done process state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-		err = database.DBSavePDEState(pdeStr, height, 2)
-		if err != nil {
-			log.Println(err)
-		}
-		log.Printf("save pdex state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+			wg.Done()
+		}()
 
-		err = database.DBSaveInstructionBeacon(instructions)
-		if err != nil {
-			panic(err)
-		}
+		go func() {
+			err = database.DBSaveInstructionBeacon(instructions)
+			if err != nil {
+				panic(err)
+			}
+			wg.Done()
+		}()
 
-		err = database.DBSaveRewardRecord(rewardRecords)
-		if err != nil {
-			panic(err)
-		}
-		wg.Add(11)
+		go func() {
+			err = database.DBSaveRewardRecord(rewardRecords)
+			if err != nil {
+				panic(err)
+			}
+			wg.Done()
+		}()
+
 		go func() {
 			err = database.DBUpdatePDEPairListData(pairDatas)
 			if err != nil {
@@ -461,7 +483,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 	wg.Wait()
 	for tokenID, _ := range statev2.StakingPoolsState {
 		willDelete := false
-		if _, ok := statev2.Params.StakingPoolsShare()[tokenID]; !ok {
+		if _, ok := statev2.Params.StakingPoolsShare[tokenID]; !ok {
 			willDelete = true
 		}
 		if willDelete {
@@ -715,26 +737,29 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 	var result []shared.InstructionBeaconData
 	for _, inst := range insts {
 		data := shared.InstructionBeaconData{}
-
+		if len(inst) <= 2 {
+			continue
+		}
 		metadataType, err := strconv.Atoi(inst[0])
 		if err != nil {
 			continue // Not error, just not PDE instructions
 		}
+
 		data.Metatype = inst[0]
 		switch metadataType {
 		case metadata.PDEWithdrawalRequestMeta:
-			contentBytes, err := base64.StdEncoding.DecodeString(inst[3])
-			if err != nil {
-				panic(err)
+			if inst[2] == common.PDEWithdrawalAcceptedChainStatus {
+				contentBytes := []byte(inst[3])
+				var withdrawalRequestAction metadata.PDEWithdrawalRequestAction
+				err = json.Unmarshal(contentBytes, &withdrawalRequestAction)
+				if err != nil {
+					panic(err)
+				}
+				data.Content = inst[3]
+				data.Status = inst[2]
+				data.TxRequest = withdrawalRequestAction.TxReqID.String()
 			}
-			var withdrawalRequestAction metadata.PDEWithdrawalRequestAction
-			err = json.Unmarshal(contentBytes, &withdrawalRequestAction)
-			if err != nil {
-				panic(err)
-			}
-			data.Content = inst[3]
-			data.Status = inst[2]
-			data.TxRequest = withdrawalRequestAction.TxReqID.String()
+
 		case metadata.PDEFeeWithdrawalRequestMeta:
 			contentStr := inst[3]
 			contentBytes, err := base64.StdEncoding.DecodeString(contentStr)
@@ -749,7 +774,6 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			data.Content = inst[3]
 			data.Status = inst[2]
 			data.TxRequest = feeWithdrawalRequestAction.TxReqID.String()
-
 		case metadataCommon.Pdexv3WithdrawLiquidityRequestMeta:
 			data.Status = inst[1]
 			data.Content = inst[2]

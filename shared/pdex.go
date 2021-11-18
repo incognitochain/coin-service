@@ -7,7 +7,6 @@ import (
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
-	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 )
 
 type CurrentPDEState struct {
@@ -28,7 +27,7 @@ type PDEStateV2 struct {
 	// WaitingContributions map[string]*rawdbv2.Pdexv3Contribution
 	PoolPairs         map[string]*PoolPairState         //
 	StakingPoolsState map[string]*pdex.StakingPoolState // tokenID -> StakingPoolState
-	Params            *statedb.Pdexv3Params
+	Params            *pdex.Params
 }
 type PoolPairState struct {
 	// ProtocolFees    map[common.Hash]uint64

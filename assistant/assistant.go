@@ -22,14 +22,17 @@ func StartAssistant() {
 		if err != nil {
 			panic(err)
 		}
+
 		tokensMkCap, err := getExternalTokenMarketCap()
 		if err != nil {
 			panic(err)
 		}
+
 		pairRanks, err := getPairRanking()
 		if err != nil {
 			panic(err)
 		}
+
 		extraTokenInfo, err := getExtraTokenInfo()
 		if err != nil {
 			panic(err)
@@ -44,18 +47,22 @@ func StartAssistant() {
 		if err != nil {
 			panic(err)
 		}
+
 		err = database.DBSaveTokenMkCap(tokensMkCap)
 		if err != nil {
 			panic(err)
 		}
+
 		err = database.DBSaveTokenPrice(tokensPrice)
 		if err != nil {
 			panic(err)
 		}
+
 		err = database.DBSaveExtraTokenInfo(extraTokenInfo)
 		if err != nil {
 			panic(err)
 		}
+
 		err = database.DBUpdateTokenInfoPrice(tokenInfoUpdate)
 		if err != nil {
 			panic(err)

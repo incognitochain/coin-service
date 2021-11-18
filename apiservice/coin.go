@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -240,6 +241,7 @@ func APIGetRandomCommitments(c *gin.Context) {
 }
 
 func APIGetTokenList(c *gin.Context) {
+	allToken := c.Query("all")
 	var datalist []TokenInfo
 	err := cacheGet(tokenInfoKey, &datalist)
 	if err != nil {
@@ -259,16 +261,44 @@ func APIGetTokenList(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
 		}
+		var defaultPools map[string]struct{}
+		var priorityTokens []string
+		if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
+			defaultPools, err = database.DBGetDefaultPool()
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			err = cacheStore(defaultPoolsKey, defaultPools)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+		}
+		if err := cacheGet(tokenPriorityKey, priorityTokens); err != nil {
+			priorityTokens, err = database.DBGetTokenPriority()
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			err = cacheStore(tokenPriorityKey, priorityTokens)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+		}
+
 		extraTokenInfoMap := make(map[string]shared.ExtraTokenInfo)
 		for _, v := range extraTokenInfo {
 			extraTokenInfoMap[v.TokenID] = v
 		}
+
 		for _, v := range tokenList {
 			currPrice, _ := strconv.ParseFloat(v.CurrentPrice, 64)
 			pastPrice, _ := strconv.ParseFloat(v.PastPrice, 64)
 			percent24h := float64(0)
 			if pastPrice != 0 && currPrice != 0 {
-				percent24h = ((pastPrice - currPrice) / currPrice) * 100
+				percent24h = ((currPrice - pastPrice) / pastPrice) * 100
 			}
 			data := TokenInfo{
 				TokenID:          v.TokenID,
@@ -281,6 +311,7 @@ func APIGetTokenList(c *gin.Context) {
 				PercentChange24h: fmt.Sprintf("%.2f", percent24h),
 			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
+				data.Name = etki.Name
 				data.Decimals = etki.Decimals
 				data.Symbol = etki.Symbol
 				data.PSymbol = etki.PSymbol
@@ -292,7 +323,6 @@ func APIGetTokenList(c *gin.Context) {
 				data.Default = etki.Default
 				data.Verified = etki.Verified
 				data.UserID = etki.UserID
-				data.ListChildToken = etki.ListChildToken
 				data.PercentChange1h = etki.PercentChange1h
 				data.PercentChangePrv1h = etki.PercentChangePrv1h
 				data.CurrentPrvPool = etki.CurrentPrvPool
@@ -301,13 +331,46 @@ func APIGetTokenList(c *gin.Context) {
 				data.ParentID = etki.ParentID
 				data.OriginalSymbol = etki.OriginalSymbol
 				data.LiquidityReward = etki.LiquidityReward
+				err = json.UnmarshalFromString(etki.ListChildToken, &data.ListChildToken)
+				if err != nil {
+					panic(err)
+				}
 				if data.PriceUsd == 0 {
 					data.PriceUsd = etki.PriceUsd
 				}
+				defaultPool := ""
+				defaultPairToken := ""
+				defaultPairTokenIdx := -1
+				for k, _ := range defaultPools {
+					if strings.Contains(k, data.TokenID) {
+						tks := strings.Split(k, "-")
+						tkP := tks[0]
+						if tks[0] == data.TokenID {
+							tkP = tks[1]
+						}
+						for idx, v := range priorityTokens {
+							if v == tkP && defaultPairTokenIdx < idx {
+								defaultPool = k
+								defaultPairToken = tkP
+								defaultPairTokenIdx = idx
+							}
+						}
+						if defaultPairTokenIdx == len(priorityTokens)-1 {
+							break
+						}
+					}
+				}
+				data.DefaultPairToken = defaultPairToken
+				data.DefaultPoolPair = defaultPool
+				if allToken != "true" {
+					datalist = append(datalist, data)
+				}
 			}
-			datalist = append(datalist, data)
+			if allToken == "true" {
+				datalist = append(datalist, data)
+			}
 		}
-		err = cacheStoreCustom(tokenInfoKey, datalist, 30*time.Second)
+		err = cacheStoreCustom(tokenInfoKey, datalist, 40*time.Second)
 		if err != nil {
 			log.Println(err)
 		}

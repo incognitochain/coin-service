@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/incognitochain/coin-service/shared"
 )
@@ -35,20 +36,21 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				Volume24           uint64        `json:"volume24"`
 				ParentID           int           `json:"ParentID"`
 
-				OriginalSymbol  string `json:"OriginalSymbol"`
-				LiquidityReward uint64 `json:"LiquidityReward"`
+				OriginalSymbol  string  `json:"OriginalSymbol"`
+				LiquidityReward float64 `json:"LiquidityReward"`
 			}
 			Error string `json:"Error"`
 		}
 		retryTimes := 0
 	retry:
 		retryTimes++
-		if retryTimes > 2 {
+		if retryTimes > 5 {
 			return nil, errors.New("retry reached updatePDecimal")
 		}
 		resp, err := http.Get(shared.ServiceCfg.ExternalDecimals)
 		if err != nil {
 			log.Println(err)
+			time.Sleep(2 * time.Second)
 			goto retry
 		}
 		body, err := ioutil.ReadAll(resp.Body)
