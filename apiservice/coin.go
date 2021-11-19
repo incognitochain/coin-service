@@ -354,6 +354,11 @@ func APIGetTokenList(c *gin.Context) {
 								defaultPairToken = tkP
 								defaultPairTokenIdx = idx
 							}
+							if idx == len(priorityTokens)-1 {
+								defaultPool = k
+								defaultPairToken = tkP
+								defaultPairTokenIdx = idx
+							}
 						}
 						if defaultPairTokenIdx == len(priorityTokens)-1 {
 							break

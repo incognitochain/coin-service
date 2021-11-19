@@ -82,13 +82,15 @@ type ReceivedTransactionV2 struct {
 	TxDetail    *shared.TransactionDetail
 	FromShardID byte
 }
-
 type PdexV3EstimateTradeRespond struct {
 	SellAmount float64
 	MaxGet     float64
+	FeePRV     uint64
+	FeeToken   uint64
 	Fee        uint64
 	Route      []string
 }
+
 type PdexV3OrderBookRespond struct {
 	Buy  []PdexV3OrderBookVolume
 	Sell []PdexV3OrderBookVolume

@@ -1081,8 +1081,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		BuyToken   string `form:"buytoken" json:"buytoken" binding:"required"`
 		SellAmount uint64 `form:"sellamount" json:"sellamount"`
 		BuyAmount  uint64 `form:"buyamount" json:"buyamount"`
-		FeeInPRV   bool   `form:"feeinprv" json:"feeinprv"`
 		Pdecimal   bool   `form:"pdecimal" json:"pdecimal"`
+		FeeInPRV   bool   `form:"feeinprv" json:"feeinprv"`
 	}
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
@@ -1158,7 +1158,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 		result.SellAmount = float64(sellAmount)
 		result.MaxGet = float64(receive) * dcrate
-
 	} else {
 		chosenPath, foundSellAmount = pathfinder.FindSellAmount(
 			pdexv3Meta.MaxTradePathLength,
@@ -1180,14 +1179,34 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			result.Route = append(result.Route, v.PoolID)
 		}
 		//TODO: check pointer
-		tradingFee, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, result.Route, *pdexState, feeInPRV)
+		tradingFeePRV, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, result.Route, *pdexState, true)
 
+		if err != nil {
+			log.Print("can not estimate fee: ", err)
+			// c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
+			// return
+		} else {
+			result.FeePRV = tradingFeePRV
+		}
+
+		tradingFeeToken, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, result.Route, *pdexState, false)
+
+		if err != nil {
+			log.Print("can not estimate fee: ", err)
+			// c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
+			// return
+		} else {
+			result.FeeToken = tradingFeeToken
+		}
+		//TODO: remove
+		tradingFee, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, result.Route, *pdexState, feeInPRV)
 		if err != nil {
 			log.Print("can not estimate fee: ", err)
 			c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 			return
+		} else {
+			result.Fee = tradingFee
 		}
-		result.Fee = tradingFee
 	}
 
 	respond := APIRespond{
@@ -1510,6 +1529,7 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 	for _, v := range l {
 		orderList[v.RequestTx] = v
 	}
+
 	for _, v := range sellSide {
 		tk1Balance, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
 		tk2Balance, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
@@ -1559,8 +1579,8 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 				TxRequest:    v.RequestTx,
 				Token1Remain: tk2Balance,
 				Token2Remain: tk1Amount - tk1Balance,
-				Token1Amount: tk1Amount,
-				Token2Amount: tk2Amount,
+				Token1Amount: tk2Amount,
+				Token2Amount: tk1Amount,
 				Rate:         float64(tk1Amount) / float64(tk2Amount),
 			}
 		}

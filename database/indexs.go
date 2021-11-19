@@ -128,7 +128,7 @@ func DBCreateKeyimageIndex() error {
 func DBCreateTxIndex() error {
 	txMdl := []mongo.IndexModel{
 		{
-			Keys: bsonx.Doc{{Key: "keyimages", Value: bsonx.Int32(1)}},
+			Keys: bsonx.Doc{{Key: "keyimages", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
