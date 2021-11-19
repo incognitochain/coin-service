@@ -35,9 +35,9 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				PricePrv           float64       `json:"PricePrv"`
 				Volume24           uint64        `json:"volume24"`
 				ParentID           int           `json:"ParentID"`
-
-				OriginalSymbol  string  `json:"OriginalSymbol"`
-				LiquidityReward float64 `json:"LiquidityReward"`
+				Network            string        `json:"Network"`
+				OriginalSymbol     string        `json:"OriginalSymbol"`
+				LiquidityReward    float64       `json:"LiquidityReward"`
 			}
 			Error string `json:"Error"`
 		}
@@ -93,6 +93,7 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				ParentID:           v.ParentID,
 				OriginalSymbol:     v.OriginalSymbol,
 				LiquidityReward:    v.LiquidityReward,
+				Network:            v.Network,
 			})
 		}
 		return result, nil

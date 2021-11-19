@@ -331,6 +331,7 @@ func APIGetTokenList(c *gin.Context) {
 				data.ParentID = etki.ParentID
 				data.OriginalSymbol = etki.OriginalSymbol
 				data.LiquidityReward = etki.LiquidityReward
+				data.Network = etki.Network
 				err = json.UnmarshalFromString(etki.ListChildToken, &data.ListChildToken)
 				if err != nil {
 					panic(err)
@@ -354,14 +355,18 @@ func APIGetTokenList(c *gin.Context) {
 								defaultPairToken = tkP
 								defaultPairTokenIdx = idx
 							}
-							if idx == len(priorityTokens)-1 {
-								defaultPool = k
-								defaultPairToken = tkP
-								defaultPairTokenIdx = idx
-							}
+							// if idx == len(priorityTokens)-1 {
+							// 	defaultPool = k
+							// 	defaultPairToken = tkP
+							// 	defaultPairTokenIdx = idx
+							// }
 						}
 						if defaultPairTokenIdx == len(priorityTokens)-1 {
 							break
+						}
+						if defaultPool == "" {
+							defaultPool = k
+							defaultPairToken = tkP
 						}
 					}
 				}

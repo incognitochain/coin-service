@@ -218,7 +218,7 @@ func APICheckRate(c *gin.Context) {
 				return
 			}
 			if rate != 0 {
-				userRate = 1 / rate
+				userRate = rate
 			}
 		}
 	} else {
@@ -228,7 +228,7 @@ func APICheckRate(c *gin.Context) {
 			return
 		}
 		if rate != 0 {
-			userRate = 1 / rate
+			userRate = rate
 		}
 	}
 	result.Rate = fmt.Sprintf("%g", userRate*dcrate)
@@ -268,8 +268,8 @@ func getRate(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (floa
 	}
 	a := uint64(1)
 	a1 := uint64(0)
-	b := uint64(1)
-	b1 := uint64(0)
+	// b := uint64(1)
+	// b1 := uint64(0)
 retry:
 	_, receive := pathfinder.FindGoodTradePath(
 		pdexv3Meta.MaxTradePathLength,
@@ -299,38 +299,39 @@ retry:
 		}
 	}
 
-retry2:
-	_, receive2 := pathfinder.FindGoodTradePath(
-		pdexv3Meta.MaxTradePathLength,
-		pools,
-		poolPairStates,
-		tokenID2,
-		tokenID1,
-		b)
+	// retry2:
+	// 	_, receive2 := pathfinder.FindGoodTradePath(
+	// 		pdexv3Meta.MaxTradePathLength,
+	// 		pools,
+	// 		poolPairStates,
+	// 		tokenID2,
+	// 		tokenID1,
+	// 		b)
 
-	if receive2 == 0 {
-		b *= 10
-		if b < 1e18 {
-			goto retry2
-		}
-		return 0, nil
-	} else {
-		if b < token2Amount && receive2 > b1*10 {
-			b *= 10
-			b1 = receive2
-			goto retry2
-		} else {
-			if receive2 < b1*10 {
-				b /= 10
-				receive2 = b1
-				fmt.Println("receive2", b, receive2)
-			}
-		}
-	}
+	// 	if receive2 == 0 {
+	// 		b *= 10
+	// 		if b < 1e18 {
+	// 			goto retry2
+	// 		}
+	// 		return 0, nil
+	// 	} else {
+	// 		if b < token2Amount && receive2 > b1*10 {
+	// 			b *= 10
+	// 			b1 = receive2
+	// 			goto retry2
+	// 		} else {
+	// 			if receive2 < b1*10 {
+	// 				b /= 10
+	// 				receive2 = b1
+	// 				fmt.Println("receive2", b, receive2)
+	// 			}
+	// 		}
+	// 	}
 
-	log.Printf("getRate %v %d\n", a, receive)
-	log.Printf("getRate %v %d\n", b, receive2)
-	return (float64(a)/float64(receive) + (1 / (float64(b) / float64(receive2)))) / 2, nil
+	// 	log.Printf("getRate %v %d\n", a, receive)
+	// 	log.Printf("getRate %v %d\n", b, receive2)
+	// return (float64(a)/float64(receive) + (1 / (float64(b) / float64(receive2)))) / 2, nil
+	return float64(receive) / float64(a), nil
 }
 
 func getPdecimalRate(tokenID1, tokenID2 string) (float64, error) {

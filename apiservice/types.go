@@ -295,7 +295,7 @@ type TokenInfo struct {
 	PricePrv           float64 `json:"PricePrv"`
 	Volume24           uint64  `json:"volume24"`
 	ParentID           int     `json:"ParentID"`
-
-	DefaultPoolPair  string
-	DefaultPairToken string
+	Network            string
+	DefaultPoolPair    string
+	DefaultPairToken   string
 }

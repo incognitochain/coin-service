@@ -983,6 +983,7 @@ type ExtraTokenInfo struct {
 	OriginalSymbol     string  `json:"OriginalSymbol" bson:"originalsymbol"`
 	LiquidityReward    float64 `json:"LiquidityReward" bson:"liquidityreward"`
 
+	Network        string `json:"Network" bson:"Network"`
 	ListChildToken string `json:"ListChildToken" bson:"listchildtoken"`
 }
 
