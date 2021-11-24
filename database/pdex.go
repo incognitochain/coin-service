@@ -154,7 +154,7 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: order.NFTID}, "pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
 		update := bson.M{
 			"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
-			"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime},
+			"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor},
 		}
 		_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -164,12 +164,12 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 	return nil
 }
 
-func DBGetPDEContributeRespond(address []string, limit int64, offset int64) ([]shared.ContributionData, error) {
+func DBGetPDEContributeRespond(address string, limit int64, offset int64) ([]shared.ContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.ContributionData
-	filter := bson.M{"contributor": bson.M{operator.In: address}}
+	filter := bson.M{"contributor": bson.M{operator.Eq: address}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},

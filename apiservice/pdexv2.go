@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 	"github.com/incognitochain/incognito-chain/wallet"
@@ -276,13 +277,13 @@ func APIGetContributeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	paymentkey := c.Query("paymentkey")
 
-	paymentkeyOld, err := wallet.GetPaymentAddressV1(paymentkey, false)
+	wl, err := wallet.Base58CheckDeserialize(paymentkey)
 	if err != nil {
 		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
-	contrData, err := database.DBGetPDEContributeRespond([]string{paymentkeyOld, paymentkey}, int64(limit), int64(offset))
+	contrData, err := database.DBGetPDEContributeRespond(base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk), int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

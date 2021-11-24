@@ -2,9 +2,11 @@ package apiservice
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 
+	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
@@ -227,4 +229,23 @@ func willSwapTokenPlace(token1ID, token2ID string, tokenPriorityList []string) b
 		}
 	}
 	return token1Idxs > token2Idxs
+}
+
+func getPoolAmount(poolID string, buyTokenID string) uint64 {
+	datas, err := database.DBGetPoolPairsByPoolID([]string{poolID})
+	if err != nil {
+		fmt.Println("poolID cant get", poolID)
+		return 0
+	}
+	if len(datas) > 0 {
+		if datas[0].TokenID1 == buyTokenID {
+			result, _ := strconv.ParseUint(datas[0].Token1Amount, 10, 64)
+			return result
+		} else {
+			result, _ := strconv.ParseUint(datas[0].Token2Amount, 10, 64)
+			return result
+		}
+	}
+	fmt.Println("poolID amount is zero", poolID)
+	return 0
 }

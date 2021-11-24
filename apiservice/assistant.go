@@ -32,7 +32,7 @@ func APIGetTop10(c *gin.Context) {
 		return
 	}
 	var defaultPools map[string]struct{}
-	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
+	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
 		defaultPools, err = database.DBGetDefaultPool()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))

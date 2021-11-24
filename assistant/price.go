@@ -157,7 +157,7 @@ func getPairRanking() ([]shared.PairRanking, error) {
 	//get default pools for now
 	var result []shared.PairRanking
 	var defaultPools map[string]struct{}
-	if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
+	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
 		defaultPools, err = database.DBGetDefaultPool()
 		if err != nil {
 			return nil, err

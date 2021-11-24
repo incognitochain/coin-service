@@ -2,7 +2,6 @@ package otaindexer
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
-	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/privacy/operation"
@@ -41,11 +39,7 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	HnG := new(operation.Point).ScalarMultBase(hashed)
 	KCheck := new(operation.Point).Sub(pubkey, HnG)
 	pass = operation.IsPointEqual(KCheck, otapub)
-	if pass {
-		fmt.Println("pass!!!!!")
-	} else {
-		fmt.Println("not pass!!!!!", base58.EncodeCheck(keySet.OTAKey.GetPublicSpend().ToBytesS()))
-	}
+
 	if !willCheckToken {
 		return pass, "", nil, false
 	}

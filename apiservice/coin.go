@@ -243,11 +243,11 @@ func APIGetRandomCommitments(c *gin.Context) {
 func APIGetTokenList(c *gin.Context) {
 	allToken := c.Query("all")
 	var datalist []TokenInfo
-	err := cacheGet(tokenInfoKey, &datalist)
+	err := cacheGet(tokenInfoKey+string(allToken), &datalist)
 	if err != nil {
 		log.Println(err)
 	}
-	if datalist == nil {
+	if len(datalist) == 0 {
 		tokenList, err := database.DBGetTokenInfo()
 		if err != nil {
 			log.Println(err)
@@ -261,31 +261,15 @@ func APIGetTokenList(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
 		}
-		var defaultPools map[string]struct{}
-		var priorityTokens []string
-		if err := cacheGet(defaultPoolsKey, defaultPools); err != nil {
-			defaultPools, err = database.DBGetDefaultPool()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			err = cacheStore(defaultPoolsKey, defaultPools)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
+		defaultPools, err := database.DBGetDefaultPool()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
 		}
-		if err := cacheGet(tokenPriorityKey, priorityTokens); err != nil {
-			priorityTokens, err = database.DBGetTokenPriority()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			err = cacheStore(tokenPriorityKey, priorityTokens)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
+		priorityTokens, err := database.DBGetTokenPriority()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
 		}
 
 		extraTokenInfoMap := make(map[string]shared.ExtraTokenInfo)
@@ -342,31 +326,47 @@ func APIGetTokenList(c *gin.Context) {
 				defaultPool := ""
 				defaultPairToken := ""
 				defaultPairTokenIdx := -1
-				for k, _ := range defaultPools {
-					if strings.Contains(k, data.TokenID) {
-						tks := strings.Split(k, "-")
-						tkP := tks[0]
+				currentPoolAmount := uint64(0)
+				for poolID, _ := range defaultPools {
+					if strings.Contains(poolID, data.TokenID) {
+						pa := getPoolAmount(poolID, data.TokenID)
+						if pa == 0 {
+							continue
+						}
+						tks := strings.Split(poolID, "-")
+						tkPair := tks[0]
 						if tks[0] == data.TokenID {
-							tkP = tks[1]
+							tkPair = tks[1]
 						}
-						for idx, v := range priorityTokens {
-							if v == tkP && defaultPairTokenIdx < idx {
-								defaultPool = k
-								defaultPairToken = tkP
-								defaultPairTokenIdx = idx
+						for idx, ptk := range priorityTokens {
+							if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
+								if idx > defaultPairTokenIdx {
+									defaultPool = poolID
+									defaultPairToken = tkPair
+									defaultPairTokenIdx = idx
+									currentPoolAmount = pa
+								}
+								if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
+									defaultPool = poolID
+									defaultPairToken = tkPair
+									defaultPairTokenIdx = idx
+									currentPoolAmount = pa
+								}
 							}
-							// if idx == len(priorityTokens)-1 {
-							// 	defaultPool = k
-							// 	defaultPairToken = tkP
-							// 	defaultPairTokenIdx = idx
-							// }
 						}
-						if defaultPairTokenIdx == len(priorityTokens)-1 {
-							break
-						}
+
 						if defaultPool == "" {
-							defaultPool = k
-							defaultPairToken = tkP
+							if pa > 0 {
+								defaultPool = poolID
+								defaultPairToken = tkPair
+								currentPoolAmount = pa
+							}
+						} else {
+							if (pa > currentPoolAmount) && (defaultPairTokenIdx == -1) {
+								defaultPool = poolID
+								defaultPairToken = tkPair
+								currentPoolAmount = pa
+							}
 						}
 					}
 				}
@@ -380,7 +380,7 @@ func APIGetTokenList(c *gin.Context) {
 				datalist = append(datalist, data)
 			}
 		}
-		err = cacheStoreCustom(tokenInfoKey, datalist, 40*time.Second)
+		err = cacheStoreCustom(tokenInfoKey+string(allToken), datalist, 40*time.Second)
 		if err != nil {
 			log.Println(err)
 		}

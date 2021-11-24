@@ -83,12 +83,16 @@ type ReceivedTransactionV2 struct {
 	FromShardID byte
 }
 type PdexV3EstimateTradeRespond struct {
-	SellAmount float64
-	MaxGet     float64
-	FeePRV     uint64
-	FeeToken   uint64
-	Fee        uint64
-	Route      []string
+	SellAmount    float64
+	MaxGet        float64
+	Fee           uint64
+	Route         []string
+	IsSignificant bool
+}
+
+type PdexV3EstimateTradeRespondBig struct {
+	FeePRV   PdexV3EstimateTradeRespond
+	FeeToken PdexV3EstimateTradeRespond
 }
 
 type PdexV3OrderBookRespond struct {
