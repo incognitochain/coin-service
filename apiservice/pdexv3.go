@@ -1282,14 +1282,14 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 	if feePRV.Fee != 0 {
-		a := float64(getPoolAmount(feePRV.Route[0], req.SellToken))
-		if (feePRV.SellAmount / a * 100) >= 20 {
+		rt := getRate(sellToken, buyToken, pools, poolPairStates)
+		if math.Abs(rt/(feeToken.SellAmount/feeToken.MaxGet)-1)*100 >= 20 {
 			feePRV.IsSignificant = true
 		}
 	}
 	if feeToken.Fee != 0 {
-		a := float64(getPoolAmount(feeToken.Route[0], req.SellToken))
-		if (feeToken.SellAmount / a * 100) >= 20 {
+		rt := getRate(sellToken, buyToken, pools, poolPairStates)
+		if math.Abs(rt/(feeToken.SellAmount/feeToken.MaxGet)-1)*100 >= 20 {
 			feeToken.IsSignificant = true
 		}
 	}

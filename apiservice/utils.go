@@ -7,9 +7,12 @@ import (
 	"sync"
 
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
+	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/wallet"
 )
@@ -248,4 +251,38 @@ func getPoolAmount(poolID string, buyTokenID string) uint64 {
 	}
 	fmt.Println("poolID amount is zero", poolID)
 	return 0
+}
+
+func getRate(tokenID1, tokenID2 string, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) float64 {
+	a := uint64(1)
+	a1 := uint64(0)
+retry:
+	_, receive := pathfinder.FindGoodTradePath(
+		pdexv3Meta.MaxTradePathLength,
+		pools,
+		poolPairStates,
+		tokenID1,
+		tokenID2,
+		a)
+
+	if receive == 0 {
+		a *= 10
+		if a < 1e18 {
+			goto retry
+		}
+		return 0
+	} else {
+		if receive > a1*10 {
+			a *= 10
+			a1 = receive
+			goto retry
+		} else {
+			if receive < a1*10 {
+				a /= 10
+				receive = a1
+				fmt.Println("receive", a, receive)
+			}
+		}
+	}
+	return float64(receive) / float64(a)
 }

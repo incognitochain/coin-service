@@ -212,7 +212,7 @@ func APICheckRate(c *gin.Context) {
 			c.JSON(http.StatusOK, respond)
 			return
 		} else {
-			rate, err := getRate(token1, token2, uint64(amount1), uint64(amount2))
+			rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -222,7 +222,7 @@ func APICheckRate(c *gin.Context) {
 			}
 		}
 	} else {
-		rate, err := getRate(token1, token2, uint64(amount1), uint64(amount2))
+		rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -240,7 +240,7 @@ func APICheckRate(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func getRate(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (float64, error) {
+func getRateSimple(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (float64, error) {
 	data, err := database.DBGetPDEState(2)
 	if err != nil {
 		return 0, err
