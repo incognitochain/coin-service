@@ -1282,16 +1282,24 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 	if feePRV.Fee != 0 {
-		rt := getRate(sellToken, buyToken, pools, poolPairStates)
-		if math.Abs(rt/(feeToken.SellAmount/feeToken.MaxGet)-1)*100 >= 20 {
+		rt := 1 / getRate(sellToken, buyToken, pools, poolPairStates)
+		rt1 := feePRV.SellAmount / feePRV.MaxGet
+		if ((rt1/rt)-1)*100 >= 20 {
 			feePRV.IsSignificant = true
 		}
+		feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
+		feePRV.Debug.Rate = rt
+		feePRV.Debug.Rate1 = rt1
 	}
 	if feeToken.Fee != 0 {
-		rt := getRate(sellToken, buyToken, pools, poolPairStates)
-		if math.Abs(rt/(feeToken.SellAmount/feeToken.MaxGet)-1)*100 >= 20 {
+		rt := 1 / getRate(sellToken, buyToken, pools, poolPairStates)
+		rt1 := feeToken.SellAmount / feeToken.MaxGet
+		if ((rt1/rt)-1)*100 >= 20 {
 			feeToken.IsSignificant = true
 		}
+		feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
+		feeToken.Debug.Rate = rt
+		feeToken.Debug.Rate1 = rt1
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken
@@ -1536,24 +1544,8 @@ func (pdexv3) GetRate(c *gin.Context) {
 		return
 	}
 	for _, v := range req.TokenIDs {
-		a := uint64(10000)
-	retry:
-		_, receive := pathfinder.FindGoodTradePath(
-			pdexv3Meta.MaxTradePathLength,
-			pools,
-			poolPairStates,
-			req.Against,
-			v, a)
-		if receive == 0 {
-			a *= 10
-			if a < 1e18 {
-				goto retry
-			}
-			result[v] = 0
-		} else {
-			result[v] = float64(a) / float64(receive)
-		}
-
+		rt := getRate(req.Against, v, pools, poolPairStates)
+		result[v] = rt
 	}
 
 	respond := APIRespond{

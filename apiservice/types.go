@@ -88,6 +88,11 @@ type PdexV3EstimateTradeRespond struct {
 	Fee           uint64
 	Route         []string
 	IsSignificant bool
+	Debug         struct {
+		ImpactAmount float64
+		Rate         float64
+		Rate1        float64
+	}
 }
 
 type PdexV3EstimateTradeRespondBig struct {
