@@ -1282,7 +1282,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 	if feePRV.Fee != 0 {
-		rt := 1 / getRate(sellToken, buyToken, pools, poolPairStates)
+		rt := getRate(buyToken, sellToken, pools, poolPairStates)
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
 		if ((rt1/rt)-1)*100 >= 20 {
 			feePRV.IsSignificant = true
@@ -1292,7 +1292,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		feePRV.Debug.Rate1 = rt1
 	}
 	if feeToken.Fee != 0 {
-		rt := 1 / getRate(sellToken, buyToken, pools, poolPairStates)
+		rt := getRate(buyToken, sellToken, pools, poolPairStates)
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
 		if ((rt1/rt)-1)*100 >= 20 {
 			feeToken.IsSignificant = true
