@@ -19,12 +19,22 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
-func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64) {
+func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
 	var blk types.ShardBlock
 	blkBytes, err := Localnode.GetUserDatabase().Get(h.Bytes(), nil)
 	if err != nil {
-		fmt.Println("height", height, h.String())
-		panic(err)
+		i := 0
+	retry:
+		if i == 5 {
+			panic("OnNewShardBlock err")
+		}
+		fmt.Println("err get block height", height, h.String())
+		blkBytes, err = Localnode.SyncSpecificShardBlockBytes(chainID, height, h.String())
+		if err != nil {
+			fmt.Println(err)
+			i++
+			goto retry
+		}
 	}
 	if err := json.Unmarshal(blkBytes, &blk); err != nil {
 		panic(err)

@@ -133,7 +133,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 			if tk1Amount == 0 || tk2Amount == 0 {
 				return
 			}
-			dcrate, err := getPdecimalRate(d.TokenID1, d.TokenID2)
+			dcrate, _, _, err := getPdecimalRate(d.TokenID1, d.TokenID2)
 			if err != nil {
 				log.Println(err)
 				return
@@ -152,7 +152,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 				tk2VA, _ = strconv.ParseUint(d.Virtual1Amount, 10, 64)
 				tk1Amount, _ = strconv.ParseUint(d.Token2Amount, 10, 64)
 				tk2Amount, _ = strconv.ParseUint(d.Token1Amount, 10, 64)
-				dcrate, err = getPdecimalRate(d.TokenID2, d.TokenID1)
+				dcrate, _, _, err = getPdecimalRate(d.TokenID2, d.TokenID1)
 				if err != nil {
 					log.Println(err)
 					return
@@ -881,7 +881,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		if tk1Amount == 0 || tk2Amount == 0 {
 			continue
 		}
-		dcrate, err := getPdecimalRate(v.TokenID1, v.TokenID2)
+		dcrate, _, _, err := getPdecimalRate(v.TokenID1, v.TokenID2)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -900,7 +900,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			tk2VA, _ = strconv.ParseUint(v.Virtual1Amount, 10, 64)
 			tk1Amount, _ = strconv.ParseUint(v.Token2Amount, 10, 64)
 			tk2Amount, _ = strconv.ParseUint(v.Token1Amount, 10, 64)
-			dcrate, err = getPdecimalRate(v.TokenID2, v.TokenID1)
+			dcrate, _, _, err = getPdecimalRate(v.TokenID2, v.TokenID1)
 			if err != nil {
 				log.Println(err)
 				return
@@ -1138,8 +1138,10 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		return
 	}
 	dcrate := float64(1)
+	// tk1Decimal := 1
+	tk2Decimal := 1
 	if req.Pdecimal {
-		dcrate, err = getPdecimalRate(buyToken, sellToken)
+		dcrate, _, tk2Decimal, err = getPdecimalRate(buyToken, sellToken)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -1282,7 +1284,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 	if feePRV.Fee != 0 {
-		rt := getRate(buyToken, sellToken, pools, poolPairStates)
+		rt := getRateMinimum(sellToken, buyToken, uint64(1*uint64(tk2Decimal)), pools, poolPairStates)
+		if rt == 0 {
+			rt = getRateMinimum(sellToken, buyToken, 1, pools, poolPairStates)
+			if rt == 0 {
+				rt = feePRV.SellAmount / feePRV.MaxGet
+			}
+		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
 		if ((rt1/rt)-1)*100 >= 20 {
 			feePRV.IsSignificant = true
@@ -1290,9 +1298,16 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
 		feePRV.Debug.Rate = rt
 		feePRV.Debug.Rate1 = rt1
+		fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
 	}
 	if feeToken.Fee != 0 {
-		rt := getRate(buyToken, sellToken, pools, poolPairStates)
+		rt := getRateMinimum(sellToken, buyToken, uint64(1*uint64(tk2Decimal)), pools, poolPairStates)
+		if rt == 0 {
+			rt = getRateMinimum(sellToken, buyToken, 1, pools, poolPairStates)
+			if rt == 0 {
+				rt = feeToken.SellAmount / feeToken.MaxGet
+			}
+		}
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
 		if ((rt1/rt)-1)*100 >= 20 {
 			feeToken.IsSignificant = true
@@ -1300,6 +1315,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
 		feeToken.Debug.Rate = rt
 		feeToken.Debug.Rate1 = rt1
+		fmt.Println("feeToken.Debug.ImpactAmount", feeToken.Debug.ImpactAmount, feeToken.Debug.Rate, feeToken.Debug.Rate1)
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken

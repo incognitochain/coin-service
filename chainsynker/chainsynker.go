@@ -33,8 +33,9 @@ var Localnode interface {
 	OnReceive(msgType int, f func(msg interface{}))
 	GetUserDatabase() *leveldb.DB
 	GetBlockchain() *blockchain.BlockChain
-	OnNewBlockFromParticularHeight(chainID int, blkHeight int64, isFinalized bool, f func(bc *blockchain.BlockChain, h common.Hash, height uint64))
+	OnNewBlockFromParticularHeight(chainID int, blkHeight int64, isFinalized bool, f func(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int))
 	GetShardState(shardID int) (uint64, *common.Hash)
+	SyncSpecificShardBlockBytes(shardID int, height uint64, blockHash string) ([]byte, error)
 }
 
 // var ShardProcessedState map[byte]uint64

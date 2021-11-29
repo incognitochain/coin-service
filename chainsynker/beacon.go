@@ -34,7 +34,7 @@ type IncPdexState struct {
 
 var pdexV3State pdex.State
 
-func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64) {
+func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
 	log.Printf("start processing coin for block %v beacon\n", height)
 	startTime1 := time.Now()
 	var beaconBestState *blockchain.BeaconBestState

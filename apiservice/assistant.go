@@ -67,7 +67,7 @@ func APIGetTop10(c *gin.Context) {
 		if tk1Amount == 0 || tk2Amount == 0 {
 			continue
 		}
-		dcrate, err := getPdecimalRate(v.TokenID1, v.TokenID2)
+		dcrate, _, _, err := getPdecimalRate(v.TokenID1, v.TokenID2)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -140,7 +140,7 @@ func APICheckRate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	dcrate, err := getPdecimalRate(token1, token2)
+	dcrate, _, _, err := getPdecimalRate(token1, token2)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -334,7 +334,7 @@ retry:
 	return float64(receive) / float64(a), nil
 }
 
-func getPdecimalRate(tokenID1, tokenID2 string) (float64, error) {
+func getPdecimalRate(tokenID1, tokenID2 string) (float64, int, int, error) {
 	tk1Decimal := 1
 	tk2Decimal := 1
 	tk1, err := database.DBGetExtraTokenInfo(tokenID1)
@@ -353,7 +353,7 @@ func getPdecimalRate(tokenID1, tokenID2 string) (float64, error) {
 	}
 	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
 	fmt.Println("getPdecimalRate", result)
-	return result, nil
+	return result, tk1Decimal, tk2Decimal, nil
 }
 
 func APIGetPdecimal(c *gin.Context) {

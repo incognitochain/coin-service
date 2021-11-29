@@ -5,6 +5,12 @@ github.com/0xBahamoot/go-bigcompressor v1.0.5 h1:pLCZKFs+B8A3+XR6W6ThPpTKtullwmn
 github.com/0xBahamoot/go-bigcompressor v1.0.5/go.mod h1:cKlrkmkD9923X8Jkk4l8YEmsnkjhc8MD7U6N+4+ymz0=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20211109015858-a6a327d79d5a h1:64KwJMxjN170WoO2eUb5bCV6r7NpuqGdPstp0ZGVEXc=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20211109015858-a6a327d79d5a/go.mod h1:zfT7PZyE5mZUOAfmoi8W0WwhrlUissnUAYKD1d1dJ8s=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20211128095853-539b987ef7ab h1:ZpQfR+jWDcBSWOg/LmhpnQ+RVRqsogJEJIVj+yqRYdU=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20211128095853-539b987ef7ab/go.mod h1:4w/GxoRw+54KmS33ZUyVjj7GonpZt7Y4EaBIIj0tgaE=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20211128100102-c1ea334e7b81 h1:UHSq9rAGFHsqIhM7rgzlhYXmEvvWjxfKnVrU7NTFNz8=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20211128100102-c1ea334e7b81/go.mod h1:4w/GxoRw+54KmS33ZUyVjj7GonpZt7Y4EaBIIj0tgaE=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20211128100827-0441ab170e8b h1:38o07tsSzQoDT9oLd3Ka4a+ff9HFeSKNe6ClY0mQ4js=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20211128100827-0441ab170e8b/go.mod h1:4w/GxoRw+54KmS33ZUyVjj7GonpZt7Y4EaBIIj0tgaE=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
