@@ -1137,15 +1137,15 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
-	dcrate := float64(1)
-	// tk1Decimal := 1
-	tk2Decimal := 1
-	if req.Pdecimal {
-		dcrate, _, tk2Decimal, err = getPdecimalRate(buyToken, sellToken)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
+	// dcrate := float64(1)
+	dcrate, tk1Decimal, tk2Decimal, err := getPdecimalRate(buyToken, sellToken)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	_ = tk2Decimal
+	if !req.Pdecimal {
+		dcrate = 1
 	}
 
 	// var chosenPath []*shared.Pdexv3PoolPairWithId
@@ -1284,11 +1284,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 	if feePRV.Fee != 0 {
-		rt := getRateMinimum(sellToken, buyToken, uint64(1*uint64(tk2Decimal)), pools, poolPairStates)
+		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), pools, poolPairStates)
 		if rt == 0 {
-			rt = getRateMinimum(sellToken, buyToken, 1, pools, poolPairStates)
+			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
 			if rt == 0 {
-				rt = feePRV.SellAmount / feePRV.MaxGet
+				rt = feePRV.MaxGet / feePRV.SellAmount
 			}
 		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
@@ -1301,11 +1301,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
 	}
 	if feeToken.Fee != 0 {
-		rt := getRateMinimum(sellToken, buyToken, uint64(1*uint64(tk2Decimal)), pools, poolPairStates)
+		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), pools, poolPairStates)
 		if rt == 0 {
-			rt = getRateMinimum(sellToken, buyToken, 1, pools, poolPairStates)
+			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
 			if rt == 0 {
-				rt = feeToken.SellAmount / feeToken.MaxGet
+				rt = feeToken.MaxGet / feeToken.SellAmount
 			}
 		}
 		rt1 := feeToken.SellAmount / feeToken.MaxGet

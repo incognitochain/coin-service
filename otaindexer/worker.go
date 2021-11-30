@@ -172,6 +172,7 @@ func StartOTAIndexing() {
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
 	go processMsgFromMaster(readCh, writeCh)
+	time.Sleep(10 * time.Second)
 	for {
 		time.Sleep(5 * time.Second)
 		err := retrieveTokenIDList()
@@ -645,8 +646,8 @@ func filterTxsByOTAKey(txList []shared.TxData) ([]shared.TxData, map[int]string,
 
 	lastTxID := make(map[int]string)
 	if len(assignedOTAKeys.Keys) > 0 {
-		otaTxs := make(map[string][]shared.TxData)
-		var otherTxs []shared.TxData
+		var otaTxs []shared.TxData
+		// var otherTxs []shared.TxData
 		startTime := time.Now()
 		var wg sync.WaitGroup
 		tempTxsCh := make(chan map[string]shared.TxData, shared.ServiceCfg.MaxConcurrentOTACheck)
@@ -665,7 +666,7 @@ func filterTxsByOTAKey(txList []shared.TxData) ([]shared.TxData, map[int]string,
 
 					pass = checkPubkeyAndTxRandom(*txRan, *pubkey, keyData.keyset)
 					if pass {
-						tempTxsCh <- map[string]shared.TxData{keyData.OTAKey: txd}
+						tempTxsCh <- map[string]shared.TxData{keyData.Pubkey: txd}
 						break
 					}
 				}
@@ -680,10 +681,11 @@ func filterTxsByOTAKey(txList []shared.TxData) ([]shared.TxData, map[int]string,
 				for k := range tempTxsCh {
 					for key, v := range k {
 						if key == "nil" {
-							otherTxs = append(otherTxs, v)
+							// otherTxs = append(otherTxs, v)
 							continue
 						}
-						otaTxs[key] = append(otaTxs[key], v)
+						v.PubKeyReceivers = append(v.PubKeyReceivers, key)
+						otaTxs = append(otaTxs, v)
 					}
 				}
 				// if idx+1 != len(coinList) {
@@ -700,6 +702,7 @@ func filterTxsByOTAKey(txList []shared.TxData) ([]shared.TxData, map[int]string,
 		}
 		close(tempTxsCh)
 		log.Printf("filtered %v coins with %v keys in %v", len(txList), assignedOTAKeys.TotalKeys, time.Since(startTime))
+		return otaTxs, lastTxID, errors.New("no key to scan")
 	}
 	return nil, nil, errors.New("no key to scan")
 }

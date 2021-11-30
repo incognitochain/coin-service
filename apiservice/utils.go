@@ -318,5 +318,5 @@ retry:
 			}
 		}
 	}
-	return float64(a) / float64(receive)
+	return float64(receive) / float64(a)
 }

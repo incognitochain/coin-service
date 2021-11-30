@@ -242,19 +242,30 @@ func APIGetRandomCommitments(c *gin.Context) {
 
 func APIGetTokenList(c *gin.Context) {
 	allToken := c.Query("all")
+	includeNFT := c.Query("nft")
 	var datalist []TokenInfo
 	err := cacheGet(tokenInfoKey+string(allToken), &datalist)
 	if err != nil {
 		log.Println(err)
 	}
 	if len(datalist) == 0 {
-		tokenList, err := database.DBGetTokenInfo()
+		var tokenList []shared.TokenInfoData
+		tokenList, err = database.DBGetTokenInfo()
 		if err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
 		}
 
+		if includeNFT == "true" {
+			nftList, err := database.DBGetNFTInfo()
+			if err != nil {
+				log.Println(err)
+				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				return
+			}
+			tokenList = append(tokenList, nftList...)
+		}
 		extraTokenInfo, err := database.DBGetAllExtraTokenInfo()
 		if err != nil {
 			log.Println(err)
@@ -376,8 +387,13 @@ func APIGetTokenList(c *gin.Context) {
 					datalist = append(datalist, data)
 				}
 			}
-			if allToken == "true" {
+
+			if includeNFT == "true" && v.IsNFT {
 				datalist = append(datalist, data)
+			} else {
+				if allToken == "true" {
+					datalist = append(datalist, data)
+				}
 			}
 		}
 		err = cacheStoreCustom(tokenInfoKey+string(allToken), datalist, 40*time.Second)
@@ -880,7 +896,7 @@ func APISubmitOTA(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0, req.IndexTokens)
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,
@@ -922,7 +938,7 @@ func APISubmitOTAFullmode(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0, req.IndexTokens)
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,

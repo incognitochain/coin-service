@@ -206,40 +206,42 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := database.DBGetPDEState(2)
-	if err != nil {
-		return nil, err
-	}
-	pdeState := jsonresult.Pdexv3State{}
-	err = json.UnmarshalFromString(data, &pdeState)
-	if err != nil {
-		return nil, err
-	}
-	poolPairStates := *pdeState.PoolPairs
-	var pools []*shared.Pdexv3PoolPairWithId
-	for poolId, element := range poolPairStates {
-
-		var poolPair rawdbv2.Pdexv3PoolPair
-		var poolPairWithId shared.Pdexv3PoolPairWithId
-
-		poolPair = element.State()
-		poolPairWithId = shared.Pdexv3PoolPairWithId{
-			poolPair,
-			shared.Pdexv3PoolPairChild{
-				PoolID: poolId},
-		}
-
-		pools = append(pools, &poolPairWithId)
-	}
 
 	for _, v := range tokenList {
 		if v.TokenID != baseToken {
+			data, err := database.DBGetPDEState(2)
+			if err != nil {
+				return nil, err
+			}
+			pdeState := jsonresult.Pdexv3State{}
+			err = json.UnmarshalFromString(data, &pdeState)
+			if err != nil {
+				return nil, err
+			}
+			poolPairStates := *pdeState.PoolPairs
+			var pools []*shared.Pdexv3PoolPairWithId
+			for poolId, element := range poolPairStates {
+
+				var poolPair rawdbv2.Pdexv3PoolPair
+				var poolPairWithId shared.Pdexv3PoolPairWithId
+
+				poolPair = element.State()
+				poolPairWithId = shared.Pdexv3PoolPairWithId{
+					poolPair,
+					shared.Pdexv3PoolPairChild{
+						PoolID: poolId},
+				}
+
+				pools = append(pools, &poolPairWithId)
+			}
 			var rate float64
-			dcrate, tkDecimal, _, err := getPdecimalRate(v.TokenID, baseToken)
+			dcrate, _, tkbDecimal, err := getPdecimalRate(v.TokenID, baseToken)
 			if err != nil {
 				log.Println("getPdecimalRate", err)
-				continue
+				// continue
 			}
+			poolAmountTk := uint64(0)
+			poolAmountTkBase := uint64(0)
 			for poolID, _ := range defaultPools {
 				if strings.Contains(poolID, v.TokenID) && strings.Contains(poolID, baseToken) {
 					pool := getPool(poolID)
@@ -253,6 +255,11 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						if tk1Amount == 0 || tk2Amount == 0 {
 							continue
 						}
+						if tk2Amount < poolAmountTk && tk1Amount < poolAmountTkBase {
+							continue
+						}
+						poolAmountTk = tk2Amount
+						poolAmountTkBase = tk1Amount
 						tk1VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
 						tk2VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
 						rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
@@ -262,6 +269,11 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						if tk1Amount == 0 || tk2Amount == 0 {
 							continue
 						}
+						if tk1Amount < poolAmountTk && tk2Amount < poolAmountTkBase {
+							continue
+						}
+						poolAmountTk = tk1Amount
+						poolAmountTkBase = tk2Amount
 						tk1VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
 						tk2VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
 						rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
@@ -269,11 +281,19 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 				}
 			}
 			if rate == 0 {
-				rate = getRateMinimum(v.TokenID, baseToken, uint64(1*uint64(tkDecimal)), pools, poolPairStates)
+				_, re1 := pathfinder.FindGoodTradePath(
+					pdexv3Meta.MaxTradePathLength,
+					pools,
+					poolPairStates,
+					baseToken,
+					v.TokenID,
+					uint64(math.Pow10(tkbDecimal+1)))
+				if re1 > 0 {
+					rate, _, _ = getRateMinimum(v.TokenID, baseToken, re1, pools, poolPairStates)
+				}
 			}
-
 			rate = rate * dcrate
-			v.CurrentPrice = fmt.Sprintf("%g", rate)
+			v.CurrentPrice = fmt.Sprintf("%f", rate)
 		} else {
 			v.CurrentPrice = "1"
 		}
@@ -288,7 +308,7 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 	return result, nil
 }
 
-func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) float64 {
+func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) (float64, uint64, uint64) {
 	a := uint64(minAmount)
 	a1 := uint64(0)
 retry:
@@ -302,24 +322,22 @@ retry:
 
 	if receive == 0 {
 		a *= 10
-		if a < 1e6 {
+		if a < 1e9 {
 			goto retry
 		}
-		return 0
+		return 0, 0, 0
 	} else {
 		if receive > a1*10 {
 			a *= 10
 			a1 = receive
 			goto retry
 		} else {
-			if receive < a1*10 {
-				a /= 10
-				receive = a1
-				fmt.Println("receive", a, receive)
-			}
+			a /= 10
+			receive = a1
 		}
 	}
-	return float64(a) / float64(receive)
+	return float64(receive) / float64(a), receive, a
+	// return 0
 }
 
 func getRate(tokenID1, tokenID2 string, token1Amount, token2Amount uint64) (float64, error) {
