@@ -75,7 +75,7 @@ func StartOTAIndexingFull() {
 				}()
 				continue
 			}
-			err = addKeys([]shared.SubmittedOTAKeyData{*key})
+			err = addKeys([]shared.SubmittedOTAKeyData{*key}, false)
 			if err != nil {
 				go func() {
 					request.Respond <- err

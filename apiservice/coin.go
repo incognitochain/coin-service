@@ -896,10 +896,11 @@ func APISubmitOTA(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0, req.IndexTokens)
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,
+		FromNow: req.FromNow,
 		Respond: resp,
 	}
 	err = <-resp
@@ -938,10 +939,11 @@ func APISubmitOTAFullmode(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0, req.IndexTokens)
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,
+		FromNow: req.FromNow,
 		Respond: resp,
 	}
 	err = <-resp

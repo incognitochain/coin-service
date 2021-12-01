@@ -15,7 +15,7 @@ type APICheckTxRequest struct {
 
 type APISubmitOTAkeyRequest struct {
 	OTAKey       string
-	IndexTokens  []string
+	FromNow      bool
 	ShardID      int
 	BeaconHeight uint64
 }

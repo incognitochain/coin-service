@@ -163,12 +163,12 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
-	// for _, v := range keys {
-	// 	err = ReScanOTAKey(v.OTAKey, v.Pubkey)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
+	for _, v := range Submitted_OTAKey.Keys {
+		err := ReScanOTAKey(v.OTAKey, v.Pubkey)
+		if err != nil {
+			panic(err)
+		}
+	}
 	go func() {
 		for {
 			request := <-OTAAssignChn
@@ -190,7 +190,7 @@ func StartWorkerAssigner() {
 				}()
 				continue
 			}
-			err = addKeys([]shared.SubmittedOTAKeyData{*request.Key})
+			err = addKeys([]shared.SubmittedOTAKeyData{*request.Key}, request.FromNow)
 			if err != nil {
 				go func() {
 					request.Respond <- err
@@ -295,14 +295,14 @@ func loadSubmittedOTAKey() {
 	Submitted_OTAKey.Keys = make(map[string]*OTAkeyInfo)
 	Submitted_OTAKey.KeysByShard = make(map[int][]*OTAkeyInfo)
 	Submitted_OTAKey.AssignedKey = make(map[string]*worker)
-	err = addKeys(keys)
+	err = addKeys(keys, false)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Printf("Loaded %v keys\n", len(keys))
 }
 
-func addKeys(keys []shared.SubmittedOTAKeyData) error {
+func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 	var wg sync.WaitGroup
 	for _, key := range keys {
 		wg.Add(1)
@@ -329,6 +329,12 @@ func addKeys(keys []shared.SubmittedOTAKeyData) error {
 				log.Println(err)
 				time.Sleep(100 * time.Millisecond)
 				goto retry
+			}
+			if fromNow {
+				prvCount := database.DBGetCoinV2OfShardCount(int(shardID), common.PRVCoinID.String())
+				data.CoinIndex[common.PRVCoinID.String()] = shared.CoinInfo{LastScanned: uint64(prvCount)}
+				tokenCount := database.DBGetCoinV2OfShardCount(int(shardID), common.ConfidentialAssetID.String())
+				data.CoinIndex[common.ConfidentialAssetID.String()] = shared.CoinInfo{LastScanned: uint64(tokenCount)}
 			}
 			data.OTAKey = k.OTAKey
 			kInfo := OTAkeyInfo{

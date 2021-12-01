@@ -201,7 +201,8 @@ func DBGetCoinV2PubkeyInfo(key string) (*shared.KeyInfoData, error) {
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return &shared.KeyInfoData{
-				Pubkey: key,
+				Pubkey:    key,
+				CoinIndex: make(map[string]shared.CoinInfo),
 			}, nil
 		}
 		return nil, err

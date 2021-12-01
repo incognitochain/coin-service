@@ -190,16 +190,15 @@ func (model *TokenInfoData) Saving() error {
 
 type SubmittedOTAKeyData struct {
 	mgm.DefaultModel `bson:",inline"`
-	OTAKey           string   `json:"otakey" bson:"otakey"`
-	Pubkey           string   `json:"pubkey" bson:"pubkey"`
-	Fullkey          string   `json:"fullkey" bson:"fullkey"`
-	IndexerID        int      `json:"indexerid" bson:"indexerid"`
-	IndexTokens      []string `json:"indextokens"bson:"indextokens"`
+	OTAKey           string `json:"otakey" bson:"otakey"`
+	Pubkey           string `json:"pubkey" bson:"pubkey"`
+	Fullkey          string `json:"fullkey" bson:"fullkey"`
+	IndexerID        int    `json:"indexerid" bson:"indexerid"`
 }
 
-func NewSubmittedOTAKeyData(OTAkey, pubkey, fullkey string, indexerID int, indextokens []string) *SubmittedOTAKeyData {
+func NewSubmittedOTAKeyData(OTAkey, pubkey, fullkey string, indexerID int) *SubmittedOTAKeyData {
 	return &SubmittedOTAKeyData{
-		OTAKey: OTAkey, Pubkey: pubkey, Fullkey: fullkey, IndexerID: indexerID, IndexTokens: indextokens,
+		OTAKey: OTAkey, Pubkey: pubkey, Fullkey: fullkey, IndexerID: indexerID,
 	}
 }
 

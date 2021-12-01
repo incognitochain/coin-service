@@ -187,7 +187,7 @@ func StartOTAIndexing() {
 
 		assignedOTAKeys.Lock()
 		scanOTACoins()
-		// scanTxsSwap()
+		scanTxsSwap()
 		assignedOTAKeys.Unlock()
 
 	}
@@ -583,7 +583,7 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 		if v != 0 {
 			v += 1
 		}
-		coinList, err := database.DBGetUnknownCoinsV21(shardID, common.PRVCoinID.String(), int64(v), 2000)
+		coinList, err := database.DBGetUnknownCoinsV21(shardID, common.PRVCoinID.String(), int64(v), 10000)
 		if err != nil {
 			panic(err)
 		}
@@ -593,7 +593,7 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 		if v != 0 {
 			v += 1
 		}
-		coinList, err := database.DBGetUnknownCoinsV21(shardID, common.ConfidentialAssetID.String(), int64(v), 2000)
+		coinList, err := database.DBGetUnknownCoinsV21(shardID, common.ConfidentialAssetID.String(), int64(v), 10000)
 		if err != nil {
 			panic(err)
 		}
