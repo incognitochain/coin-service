@@ -89,7 +89,6 @@ type KeyInfoData struct {
 	OTAKey           string              `json:"otakey" bson:"otakey"`
 	CoinIndex        map[string]CoinInfo `json:"coinindex" bson:"coinindex"`
 	NFTIndex         map[string]CoinInfo `json:"nftindex" bson:"nftindex"`
-	IndexTokens      []string            `json:"indextokens" bson:"indextokens"`
 	TotalReceiveTxs  map[string]uint64   `json:"receivetxs" bson:"receivetxs"`
 	LastScanTxID     string              `json:"lastscantxid" bson:"lastscantxid"`
 }

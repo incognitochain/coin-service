@@ -331,7 +331,6 @@ func addKeys(keys []shared.SubmittedOTAKeyData) error {
 				goto retry
 			}
 			data.OTAKey = k.OTAKey
-			data.IndexTokens = k.IndexTokens
 			kInfo := OTAkeyInfo{
 				KeyInfo: data,
 				ShardID: int(shardID),

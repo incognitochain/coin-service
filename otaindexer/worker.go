@@ -187,7 +187,7 @@ func StartOTAIndexing() {
 
 		assignedOTAKeys.Lock()
 		scanOTACoins()
-		scanTxsSwap()
+		// scanTxsSwap()
 		assignedOTAKeys.Unlock()
 
 	}
