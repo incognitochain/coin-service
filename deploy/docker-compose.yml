@@ -42,7 +42,7 @@ services:
 
   worker:
     image: coinservice
-    scale: 3
+    scale: 1
     working_dir: /app
     entrypoint: [./run.sh]
     environment:
