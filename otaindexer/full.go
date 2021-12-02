@@ -137,7 +137,7 @@ func StartOTAIndexingFull() {
 		startTime := time.Now()
 
 		assignedOTAKeys.Lock()
-		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex()
+		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
 		var filteredCoins map[string][]shared.CoinData
 		for {
 			coinList = GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)

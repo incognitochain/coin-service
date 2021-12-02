@@ -42,6 +42,7 @@ var Submitted_OTAKey = struct {
 const (
 	REINDEX = "reindex"
 	INDEX   = "index"
+	RUN     = "run"
 )
 
 func init() {
@@ -206,8 +207,10 @@ func StartWorkerAssigner() {
 	for {
 		time.Sleep(10 * time.Second)
 		Submitted_OTAKey.Lock()
+		isAllKeyAssigned := true
 		for key, worker := range Submitted_OTAKey.AssignedKey {
 			if worker == nil {
+				isAllKeyAssigned = false
 				w, err := chooseWorker()
 				if err != nil {
 					log.Println(err)
@@ -250,6 +253,18 @@ func StartWorkerAssigner() {
 					}
 					w.writeCh <- keyBytes
 				}
+			}
+		}
+		if isAllKeyAssigned {
+			for _, wk := range workers {
+				keyAction := WorkerOTACmd{
+					Action: RUN,
+				}
+				keyBytes, err := json.Marshal(keyAction)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				wk.writeCh <- keyBytes
 			}
 		}
 		Submitted_OTAKey.Unlock()
@@ -449,17 +464,7 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		data.TotalReceiveTxs[tokenID] = uint64(txs)
 		data.NFTIndex[tokenID] = coinInfo
 	}
-	err = data.Saving()
-	if err != nil {
-		return err
-	}
-	doc := bson.M{
-		"$set": *data,
-	}
-	err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
-	if err != nil {
-		return err
-	}
+
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
 	if reIndex {
 		if w, ok := Submitted_OTAKey.AssignedKey[pubKey]; ok {
@@ -475,6 +480,17 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 				w.writeCh <- keyBytes
 			}
 		}
+	}
+	err = data.Saving()
+	if err != nil {
+		return err
+	}
+	doc := bson.M{
+		"$set": *data,
+	}
+	err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
+	if err != nil {
+		return err
 	}
 
 	return nil
