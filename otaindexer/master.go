@@ -164,7 +164,7 @@ var OTAAssignChn chan OTAAssignRequest
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
 	for _, v := range Submitted_OTAKey.Keys {
-		err := ReScanOTAKey(v.OTAKey, v.Pubkey)
+		err := ReCheckOTAKey(v.OTAKey, v.Pubkey)
 		if err != nil {
 			panic(err)
 		}
@@ -351,6 +351,16 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 			Submitted_OTAKey.KeysByShard[kInfo.ShardID] = append(Submitted_OTAKey.KeysByShard[kInfo.ShardID], &kInfo)
 			Submitted_OTAKey.TotalKeys += 1
 			Submitted_OTAKey.Unlock()
+
+			_ = data.Saving()
+			doc := bson.M{
+				"$set": *data,
+			}
+			err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
+			if err != nil {
+				panic(err)
+			}
+
 			wg.Done()
 		}(key)
 	}
@@ -358,7 +368,7 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 	return nil
 }
 
-func ReScanOTAKey(otaKey, pubKey string) error {
+func ReCheckOTAKey(otaKey, pubKey string) error {
 	Submitted_OTAKey.RLock()
 	defer Submitted_OTAKey.RUnlock()
 	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
@@ -392,30 +402,42 @@ func ReScanOTAKey(otaKey, pubKey string) error {
 		// 	data.CoinIndex[tokenID] = coinInfo
 		// 	continue
 		// }
+		coinInfo.End = database.DBGetLastCoinV2OfOTAkey(int(shardID), tokenID, otaKey)
 		if highestTkIndex < coinInfo.End {
 			highestTkIndex = coinInfo.End
 		}
 		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey))
-		coinInfo.LastScanned = coinInfo.End
+		if coinInfo.LastScanned < coinInfo.End {
+			coinInfo.LastScanned = coinInfo.End
+		}
 		txs, err := database.DBGetCountTxByPubkey(pubKey, tokenID, 2)
 		if err != nil {
 			return err
+		}
+		if len(data.TotalReceiveTxs) == 0 {
+			data.TotalReceiveTxs = make(map[string]uint64)
 		}
 		data.TotalReceiveTxs[tokenID] = uint64(txs)
 		data.CoinIndex[tokenID] = coinInfo
 	}
 	if len(data.CoinIndex) != 0 {
 		cinf := data.CoinIndex[common.ConfidentialAssetID.String()]
-		cinf.LastScanned = highestTkIndex
+		if cinf.LastScanned < highestTkIndex {
+			cinf.LastScanned = highestTkIndex
+		}
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
 	}
 
 	for tokenID, coinInfo := range data.NFTIndex {
+		coinInfo.End = database.DBGetLastCoinV2OfOTAkey(int(shardID), tokenID, otaKey)
 		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey))
 		coinInfo.LastScanned = 0
 		txs, err := database.DBGetCountTxByPubkey(pubKey, tokenID, 2)
 		if err != nil {
 			return err
+		}
+		if len(data.TotalReceiveTxs) == 0 {
+			data.TotalReceiveTxs = make(map[string]uint64)
 		}
 		data.TotalReceiveTxs[tokenID] = uint64(txs)
 		data.NFTIndex[tokenID] = coinInfo

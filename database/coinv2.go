@@ -234,6 +234,24 @@ func DBGetCoinV2OfOTAkeyCount(shardID int, tokenID, otakey string) int64 {
 	return count
 }
 
+func DBGetLastCoinV2OfOTAkey(shardID int, tokenID, otakey string) uint64 {
+	var coinList []shared.CoinData
+	limit := int64(1)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "realtokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&coinList, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", -1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	if len(coinList) == 0 {
+		return 0
+	}
+	return coinList[0].CoinIndex
+}
+
 func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {
 	var result []shared.TxData
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(pubkeys)+1)*shared.DB_OPERATION_TIMEOUT)
