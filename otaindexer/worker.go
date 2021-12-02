@@ -138,10 +138,11 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 			if err != nil {
 				log.Fatalln(err)
 			}
+
 			data.OTAKey = keyAction.Key.OTAKey
 
 			k := OTAkeyInfo{
-				KeyInfo: data,
+				KeyInfo: keyAction.Key.KeyInfo,
 				ShardID: int(shardID),
 				OTAKey:  keyAction.Key.OTAKey,
 				Pubkey:  keyAction.Key.Pubkey,

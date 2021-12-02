@@ -164,7 +164,7 @@ var OTAAssignChn chan OTAAssignRequest
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
 	for _, v := range Submitted_OTAKey.Keys {
-		err := ReCheckOTAKey(v.OTAKey, v.Pubkey)
+		err := ReCheckOTAKey(v.OTAKey, v.Pubkey, false)
 		if err != nil {
 			panic(err)
 		}
@@ -368,7 +368,7 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 	return nil
 }
 
-func ReCheckOTAKey(otaKey, pubKey string) error {
+func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	Submitted_OTAKey.RLock()
 	defer Submitted_OTAKey.RUnlock()
 	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
@@ -425,7 +425,14 @@ func ReCheckOTAKey(otaKey, pubKey string) error {
 		if cinf.LastScanned < highestTkIndex {
 			cinf.LastScanned = highestTkIndex
 		}
+		if reIndex {
+			pinf := data.CoinIndex[common.PRVCoinID.String()]
+			cinf.LastScanned = 0
+			pinf.LastScanned = 0
+			data.CoinIndex[common.PRVCoinID.String()] = pinf
+		}
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
+
 	}
 
 	for tokenID, coinInfo := range data.NFTIndex {
@@ -454,19 +461,21 @@ func ReCheckOTAKey(otaKey, pubKey string) error {
 		return err
 	}
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
+	if reIndex {
+		if w, ok := Submitted_OTAKey.AssignedKey[pubKey]; ok {
+			if w.Heartbeat != 0 {
+				keyAction := WorkerOTACmd{
+					Action: REINDEX,
+					Key:    *Submitted_OTAKey.Keys[pubKey],
+				}
+				keyBytes, err := json.Marshal(keyAction)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				w.writeCh <- keyBytes
+			}
+		}
+	}
 
-	// if w, ok := Submitted_OTAKey.AssignedKey[pubKey]; ok {
-	// 	if w.Heartbeat != 0 {
-	// 		keyAction := WorkerOTACmd{
-	// 			Action: REINDEX,
-	// 			Key:    *Submitted_OTAKey.Keys[pubKey],
-	// 		}
-	// 		keyBytes, err := json.Marshal(keyAction)
-	// 		if err != nil {
-	// 			log.Fatalln(err)
-	// 		}
-	// 		w.writeCh <- keyBytes
-	// 	}
-	// }
 	return nil
 }
