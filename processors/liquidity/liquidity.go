@@ -738,7 +738,7 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 			DataID:       poolid,
 			BeaconHeight: height,
 		}
-		blocks := int64((30 * 60) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+		blocks := int64((86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()) * 7)
 		if blocks > 50000 {
 			blocks = 50000
 		}
@@ -783,7 +783,7 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 			DataID:       poolid,
 			BeaconHeight: height,
 		}
-		blocks := int64((30 * 60) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+		blocks := int64((86400 / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()) * 7)
 		if blocks > 50000 {
 			blocks = 50000
 		}
