@@ -318,68 +318,69 @@ func loadSubmittedOTAKey() {
 }
 
 func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
-	var wg sync.WaitGroup
+	// var wg sync.WaitGroup
 	for _, key := range keys {
-		wg.Add(1)
-		go func(k shared.SubmittedOTAKeyData) {
-		retry:
-			pubkey, _, err := base58.Base58Check{}.Decode(k.Pubkey)
-			if err != nil {
-				log.Fatalln(err)
-			}
-			keyBytes, _, err := base58.Base58Check{}.Decode(k.OTAKey)
-			if err != nil {
-				log.Fatalln(err)
-			}
-			keyBytes = append(keyBytes, pubkey...)
-			if len(keyBytes) != 64 {
-				log.Fatalln("keyBytes length isn't 64")
-			}
-			otaKey := shared.OTAKeyFromRaw(keyBytes)
-			ks := &incognitokey.KeySet{}
-			ks.OTAKey = otaKey
-			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-			data, err := database.DBGetCoinV2PubkeyInfo(k.Pubkey)
-			if err != nil {
-				log.Println(err)
-				time.Sleep(100 * time.Millisecond)
-				goto retry
-			}
-			if fromNow {
-				prvCount := database.DBGetCoinV2OfShardCount(int(shardID), common.PRVCoinID.String())
-				data.CoinIndex[common.PRVCoinID.String()] = shared.CoinInfo{LastScanned: uint64(prvCount)}
-				tokenCount := database.DBGetCoinV2OfShardCount(int(shardID), common.ConfidentialAssetID.String())
-				data.CoinIndex[common.ConfidentialAssetID.String()] = shared.CoinInfo{LastScanned: uint64(tokenCount)}
-			}
-			data.OTAKey = k.OTAKey
-			kInfo := OTAkeyInfo{
-				KeyInfo: data,
-				ShardID: int(shardID),
-				OTAKey:  k.OTAKey,
-				Pubkey:  k.Pubkey,
-				keyset:  ks,
-			}
+		k := key
+		// wg.Add(1)
+		// go func(k shared.SubmittedOTAKeyData) {
+	retry:
+		pubkey, _, err := base58.Base58Check{}.Decode(k.Pubkey)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		keyBytes, _, err := base58.Base58Check{}.Decode(k.OTAKey)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		keyBytes = append(keyBytes, pubkey...)
+		if len(keyBytes) != 64 {
+			log.Fatalln("keyBytes length isn't 64")
+		}
+		otaKey := shared.OTAKeyFromRaw(keyBytes)
+		ks := &incognitokey.KeySet{}
+		ks.OTAKey = otaKey
+		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+		data, err := database.DBGetCoinV2PubkeyInfo(k.Pubkey)
+		if err != nil {
+			log.Println(err)
+			time.Sleep(100 * time.Millisecond)
+			goto retry
+		}
+		if fromNow {
+			prvCount := database.DBGetCoinV2OfShardCount(int(shardID), common.PRVCoinID.String())
+			data.CoinIndex[common.PRVCoinID.String()] = shared.CoinInfo{LastScanned: uint64(prvCount)}
+			tokenCount := database.DBGetCoinV2OfShardCount(int(shardID), common.ConfidentialAssetID.String())
+			data.CoinIndex[common.ConfidentialAssetID.String()] = shared.CoinInfo{LastScanned: uint64(tokenCount)}
+		}
+		data.OTAKey = k.OTAKey
+		kInfo := OTAkeyInfo{
+			KeyInfo: data,
+			ShardID: int(shardID),
+			OTAKey:  k.OTAKey,
+			Pubkey:  k.Pubkey,
+			keyset:  ks,
+		}
 
-			Submitted_OTAKey.Lock()
-			Submitted_OTAKey.AssignedKey[k.Pubkey] = nil
-			Submitted_OTAKey.Keys[k.Pubkey] = &kInfo
-			Submitted_OTAKey.KeysByShard[kInfo.ShardID] = append(Submitted_OTAKey.KeysByShard[kInfo.ShardID], &kInfo)
-			Submitted_OTAKey.TotalKeys += 1
-			Submitted_OTAKey.Unlock()
+		Submitted_OTAKey.Lock()
+		Submitted_OTAKey.AssignedKey[k.Pubkey] = nil
+		Submitted_OTAKey.Keys[k.Pubkey] = &kInfo
+		Submitted_OTAKey.KeysByShard[kInfo.ShardID] = append(Submitted_OTAKey.KeysByShard[kInfo.ShardID], &kInfo)
+		Submitted_OTAKey.TotalKeys += 1
+		Submitted_OTAKey.Unlock()
 
-			_ = data.Saving()
-			doc := bson.M{
-				"$set": *data,
-			}
-			err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
-			if err != nil {
-				panic(err)
-			}
+		_ = data.Saving()
+		doc := bson.M{
+			"$set": *data,
+		}
+		err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
+		if err != nil {
+			panic(err)
+		}
 
-			wg.Done()
-		}(key)
+		// 	wg.Done()
+		// }(key)
 	}
-	wg.Wait()
+	// wg.Wait()
 	return nil
 }
 
