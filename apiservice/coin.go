@@ -172,7 +172,14 @@ func APIGetRandomCommitments(c *gin.Context) {
 		if req.TokenID != common.PRVCoinID.String() {
 			req.TokenID = common.ConfidentialAssetID.String()
 		}
-		lenOTA := new(big.Int).SetInt64(database.DBGetCoinV2OfShardCount(req.ShardID, req.TokenID) - 1)
+	retry:
+		count, err := database.DBGetCoinV2OfShardCount(req.ShardID, req.TokenID)
+		if err != nil {
+			fmt.Println(err)
+			time.Sleep(100 * time.Millisecond)
+			goto retry
+		}
+		lenOTA := new(big.Int).SetInt64(count - 1)
 		var hasAssetTags bool = true
 		for i := 0; i < req.Limit; i++ {
 			idx, _ := common.RandBigIntMaxRange(lenOTA)
