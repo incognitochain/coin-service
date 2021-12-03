@@ -164,12 +164,24 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
+	var wg sync.WaitGroup
+	d := 0
 	for _, v := range Submitted_OTAKey.Keys {
-		err := ReCheckOTAKey(v.OTAKey, v.Pubkey, false)
-		if err != nil {
-			panic(err)
+		if d == 100 {
+			wg.Wait()
+			d = 0
 		}
+		wg.Add(1)
+		d++
+		go func(key *OTAkeyInfo) {
+			err := ReCheckOTAKey(key.OTAKey, key.Pubkey, false)
+			if err != nil {
+				panic(err)
+			}
+			wg.Done()
+		}(v)
 	}
+	wg.Wait()
 	go func() {
 		for {
 			request := <-OTAAssignChn
@@ -320,46 +332,58 @@ func loadSubmittedOTAKey() {
 func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 	// var wg sync.WaitGroup
 	for _, key := range keys {
-		k := key
-		// wg.Add(1)
-		// go func(k shared.SubmittedOTAKeyData) {
-	retry:
-		pubkey, _, err := base58.Base58Check{}.Decode(k.Pubkey)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		keyBytes, _, err := base58.Base58Check{}.Decode(k.OTAKey)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		keyBytes = append(keyBytes, pubkey...)
-		if len(keyBytes) != 64 {
-			log.Fatalln("keyBytes length isn't 64")
-		}
-		otaKey := shared.OTAKeyFromRaw(keyBytes)
-		ks := &incognitokey.KeySet{}
-		ks.OTAKey = otaKey
-		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-		data, err := database.DBGetCoinV2PubkeyInfo(k.Pubkey)
-		if err != nil {
-			log.Println(err)
-			time.Sleep(100 * time.Millisecond)
-			goto retry
-		}
-		if fromNow {
-			prvCount := database.DBGetCoinV2OfShardCount(int(shardID), common.PRVCoinID.String())
-			data.CoinIndex[common.PRVCoinID.String()] = shared.CoinInfo{LastScanned: uint64(prvCount)}
-			tokenCount := database.DBGetCoinV2OfShardCount(int(shardID), common.ConfidentialAssetID.String())
-			data.CoinIndex[common.ConfidentialAssetID.String()] = shared.CoinInfo{LastScanned: uint64(tokenCount)}
-		}
-		data.OTAKey = k.OTAKey
-		kInfo := OTAkeyInfo{
-			KeyInfo: data,
-			ShardID: int(shardID),
-			OTAKey:  k.OTAKey,
-			Pubkey:  k.Pubkey,
-			keyset:  ks,
-		}
+		wg.Add(1)
+		go func(k shared.SubmittedOTAKeyData) {
+		retry:
+			pubkey, _, err := base58.Base58Check{}.Decode(k.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes, _, err := base58.Base58Check{}.Decode(k.OTAKey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes = append(keyBytes, pubkey...)
+			if len(keyBytes) != 64 {
+				log.Fatalln("keyBytes length isn't 64")
+			}
+			otaKey := shared.OTAKeyFromRaw(keyBytes)
+			ks := &incognitokey.KeySet{}
+			ks.OTAKey = otaKey
+			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+			data, err := database.DBGetCoinV2PubkeyInfo(k.Pubkey)
+			if err != nil {
+				log.Println(err)
+				time.Sleep(100 * time.Millisecond)
+				goto retry
+			}
+			if fromNow {
+			retryGet1:
+				prvCount, err := database.DBGetCoinV2OfShardCount(int(shardID), common.PRVCoinID.String())
+				if err != nil {
+					log.Println(err)
+					time.Sleep(200 * time.Millisecond)
+					goto retryGet1
+				}
+				data.CoinIndex[common.PRVCoinID.String()] = shared.CoinInfo{LastScanned: uint64(prvCount)}
+
+			retryGet2:
+				tokenCount, err := database.DBGetCoinV2OfShardCount(int(shardID), common.ConfidentialAssetID.String())
+				if err != nil {
+					log.Println(err)
+					time.Sleep(200 * time.Millisecond)
+					goto retryGet2
+				}
+				data.CoinIndex[common.ConfidentialAssetID.String()] = shared.CoinInfo{LastScanned: uint64(tokenCount)}
+			}
+			data.OTAKey = k.OTAKey
+			kInfo := OTAkeyInfo{
+				KeyInfo: data,
+				ShardID: int(shardID),
+				OTAKey:  k.OTAKey,
+				Pubkey:  k.Pubkey,
+				keyset:  ks,
+			}
 
 		Submitted_OTAKey.Lock()
 		Submitted_OTAKey.AssignedKey[k.Pubkey] = nil
@@ -418,11 +442,24 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		// 	data.CoinIndex[tokenID] = coinInfo
 		// 	continue
 		// }
-		coinInfo.End = database.DBGetLastCoinV2OfOTAkey(int(shardID), tokenID, otaKey)
+	retryGet1:
+		coinInfo.End, err = database.DBGetLastCoinV2OfOTAkey(int(shardID), tokenID, otaKey)
+		if err != nil {
+			log.Println(err)
+			time.Sleep(200 * time.Millisecond)
+			goto retryGet1
+		}
 		if highestTkIndex < coinInfo.End {
 			highestTkIndex = coinInfo.End
 		}
-		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey))
+
+	retryGet2:
+		coinInfo.Total, err = database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey)
+		if err != nil {
+			log.Println(err)
+			time.Sleep(200 * time.Millisecond)
+			goto retryGet2
+		}
 		if coinInfo.LastScanned < coinInfo.End {
 			coinInfo.LastScanned = coinInfo.End
 		}
@@ -452,8 +489,20 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	}
 
 	for tokenID, coinInfo := range data.NFTIndex {
-		coinInfo.End = database.DBGetLastCoinV2OfOTAkey(int(shardID), tokenID, otaKey)
-		coinInfo.Total = uint64(database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey))
+	retryGet3:
+		coinInfo.End, err = database.DBGetLastCoinV2OfOTAkey(int(shardID), tokenID, otaKey)
+		if err != nil {
+			log.Println(err)
+			time.Sleep(200 * time.Millisecond)
+			goto retryGet3
+		}
+	retryGet4:
+		coinInfo.Total, err = database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey)
+		if err != nil {
+			log.Println(err)
+			time.Sleep(200 * time.Millisecond)
+			goto retryGet4
+		}
 		coinInfo.LastScanned = 0
 		txs, err := database.DBGetCountTxByPubkey(pubKey, tokenID, 2)
 		if err != nil {
@@ -467,6 +516,20 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	}
 
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
+	err = data.Saving()
+	if err != nil {
+		return err
+	}
+	doc := bson.M{
+		"$set": *data,
+	}
+retryStore:
+	err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
+	if err != nil {
+		fmt.Println(err)
+		goto retryStore
+	}
+
 	if reIndex {
 		if w, ok := Submitted_OTAKey.AssignedKey[pubKey]; ok {
 			if w.Heartbeat != 0 {
@@ -481,17 +544,6 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 				w.writeCh <- keyBytes
 			}
 		}
-	}
-	err = data.Saving()
-	if err != nil {
-		return err
-	}
-	doc := bson.M{
-		"$set": *data,
-	}
-	err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
-	if err != nil {
-		return err
 	}
 
 	return nil

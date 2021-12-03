@@ -210,31 +210,29 @@ func DBGetCoinV2PubkeyInfo(key string) (*shared.KeyInfoData, error) {
 	return &result, nil
 }
 
-func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
+func DBGetCoinV2OfShardCount(shardID int, tokenID string) (int64, error) {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	doc := shared.CoinData{}
 	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
 	if err != nil {
-		log.Println(err)
-		return -1
+		return -1, err
 	}
-	return count
+	return count, nil
 }
 
-func DBGetCoinV2OfOTAkeyCount(shardID int, tokenID, otakey string) int64 {
+func DBGetCoinV2OfOTAkeyCount(shardID int, tokenID, otakey string) (uint64, error) {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(500)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "realtokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
 	doc := shared.CoinData{}
 	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
 	if err != nil {
-		log.Println(err)
-		return -1
+		return 0, err
 	}
-	return count
+	return uint64(count), nil
 }
 
-func DBGetLastCoinV2OfOTAkey(shardID int, tokenID, otakey string) uint64 {
+func DBGetLastCoinV2OfOTAkey(shardID int, tokenID, otakey string) (uint64, error) {
 	var coinList []shared.CoinData
 	limit := int64(1)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "realtokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
@@ -243,13 +241,12 @@ func DBGetLastCoinV2OfOTAkey(shardID int, tokenID, otakey string) uint64 {
 		Limit: &limit,
 	})
 	if err != nil {
-		log.Println(err)
-		return 0
+		return 0, err
 	}
 	if len(coinList) == 0 {
-		return 0
+		return 0, nil
 	}
-	return coinList[0].CoinIndex
+	return coinList[0].CoinIndex, nil
 }
 
 func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {
