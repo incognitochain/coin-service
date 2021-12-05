@@ -163,9 +163,9 @@ func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 				assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
 				assignedOTAKeys.TotalKeys += 1
 			}
+			log.Printf("success added key %v for indexing", keyAction.Key.Pubkey)
 		}
 		assignedOTAKeys.Unlock()
-		log.Printf("success added key %v for indexing", keyAction.Key.Pubkey)
 	}
 }
 
@@ -190,10 +190,9 @@ func StartOTAIndexing() {
 				log.Println("len(assignedOTAKeys.Keys) == 0")
 				continue
 			}
-
 			assignedOTAKeys.Lock()
 			scanOTACoins()
-			scanTxsSwap()
+			// scanTxsSwap()
 			assignedOTAKeys.Unlock()
 		}
 	}
@@ -209,31 +208,101 @@ func cleanAssignedOTA() {
 func scanOTACoins() {
 	var err error
 	startTime := time.Now()
-	// shardKeyGroup := make(map[int]map[string]map[uint64][]*OTAkeyInfo)
-	// for shardID, keyinfos := range assignedOTAKeys.Keys {
-	// 	coinIndexs := groupLastScannedIndexs(keyinfos)
-	// 	keysGroup := groupKeysToCoinIndex(coinIndexs, keyinfos)
-	// 	shardKeyGroup[shardID] = keysGroup
-	// }
+	shardKeyGroup := make(map[int]map[string]map[uint64][]*OTAkeyInfo)
+	for shardID, keyinfos := range assignedOTAKeys.Keys {
+		coinIndexs := groupLastScannedIndexs(keyinfos)
+		keysGroup := groupKeysToCoinIndex(coinIndexs, keyinfos)
+		shardKeyGroup[shardID] = keysGroup
+	}
 
-	// for s, v := range shardKeyGroup {
-	// 	fmt.Println("shardKeyGroup", s, v)
-	// }
+	coinsToUpdate := []shared.CoinData{}
+	txsToUpdate := make(map[string]map[string][]string)
 
-	lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
-	//scan coins
-	for {
-		coinList := GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
-		if len(coinList) == 0 {
-			break
-		}
-		filteredCoins := make(map[string][]shared.CoinData)
-		filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
+	tokenListLock.RLock()
+	tokenIDMap := make(map[string]string)
+	for k, v := range lastTokenIDMap {
+		tokenIDMap[k] = v
+	}
+	nftIDMap := make(map[string]string)
+	for k, v := range lastNFTIDMap {
+		nftIDMap[k] = v
+	}
+	tokenListLock.RUnlock()
+
+	var wg sync.WaitGroup
+	for shardID, tkMap := range shardKeyGroup {
+		wg.Add(1)
+		go func(tkIndexMap map[string]map[uint64][]*OTAkeyInfo, sID int) {
+			for tk, indices := range tkIndexMap {
+				for index, keys := range indices {
+					coinList := GetUnknownCoinsV2(sID, index, tk)
+					var newTokenIDMap map[string]string
+					var newNFTIDMap map[string]string
+
+					if tk == common.ConfidentialAssetID.String() {
+						newTokenIDMap = tokenIDMap
+						newNFTIDMap = nftIDMap
+					}
+					indexedCoins, txsUpdate := filterCoinsByOTAKeyV2(coinList, keys, newTokenIDMap, newNFTIDMap)
+					coinsToUpdate = append(coinsToUpdate, indexedCoins...)
+					for pubkey, tokenTxs := range txsUpdate {
+						for tokenID, txs := range tokenTxs {
+							if _, ok := txsToUpdate[pubkey]; ok {
+								txsToUpdate[pubkey][tokenID] = txs
+							} else {
+								txsToUpdate[pubkey] = make(map[string][]string)
+								txsToUpdate[pubkey][tokenID] = txs
+							}
+						}
+					}
+				}
+			}
+			wg.Done()
+		}(tkMap, shardID)
+	}
+	wg.Wait()
+
+	if len(coinsToUpdate) > 0 {
+		log.Println("\n=========================================")
+		log.Println("len(coinsToUpdate)", len(coinsToUpdate))
+		log.Println("=========================================\n")
+		err := database.DBUpdateCoins(coinsToUpdate, context.Background())
 		if err != nil {
 			panic(err)
 		}
-		updateCoinState(filteredCoins, lastPRVIndex, lastTokenIndex)
 	}
+
+	if len(txsToUpdate) > 0 {
+		for pubkey, tokenTxs := range txsToUpdate {
+			for tokenID, txHashs := range tokenTxs {
+				err := database.DBUpdateTxPubkeyReceiverAndTokenID(txHashs, pubkey, tokenID, context.Background())
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+	}
+
+	err = updateSubmittedOTAKey(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	//Old
+	// lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
+	// //scan coins
+	// for {
+	// 	coinList := GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
+	// 	if len(coinList) == 0 {
+	// 		break
+	// 	}
+	// 	filteredCoins := make(map[string][]shared.CoinData)
+	// 	filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	updateCoinState(filteredCoins, lastPRVIndex, lastTokenIndex)
+	// }
 	log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
 }
 
@@ -619,6 +688,16 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 	return result
 }
 
+func GetUnknownCoinsV2(shardID int, fromIndex uint64, tokenID string) []shared.CoinData {
+	var result []shared.CoinData
+	coinList, err := database.DBGetUnknownCoinsV21(shardID, common.PRVCoinID.String(), int64(fromIndex), 10000)
+	if err != nil {
+		panic(err)
+	}
+	result = append(result, coinList...)
+	return result
+}
+
 func getTxToProcess(lastID map[int]string, limit int64) ([]shared.TxData, error) {
 	result := []shared.TxData{}
 	for shardID, v := range lastID {
@@ -749,8 +828,8 @@ func groupLastScannedIndexs(keys []*OTAkeyInfo) map[string][]uint64 {
 		return tempIndexMap[common.ConfidentialAssetID.String()][i] < tempIndexMap[common.ConfidentialAssetID.String()][j]
 	})
 
-	tempIndexMap[common.ConfidentialAssetID.String()] = reduceSlice(tempIndexMap[common.ConfidentialAssetID.String()], 10000)
-	tempIndexMap[common.PRVCoinID.String()] = reduceSlice(tempIndexMap[common.PRVCoinID.String()], 10000)
+	indexMap[common.ConfidentialAssetID.String()] = reduceSlice(tempIndexMap[common.ConfidentialAssetID.String()], 10000)
+	indexMap[common.PRVCoinID.String()] = reduceSlice(tempIndexMap[common.PRVCoinID.String()], 10000)
 
 	return indexMap
 }
@@ -770,8 +849,8 @@ func removeDuplicateInt(slice []uint64) []uint64 {
 func reduceSlice(slice []uint64, r uint64) []uint64 {
 	var result []uint64
 	i := uint64(0)
-	for _, v := range slice {
-		if i+r < v || i == 0 {
+	for idx, v := range slice {
+		if i+r < v || v == 0 || idx == len(slice)-1 {
 			result = append(result, v)
 			i = v + r
 		}
@@ -788,7 +867,7 @@ func groupKeysToCoinIndex(coinIndex map[string][]uint64, keys []*OTAkeyInfo) map
 		for _, kinfo := range keys {
 			if cinfo, ok := kinfo.KeyInfo.CoinIndex[token]; ok {
 				for _, v := range idxs {
-					if cinfo.LastScanned < v {
+					if cinfo.LastScanned <= v {
 						result[token][v] = append(result[token][v], kinfo)
 						break
 					}

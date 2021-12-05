@@ -330,7 +330,7 @@ func loadSubmittedOTAKey() {
 }
 
 func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
-	// var wg sync.WaitGroup
+	var wg sync.WaitGroup
 	for _, key := range keys {
 		wg.Add(1)
 		go func(k shared.SubmittedOTAKeyData) {
@@ -385,29 +385,30 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 				keyset:  ks,
 			}
 
-		Submitted_OTAKey.Lock()
-		Submitted_OTAKey.AssignedKey[k.Pubkey] = nil
-		Submitted_OTAKey.Keys[k.Pubkey] = &kInfo
-		Submitted_OTAKey.KeysByShard[kInfo.ShardID] = append(Submitted_OTAKey.KeysByShard[kInfo.ShardID], &kInfo)
-		Submitted_OTAKey.TotalKeys += 1
-		Submitted_OTAKey.Unlock()
+			Submitted_OTAKey.Lock()
+			Submitted_OTAKey.AssignedKey[k.Pubkey] = nil
+			Submitted_OTAKey.Keys[k.Pubkey] = &kInfo
+			Submitted_OTAKey.KeysByShard[kInfo.ShardID] = append(Submitted_OTAKey.KeysByShard[kInfo.ShardID], &kInfo)
+			Submitted_OTAKey.TotalKeys += 1
+			Submitted_OTAKey.Unlock()
 
-		_ = data.Saving()
-		doc := bson.M{
-			"$set": *data,
-		}
-		err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
-		if err != nil {
-			panic(err)
-		}
+			_ = data.Saving()
+			doc := bson.M{
+				"$set": *data,
+			}
+			err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
+			if err != nil {
+				panic(err)
+			}
 
-		// 	wg.Done()
-		// }(key)
+			wg.Done()
+		}(key)
 	}
-	// wg.Wait()
+	wg.Wait()
 	return nil
 }
 
+//TODO: rescan Tx too
 func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	Submitted_OTAKey.RLock()
 	defer Submitted_OTAKey.RUnlock()
