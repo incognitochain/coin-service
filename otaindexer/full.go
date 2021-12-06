@@ -75,7 +75,7 @@ func StartOTAIndexingFull() {
 				}()
 				continue
 			}
-			err = addKeys([]shared.SubmittedOTAKeyData{*key})
+			err = addKeys([]shared.SubmittedOTAKeyData{*key}, false)
 			if err != nil {
 				go func() {
 					request.Respond <- err
@@ -137,7 +137,7 @@ func StartOTAIndexingFull() {
 		startTime := time.Now()
 
 		assignedOTAKeys.Lock()
-		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex()
+		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
 		var filteredCoins map[string][]shared.CoinData
 		for {
 			coinList = GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)

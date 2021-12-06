@@ -172,7 +172,14 @@ func APIGetRandomCommitments(c *gin.Context) {
 		if req.TokenID != common.PRVCoinID.String() {
 			req.TokenID = common.ConfidentialAssetID.String()
 		}
-		lenOTA := new(big.Int).SetInt64(database.DBGetCoinV2OfShardCount(req.ShardID, req.TokenID) - 1)
+	retry:
+		count, err := database.DBGetCoinV2OfShardCount(req.ShardID, req.TokenID)
+		if err != nil {
+			fmt.Println(err)
+			time.Sleep(100 * time.Millisecond)
+			goto retry
+		}
+		lenOTA := new(big.Int).SetInt64(count - 1)
 		var hasAssetTags bool = true
 		for i := 0; i < req.Limit; i++ {
 			idx, _ := common.RandBigIntMaxRange(lenOTA)
@@ -862,7 +869,7 @@ func APIRescanOTA(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	err = otaindexer.ReScanOTAKey(otaKey, pubKey)
+	err = otaindexer.ReCheckOTAKey(otaKey, pubKey, true)
 	respond := APIRespond{
 		Result: "true",
 	}
@@ -896,10 +903,11 @@ func APISubmitOTA(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0, req.IndexTokens)
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,
+		FromNow: req.FromNow,
 		Respond: resp,
 	}
 	err = <-resp
@@ -938,10 +946,11 @@ func APISubmitOTAFullmode(c *gin.Context) {
 	otaKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS())
 	pubKey := base58.EncodeCheck(wl.KeySet.OTAKey.GetPublicSpend().ToBytesS())
 
-	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0, req.IndexTokens)
+	newSubmitRequest := shared.NewSubmittedOTAKeyData(otaKey, pubKey, req.OTAKey, 0)
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,
+		FromNow: req.FromNow,
 		Respond: resp,
 	}
 	err = <-resp

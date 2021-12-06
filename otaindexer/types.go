@@ -15,6 +15,7 @@ type OTAkeyInfo struct {
 
 type OTAAssignRequest struct {
 	Key     *shared.SubmittedOTAKeyData
+	FromNow bool
 	Respond chan error
 }
 
