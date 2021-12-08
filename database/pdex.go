@@ -480,10 +480,14 @@ func DBSaveTradeOrder(orders []shared.TradeOrderData) error {
 		if er.WriteError.Code != 11000 {
 			panic(err)
 		} else {
-			for idx, v := range docs {
+			for idx, _ := range docs {
 				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
-				filter := bson.M{"requesttx": bson.M{operator.Eq: orders[idx].RequestTx}}
-				_, err = mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, filter, v, mgm.UpsertTrueOption())
+				od := orders[idx]
+				filter := bson.M{"requesttx": bson.M{operator.Eq: od.RequestTx}}
+				update := bson.M{
+					"$set": bson.M{"amount": od.Amount, "minaccept": od.MinAccept, "selltokenid": od.SellTokenID, "buytokenid": od.BuyTokenID, "requesttx": od.RequestTx, "tradingpath": od.TradingPath, "version": od.Version, "isswap": od.IsSwap, "fee": od.Fee, "feetoken": od.FeeToken, "blockheight": od.BlockHeight, "shardid": od.ShardID, "receiver": od.Receiver, "nftid": od.NFTID, "requesttime": od.Requesttime, "poolid": od.PoolID, "pairid": od.PairID},
+				}
+				_, err = mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, filter, update, mgm.UpsertTrueOption())
 				if err != nil {
 					writeErr, ok := err.(mongo.WriteException)
 					if !ok {
@@ -507,7 +511,7 @@ func DBUpdateTradeOrder(orders []shared.TradeOrderData) error {
 			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "respondtokens": bson.M{operator.Each: order.RespondTokens}, "respondamount": bson.M{operator.Each: order.RespondAmount}},
 			"$set":  bson.M{"status": order.Status},
 		}
-		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update, mgm.UpsertTrueOption())
 		if err != nil {
 			return err
 		}

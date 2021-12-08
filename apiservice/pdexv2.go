@@ -82,6 +82,8 @@ func APIGetTradeHistory(c *gin.Context) {
 			ReceiveAmount: make(map[string]uint64),
 			Fee:           v.Fee,
 			RequestTime:   v.Requesttime,
+			BuyToken:      v.BuyTokenID,
+			SellToken:     v.SellTokenID,
 		}
 		newTxDetail.SellAmount, _ = strconv.ParseUint(v.Amount, 10, 64)
 		for idx, tk := range v.RespondTokens {
@@ -91,7 +93,6 @@ func APIGetTradeHistory(c *gin.Context) {
 	}
 
 	reverseAny(result)
-
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
