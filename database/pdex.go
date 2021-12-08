@@ -10,6 +10,7 @@ import (
 
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
+	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -154,7 +155,7 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: order.NFTID}, "pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
 		update := bson.M{
 			"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
-			"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor},
+			"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor, "pairid": order.PairID},
 		}
 		_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -263,15 +264,72 @@ func DBSavePDEWithdraw(list []shared.WithdrawContributionData) error {
 	return nil
 }
 
-func DBGetPDEWithdrawRespond(address []string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
+// func DBGetPDEWithdrawRespond(address []string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
+// 	if limit == 0 {
+// 		limit = int64(10000)
+// 	}
+// 	var result []shared.WithdrawContributionData
+// 	filter := bson.M{"contributor": bson.M{operator.In: address}}
+// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+// 	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+// 		Sort:  bson.D{{"requesttime", -1}},
+// 		Skip:  &offset,
+// 		Limit: &limit,
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return result, nil
+// }
+
+func DBGetPDEWithdrawByRespondTx(txlist []string) ([]shared.WithdrawContributionData, error) {
+	var result []shared.WithdrawContributionData
+	filter := bson.M{"respondtxs": bson.M{operator.In: txlist}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(txlist))*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+func DBGetPDEWithdrawFeeByRespondTx(txlist []string) ([]shared.WithdrawContributionFeeData, error) {
+	var result []shared.WithdrawContributionFeeData
+	filter := bson.M{"respondtxs": bson.M{operator.In: txlist}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(txlist))*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.WithdrawContributionFeeData{}).SimpleFindWithCtx(ctx, &result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetPDETXWithdrawRespond(pubkey []string, limit int64, offset int64) ([]shared.TxData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
-	var result []shared.WithdrawContributionData
-	filter := bson.M{"contributor": bson.M{operator.In: address}}
+	var result []shared.TxData
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.In: pubkey}, "metatype": bson.M{operator.Eq: strconv.Itoa(metadataCommon.PDEWithdrawalResponseMeta)}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"requesttime", -1}},
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetPDETXWithdrawFeeRespond(pubkey []string, limit int64, offset int64) ([]shared.TxData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	var result []shared.TxData
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.In: pubkey}, "metatype": bson.M{operator.Eq: strconv.Itoa(metadataCommon.PDEFeeWithdrawalResponseMeta)}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})
