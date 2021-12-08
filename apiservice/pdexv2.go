@@ -64,7 +64,7 @@ func APIGetTradeHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	var result []*TxTradeDetail
+	var result []TxTradeDetail
 	for _, v := range txTradePairlist {
 		statusStr := ""
 		switch v.Status {
@@ -87,6 +87,7 @@ func APIGetTradeHistory(c *gin.Context) {
 		for idx, tk := range v.RespondTokens {
 			newTxDetail.ReceiveAmount[tk] = v.RespondAmount[idx]
 		}
+		result = append(result, newTxDetail)
 	}
 
 	reverseAny(result)

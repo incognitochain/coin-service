@@ -132,7 +132,7 @@ func DBGetTxTradeRespond(pubkey string, limit int64, offset int64) ([]shared.TxD
 	}
 	metas := []string{strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta)}
 	var result []shared.TxData
-	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.In: metas}}
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.In: []string{pubkey}}, "metatype": bson.M{operator.In: metas}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", -1}},
