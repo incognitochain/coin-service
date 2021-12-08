@@ -10,6 +10,7 @@ import (
 
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/metadata"
+	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -131,7 +132,7 @@ func DBGetTxTradeRespond(pubkey string, limit int64, offset int64) ([]shared.TxD
 	}
 	metas := []string{strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta)}
 	var result []shared.TxData
-	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.In: metas}}
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.In: []string{pubkey}}, "metatype": bson.M{operator.In: metas}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", -1}},
@@ -154,7 +155,7 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: order.NFTID}, "pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
 		update := bson.M{
 			"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
-			"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor},
+			"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor, "pairid": order.PairID},
 		}
 		_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -263,15 +264,72 @@ func DBSavePDEWithdraw(list []shared.WithdrawContributionData) error {
 	return nil
 }
 
-func DBGetPDEWithdrawRespond(address []string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
+// func DBGetPDEWithdrawRespond(address []string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
+// 	if limit == 0 {
+// 		limit = int64(10000)
+// 	}
+// 	var result []shared.WithdrawContributionData
+// 	filter := bson.M{"contributor": bson.M{operator.In: address}}
+// 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+// 	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+// 		Sort:  bson.D{{"requesttime", -1}},
+// 		Skip:  &offset,
+// 		Limit: &limit,
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return result, nil
+// }
+
+func DBGetPDEWithdrawByRespondTx(txlist []string) ([]shared.WithdrawContributionData, error) {
+	var result []shared.WithdrawContributionData
+	filter := bson.M{"respondtxs": bson.M{operator.In: txlist}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(txlist))*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+func DBGetPDEWithdrawFeeByRespondTx(txlist []string) ([]shared.WithdrawContributionFeeData, error) {
+	var result []shared.WithdrawContributionFeeData
+	filter := bson.M{"respondtxs": bson.M{operator.In: txlist}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(txlist))*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.WithdrawContributionFeeData{}).SimpleFindWithCtx(ctx, &result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetPDETXWithdrawRespond(pubkey []string, limit int64, offset int64) ([]shared.TxData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
-	var result []shared.WithdrawContributionData
-	filter := bson.M{"contributor": bson.M{operator.In: address}}
+	var result []shared.TxData
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.In: pubkey}, "metatype": bson.M{operator.Eq: strconv.Itoa(metadataCommon.PDEWithdrawalResponseMeta)}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"requesttime", -1}},
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetPDETXWithdrawFeeRespond(pubkey []string, limit int64, offset int64) ([]shared.TxData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	var result []shared.TxData
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.In: pubkey}, "metatype": bson.M{operator.Eq: strconv.Itoa(metadataCommon.PDEFeeWithdrawalResponseMeta)}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
 		Skip:  &offset,
 		Limit: &limit,
 	})
@@ -422,10 +480,14 @@ func DBSaveTradeOrder(orders []shared.TradeOrderData) error {
 		if er.WriteError.Code != 11000 {
 			panic(err)
 		} else {
-			for idx, v := range docs {
+			for idx, _ := range docs {
 				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
-				filter := bson.M{"requesttx": bson.M{operator.Eq: orders[idx].RequestTx}}
-				_, err = mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, filter, v, mgm.UpsertTrueOption())
+				od := orders[idx]
+				filter := bson.M{"requesttx": bson.M{operator.Eq: od.RequestTx}}
+				update := bson.M{
+					"$set": bson.M{"amount": od.Amount, "minaccept": od.MinAccept, "selltokenid": od.SellTokenID, "buytokenid": od.BuyTokenID, "requesttx": od.RequestTx, "tradingpath": od.TradingPath, "version": od.Version, "isswap": od.IsSwap, "fee": od.Fee, "feetoken": od.FeeToken, "blockheight": od.BlockHeight, "shardid": od.ShardID, "receiver": od.Receiver, "nftid": od.NFTID, "requesttime": od.Requesttime, "poolid": od.PoolID, "pairid": od.PairID},
+				}
+				_, err = mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, filter, update, mgm.UpsertTrueOption())
 				if err != nil {
 					writeErr, ok := err.(mongo.WriteException)
 					if !ok {
@@ -449,7 +511,7 @@ func DBUpdateTradeOrder(orders []shared.TradeOrderData) error {
 			"$push": bson.M{"respondtxs": bson.M{operator.Each: order.RespondTxs}, "respondtokens": bson.M{operator.Each: order.RespondTokens}, "respondamount": bson.M{operator.Each: order.RespondAmount}},
 			"$set":  bson.M{"status": order.Status},
 		}
-		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
+		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update, mgm.UpsertTrueOption())
 		if err != nil {
 			return err
 		}

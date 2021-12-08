@@ -309,3 +309,15 @@ type TokenInfo struct {
 	DefaultPoolPair    string
 	DefaultPairToken   string
 }
+
+type ContributionDataV1 struct {
+	RequestTx             string `json:"requesttx"`
+	RespondTx             string `json:"respondtx"`
+	Status                string `json:"status"`
+	PairID                string `json:"pairid"`
+	TokenID               string `json:"tokenid"`
+	Amount                uint64 `json:"amount"`
+	ReturnAmount          uint64 `json:"returnamount"`
+	ContributorAddressStr string `json:"contributor"`
+	Respondblock          uint64 `json:"respondblock"`
+}
