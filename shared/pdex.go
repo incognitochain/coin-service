@@ -30,14 +30,25 @@ type PDEStateV2 struct {
 	Params            *pdex.Params
 }
 type PoolPairState struct {
-	// ProtocolFees    map[common.Hash]uint64
-	// StakingPoolFees map[common.Hash]uint64
-	LpFeesPerShare map[common.Hash]*big.Int
-	State          rawdbv2.Pdexv3PoolPair
-	Shares         map[string]*pdex.Share
-	Orderbook      struct {
+	ProtocolFees    map[common.Hash]uint64
+	StakingPoolFees map[common.Hash]uint64
+	LpFeesPerShare  map[common.Hash]*big.Int
+	State           rawdbv2.Pdexv3PoolPair
+	Shares          map[string]*pdex.Share
+	Orderbook       struct {
 		Orders []*pdex.Order
 	}
+	MakingVolume map[common.Hash]*MakingVolume // tokenID -> MakingVolume
+	OrderRewards map[string]*OrderReward       // nftID -> orderReward
+}
+type MakingVolume struct {
+	Volume map[string]*big.Int // nftID -> amount
+}
+
+type Reward map[common.Hash]uint64 // tokenID -> amount
+
+type OrderReward struct {
+	UncollectedRewards Reward
 }
 
 type Pdexv3GetStateRPCResult struct {
