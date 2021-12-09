@@ -243,6 +243,9 @@ func scanOTACoins() {
 						newTokenIDMap = tokenIDMap
 						newNFTIDMap = nftIDMap
 					}
+					if len(coinList) == 0 {
+						continue
+					}
 					indexedCoins, txsUpdate := filterCoinsByOTAKeyV2(coinList, keys, newTokenIDMap, newNFTIDMap)
 					coinsToUpdate = append(coinsToUpdate, indexedCoins...)
 					for pubkey, tokenTxs := range txsUpdate {
