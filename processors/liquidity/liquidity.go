@@ -223,7 +223,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				PoolID:           md.PoolPairID(),
 				ContributeTokens: []string{md.TokenID()},
 				ContributeAmount: []string{fmt.Sprintf("%v", md.TokenAmount())},
-				NFTID:            md.NftID(),
+				NFTID:            md.NftID.String(),
 				PairHash:         md.PairHash(),
 				RequestTime:      tx.Locktime,
 			}
@@ -258,7 +258,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawLiquidityRequest)
 			data := shared.WithdrawContributionData{
 				RequestTx:      tx.TxHash,
-				NFTID:          md.NftID(),
+				NFTID:          md.NftID.String(),
 				PoolID:         md.PoolPairID(),
 				ShareAmount:    fmt.Sprintf("%v", md.ShareAmount()),
 				Status:         0,
@@ -354,7 +354,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 		case metadataCommon.Pdexv3StakingResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.StakingResponse)
 			status := 0
-			if md.Status() == common.Pdexv3AcceptStakingStatus {
+			if md.Status() == common.Pdexv3AcceptStringStatus {
 				status = 1
 			} else {
 				status = 2
@@ -380,7 +380,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 		case metadataCommon.Pdexv3UnstakingResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.UnstakingResponse)
 			status := 0
-			if md.Status() == common.Pdexv3AcceptUnstakingStatus {
+			if md.Status() == common.Pdexv3AcceptStringStatus {
 				status = 1
 			} else {
 				status = 2
@@ -634,7 +634,7 @@ func updateLiquidityStatus() error {
 			if err != nil {
 				panic(err)
 			}
-			if i.Status == common.Pdexv3RejectStakingStatus {
+			if i.Status == common.Pdexv3RejectStringStatus {
 				data.Status = 2
 				listToUpdate = append(listToUpdate, data)
 			} else {
@@ -669,7 +669,7 @@ func updateLiquidityStatus() error {
 			if err != nil {
 				panic(err)
 			}
-			if i.Status == common.Pdexv3RejectUnstakingStatus {
+			if i.Status == common.Pdexv3RejectStringStatus {
 				data.Status = 2
 				listToUpdate = append(listToUpdate, data)
 			}

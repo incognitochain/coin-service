@@ -841,14 +841,14 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			data.Status = inst[1]
 			data.Content = inst[2]
 			switch inst[1] {
-			case common.Pdexv3AcceptUnstakingStatus:
+			case common.Pdexv3AcceptStringStatus:
 				acceptInst := instruction.NewAcceptStaking()
 				err := acceptInst.FromStringSlice(inst)
 				if err != nil {
 					panic(err)
 				}
 				data.TxRequest = acceptInst.TxReqID().String()
-			case common.Pdexv3RejectUnstakingStatus:
+			case common.Pdexv3RejectStringStatus:
 				rejectInst := instruction.NewRejectStaking()
 				err := rejectInst.FromStringSlice(inst)
 				if err != nil {
@@ -860,14 +860,14 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			data.Status = inst[1]
 			data.Content = inst[2]
 			switch inst[1] {
-			case common.Pdexv3AcceptUnstakingStatus:
+			case common.Pdexv3AcceptStringStatus:
 				acceptInst := instruction.NewAcceptUnstaking()
 				err := acceptInst.FromStringSlice(inst)
 				if err != nil {
 					panic(err)
 				}
 				data.TxRequest = acceptInst.TxReqID().String()
-			case common.Pdexv3RejectUnstakingStatus:
+			case common.Pdexv3RejectStringStatus:
 				rejectInst := instruction.NewRejectUnstaking()
 				err := rejectInst.FromStringSlice(inst)
 				if err != nil {
