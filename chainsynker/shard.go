@@ -407,7 +407,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 				}
 			}
 		}
-
 		txBytes, err := json.Marshal(tx)
 		if err != nil {
 			panic(err)
@@ -422,18 +421,18 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 				wl, err := wallet.Base58CheckDeserialize(payment)
 				if err != nil {
 					log.Println(err)
-					continue
+				} else {
+					pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
 				}
-				pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
 			case metadata.PDETradeRequestMeta:
 				meta := tx.GetMetadata().(*metadata.PDETradeRequest)
 				payment := meta.TraderAddressStr
 				wl, err := wallet.Base58CheckDeserialize(payment)
 				if err != nil {
 					log.Println(err)
-					continue
+				} else {
+					pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
 				}
-				pubkey = base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk)
 			}
 		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2, metadata.BurningPBSCRequestMeta:
 			burningReqAction := tx.GetMetadata().(*metadata.BurningRequest)

@@ -387,7 +387,8 @@ func DBCreateTradeIndex() error {
 			Keys: bsonx.Doc{{Key: "canceltxs", Value: bsonx.Int32(1)}},
 		},
 		{
-			Keys: bsonx.Doc{{Key: "requesttx", Value: bsonx.Int32(1)}},
+			Keys:    bsonx.Doc{{Key: "requesttx", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
 		},
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},

@@ -12,10 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
-	"github.com/incognitochain/incognito-chain/common/base58"
-	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
-	"github.com/incognitochain/incognito-chain/wallet"
 )
 
 func APIGetTradeHistory(c *gin.Context) {
@@ -25,28 +22,6 @@ func APIGetTradeHistory(c *gin.Context) {
 	otakey := c.Query("otakey")
 	paymentkey := c.Query("paymentkey")
 	key := ""
-	// pubKeyStr := ""
-	// pubKeyBytes := []byte{}
-	// if otakey != "" {
-	// 	wl, err := wallet.Base58CheckDeserialize(otakey)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-	// 		return
-	// 	}
-	// 	pubKeyBytes = wl.KeySet.OTAKey.GetPublicSpend().ToBytesS()
-	// } else {
-	// 	if paymentkey == "" {
-	// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("PaymentKey cant be empty")))
-	// 		return
-	// 	}
-	// 	wl, err := wallet.Base58CheckDeserialize(paymentkey)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-	// 		return
-	// 	}
-	// 	pubKeyBytes = wl.KeySet.PaymentAddress.GetPublicSpend().ToBytesS()
-	// }
-	// pubKeyStr = base58.EncodeCheck(pubKeyBytes)
 	if otakey != "" {
 		key = otakey
 	}
@@ -89,74 +64,35 @@ func APIGetTradeHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	var result []*TxTradeDetail
-	txsMap := make(map[string]int)
-	txsRequest := []string{}
+	var result []TxTradeDetail
 	for _, v := range txTradePairlist {
-		if idx, ok := txsMap[v.RequestTx]; !ok {
-			statusStr := ""
-			switch v.Status {
-			case 0:
-				statusStr = "pending"
-			case 1:
-				statusStr = "accepted"
-			case 2:
-				statusStr = "rejected"
-			}
-			newTxDetail := TxTradeDetail{
-				RequestTx:     v.RequestTx,
-				RespondTx:     v.RespondTxs,
-				Status:        statusStr,
-				ReceiveAmount: make(map[string]uint64),
-			}
-			newTxDetail.ReceiveAmount[v.BuyTokenID], _ = strconv.ParseUint(v.Amount, 10, 64)
-			txsMap[v.RequestTx] = len(result)
-			result = append(result, &newTxDetail)
-			txsRequest = append(txsRequest, v.RequestTx)
-		} else {
-			txdetail := result[idx]
-			txdetail.RespondTx = append(txdetail.RespondTx, v.RespondTxs...)
-			txdetail.ReceiveAmount[v.BuyTokenID], _ = strconv.ParseUint(v.Amount, 10, 64)
+		statusStr := ""
+		switch v.Status {
+		case 0:
+			statusStr = "pending"
+		case 1:
+			statusStr = "accepted"
+		case 2:
+			statusStr = "rejected"
 		}
+		newTxDetail := TxTradeDetail{
+			RequestTx:     v.RequestTx,
+			RespondTx:     v.RespondTxs,
+			Status:        statusStr,
+			ReceiveAmount: make(map[string]uint64),
+			Fee:           v.Fee,
+			RequestTime:   v.Requesttime,
+			BuyToken:      v.BuyTokenID,
+			SellToken:     v.SellTokenID,
+		}
+		newTxDetail.SellAmount, _ = strconv.ParseUint(v.Amount, 10, 64)
+		for idx, tk := range v.RespondTokens {
+			newTxDetail.ReceiveAmount[tk] = v.RespondAmount[idx]
+		}
+		result = append(result, newTxDetail)
 	}
 
-	txsReqData, err := database.DBGetTxByHash(txsRequest)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-		return
-	}
-
-	for idx, tx := range txsReqData {
-		txDetail := result[idx]
-		switch tx.Metatype {
-		case strconv.Itoa(metadata.PDETradeRequestMeta):
-			meta := metadata.PDETradeRequest{}
-			err := json.Unmarshal([]byte(tx.Metadata), &meta)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-				return
-			}
-			txDetail.BuyToken = meta.TokenIDToBuyStr
-			txDetail.SellToken = meta.TokenIDToSellStr
-			txDetail.SellAmount = meta.SellAmount
-			txDetail.Fee = meta.TradingFee
-			txDetail.RequestTime = tx.Locktime
-		case strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta):
-			meta := metadata.PDECrossPoolTradeRequest{}
-			err := json.Unmarshal([]byte(tx.Metadata), &meta)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-				return
-			}
-			txDetail.BuyToken = meta.TokenIDToBuyStr
-			txDetail.SellToken = meta.TokenIDToSellStr
-			txDetail.SellAmount = meta.SellAmount
-			txDetail.Fee = meta.TradingFee
-			txDetail.RequestTime = tx.Locktime
-		}
-	}
 	reverseAny(result)
-
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
@@ -197,13 +133,23 @@ func APIGetWithdrawHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	paymentkey := c.Query("paymentkey")
 
-	paymentkeyOld, err := wallet.GetPaymentAddressV1(paymentkey, false)
+	pubkey, err := extractPubkeyFromKey(paymentkey, false)
 	if err != nil {
 		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
-	contrData, err := database.DBGetPDEWithdrawRespond([]string{paymentkey, paymentkeyOld}, int64(limit), int64(offset))
+	txList, err := database.DBGetPDETXWithdrawRespond([]string{pubkey}, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	txHashs := []string{}
+	for _, v := range txList {
+		txHashs = append(txHashs, v.TxHash)
+	}
+	contrData, err := database.DBGetPDEWithdrawByRespondTx(txHashs)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -216,13 +162,8 @@ func APIGetWithdrawHistory(c *gin.Context) {
 
 	var result []DataWithLockTime
 	for _, contr := range contrData {
-		tx, err := database.DBGetTxByHash([]string{contr.RequestTx})
-		if err != nil {
-			c.JSON(http.StatusOK, buildGinErrorRespond(err))
-			return
-		}
 		result = append(result, DataWithLockTime{
-			contr, tx[0].Locktime,
+			contr, contr.RequestTime,
 		})
 	}
 
@@ -237,13 +178,23 @@ func APIGetWithdrawFeeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	paymentkey := c.Query("paymentkey")
 
-	paymentkeyOld, err := wallet.GetPaymentAddressV1(paymentkey, false)
+	pubkey, err := extractPubkeyFromKey(paymentkey, false)
 	if err != nil {
 		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
-	contrData, err := database.DBGetPDEWithdrawFeeRespond([]string{paymentkeyOld, paymentkey}, int64(limit), int64(offset))
+	txList, err := database.DBGetPDETXWithdrawFeeRespond([]string{pubkey}, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	txHashs := []string{}
+	for _, v := range txList {
+		txHashs = append(txHashs, v.TxHash)
+	}
+	contrData, err := database.DBGetPDEWithdrawFeeByRespondTx(txHashs)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -256,13 +207,8 @@ func APIGetWithdrawFeeHistory(c *gin.Context) {
 
 	var result []DataWithLockTime
 	for _, contr := range contrData {
-		tx, err := database.DBGetTxByHash([]string{contr.RequestTx})
-		if err != nil {
-			c.JSON(http.StatusOK, buildGinErrorRespond(err))
-			return
-		}
 		result = append(result, DataWithLockTime{
-			contr, tx[0].Locktime,
+			contr, contr.RequestTime,
 		})
 	}
 
@@ -277,32 +223,84 @@ func APIGetContributeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	paymentkey := c.Query("paymentkey")
 
-	wl, err := wallet.Base58CheckDeserialize(paymentkey)
+	// wl, err := wallet.Base58CheckDeserialize(paymentkey)
+	pubkey, err := extractPubkeyFromKey(paymentkey, false)
 	if err != nil {
 		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
-	contrData, err := database.DBGetPDEContributeRespond(base58.EncodeCheck(wl.KeySet.PaymentAddress.Pk), int64(limit), int64(offset))
+	contrData, err := database.DBGetPDEContributeRespond(pubkey, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
 	contrDataNoDup := checkDup(contrData)
 	type DataWithLockTime struct {
-		shared.ContributionData
+		ContributionDataV1
 		Locktime int64
 	}
 	var result []DataWithLockTime
 	for _, contr := range contrDataNoDup {
-		tx, err := database.DBGetTxByHash(contr.RequestTxs)
-		if err != nil {
-			c.JSON(http.StatusOK, buildGinErrorRespond(err))
-			return
+		for idx, v := range contr.RequestTxs {
+			newData := DataWithLockTime{}
+			tx, err := database.DBGetTxByHash([]string{v})
+			if err != nil {
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
+				return
+			}
+			newData.Locktime = tx[0].Locktime
+			newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[idx], 10, 64)
+			newData.TokenID = contr.ContributeTokens[idx]
+			newData.ContributorAddressStr = contr.Contributor
+			newData.PairID = contr.PairID
+			newData.RequestTx = v
+			statusText := "waiting"
+			if idx != 0 && (contr.ContributeTokens[0] != contr.ContributeTokens[1]) && len(contr.ReturnTokens) == 0 {
+				if len(contr.RespondTxs) == 0 {
+					statusText = "matched"
+				}
+				// ctk := contr.ContributeTokens[idx]
+				// for _, v := range contr.ReturnTokens {
+				// 	if v == ctk {
+				// 		break
+				// 	}
+				// }
+			}
+			if idx != 0 && (contr.ContributeTokens[0] == contr.ContributeTokens[1]) {
+				continue
+			}
+
+			newData.Status = statusText
+			result = append(result, newData)
 		}
-		result = append(result, DataWithLockTime{
-			contr, tx[0].Locktime,
-		})
+		for idx, v := range contr.RespondTxs {
+			newData := DataWithLockTime{}
+			tx, err := database.DBGetTxByHash([]string{v})
+			if err != nil {
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
+				return
+			}
+			newData.Locktime = tx[0].Locktime
+			newData.Status = "matchedNReturned"
+			if contr.ContributeTokens[0] == contr.ContributeTokens[1] {
+				newData.Status = "refund"
+			}
+			tk := contr.ReturnTokens[idx]
+			newData.TokenID = tk
+			newData.ReturnAmount, _ = strconv.ParseUint(contr.ReturnAmount[idx], 10, 64)
+			for idxtk, v := range contr.ContributeTokens {
+				if v == tk {
+					newData.RequestTx = contr.RequestTxs[idxtk]
+					break
+				}
+			}
+			newData.RespondTx = v
+			newData.PairID = contr.PairID
+			newData.ContributorAddressStr = contr.Contributor
+			result = append(result, newData)
+		}
+
 	}
 
 	sort.SliceStable(result, func(i, j int) bool {
