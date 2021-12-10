@@ -607,6 +607,7 @@ type PoolShareData struct {
 	NFTID            string            `json:"nftid" bson:"nftid"`
 	Amount           uint64            `json:"amount" bson:"amount"`
 	TradingFee       map[string]uint64 `json:"tradingfee" bson:"tradingfee"`
+	OrderReward      map[string]uint64 `json:"orderreward" bson:"orderreward"`
 	Version          int               `json:"version" bson:"version"`
 }
 

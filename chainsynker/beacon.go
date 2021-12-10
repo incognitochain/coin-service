@@ -394,6 +394,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)
 			for shareID, share := range state.Shares {
 				tradingFee := make(map[string]uint64)
+				orderReward := make(map[string]uint64)
 				shareIDHash, err := common.Hash{}.NewHashFromStr(shareID)
 				if err != nil {
 					panic(err)
@@ -402,15 +403,21 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				if err != nil {
 					panic(err)
 				}
+				if _, ok := state.OrderRewards[shareID]; ok {
+					for tokenID, amount := range state.OrderRewards[shareID].UncollectedRewards {
+						orderReward[tokenID.String()] = amount
+					}
+				}
 				for k, v := range rewards {
 					tradingFee[k.String()] = v
 				}
 				shareData := shared.PoolShareData{
-					Version:    2,
-					PoolID:     poolID,
-					Amount:     share.Amount(),
-					TradingFee: tradingFee,
-					NFTID:      shareID,
+					Version:     2,
+					PoolID:      poolID,
+					Amount:      share.Amount(),
+					TradingFee:  tradingFee,
+					OrderReward: orderReward,
+					NFTID:       shareID,
 				}
 				poolShare = append(poolShare, shareData)
 			}
