@@ -156,15 +156,44 @@ func APIGetWithdrawHistory(c *gin.Context) {
 	}
 
 	type DataWithLockTime struct {
-		shared.WithdrawContributionData
-		Locktime int64
+		RequestTx   string   `json:"requesttx"`
+		RespondTx   []string `json:"respondtx"`
+		Status      string   `json:"status"`
+		TokenID1    string   `json:"tokenid1"`
+		TokenID2    string   `json:"tokenid2"`
+		Amount1     uint64   `json:"amount1"`
+		Amount2     uint64   `json:"amount2"`
+		Contributor string   `json:"contributor"`
+		RepondTime  int64    `json:"respondtime"`
+		Locktime    int64
 	}
 
 	var result []DataWithLockTime
 	for _, contr := range contrData {
-		result = append(result, DataWithLockTime{
-			contr, contr.RequestTime,
-		})
+		statusStr := ""
+		switch contr.Status {
+		case 0:
+			statusStr = "pending"
+		case 1:
+			statusStr = "accepted"
+		case 2:
+			statusStr = "rejected"
+		}
+		amount1, _ := strconv.ParseUint(contr.WithdrawAmount[0], 10, 64)
+		amount2, _ := strconv.ParseUint(contr.WithdrawAmount[1], 10, 64)
+		data := DataWithLockTime{
+			RequestTx:   contr.RequestTx,
+			RespondTx:   contr.RespondTxs,
+			Status:      statusStr,
+			TokenID1:    contr.WithdrawTokens[0],
+			TokenID2:    contr.WithdrawTokens[1],
+			Amount1:     amount1,
+			Amount2:     amount2,
+			Contributor: contr.ContributorAddressStr,
+			RepondTime:  contr.RequestTime,
+			Locktime:    contr.RequestTime,
+		}
+		result = append(result, data)
 	}
 
 	respond := APIRespond{
@@ -201,15 +230,41 @@ func APIGetWithdrawFeeHistory(c *gin.Context) {
 	}
 
 	type DataWithLockTime struct {
-		shared.WithdrawContributionFeeData
-		Locktime int64
+		RequestTx   string `json:"requesttx"`
+		RespondTx   string `json:"respondtx"`
+		Status      string `json:"status"`
+		TokenID1    string `json:"tokenid1"`
+		TokenID2    string `json:"tokenid2"`
+		Amount      uint64 `json:"amount"`
+		Contributor string `json:"contributor"`
+		RepondTime  int64  `json:"respondtime"`
+		Locktime    int64
 	}
 
 	var result []DataWithLockTime
 	for _, contr := range contrData {
-		result = append(result, DataWithLockTime{
-			contr, contr.RequestTime,
-		})
+		statusStr := ""
+		switch contr.Status {
+		case 0:
+			statusStr = "pending"
+		case 1:
+			statusStr = "accepted"
+		case 2:
+			statusStr = "rejected"
+		}
+		amount, _ := strconv.ParseUint(contr.WithdrawAmount[0], 10, 64)
+		data := DataWithLockTime{
+			RequestTx:   contr.RequestTx,
+			RespondTx:   contr.RespondTxs[0],
+			Status:      statusStr,
+			TokenID1:    contr.WithdrawTokens[0],
+			TokenID2:    "",
+			Amount:      amount,
+			Contributor: contr.ContributorAddressStr,
+			RepondTime:  contr.RequestTime,
+			Locktime:    contr.RequestTime,
+		}
+		result = append(result, data)
 	}
 
 	respond := APIRespond{
