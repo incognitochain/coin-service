@@ -36,7 +36,7 @@ func StartProcessor() {
 	for {
 		time.Sleep(10 * time.Second)
 		startTime := time.Now()
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 1000)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 20000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -46,7 +46,7 @@ func StartProcessor() {
 			panic(err)
 		}
 
-		fmt.Println("len(request)", len(request), len(respond), len(withdrawReq), len(withdrawRes))
+		fmt.Println("len(request)", len(request), len(respond), len(withdrawReq), len(withdrawRes), len(txList))
 		err = database.DBSaveTradeOrder(request)
 		if err != nil {
 			panic(err)

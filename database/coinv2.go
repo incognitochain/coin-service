@@ -320,3 +320,14 @@ func DBGetNFTByOTAKey(shardID int, OTASecret string, offset, limit int64) (map[s
 	}
 	return result, err
 }
+
+func DBGetCoinsV2ByShardID(shardID int, limit, offset int64) ([]shared.CoinData, error) {
+	var result []shared.CoinData
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	return result, err
+}
