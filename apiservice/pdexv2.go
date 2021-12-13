@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
@@ -253,14 +254,21 @@ func APIGetWithdrawFeeHistory(c *gin.Context) {
 			statusStr = "rejected"
 		}
 		amount, _ := strconv.ParseUint(contr.WithdrawAmount[0], 10, 64)
+		tx, _ := database.DBGetTxByHash([]string{contr.RequestTx})
+		md := metadata.PDEFeeWithdrawalRequest{}
+		err := json.UnmarshalFromString(tx[0].Metadata, &md)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 		data := DataWithLockTime{
 			RequestTx:   contr.RequestTx,
 			RespondTx:   contr.RespondTxs[0],
 			Status:      statusStr,
-			TokenID1:    contr.WithdrawTokens[0],
-			TokenID2:    "",
+			TokenID1:    md.WithdrawalToken1IDStr,
+			TokenID2:    md.WithdrawalToken2IDStr,
 			Amount:      amount,
-			Contributor: contr.ContributorAddressStr,
+			Contributor: md.WithdrawerAddressStr,
 			RepondTime:  contr.RequestTime,
 			Locktime:    contr.RequestTime,
 		}
@@ -342,13 +350,13 @@ func APIGetContributeHistory(c *gin.Context) {
 				newData.Status = "refund"
 			}
 
-			if newData.Status == "matchedNReturned" {
-				newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[idx], 10, 64)
-			}
-
 			tk := contr.ReturnTokens[idx]
 			newData.TokenID = tk
 			newData.ReturnAmount, _ = strconv.ParseUint(contr.ReturnAmount[idx], 10, 64)
+			if newData.Status == "matchedNReturned" {
+				a, _ := strconv.ParseUint(contr.ContributeAmount[idx], 10, 64)
+				newData.Amount = a - newData.ReturnAmount
+			}
 			for idxtk, v := range contr.ContributeTokens {
 				if v == tk {
 					newData.RequestTx = contr.RequestTxs[idxtk]
