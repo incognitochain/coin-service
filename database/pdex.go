@@ -1416,7 +1416,7 @@ func DBGetPendingWithdrawOrder(limit int64, offset int64) ([]shared.TradeOrderDa
 		limit = int64(10000)
 	}
 	var result []shared.TradeOrderData
-	filter := bson.M{"withdrawpendings": bson.M{operator.Not: bson.M{operator.Size: 0}}}
+	filter := bson.M{"withdrawpendings": bson.M{operator.Not: bson.M{operator.Size: 0}, operator.Exists: true}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"_id", 1}},

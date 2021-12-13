@@ -399,6 +399,7 @@ func updateTradeStatus() error {
 			break
 		}
 		offset += int64(len(list))
+		fmt.Println("updateTradeStatus", len(list))
 		listToUpdate := []shared.TradeOrderData{}
 		for _, v := range list {
 			data := shared.TradeOrderData{
