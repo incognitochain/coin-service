@@ -209,17 +209,6 @@ func cleanAssignedOTA() {
 func scanOTACoins() {
 	var err error
 	startTime := time.Now()
-	// shardKeyGroup := make(map[int]map[string]map[uint64][]*OTAkeyInfo)
-	// for shardID, keyinfos := range assignedOTAKeys.Keys {
-	// 	coinIndexs := groupLastScannedIndexs(keyinfos)
-	// 	keysGroup := groupKeysToCoinIndex(coinIndexs, keyinfos)
-	// 	shardKeyGroup[shardID] = keysGroup
-	// }
-
-	// for s, v := range shardKeyGroup {
-	// 	fmt.Println("shardKeyGroup", s, v)
-	// }
-
 	lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
 	//scan coins
 	for {

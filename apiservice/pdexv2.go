@@ -335,6 +335,7 @@ func APIGetContributeHistory(c *gin.Context) {
 			}
 
 			newData.Status = statusText
+			newData.Respondblock = uint64(contr.RequestTime)
 			result = append(result, newData)
 		}
 		for idx, v := range contr.RespondTxs {
@@ -353,19 +354,21 @@ func APIGetContributeHistory(c *gin.Context) {
 			tk := contr.ReturnTokens[idx]
 			newData.TokenID = tk
 			newData.ReturnAmount, _ = strconv.ParseUint(contr.ReturnAmount[idx], 10, 64)
-			if newData.Status == "matchedNReturned" {
-				a, _ := strconv.ParseUint(contr.ContributeAmount[idx], 10, 64)
-				newData.Amount = a - newData.ReturnAmount
-			}
+
 			for idxtk, v := range contr.ContributeTokens {
 				if v == tk {
 					newData.RequestTx = contr.RequestTxs[idxtk]
+					if newData.Status == "matchedNReturned" {
+						a, _ := strconv.ParseUint(contr.ContributeAmount[idxtk], 10, 64)
+						newData.Amount = a - newData.ReturnAmount
+					}
 					break
 				}
 			}
 			newData.RespondTx = v
 			newData.PairID = contr.PairID
 			newData.ContributorAddressStr = contr.Contributor
+			newData.Respondblock = uint64(contr.RequestTime)
 			result = append(result, newData)
 		}
 
