@@ -34,7 +34,7 @@ func StartProcessor() {
 		panic(err)
 	}
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(6 * time.Second)
 		startTime := time.Now()
 		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 20000)
 		if err != nil {
@@ -46,7 +46,7 @@ func StartProcessor() {
 			panic(err)
 		}
 
-		fmt.Println("len(request)", len(request), len(respond), len(withdrawReq), len(withdrawRes), len(txList))
+		fmt.Println("len(request)", len(request), len(respond), len(withdrawReq), len(withdrawRes), len(txList), time.Since(startTime))
 		err = database.DBSaveTradeOrder(request)
 		if err != nil {
 			panic(err)
@@ -65,6 +65,7 @@ func StartProcessor() {
 			panic(err)
 		}
 
+		fmt.Println("mongo time", time.Since(startTime))
 		if len(txList) != 0 {
 			currentState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
 			err = updateState()
