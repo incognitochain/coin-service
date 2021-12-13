@@ -341,6 +341,11 @@ func APIGetContributeHistory(c *gin.Context) {
 			if contr.ContributeTokens[0] == contr.ContributeTokens[1] {
 				newData.Status = "refund"
 			}
+
+			if newData.Status == "matchedNReturned" {
+				newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[idx], 10, 64)
+			}
+
 			tk := contr.ReturnTokens[idx]
 			newData.TokenID = tk
 			newData.ReturnAmount, _ = strconv.ParseUint(contr.ReturnAmount[idx], 10, 64)
