@@ -381,7 +381,7 @@ func APIGetContributeHistory(c *gin.Context) {
 			// 	c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			// 	return
 			// }
-			newData.Locktime = contr.RequestTime
+			newData.Locktime = contr.RequestTime - 1
 			newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[0], 10, 64)
 			newData.TokenID = contr.ContributeTokens[0]
 			newData.ContributorAddressStr = paymentkey
