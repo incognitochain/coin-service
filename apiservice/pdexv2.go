@@ -340,7 +340,7 @@ func APIGetContributeHistory(c *gin.Context) {
 				}
 				newData.Status = statusText
 				newData.Respondblock = uint64(contr.RequestTime)
-				newData.ID = contr.RequestTxs[0]
+				newData.ID = contr.RequestTxs[0] + statusText
 				newData.CreatedAt = time.Unix(contr.RequestTime, 0).String()
 				newData.UpdateAt = time.Unix(contr.RequestTime, 0).String()
 				result = append(result, newData)
@@ -366,7 +366,7 @@ func APIGetContributeHistory(c *gin.Context) {
 				}
 				newData.Status = statusText
 				newData.Respondblock = uint64(contr.RequestTime)
-				newData.ID = contr.RequestTxs[0]
+				newData.ID = contr.RequestTxs[0] + statusText
 				newData.CreatedAt = time.Unix(contr.RequestTime, 0).String()
 				newData.UpdateAt = time.Unix(contr.RequestTime, 0).String()
 
@@ -381,7 +381,7 @@ func APIGetContributeHistory(c *gin.Context) {
 			// 	c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			// 	return
 			// }
-			newData.Locktime = contr.RequestTime - 1
+			newData.Locktime = contr.RequestTime
 			newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[0], 10, 64)
 			newData.TokenID = contr.ContributeTokens[0]
 			newData.ContributorAddressStr = paymentkey
@@ -390,7 +390,7 @@ func APIGetContributeHistory(c *gin.Context) {
 			statusText := "waiting"
 			newData.Status = statusText
 			newData.Respondblock = uint64(contr.RequestTime)
-			newData.ID = contr.RequestTxs[0]
+			newData.ID = contr.RequestTxs[0] + statusText
 			newData.CreatedAt = time.Unix(contr.RequestTime, 0).String()
 			newData.UpdateAt = time.Unix(contr.RequestTime, 0).String()
 
@@ -427,7 +427,7 @@ func APIGetContributeHistory(c *gin.Context) {
 			newData.PairID = contr.PairID
 			newData.ContributorAddressStr = paymentkey
 			newData.Respondblock = uint64(contr.RequestTime)
-			newData.ID = contr.RequestTxs[0]
+			newData.ID = newData.RequestTx + newData.Status
 			newData.CreatedAt = time.Unix(contr.RequestTime, 0).String()
 			newData.UpdateAt = time.Unix(contr.RequestTime, 0).String()
 			result = append(result, newData)
