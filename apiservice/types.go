@@ -312,6 +312,9 @@ type TokenInfo struct {
 }
 
 type ContributionDataV1 struct {
+	ID                    string `json:"id"`
+	CreatedAt             string `json:"created_at"`
+	UpdateAt              string `json:"updated_at"`
 	RequestTx             string `json:"requesttx"`
 	RespondTx             string `json:"respondtx"`
 	Status                string `json:"status"`

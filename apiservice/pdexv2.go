@@ -157,6 +157,9 @@ func APIGetWithdrawHistory(c *gin.Context) {
 	}
 
 	type DataWithLockTime struct {
+		ID          string   `json:"id"`
+		CreatedAt   string   `json:"created_at"`
+		UpdateAt    string   `json:"updated_at"`
 		RequestTx   string   `json:"requesttx"`
 		RespondTx   []string `json:"respondtx"`
 		Status      string   `json:"status"`
@@ -183,6 +186,9 @@ func APIGetWithdrawHistory(c *gin.Context) {
 		amount1, _ := strconv.ParseUint(contr.WithdrawAmount[0], 10, 64)
 		amount2, _ := strconv.ParseUint(contr.WithdrawAmount[1], 10, 64)
 		data := DataWithLockTime{
+			ID:          contr.RequestTx,
+			CreatedAt:   time.Unix(contr.RequestTime, 0).String(),
+			UpdateAt:    time.Unix(contr.RequestTime, 0).String(),
 			RequestTx:   contr.RequestTx,
 			RespondTx:   contr.RespondTxs,
 			Status:      statusStr,
@@ -190,7 +196,7 @@ func APIGetWithdrawHistory(c *gin.Context) {
 			TokenID2:    contr.WithdrawTokens[1],
 			Amount1:     amount1,
 			Amount2:     amount2,
-			Contributor: contr.ContributorAddressStr,
+			Contributor: paymentkey,
 			RepondTime:  contr.RequestTime,
 			Locktime:    contr.RequestTime,
 		}
@@ -231,6 +237,9 @@ func APIGetWithdrawFeeHistory(c *gin.Context) {
 	}
 
 	type DataWithLockTime struct {
+		ID          string `json:"id"`
+		CreatedAt   string `json:"created_at"`
+		UpdateAt    string `json:"updated_at"`
 		RequestTx   string `json:"requesttx"`
 		RespondTx   string `json:"respondtx"`
 		Status      string `json:"status"`
@@ -262,13 +271,16 @@ func APIGetWithdrawFeeHistory(c *gin.Context) {
 			return
 		}
 		data := DataWithLockTime{
+			ID:          contr.RequestTx,
+			CreatedAt:   time.Unix(contr.RequestTime, 0).String(),
+			UpdateAt:    time.Unix(contr.RequestTime, 0).String(),
 			RequestTx:   contr.RequestTx,
 			RespondTx:   contr.RespondTxs[0],
 			Status:      statusStr,
 			TokenID1:    md.WithdrawalToken1IDStr,
 			TokenID2:    md.WithdrawalToken2IDStr,
 			Amount:      amount,
-			Contributor: md.WithdrawerAddressStr,
+			Contributor: paymentkey,
 			RepondTime:  contr.RequestTime,
 			Locktime:    contr.RequestTime,
 		}
@@ -286,7 +298,6 @@ func APIGetContributeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	paymentkey := c.Query("paymentkey")
 
-	// wl, err := wallet.Base58CheckDeserialize(paymentkey)
 	pubkey, err := extractPubkeyFromKey(paymentkey, false)
 	if err != nil {
 		c.JSON(http.StatusOK, buildGinErrorRespond(err))
@@ -305,39 +316,6 @@ func APIGetContributeHistory(c *gin.Context) {
 	}
 	var result []DataWithLockTime
 	for _, contr := range contrDataNoDup {
-		for idx, v := range contr.RequestTxs {
-			newData := DataWithLockTime{}
-			tx, err := database.DBGetTxByHash([]string{v})
-			if err != nil {
-				c.JSON(http.StatusOK, buildGinErrorRespond(err))
-				return
-			}
-			newData.Locktime = tx[0].Locktime
-			newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[idx], 10, 64)
-			newData.TokenID = contr.ContributeTokens[idx]
-			newData.ContributorAddressStr = contr.Contributor
-			newData.PairID = contr.PairID
-			newData.RequestTx = v
-			statusText := "waiting"
-			if idx != 0 && (contr.ContributeTokens[0] != contr.ContributeTokens[1]) && len(contr.ReturnTokens) == 0 {
-				if len(contr.RespondTxs) == 0 {
-					statusText = "matched"
-				}
-				// ctk := contr.ContributeTokens[idx]
-				// for _, v := range contr.ReturnTokens {
-				// 	if v == ctk {
-				// 		break
-				// 	}
-				// }
-			}
-			if idx != 0 && (contr.ContributeTokens[0] == contr.ContributeTokens[1]) {
-				continue
-			}
-
-			newData.Status = statusText
-			newData.Respondblock = uint64(contr.RequestTime)
-			result = append(result, newData)
-		}
 		for idx, v := range contr.RespondTxs {
 			newData := DataWithLockTime{}
 			tx, err := database.DBGetTxByHash([]string{v})
@@ -367,8 +345,91 @@ func APIGetContributeHistory(c *gin.Context) {
 			}
 			newData.RespondTx = v
 			newData.PairID = contr.PairID
-			newData.ContributorAddressStr = contr.Contributor
+			newData.ContributorAddressStr = paymentkey
 			newData.Respondblock = uint64(contr.RequestTime)
+			newData.ID = contr.RequestTxs[0]
+			newData.CreatedAt = time.Unix(contr.RequestTime, 0).String()
+			newData.UpdateAt = time.Unix(contr.RequestTime, 0).String()
+			result = append(result, newData)
+		}
+
+		if len(contr.RespondTxs) == 0 {
+			for idx, v := range contr.RequestTxs {
+				newData := DataWithLockTime{}
+				tx, err := database.DBGetTxByHash([]string{v})
+				if err != nil {
+					c.JSON(http.StatusOK, buildGinErrorRespond(err))
+					return
+				}
+				newData.Locktime = tx[0].Locktime
+				newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[idx], 10, 64)
+				newData.TokenID = contr.ContributeTokens[idx]
+				newData.ContributorAddressStr = contr.Contributor
+				newData.PairID = contr.PairID
+				newData.RequestTx = v
+				statusText := "waiting"
+				if idx != 0 && (contr.ContributeTokens[0] != contr.ContributeTokens[1]) && len(contr.ReturnTokens) == 0 {
+					if len(contr.RespondTxs) == 0 {
+						statusText = "matched"
+					}
+
+				}
+				newData.Status = statusText
+				newData.Respondblock = uint64(contr.RequestTime)
+				newData.ID = contr.RequestTxs[0]
+				newData.CreatedAt = time.Unix(contr.RequestTime, 0).String()
+				newData.UpdateAt = time.Unix(contr.RequestTime, 0).String()
+				result = append(result, newData)
+			}
+		}
+		if len(contr.RespondTxs) == 1 {
+			for i := 0; i < 2; i++ {
+				newData := DataWithLockTime{}
+				tx, err := database.DBGetTxByHash([]string{contr.RequestTxs[0]})
+				if err != nil {
+					c.JSON(http.StatusOK, buildGinErrorRespond(err))
+					return
+				}
+				newData.Locktime = tx[0].Locktime
+				newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[0], 10, 64)
+				newData.TokenID = contr.ContributeTokens[0]
+				newData.ContributorAddressStr = contr.Contributor
+				newData.PairID = contr.PairID
+				newData.RequestTx = contr.RequestTxs[0]
+				statusText := "waiting"
+				if i == 1 {
+					statusText = "matchedNReturned"
+				}
+				newData.Status = statusText
+				newData.Respondblock = uint64(contr.RequestTime)
+				newData.ID = contr.RequestTxs[0]
+				newData.CreatedAt = time.Unix(contr.RequestTime, 0).String()
+				newData.UpdateAt = time.Unix(contr.RequestTime, 0).String()
+
+				result = append(result, newData)
+			}
+
+		}
+		if len(contr.RespondTxs) == 2 {
+			newData := DataWithLockTime{}
+			tx, err := database.DBGetTxByHash([]string{contr.RequestTxs[0]})
+			if err != nil {
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
+				return
+			}
+			newData.Locktime = tx[0].Locktime
+			newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[0], 10, 64)
+			newData.TokenID = contr.ContributeTokens[0]
+			newData.ContributorAddressStr = contr.Contributor
+			newData.PairID = contr.PairID
+			newData.RequestTx = contr.RequestTxs[0]
+			statusText := "waiting"
+			newData.Status = statusText
+			newData.Respondblock = uint64(contr.RequestTime)
+			newData.ID = contr.RequestTxs[0]
+			newData.CreatedAt = time.Unix(contr.RequestTime, 0).String()
+			newData.UpdateAt = time.Unix(contr.RequestTime, 0).String()
+
 			result = append(result, newData)
 		}
 

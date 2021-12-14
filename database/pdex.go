@@ -152,15 +152,28 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
-		fitler := bson.M{"nftid": bson.M{operator.Eq: order.NFTID}, "pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
-		update := bson.M{
-			"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
-			"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor, "pairid": order.PairID},
+		if order.Version == 3 {
+			fitler := bson.M{"nftid": bson.M{operator.Eq: order.NFTID}, "pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
+			update := bson.M{
+				"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
+				"$set":  bson.M{"pairhash": order.PairHash, "nftid": order.NFTID, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor, "pairid": order.PairID},
+			}
+			_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
+			if err != nil {
+				return err
+			}
+		} else {
+			fitler := bson.M{"pairid": bson.M{operator.Eq: order.PairID}, "requesttxs.1": bson.M{operator.Exists: false}}
+			update := bson.M{
+				"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
+				"$set":  bson.M{"requesttime": order.RequestTime, "contributor": order.Contributor, "pairid": order.PairID},
+			}
+			_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
+			if err != nil {
+				return err
+			}
 		}
-		_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
-		if err != nil {
-			return err
-		}
+
 	}
 	return nil
 }

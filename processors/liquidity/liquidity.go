@@ -226,6 +226,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				NFTID:            md.NftID(),
 				PairHash:         md.PairHash(),
 				RequestTime:      tx.Locktime,
+				Version:          3,
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadataCommon.Pdexv3AddLiquidityResponseMeta:
@@ -266,6 +267,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				WithdrawTokens: []string{},
 				WithdrawAmount: []string{},
 				RequestTime:    tx.Locktime,
+				Version:        3,
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
@@ -311,6 +313,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
 				WithdrawAmount: []string{},
+				Version:        3,
 			}
 			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLPFeeResponseMeta:
@@ -449,6 +452,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				ReturnTokens:     []string{},
 				ReturnAmount:     []string{},
 				RequestTime:      tx.Locktime,
+				Version:          2,
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadata.PDEContributionResponseMeta:
@@ -487,6 +491,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
 				WithdrawAmount: []string{},
+				Version:        2,
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadata.PDEWithdrawalResponseMeta:
@@ -526,6 +531,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTime:    tx.Locktime,
 				Status:         0,
 				RespondTxs:     []string{},
+				Version:        2,
 			}
 			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadata.PDEFeeWithdrawalResponseMeta:
