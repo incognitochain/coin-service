@@ -364,7 +364,7 @@ func APIGetContributeHistory(c *gin.Context) {
 				newData.Locktime = tx[0].Locktime
 				newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[idx], 10, 64)
 				newData.TokenID = contr.ContributeTokens[idx]
-				newData.ContributorAddressStr = contr.Contributor
+				newData.ContributorAddressStr = paymentkey
 				newData.PairID = contr.PairID
 				newData.RequestTx = v
 				statusText := "waiting"
@@ -393,7 +393,7 @@ func APIGetContributeHistory(c *gin.Context) {
 				newData.Locktime = tx[0].Locktime
 				newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[0], 10, 64)
 				newData.TokenID = contr.ContributeTokens[0]
-				newData.ContributorAddressStr = contr.Contributor
+				newData.ContributorAddressStr = paymentkey
 				newData.PairID = contr.PairID
 				newData.RequestTx = contr.RequestTxs[0]
 				statusText := "waiting"
@@ -420,7 +420,7 @@ func APIGetContributeHistory(c *gin.Context) {
 			newData.Locktime = tx[0].Locktime
 			newData.Amount, _ = strconv.ParseUint(contr.ContributeAmount[0], 10, 64)
 			newData.TokenID = contr.ContributeTokens[0]
-			newData.ContributorAddressStr = contr.Contributor
+			newData.ContributorAddressStr = paymentkey
 			newData.PairID = contr.PairID
 			newData.RequestTx = contr.RequestTxs[0]
 			statusText := "waiting"
