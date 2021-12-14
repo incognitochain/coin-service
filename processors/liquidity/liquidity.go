@@ -1,6 +1,7 @@
 package liquidity
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -38,9 +39,9 @@ func StartProcessor() {
 		panic(err)
 	}
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 10000)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 1000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -155,7 +156,7 @@ func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 		"_id":      bson.M{operator.Gt: obID},
 		"metatype": bson.M{operator.In: metas},
 	}
-	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(context.Background(), &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", 1}},
 		Limit: &limit,
 	})
