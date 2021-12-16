@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/0xkumi/incognito-dev-framework v0.0.0-20210930071550-1b94b99355bd
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
+	github.com/gin-contrib/cors v1.3.1 // indirect
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-playground/validator/v10 v10.5.0 // indirect

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/incognito-chain/common"
@@ -41,7 +42,11 @@ func main() {
 	fmt.Println("PRICEPORT", port)
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
-
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"POST", "PUT", "PATCH", "DELETE"},
+		AllowHeaders: []string{"Content-Type,access-control-allow-origin, access-control-allow-headers"},
+	}))
 	r.GET("/tokenlist", APIGetTokens)
 	err = r.Run("0.0.0.0:" + port)
 	if err != nil {
@@ -105,8 +110,9 @@ retry:
 		}
 		pool, ok := state.PDEPoolPairs[poolTokens[common.PRVCoinID.String()]]
 		if !ok {
-			fmt.Println(pool, poolTokens[common.PRVCoinID.String()])
-			panic(2)
+			tokenInfoListLock.Unlock()
+			fmt.Println("pool not found", poolTokens[common.PRVCoinID.String()])
+			continue
 		}
 		decimal1 := math.Pow10(int(pDecimal[common.PRVCoinID.String()]))
 		decimal2 := math.Pow10(int(pDecimal[BaseToken]))
@@ -130,7 +136,7 @@ retry:
 				data.PriceUsd24h = price
 			}
 			if price != 0 {
-				data.PercentChange24h = fmt.Sprintf("%g", ((price-data.PriceUsd24h)/data.PriceUsd24h)*100)
+				data.PercentChange24h = fmt.Sprintf("%.2f", ((price-data.PriceUsd24h)/data.PriceUsd24h)*100)
 			}
 		}
 		tokenInfoListLock.Unlock()
@@ -207,11 +213,13 @@ func ProcessPrice(state *jsonresult.CurrentPDEState, tokenID string) float64 {
 	value1 = math.Abs(float64(pool.Token1PoolValue)-x1) / float64(pool.Token2PoolValue) * (decimal2 / decimal1)
 	//PRV to USDT
 	value2 := prvToUSD * value1
-	fmt.Println("prvToUSD", tokenID, value2, value1, decimal2)
 	return value2
 }
 
 func APIGetTokens(c *gin.Context) {
+	c.Header("access-control-allow-origin", "*")
+	c.Header("Access-Control-Allow-Methods", "PUT, POST, GET, DELETE, OPTIONS")
+
 	tokenInfoListLock.Lock()
 	list := []*ExtraTokenInfo{}
 	for _, v := range tokenInfoList {
