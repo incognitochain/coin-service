@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
@@ -50,6 +51,51 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 		if err != nil {
 			return nil, err
 		}
+		tempOrderReward, err := statedb.GetPdexv3PoolPairOrderReward(stateDB, poolPairID)
+		if err != nil {
+			return nil, err
+		}
+		tempMakingVolume, err := statedb.GetPdexv3PoolPairMakingVolume(stateDB, poolPairID)
+		if err != nil {
+			return nil, err
+		}
+
+		makingVolume := make(map[common.Hash]*shared.MakingVolume)
+		for tokenID, value := range tempMakingVolume {
+			if makingVolume[tokenID] == nil {
+				makingVolume[tokenID] = &shared.MakingVolume{
+					Volume: make(map[string]*big.Int),
+				}
+			}
+			for nftID, amount := range value {
+				makingVolume[tokenID].Volume[nftID] = amount
+			}
+		}
+		orderReward := make(map[string]*shared.OrderReward)
+		for nftID, value := range tempOrderReward {
+			if orderReward[nftID] == nil {
+				orderReward[nftID] = &shared.OrderReward{
+					UncollectedRewards: make(map[common.Hash]uint64),
+				}
+			}
+			for tokenID, amount := range value {
+				orderReward[nftID].UncollectedRewards[tokenID] = amount
+			}
+		}
+		makingVolume2 := make(map[common.Hash]*pdex.MakingVolume)
+		orderReward2 := make(map[string]*pdex.OrderReward)
+		makingVolumeBytes, _ := json.Marshal(makingVolume)
+		orderRewardBytes, _ := json.Marshal(orderReward)
+		err = json.Unmarshal(makingVolumeBytes, &makingVolume2)
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal(orderRewardBytes, &orderReward2)
+		if err != nil {
+			return nil, err
+		}
+
 		shares, err := initShares(poolPairID, stateDB)
 		if err != nil {
 			return nil, err
@@ -66,7 +112,7 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 		}
 		poolPair := pdex.NewPoolPairStateWithValue(
 			poolPairState.Value(), shares, *orderbook,
-			lpFeesPerShare, protocolFees, stakingPoolFees,
+			lpFeesPerShare, protocolFees, stakingPoolFees, makingVolume2, orderReward2,
 		)
 		res[poolPairID] = poolPair
 	}

@@ -322,6 +322,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
 			TotalShare:   totalShare,
+			OrderRewards: v.OrderReward,
 		})
 	}
 	respond := APIRespond{
