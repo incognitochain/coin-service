@@ -110,7 +110,7 @@ retry:
 		}
 		decimal1 := math.Pow10(int(pDecimal[common.PRVCoinID.String()]))
 		decimal2 := math.Pow10(int(pDecimal[BaseToken]))
-		x1 := float64(pool.Token1PoolValue*pool.Token2PoolValue) / (float64(pool.Token1PoolValue) - float64(decimal1))
+		x1 := float64(pool.Token1PoolValue*pool.Token2PoolValue) / (float64(pool.Token1PoolValue) + float64(decimal1))
 		prvToUSD = -(x1 - float64(pool.Token2PoolValue)) / float64(pool.Token1PoolValue) * (decimal1 / decimal2)
 
 		for tokenID, data := range tokenInfoList {
@@ -203,7 +203,7 @@ func ProcessPrice(state *jsonresult.CurrentPDEState, tokenID string) float64 {
 	pool := state.PDEPoolPairs[poolTokens[tokenID]]
 	decimal1 := math.Pow10(int(pDecimal[common.PRVCoinID.String()]))
 	decimal2 := math.Pow10(int(pDecimal[tokenID]))
-	x1 := float64(pool.Token1PoolValue*pool.Token2PoolValue) / (float64(pool.Token2PoolValue) - float64(decimal2))
+	x1 := float64(pool.Token1PoolValue*pool.Token2PoolValue) / (float64(pool.Token2PoolValue) + float64(decimal2))
 	value1 = math.Abs(float64(pool.Token1PoolValue)-x1) / float64(pool.Token2PoolValue) * (decimal2 / decimal1)
 	//PRV to USDT
 	value2 := prvToUSD * value1
