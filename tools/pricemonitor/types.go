@@ -1,33 +1,42 @@
 package main
 
-import "github.com/kamva/mgm/v3"
+import (
+	"time"
+)
 
 type ExtraTokenInfo struct {
-	mgm.DefaultModel `bson:",inline"`
-	TokenID          string `json:"TokenID" bson:"tokenid"`
-	Name             string `json:"Name" bson:"name"`
-	Symbol           string `json:"Symbol" bson:"symbol"`
-	PSymbol          string `json:"PSymbol" bson:"psymbol"`
-	PDecimals        uint64 `json:"PDecimals" bson:"pdecimals"`
-	Decimals         uint64 `json:"Decimals" bson:"decimals"`
-	ContractID       string `json:"ContractID" bson:"contractid"`
-	Status           int    `json:"Status" bson:"status"`
-	Type             int    `json:"Type" bson:"type"`
-	CurrencyType     int    `json:"CurrencyType" bson:"currencytype"`
-	Default          bool   `json:"Default" bson:"default"`
-	Verified         bool   `json:"Verified" bson:"verified"`
-	UserID           int    `json:"UserID" bson:"userid"`
+	TokenID      string `json:"TokenID" `
+	Name         string `json:"Name" `
+	Symbol       string `json:"Symbol" `
+	PSymbol      string `json:"PSymbol" `
+	PDecimals    uint64 `json:"PDecimals" `
+	Decimals     uint64 `json:"Decimals" `
+	ContractID   string `json:"ContractID" `
+	Status       int    `json:"Status" `
+	Type         int    `json:"Type" `
+	CurrencyType int    `json:"CurrencyType" `
+	Default      bool   `json:"Default" `
+	Verified     bool   `json:"Verified" `
+	UserID       int    `json:"UserID" `
 
-	PriceUsd           float64 `json:"PriceUsd" bson:"priceusd"`
-	PercentChange1h    string  `json:"PercentChange1h" bson:"percentchange1h"`
-	PercentChangePrv1h string  `json:"PercentChangePrv1h" bson:"percentchangeprv1h"`
-	CurrentPrvPool     uint64  `json:"CurrentPrvPool" bson:"currentprvpool"`
-	PricePrv           float64 `json:"priceprv" bson:"priceprv"`
-	Volume24           uint64  `json:"volume24" bson:"volume24"`
-	ParentID           int     `json:"ParentID" bson:"parentid"`
-	OriginalSymbol     string  `json:"OriginalSymbol" bson:"originalsymbol"`
-	LiquidityReward    float64 `json:"LiquidityReward" bson:"liquidityreward"`
+	PriceUsd           float64 `json:"PriceUsd" `
+	PercentChange24h   string  `json:"PercentChange24h" `
+	PercentChange1h    string  `json:"PercentChange1h" `
+	PercentChangePrv1h string  `json:"PercentChangePrv1h" `
+	CurrentPrvPool     uint64  `json:"CurrentPrvPool" `
+	PricePrv           float64 `json:"priceprv" `
+	Volume24           uint64  `json:"volume24" `
+	ParentID           int     `json:"ParentID" `
+	OriginalSymbol     string  `json:"OriginalSymbol" `
+	LiquidityReward    float64 `json:"LiquidityReward" `
 
-	Network        string `json:"Network" bson:"Network"`
-	ListChildToken string `json:"ListChildToken" bson:"listchildtoken"`
+	Network         string `json:"Network" `
+	ListChildToken  string `json:"ListChildToken" `
+	LastPiceUpdated time.Time
+	PriceUsd24h     float64
+}
+
+type APIRespond struct {
+	Result interface{}
+	Error  *string
 }
