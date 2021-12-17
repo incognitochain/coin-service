@@ -27,7 +27,7 @@ func initStakers(stakingPoolID string, stateDB *statedb.StateDB) (map[string]*pd
 		if err != nil {
 			return res, totalLiquidity, err
 		}
-		res[nftID] = pdex.NewStakerWithValue(stakerState.Liquidity(), rewards, lastRewardsPerShare)
+		res[nftID] = pdex.NewStakerWithValue(stakerState.Liquidity(), stakerState.AccessOTA(), rewards, lastRewardsPerShare)
 	}
 	return res, totalLiquidity, nil
 }
@@ -134,7 +134,7 @@ func initShares(poolPairID string, stateDB *statedb.StateDB) (map[string]*pdex.S
 		if err != nil {
 			return nil, err
 		}
-		res[nftID] = pdex.NewShareWithValue(shareState.Amount(), tradingFees, lastLPFeesPerShare)
+		res[nftID] = pdex.NewShareWithValue(shareState.Amount(), shareState.AccessOTA(), tradingFees, lastLPFeesPerShare)
 	}
 	return res, nil
 }

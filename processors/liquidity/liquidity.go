@@ -348,11 +348,15 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			data := shared.PoolStakeHistoryData{
 				RequestTx:   tx.TxHash,
 				TokenID:     md.TokenID(),
-				NFTID:       md.NftID(),
 				Amount:      md.TokenAmount(),
 				Status:      0,
 				Requesttime: tx.Locktime,
 				IsStaking:   true,
+			}
+			if md.AccessOption.UseNft() {
+				data.NFTID = md.NftID.String()
+			} else {
+				data.NFTID = md.AccessID.String()
 			}
 			stakingRequestDatas = append(stakingRequestDatas, data)
 		case metadataCommon.Pdexv3StakingResponseMeta:
