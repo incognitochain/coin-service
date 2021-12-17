@@ -11,6 +11,7 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
+	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
@@ -66,7 +67,8 @@ func StartProcessor() {
 
 func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 	var result []shared.TxData
-	metas := []string{strconv.Itoa(metadata.IssuingRequestMeta), strconv.Itoa(metadata.IssuingBSCRequestMeta), strconv.Itoa(metadata.IssuingETHRequestMeta), strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta), strconv.Itoa(metadata.IssuingBSCResponseMeta)}
+	metas := []string{strconv.Itoa(metadata.IssuingRequestMeta), strconv.Itoa(metadata.IssuingBSCRequestMeta), strconv.Itoa(metadata.IssuingETHRequestMeta), strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta), strconv.Itoa(metadata.IssuingBSCResponseMeta), strconv.Itoa(metadataCommon.IssuingPRVERC20RequestMeta), strconv.Itoa(metadataCommon.IssuingPRVBEP20RequestMeta), strconv.Itoa(metadataCommon.IssuingPRVERC20ResponseMeta), strconv.Itoa(metadataCommon.IssuingPRVBEP20ResponseMeta)}
+
 	var obID primitive.ObjectID
 	if lastID == "" {
 		obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -155,7 +157,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 			}
 			shieldData := shared.NewShieldData(requestTx, "", tokenIDStr, bridge, pubkey, isDecentralized, fmt.Sprintf("%v", amount), tx.BlockHeight, tx.Locktime)
 			requestData = append(requestData, *shieldData)
-		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
+		case metadata.IssuingResponseMeta, metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta, metadataCommon.IssuingPRVERC20ResponseMeta, metadataCommon.IssuingPRVBEP20ResponseMeta:
 			switch metaDataType {
 			case metadata.IssuingResponseMeta:
 				meta := metadata.IssuingResponse{}
@@ -165,14 +167,14 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 				}
 				requestTx = meta.RequestedTxID.String()
 				bridge = "btc"
-			case metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta:
+			case metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta, metadataCommon.IssuingPRVERC20ResponseMeta, metadataCommon.IssuingPRVBEP20ResponseMeta:
 				meta := metadata.IssuingEVMResponse{}
 				err := json.Unmarshal([]byte(tx.Metadata), &meta)
 				if err != nil {
 					panic(err)
 				}
 				requestTx = meta.RequestedTxID.String()
-				if metaDataType == metadata.IssuingETHResponseMeta {
+				if metaDataType == metadata.IssuingETHResponseMeta || metaDataType == metadataCommon.IssuingPRVERC20ResponseMeta {
 					bridge = "eth"
 				} else {
 					bridge = "bsc"

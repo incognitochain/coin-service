@@ -175,38 +175,38 @@ func InitChainSynker(cfg shared.Config) {
 	go mempoolWatcher()
 	go tokenListWatcher()
 
-	time.Sleep(5 * time.Second)
+	// time.Sleep(5 * time.Second)
 	// go func() {
-	_, err = Localnode.GetUserDatabase().Get([]byte("checkMissingTxs"), nil)
-	if err != nil {
-		if err != leveldb.ErrNotFound {
-			panic(err)
-		} else {
-			shardsHash := Localnode.GetBlockchain().GetBeaconBestState().GetBestShardHash()
-			shardsHeight := Localnode.GetBlockchain().GetBeaconBestState().GetBestShardHeight()
-			var wg sync.WaitGroup
-			for sID, v := range shardsHash {
-				wg.Add(1)
-				go func(sid int, height uint64, hash common.Hash) {
-					defer wg.Done()
-					for {
-						hash, height, sid, err = checkMissingTxs(hash, height, sid)
-						if err != nil {
-							panic(err)
-						}
-						if height == 1 {
-							return
-						}
-					}
-				}(int(sID), shardsHeight[sID], v)
-			}
-			wg.Wait()
-			err = Localnode.GetUserDatabase().Put([]byte("checkMissingTxs"), []byte{1}, nil)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
+	// _, err = Localnode.GetUserDatabase().Get([]byte("checkMissingTxs"), nil)
+	// if err != nil {
+	// 	if err != leveldb.ErrNotFound {
+	// 		panic(err)
+	// 	} else {
+	// 		shardsHash := Localnode.GetBlockchain().GetBeaconBestState().GetBestShardHash()
+	// 		shardsHeight := Localnode.GetBlockchain().GetBeaconBestState().GetBestShardHeight()
+	// 		var wg sync.WaitGroup
+	// 		for sID, v := range shardsHash {
+	// 			wg.Add(1)
+	// 			go func(sid int, height uint64, hash common.Hash) {
+	// 				defer wg.Done()
+	// 				for {
+	// 					hash, height, sid, err = checkMissingTxs(hash, height, sid)
+	// 					if err != nil {
+	// 						panic(err)
+	// 					}
+	// 					if height == 1 {
+	// 						return
+	// 					}
+	// 				}
+	// 			}(int(sID), shardsHeight[sID], v)
+	// 		}
+	// 		wg.Wait()
+	// 		err = Localnode.GetUserDatabase().Put([]byte("checkMissingTxs"), []byte{1}, nil)
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	}
+	// }
 	// }()
 	time.Sleep(5 * time.Second)
 	blockProcessed[-1] = ProcessedBeaconBestState

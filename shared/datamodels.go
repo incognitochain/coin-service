@@ -362,6 +362,7 @@ type ContributionData struct {
 	NFTID            string   `json:"nftid" bson:"nftid"`
 	RequestTime      int64    `json:"requesttime" bson:"requesttime"`
 	Status           string   `json:"status" bson:"status"`
+	Version          int      `json:"version" bson:"version"`
 }
 
 func (model *ContributionData) Creating() error {
@@ -393,6 +394,7 @@ type WithdrawContributionData struct {
 	RequestTime           int64    `json:"requesttime" bson:"requesttime"`
 	NFTID                 string   `json:"nftid" bson:"nftid"`
 	PoolID                string   `json:"poolid" bson:"poolid"`
+	Version               int      `json:"version" bson:"version"`
 }
 
 func (model *WithdrawContributionData) Creating() error {
@@ -423,6 +425,7 @@ type WithdrawContributionFeeData struct {
 	ContributorAddressStr string   `json:"contributor" bson:"contributor"`
 	RequestTime           int64    `json:"requesttime" bson:"requesttime"`
 	NFTID                 string   `json:"nftid" bson:"nftid"`
+	Version               int      `json:"version" bson:"version"`
 }
 
 func (model *WithdrawContributionFeeData) Creating() error {

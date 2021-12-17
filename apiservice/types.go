@@ -54,17 +54,17 @@ type APIGetTxsByPubkeyRequest struct {
 }
 
 type TxTradeDetail struct {
-	RequestTx string
-	RespondTx []string
-	Status    string
-	BuyToken  string
-	SellToken string
+	RequestTx string   `json:"requesttx"`
+	RespondTx []string `json:"respondtx"`
+	Status    string   `json:"status"`
+	BuyToken  string   `json:"buytoken"`
+	SellToken string   `json:"selltoken"`
 	//from respondtx
-	ReceiveAmount map[string]uint64
+	ReceiveAmount map[string]uint64 `json:"receive"`
 	//from requesttx
-	SellAmount  uint64
-	Fee         uint64
-	RequestTime int64
+	SellAmount  uint64 `json:"sell"`
+	Fee         uint64 `json:"fee"`
+	RequestTime int64  `json:"requesttime"`
 }
 
 type TxBridgeDetail struct {
@@ -312,6 +312,9 @@ type TokenInfo struct {
 }
 
 type ContributionDataV1 struct {
+	ID                    string `json:"id"`
+	CreatedAt             string `json:"created_at"`
+	UpdateAt              string `json:"updated_at"`
 	RequestTx             string `json:"requesttx"`
 	RespondTx             string `json:"respondtx"`
 	Status                string `json:"status"`

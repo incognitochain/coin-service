@@ -1,6 +1,7 @@
 package liquidity
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -38,9 +39,9 @@ func StartProcessor() {
 		panic(err)
 	}
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 10000)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 1000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -155,7 +156,7 @@ func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 		"_id":      bson.M{operator.Gt: obID},
 		"metatype": bson.M{operator.In: metas},
 	}
-	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(context.Background(), &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", 1}},
 		Limit: &limit,
 	})
@@ -226,6 +227,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				NFTID:            md.NftID.String(),
 				PairHash:         md.PairHash(),
 				RequestTime:      tx.Locktime,
+				Version:          3,
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadataCommon.Pdexv3AddLiquidityResponseMeta:
@@ -266,6 +268,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				WithdrawTokens: []string{},
 				WithdrawAmount: []string{},
 				RequestTime:    tx.Locktime,
+				Version:        3,
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
@@ -311,6 +314,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
 				WithdrawAmount: []string{},
+				Version:        3,
 			}
 			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLPFeeResponseMeta:
@@ -449,6 +453,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				ReturnTokens:     []string{},
 				ReturnAmount:     []string{},
 				RequestTime:      tx.Locktime,
+				Version:          2,
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadata.PDEContributionResponseMeta:
@@ -487,6 +492,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RespondTxs:     []string{},
 				WithdrawTokens: []string{},
 				WithdrawAmount: []string{},
+				Version:        2,
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadata.PDEWithdrawalResponseMeta:
@@ -526,6 +532,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTime:    tx.Locktime,
 				Status:         0,
 				RespondTxs:     []string{},
+				Version:        2,
 			}
 			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadata.PDEFeeWithdrawalResponseMeta:
