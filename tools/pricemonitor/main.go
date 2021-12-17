@@ -164,7 +164,8 @@ retry:
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		goto retry
 	}
 	err = json.Unmarshal(body, &state)
 	if err != nil {
