@@ -477,7 +477,7 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	}
 	if len(data.CoinIndex) != 0 {
 		cinf := data.CoinIndex[common.ConfidentialAssetID.String()]
-		if cinf.LastScanned < highestTkIndex {
+		if cinf.LastScanned > highestTkIndex {
 			cinf.LastScanned = highestTkIndex
 		}
 		if reIndex {
