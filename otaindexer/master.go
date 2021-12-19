@@ -450,7 +450,9 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 			goto retryGet1
 		}
 		if highestTkIndex < coinInfo.End {
-			highestTkIndex = coinInfo.End
+			if tokenID != common.PRVCoinID.String() {
+				highestTkIndex = coinInfo.End
+			}
 		}
 
 	retryGet2:
