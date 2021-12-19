@@ -81,7 +81,6 @@ retry:
 	}
 	fmt.Println("tokenInfoList", len(MonitorTokenList), len(tokenInfoList))
 	tokenInfoListLock.Unlock()
-	currentTime := time.Now()
 	for {
 		state := getPDEState(csv)
 		if USDTPRVPool == "" {
@@ -119,6 +118,7 @@ retry:
 		x1 := float64(pool.Token1PoolValue*pool.Token2PoolValue) / (float64(pool.Token1PoolValue) + float64(decimal1))
 		prvToUSD = -(x1 - float64(pool.Token2PoolValue)) / float64(pool.Token1PoolValue) * (decimal1 / decimal2)
 
+		currentTime := time.Now()
 		for tokenID, data := range tokenInfoList {
 			var price float64
 			if tokenID == common.PRVCoinID.String() {
