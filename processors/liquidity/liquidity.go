@@ -224,7 +224,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				PoolID:           md.PoolPairID(),
 				ContributeTokens: []string{md.TokenID()},
 				ContributeAmount: []string{fmt.Sprintf("%v", md.TokenAmount())},
-				NFTID:            md.NftID.String(),
+				NFTID:            md.AccessID.String(),
 				PairHash:         md.PairHash(),
 				RequestTime:      tx.Locktime,
 				Version:          3,
@@ -260,7 +260,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawLiquidityRequest)
 			data := shared.WithdrawContributionData{
 				RequestTx:      tx.TxHash,
-				NFTID:          md.NftID.String(),
+				NFTID:          md.AccessID.String(),
 				PoolID:         md.PoolPairID(),
 				ShareAmount:    fmt.Sprintf("%v", md.ShareAmount()),
 				Status:         0,
@@ -307,7 +307,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawalLPFeeRequest)
 			data := shared.WithdrawContributionFeeData{
 				PoodID:         md.PoolPairID,
-				NFTID:          md.NftID.String(),
+				NFTID:          md.AccessID.String(),
 				RequestTx:      tx.TxHash,
 				RequestTime:    tx.Locktime,
 				Status:         0,
@@ -353,11 +353,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				Requesttime: tx.Locktime,
 				IsStaking:   true,
 			}
-			if md.AccessOption.UseNft() {
-				data.NFTID = md.NftID.String()
-			} else {
-				data.NFTID = md.AccessID.String()
-			}
+			data.NFTID = md.AccessID.String()
 			stakingRequestDatas = append(stakingRequestDatas, data)
 		case metadataCommon.Pdexv3StakingResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.StakingResponse)
@@ -378,7 +374,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			data := shared.PoolStakeHistoryData{
 				RequestTx:   tx.TxHash,
 				TokenID:     md.StakingPoolID(),
-				NFTID:       md.NftID(),
+				NFTID:       md.AccessID.String(),
 				Amount:      md.UnstakingAmount(),
 				Status:      0,
 				Requesttime: tx.Locktime,
@@ -405,7 +401,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 				RequestTx:    tx.TxHash,
 				Status:       0,
 				TokenID:      md.StakingPoolID,
-				NFTID:        md.NftID.String(),
+				NFTID:        md.AccessID.String(),
 				Requesttime:  tx.Locktime,
 				RespondTxs:   []string{},
 				Amount:       []uint64{},

@@ -247,7 +247,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				pairID = tokenStrs[0] + "-" + tokenStrs[1]
 				minaccept = item.MinAcceptableAmount
 				amount = item.SellAmount
-				nftID = item.NftID.String()
+				nftID = item.AccessID.String()
 				version = 2
 
 			}
@@ -343,7 +343,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				WithdrawTxs:      []string{tx.TxHash},
 				WithdrawPendings: []string{tx.TxHash},
 				WithdrawInfos:    make(map[string]shared.TradeOrderWithdrawInfo),
-				NFTID:            meta.NftID.String(),
+				NFTID:            meta.AccessID.String(),
 			}
 			order.WithdrawInfos[tx.TxHash] = wdData
 			cancelTrades = append(cancelTrades, order)
