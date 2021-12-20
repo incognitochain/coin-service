@@ -232,13 +232,14 @@ func DBGetCoinV2OfOTAkeyCount(shardID int, tokenID, otakey string) (uint64, erro
 	return uint64(count), nil
 }
 
-func DBGetAllCoinV2OfOTAkey(shardID int, tokenID, otakey string) ([]shared.CoinData, error) {
+func DBGetAllCoinV2OfOTAkey(shardID int, tokenID, otakey string, offset int64) ([]shared.CoinData, error) {
 	var coinList []shared.CoinData
-	limit := int64(1)
+	limit := int64(10000)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
 	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&coinList, filter, &options.FindOptions{
 		Sort:  bson.D{{"coinidx", 1}},
 		Limit: &limit,
+		Skip:  &offset,
 	})
 	if err != nil {
 		return nil, err
