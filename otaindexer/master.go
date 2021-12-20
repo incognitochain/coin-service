@@ -448,7 +448,7 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		}
 		if len(coinList) > 0 {
 			totalCoinList = append(totalCoinList, coinList...)
-			if len(coinList) <= limit {
+			if len(coinList) < limit {
 				break
 			}
 			offset += int64(limit)
@@ -466,7 +466,7 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		}
 		if len(coinList) > 0 {
 			totalCoinList = append(totalCoinList, coinList...)
-			if len(coinList) <= limit {
+			if len(coinList) < limit {
 				break
 			}
 			offset += int64(limit)
