@@ -489,6 +489,9 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 			if cidx.End < coin.CoinIndex {
 				cidx.End = coin.CoinIndex
 			}
+			if cidx.Start == 0 {
+				cidx.Start = coin.CoinIndex
+			}
 			if cidx.Start > coin.CoinIndex {
 				cidx.Start = coin.CoinIndex
 			}
