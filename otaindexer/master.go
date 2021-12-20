@@ -436,35 +436,53 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	}
 	data.OTAKey = otaKey
 	highestTkIndex := uint64(0)
-	for tokenID, coinInfo := range data.CoinIndex {
-		// if tokenID == common.ConfidentialAssetID.String() {
-		// 	coinInfo.LastScanned = 0
-		// 	data.CoinIndex[tokenID] = coinInfo
-		// 	continue
-		// }
-	retryGet1:
-		coinInfo.End, err = database.DBGetLastCoinV2OfOTAkey(int(shardID), tokenID, otaKey)
-		if err != nil {
-			log.Println(err)
-			time.Sleep(200 * time.Millisecond)
-			goto retryGet1
-		}
-		if highestTkIndex < coinInfo.End {
-			if tokenID != common.PRVCoinID.String() {
-				highestTkIndex = coinInfo.End
-			}
-		}
 
-	retryGet2:
-		coinInfo.Total, err = database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey)
-		if err != nil {
-			log.Println(err)
-			time.Sleep(200 * time.Millisecond)
-			goto retryGet2
+retryGet1:
+	coinList, err := database.DBGetAllCoinV2OfOTAkey(int(shardID), common.PRVCoinID.String(), otaKey)
+	if err != nil {
+		log.Println(err)
+		time.Sleep(200 * time.Millisecond)
+		goto retryGet1
+	}
+retryGet2:
+	coinList2, err := database.DBGetAllCoinV2OfOTAkey(int(shardID), common.ConfidentialAssetID.String(), otaKey)
+	if err != nil {
+		log.Println(err)
+		time.Sleep(200 * time.Millisecond)
+		goto retryGet2
+	}
+	coinList = append(coinList, coinList2...)
+	totalCoins := make(map[string]uint64)
+	for _, coin := range coinList {
+		if cidx, ok := data.CoinIndex[coin.RealTokenID]; !ok {
+			data.CoinIndex[coin.RealTokenID] = shared.CoinInfo{
+				Start:       coin.CoinIndex,
+				End:         coin.CoinIndex,
+				Total:       1,
+				LastScanned: coin.CoinIndex,
+			}
+			totalCoins[coin.RealTokenID] = 1
+		} else {
+			totalCoins[coin.RealTokenID] += 1
+			if cidx.End < coin.CoinIndex {
+				cidx.End = coin.CoinIndex
+			}
+			if cidx.Start > coin.CoinIndex {
+				cidx.Start = coin.CoinIndex
+			}
+			if highestTkIndex < cidx.End {
+				if coin.RealTokenID != common.PRVCoinID.String() {
+					highestTkIndex = cidx.End
+				}
+			}
+			data.CoinIndex[coin.RealTokenID] = cidx
 		}
-		if coinInfo.LastScanned < coinInfo.End {
-			coinInfo.LastScanned = coinInfo.End
-		}
+	}
+	for tokenID, v := range totalCoins {
+		d := data.CoinIndex[tokenID]
+		d.Total = v
+		data.CoinIndex[tokenID] = d
+
 		txs, err := database.DBGetCountTxByPubkey(pubKey, tokenID, 2)
 		if err != nil {
 			return err
@@ -473,8 +491,8 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 			data.TotalReceiveTxs = make(map[string]uint64)
 		}
 		data.TotalReceiveTxs[tokenID] = uint64(txs)
-		data.CoinIndex[tokenID] = coinInfo
 	}
+
 	if len(data.CoinIndex) != 0 {
 		cinf := data.CoinIndex[common.ConfidentialAssetID.String()]
 		if cinf.LastScanned < highestTkIndex {
@@ -487,23 +505,22 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 			data.CoinIndex[common.PRVCoinID.String()] = pinf
 		}
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
-
 	}
 
 	for tokenID, coinInfo := range data.NFTIndex {
-	retryGet3:
+	retryGet4:
 		coinInfo.End, err = database.DBGetLastCoinV2OfOTAkey(int(shardID), tokenID, otaKey)
 		if err != nil {
 			log.Println(err)
 			time.Sleep(200 * time.Millisecond)
-			goto retryGet3
+			goto retryGet4
 		}
-	retryGet4:
+	retryGet5:
 		coinInfo.Total, err = database.DBGetCoinV2OfOTAkeyCount(int(shardID), tokenID, otaKey)
 		if err != nil {
 			log.Println(err)
 			time.Sleep(200 * time.Millisecond)
-			goto retryGet4
+			goto retryGet5
 		}
 		coinInfo.LastScanned = 0
 		txs, err := database.DBGetCountTxByPubkey(pubKey, tokenID, 2)
