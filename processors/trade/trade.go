@@ -34,9 +34,9 @@ func StartProcessor() {
 		panic(err)
 	}
 	for {
-		time.Sleep(6 * time.Second)
+		time.Sleep(10 * time.Second)
 		startTime := time.Now()
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 20000)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 10000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -73,10 +73,11 @@ func StartProcessor() {
 				panic(err)
 			}
 		}
-		err = updateTradeStatus()
-		if err != nil {
-			panic(err)
-		}
+
+		// err = updateTradeStatus()
+		// if err != nil {
+		// 	panic(err)
+		// }
 
 		fmt.Println("process time", time.Since(startTime))
 	}
@@ -421,7 +422,7 @@ func updateTradeStatus() error {
 				if i.Status == "0" {
 					a.IsRejected = true
 					data.WithdrawInfos[wdtx] = a
-					data.WithdrawPendings = append(data.WithdrawPendings, wdtx)
+					data.WithdrawPendings = append(data.WithdrawPendings, wdtx) //add to pull from DB
 					listToUpdate = append(listToUpdate, data)
 				}
 			}
