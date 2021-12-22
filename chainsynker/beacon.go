@@ -430,6 +430,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					Direction:     order.TradeDirection(),
 					PoolID:        poolID,
 					PairID:        poolData.PairID,
+					NftID:         order.NftID().String(),
 				}
 				orderStatus = append(orderStatus, newOrder)
 			}

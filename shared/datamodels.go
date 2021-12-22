@@ -768,6 +768,7 @@ type LimitOrderStatus struct {
 	Token1Balance    string `json:"token1balance" bson:"token1balance"`
 	Token2Balance    string `json:"token2balance" bson:"token2balance"`
 	Direction        byte   `json:"direction" bson:"direction"`
+	NftID            string `json:"nftid" bson:"nftid"`
 }
 
 func (model *LimitOrderStatus) Creating() error {
