@@ -1570,3 +1570,12 @@ func DBGetLimitOrderStatusByPairID(pairid string) ([]shared.LimitOrderStatus, er
 	}
 	return tradeStatus, nil
 }
+func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, error) {
+	var tradeStatus []shared.TradeOrderData
+	filter := bson.M{"isswap": bson.M{operator.Eq: false}, "status": bson.M{operator.Eq: 0}, "nftid": bson.M{operator.In: nftIDs}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&tradeStatus, filter)
+	if err != nil {
+		return nil, err
+	}
+	return tradeStatus, nil
+}
