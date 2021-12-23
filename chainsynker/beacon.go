@@ -186,7 +186,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}
 		pdexV3State.ClearCache()
 		params := pdexV3State.Reader().Params()
-		pdexV3State.Reader().PoolPairs()
 		stateV2.StakingPoolsState = pdexV3State.Reader().StakingPools()
 		pools := make(map[string]*shared.PoolPairState)
 		err = json.Unmarshal(pdexV3State.Reader().PoolPairs(), &pools)
