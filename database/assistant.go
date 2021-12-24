@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"encoding/json"
-	"errors"
 
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/kamva/mgm/v3"
@@ -199,7 +198,7 @@ func DBGetTokenPriority() ([]string, error) {
 		return nil, err
 	}
 	if len(datas) == 0 {
-		return result, errors.New("len(datas) == 0")
+		return nil, nil
 	}
 	err = json.Unmarshal([]byte(datas[0].Data), &result)
 	if err != nil {

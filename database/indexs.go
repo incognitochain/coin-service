@@ -416,6 +416,9 @@ func DBCreateTradeIndex() error {
 			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}},
 		},
 		{
+			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}},
+		},
+		{
 			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetExpireAfterSeconds(60 * 5),
 		},

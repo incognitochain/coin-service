@@ -74,10 +74,10 @@ func StartProcessor() {
 			}
 		}
 
-		// err = updateTradeStatus()
-		// if err != nil {
-		// 	panic(err)
-		// }
+		err = updateTradeStatus()
+		if err != nil {
+			panic(err)
+		}
 
 		fmt.Println("process time", time.Since(startTime))
 	}

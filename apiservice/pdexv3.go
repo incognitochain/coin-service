@@ -322,6 +322,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
 			TotalShare:   totalShare,
+			OrderRewards: v.OrderReward,
 		})
 	}
 	respond := APIRespond{
@@ -1138,12 +1139,12 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		return
 	}
 	// dcrate := float64(1)
-	dcrate, tk1Decimal, tk2Decimal, err := getPdecimalRate(buyToken, sellToken)
+	dcrate, tk1Decimal, _, err := getPdecimalRate(buyToken, sellToken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	_ = tk2Decimal
+	// _ = tk2Decimal
 	if !req.Pdecimal {
 		dcrate = 1
 	}
@@ -1295,10 +1296,10 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		if ((rt1/rt)-1)*100 >= 20 {
 			feePRV.IsSignificant = true
 		}
-		feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
-		feePRV.Debug.Rate = rt
-		feePRV.Debug.Rate1 = rt1
-		fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
+		// feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
+		// feePRV.Debug.Rate = rt
+		// feePRV.Debug.Rate1 = rt1
+		// fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
 	}
 	if feeToken.Fee != 0 {
 		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), pools, poolPairStates)
@@ -1312,16 +1313,21 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		if ((rt1/rt)-1)*100 >= 20 {
 			feeToken.IsSignificant = true
 		}
-		feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
-		feeToken.Debug.Rate = rt
-		feeToken.Debug.Rate1 = rt1
-		fmt.Println("feeToken.Debug.ImpactAmount", feeToken.Debug.ImpactAmount, feeToken.Debug.Rate, feeToken.Debug.Rate1)
+		// feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
+		// feeToken.Debug.Rate = rt
+		// feeToken.Debug.Rate1 = rt1
+		// fmt.Println("feeToken.Debug.ImpactAmount", feeToken.Debug.ImpactAmount, feeToken.Debug.Rate, feeToken.Debug.Rate1)
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken
+	var errStr *string
+	if feePRV.Fee == 0 && feeToken.Fee == 0 {
+		e := "no trade route found"
+		errStr = &e
+	}
 	respond := APIRespond{
 		Result: result,
-		Error:  nil,
+		Error:  errStr,
 	}
 	c.JSON(http.StatusOK, respond)
 }
@@ -1708,6 +1714,79 @@ func (pdexv3) PDEState(c *gin.Context) {
 	}
 	respond := APIRespond{
 		Result: pdeState,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) PendingLimit(c *gin.Context) {
+	var req struct {
+		ID []string
+	}
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	tradeList, err := database.DBGetPendingLimitOrderByNftID(req.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	txRequest := []string{}
+	for _, tx := range tradeList {
+		txRequest = append(txRequest, tx.RequestTx)
+	}
+	tradeStatusList, err := database.DBGetTradeStatus(txRequest)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	var result []TradeDataRespond
+	for _, tradeInfo := range tradeList {
+		matchedAmount := uint64(0)
+		var tradeStatus *shared.LimitOrderStatus
+		if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
+			tradeStatus = &t
+		}
+		matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
+		minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
+		trade := TradeDataRespond{
+			RequestTx:           tradeInfo.RequestTx,
+			RespondTxs:          tradeInfo.RespondTxs,
+			RespondTokens:       tradeInfo.RespondTokens,
+			RespondAmounts:      tradeInfo.RespondAmount,
+			WithdrawTxs:         withdrawTxs,
+			PoolID:              tradeInfo.PoolID,
+			PairID:              tradeInfo.PairID,
+			SellTokenID:         tradeInfo.SellTokenID,
+			BuyTokenID:          tradeInfo.BuyTokenID,
+			Amount:              amount,
+			MinAccept:           minAccept,
+			Matched:             matchedAmount,
+			Status:              status,
+			StatusCode:          statusCode,
+			Requestime:          tradeInfo.Requesttime,
+			NFTID:               tradeInfo.NFTID,
+			Fee:                 tradeInfo.Fee,
+			FeeToken:            tradeInfo.FeeToken,
+			Receiver:            tradeInfo.Receiver,
+			IsCompleted:         isCompleted,
+			SellTokenBalance:    sellTokenBl,
+			BuyTokenBalance:     buyTokenBl,
+			SellTokenWithdrawed: sellTokenWD,
+			BuyTokenWithdrawed:  buyTokenWD,
+		}
+		result = append(result, trade)
+	}
+	respond := APIRespond{
+		Result: result,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

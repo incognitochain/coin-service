@@ -193,7 +193,7 @@ func StartOTAIndexing() {
 
 			assignedOTAKeys.Lock()
 			scanOTACoins()
-			// scanTxsSwap()
+			scanTxsSwap()
 			assignedOTAKeys.Unlock()
 		}
 	}
@@ -231,7 +231,7 @@ func scanTxsSwap() {
 	lastTxIndex := GetOTAKeyListMinScannedTxIndex()
 	//scan coins
 	for {
-		txList, err := getTxToProcess(lastTxIndex, 1000)
+		txList, err := getTxToProcess(lastTxIndex, 5000)
 		if err != nil {
 			log.Println(err)
 			continue

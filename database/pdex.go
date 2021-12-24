@@ -780,7 +780,7 @@ func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
 
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction, "nftid": order.NftID},
 		}
 		_, err := mgm.Coll(&shared.LimitOrderStatus{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -1569,4 +1569,25 @@ func DBGetLimitOrderStatusByPairID(pairid string) ([]shared.LimitOrderStatus, er
 		return nil, err
 	}
 	return tradeStatus, nil
+}
+func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, error) {
+	var orders []shared.LimitOrderStatus
+	filter := bson.M{"nftid": bson.M{operator.In: nftIDs}}
+	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&orders, filter)
+	if err != nil {
+		return nil, err
+	}
+	var requestTxs []string
+
+	for _, v := range orders {
+		requestTxs = append(requestTxs, v.RequestTx)
+	}
+
+	list := []shared.TradeOrderData{}
+	filter = bson.M{"requesttx": bson.M{operator.In: requestTxs}}
+	err = mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&list, filter)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }

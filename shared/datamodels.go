@@ -610,6 +610,7 @@ type PoolShareData struct {
 	NFTID            string            `json:"nftid" bson:"nftid"`
 	Amount           uint64            `json:"amount" bson:"amount"`
 	TradingFee       map[string]uint64 `json:"tradingfee" bson:"tradingfee"`
+	OrderReward      map[string]uint64 `json:"orderreward" bson:"orderreward"`
 	Version          int               `json:"version" bson:"version"`
 }
 
@@ -767,6 +768,7 @@ type LimitOrderStatus struct {
 	Token1Balance    string `json:"token1balance" bson:"token1balance"`
 	Token2Balance    string `json:"token2balance" bson:"token2balance"`
 	Direction        byte   `json:"direction" bson:"direction"`
+	NftID            string `json:"nftid" bson:"nftid"`
 }
 
 func (model *LimitOrderStatus) Creating() error {
