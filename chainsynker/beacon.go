@@ -2,6 +2,7 @@ package chainsynker
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
@@ -430,7 +431,11 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					Direction:     order.TradeDirection(),
 					PoolID:        poolID,
 					PairID:        poolData.PairID,
-					NftID:         order.NftID().String(),
+				}
+				if order.NftID().IsZeroValue() {
+					newOrder.NftID = hex.EncodeToString(order.AccessOTA())
+				} else {
+					newOrder.NftID = order.NftID().String()
 				}
 				orderStatus = append(orderStatus, newOrder)
 			}
