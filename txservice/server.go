@@ -291,7 +291,7 @@ func APIGetTxStatus(c *gin.Context) {
 		errStr := err.Error()
 		respond := APIRespond{
 			Result: TXSTATUS_UNKNOWN,
-			Error:  &errStr,
+			ErrMsg: &errStr,
 		}
 		c.JSON(http.StatusOK, respond)
 		return
@@ -311,7 +311,7 @@ func APIGetTxStatus(c *gin.Context) {
 
 	respond := APIRespond{
 		Result: status,
-		Error:  errStr,
+		ErrMsg: errStr,
 	}
 	c.JSON(http.StatusOK, respond)
 }
@@ -380,7 +380,7 @@ func APIRetrieveTx(c *gin.Context) {
 		errStr := err.Error()
 		respond := APIRespond{
 			Result: TXSTATUS_UNKNOWN,
-			Error:  &errStr,
+			ErrMsg: &errStr,
 		}
 		c.JSON(http.StatusOK, respond)
 		return
@@ -388,7 +388,6 @@ func APIRetrieveTx(c *gin.Context) {
 
 	respond := APIRespond{
 		Result: txData.Raw,
-		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)
 }
@@ -511,4 +510,5 @@ func buildGinErrorRespond(err error) *APIRespond {
 type APIRespond struct {
 	Result interface{}
 	Error  *string
+	ErrMsg *string
 }
