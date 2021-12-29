@@ -1747,6 +1747,14 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	if len(tradeList) == 0 {
+		respond := APIRespond{
+			Result: []TradeDataRespond{},
+			Error:  nil,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
+	}
 	txRequest := []string{}
 	for _, tx := range tradeList {
 		txRequest = append(txRequest, tx.RequestTx)

@@ -1578,7 +1578,9 @@ func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, er
 		return nil, err
 	}
 	var requestTxs []string
-
+	if len(orders) == 0 {
+		return nil, nil
+	}
 	for _, v := range orders {
 		requestTxs = append(requestTxs, v.RequestTx)
 	}
