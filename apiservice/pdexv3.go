@@ -384,28 +384,34 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			}
 			amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
 			minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
+			uniqIdx := getUniqueIdx(tradeInfo.RespondTxs)
 			trade := TradeDataRespond{
-				RequestTx:      tradeInfo.RequestTx,
-				RespondTxs:     tradeInfo.RespondTxs,
-				RespondTokens:  tradeInfo.RespondTokens,
-				RespondAmounts: tradeInfo.RespondAmount,
-				WithdrawTxs:    nil,
-				PoolID:         tradeInfo.PoolID,
-				PairID:         tradeInfo.PairID,
-				SellTokenID:    tradeInfo.SellTokenID,
-				BuyTokenID:     tradeInfo.BuyTokenID,
-				Amount:         amount,
-				MinAccept:      minAccept,
-				Matched:        matchedAmount,
-				Status:         status,
-				StatusCode:     tradeInfo.Status,
-				Requestime:     tradeInfo.Requesttime,
-				NFTID:          tradeInfo.NFTID,
-				Fee:            tradeInfo.Fee,
-				FeeToken:       tradeInfo.FeeToken,
-				Receiver:       tradeInfo.Receiver,
-				IsCompleted:    isCompleted,
-				TradingPath:    tradeInfo.TradingPath,
+				RequestTx: tradeInfo.RequestTx,
+				// RespondTxs: tradeInfo.RespondTxs,
+				// RespondTokens:  tradeInfo.RespondTokens,
+				// RespondAmounts: tradeInfo.RespondAmount,
+				WithdrawTxs: nil,
+				PoolID:      tradeInfo.PoolID,
+				PairID:      tradeInfo.PairID,
+				SellTokenID: tradeInfo.SellTokenID,
+				BuyTokenID:  tradeInfo.BuyTokenID,
+				Amount:      amount,
+				MinAccept:   minAccept,
+				Matched:     matchedAmount,
+				Status:      status,
+				StatusCode:  tradeInfo.Status,
+				Requestime:  tradeInfo.Requesttime,
+				NFTID:       tradeInfo.NFTID,
+				Fee:         tradeInfo.Fee,
+				FeeToken:    tradeInfo.FeeToken,
+				Receiver:    tradeInfo.Receiver,
+				IsCompleted: isCompleted,
+				TradingPath: tradeInfo.TradingPath,
+			}
+			for _, v := range uniqIdx {
+				trade.RespondTxs = append(trade.RespondTxs, tradeInfo.RespondTxs[v])
+				trade.RespondTokens = append(trade.RespondTokens, tradeInfo.RespondTokens[v])
+				trade.RespondAmounts = append(trade.RespondAmounts, tradeInfo.RespondAmount[v])
 			}
 			result = append(result, trade)
 		}
@@ -1458,28 +1464,35 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 				isCompleted = true
 			}
 
+			uniqIdx := getUniqueIdx(tradeInfo.RespondTxs)
+
 			trade := TradeDataRespond{
-				RequestTx:      tradeInfo.RequestTx,
-				RespondTxs:     tradeInfo.RespondTxs,
-				RespondTokens:  tradeInfo.RespondTokens,
-				RespondAmounts: tradeInfo.RespondAmount,
-				WithdrawTxs:    nil,
-				PoolID:         tradeInfo.PoolID,
-				PairID:         tradeInfo.PairID,
-				SellTokenID:    tradeInfo.SellTokenID,
-				BuyTokenID:     tradeInfo.BuyTokenID,
-				Amount:         amount,
-				MinAccept:      minAccept,
-				Matched:        matchedAmount,
-				Status:         status,
-				StatusCode:     tradeInfo.Status,
-				Requestime:     tradeInfo.Requesttime,
-				NFTID:          tradeInfo.NFTID,
-				Fee:            tradeInfo.Fee,
-				FeeToken:       tradeInfo.FeeToken,
-				Receiver:       tradeInfo.Receiver,
-				IsCompleted:    isCompleted,
-				TradingPath:    tradeInfo.TradingPath,
+				RequestTx: tradeInfo.RequestTx,
+				// RespondTxs:     tradeInfo.RespondTxs,
+				// RespondTokens:  tradeInfo.RespondTokens,
+				// RespondAmounts: tradeInfo.RespondAmount,
+				WithdrawTxs: nil,
+				PoolID:      tradeInfo.PoolID,
+				PairID:      tradeInfo.PairID,
+				SellTokenID: tradeInfo.SellTokenID,
+				BuyTokenID:  tradeInfo.BuyTokenID,
+				Amount:      amount,
+				MinAccept:   minAccept,
+				Matched:     matchedAmount,
+				Status:      status,
+				StatusCode:  tradeInfo.Status,
+				Requestime:  tradeInfo.Requesttime,
+				NFTID:       tradeInfo.NFTID,
+				Fee:         tradeInfo.Fee,
+				FeeToken:    tradeInfo.FeeToken,
+				Receiver:    tradeInfo.Receiver,
+				IsCompleted: isCompleted,
+				TradingPath: tradeInfo.TradingPath,
+			}
+			for _, v := range uniqIdx {
+				trade.RespondTxs = append(trade.RespondTxs, tradeInfo.RespondTxs[v])
+				trade.RespondTokens = append(trade.RespondTokens, tradeInfo.RespondTokens[v])
+				trade.RespondAmounts = append(trade.RespondAmounts, tradeInfo.RespondAmount[v])
 			}
 			result = append(result, trade)
 		} else {
