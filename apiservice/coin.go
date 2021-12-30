@@ -294,8 +294,10 @@ func APIGetTokenList(c *gin.Context) {
 		for _, v := range extraTokenInfo {
 			extraTokenInfoMap[v.TokenID] = v
 		}
+		chainTkListMap := make(map[string]struct{})
 
 		for _, v := range tokenList {
+			chainTkListMap[v.TokenID] = struct{}{}
 			currPrice, _ := strconv.ParseFloat(v.CurrentPrice, 64)
 			pastPrice, _ := strconv.ParseFloat(v.PastPrice, 64)
 			percent24h := float64(0)
@@ -403,7 +405,44 @@ func APIGetTokenList(c *gin.Context) {
 				}
 			}
 		}
-		err = cacheStoreCustom(tokenInfoKey+string(allToken), datalist, 40*time.Second)
+
+		for _, tkInfo := range extraTokenInfo {
+			if _, ok := chainTkListMap[tkInfo.TokenID]; !ok {
+				tkdata := TokenInfo{
+					TokenID:      tkInfo.TokenID,
+					Name:         tkInfo.Name,
+					Symbol:       tkInfo.Symbol,
+					PSymbol:      tkInfo.PSymbol,
+					PDecimals:    int(tkInfo.PDecimals),
+					Decimals:     tkInfo.Decimals,
+					ContractID:   tkInfo.ContractID,
+					Status:       tkInfo.Status,
+					Type:         tkInfo.Type,
+					CurrencyType: tkInfo.CurrencyType,
+					Default:      tkInfo.Default,
+					Verified:     tkInfo.Verified,
+					UserID:       tkInfo.UserID,
+
+					PriceUsd:           tkInfo.PriceUsd,
+					PercentChange1h:    tkInfo.PercentChange1h,
+					PercentChangePrv1h: tkInfo.PercentChangePrv1h,
+					CurrentPrvPool:     tkInfo.CurrentPrvPool,
+					PricePrv:           tkInfo.PricePrv,
+					Volume24:           tkInfo.Volume24,
+					ParentID:           tkInfo.ParentID,
+					OriginalSymbol:     tkInfo.OriginalSymbol,
+					LiquidityReward:    tkInfo.LiquidityReward,
+
+					Network: tkInfo.Network,
+				}
+				err = json.UnmarshalFromString(tkInfo.ListChildToken, &tkdata.ListChildToken)
+				if err != nil {
+					panic(err)
+				}
+				datalist = append(datalist, tkdata)
+			}
+		}
+		err = cacheStoreCustom(tokenInfoKey+string(allToken), datalist, 20*time.Second)
 		if err != nil {
 			log.Println(err)
 		}
