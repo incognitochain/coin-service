@@ -281,10 +281,31 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 				}
 			}
 			if rate == 0 {
+				isInDefaultPool := false
+				for p, _ := range defaultPools {
+					if strings.Contains(p, v.TokenID) {
+						isInDefaultPool = true
+						break
+					}
+				}
+				newPools := []*shared.Pdexv3PoolPairWithId{}
+				newPoolPairStates := make(map[string]*pdex.PoolPairState)
+				if isInDefaultPool {
+					for _, p := range pools {
+						if _, ok := defaultPools[p.PoolID]; ok {
+							newPools = append(newPools, p)
+							newPoolPairStates[p.PoolID] = poolPairStates[p.PoolID]
+						}
+					}
+				} else {
+					newPools = pools
+					newPoolPairStates = poolPairStates
+				}
+
 				_, re1 := pathfinder.FindGoodTradePath(
 					pdexv3Meta.MaxTradePathLength,
-					pools,
-					poolPairStates,
+					newPools,
+					newPoolPairStates,
 					baseToken,
 					v.TokenID,
 					uint64(math.Pow10(tkbDecimal+1)))
