@@ -170,7 +170,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 				Volume:         0,
 				PriceChange24h: 0,
 				AMP:            d.AMP,
-				Price:          calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100) * dcrate,
+				Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
 				TotalShare:     totalShare,
 			}
 
@@ -925,7 +925,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			PriceChange24h: 0,
 			Volume:         0,
 			AMP:            v.AMP,
-			Price:          calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100) * dcrate,
+			Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
 			TotalShare:     totalShare,
 		}
 

@@ -263,7 +263,8 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						poolAmountTkBase = tk1Amount
 						tk1VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
 						tk2VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
-						rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
 					} else {
 						tk1Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
 						tk2Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
@@ -277,7 +278,8 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						poolAmountTkBase = tk2Amount
 						tk1VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
 						tk2VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
-						rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
 					}
 					if rate > 0 {
 						rate = rate * dcrate
@@ -317,7 +319,8 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						poolAmountTkBase = tk1Amount
 						tk1VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
 						tk2VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
-						rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
 					} else {
 						tk1Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
 						tk2Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
@@ -331,7 +334,8 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						poolAmountTkBase = tk2Amount
 						tk1VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
 						tk2VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
-						rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
 					}
 					if rate > 0 {
 						rate = rate * dcrate * prvPrice
@@ -493,11 +497,15 @@ func getPool(poolID string) *shared.PoolInfoData {
 	return nil
 }
 
-func calcAMPRate(virtA, virtB, sellAmount float64) float64 {
-	var result float64
-	k := virtA * virtB
-	result = virtB - (k / (virtA + sellAmount))
-	return result / sellAmount
+// func calcAMPRate(virtA, virtB, sellAmount float64) float64 {
+// 	var result float64
+// 	k := virtA * virtB
+// 	result = virtB - (k / (virtA + sellAmount))
+// 	return result / sellAmount
+// }
+
+func calcRateSimple(virtA, virtB float64) float64 {
+	return virtB / virtA
 }
 
 func getPRVPrice(defaultPools map[string]struct{}, baseToken string) float64 {
@@ -530,7 +538,7 @@ retry:
 				poolAmountTkBase = tk1Amount
 				tk1VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
 				tk2VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
-				result = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+				result = calcRateSimple(float64(tk1VA), float64(tk2VA))
 			} else {
 				tk1Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
 				tk2Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
@@ -544,7 +552,7 @@ retry:
 				poolAmountTkBase = tk2Amount
 				tk1VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
 				tk2VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
-				result = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+				result = calcRateSimple(float64(tk1VA), float64(tk2VA))
 			}
 		}
 	}

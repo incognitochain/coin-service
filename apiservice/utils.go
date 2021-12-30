@@ -213,11 +213,15 @@ func extractPubkeyFromKey(key string, otakeyOnly bool) (string, error) {
 	return result, nil
 }
 
-func calcAMPRate(virtA, virtB, sellAmount float64) float64 {
-	var result float64
-	k := virtA * virtB
-	result = virtB - (k / (virtA + sellAmount))
-	return result / sellAmount
+// func calcAMPRate(virtA, virtB, sellAmount float64) float64 {
+// 	var result float64
+// 	k := virtA * virtB
+// 	result = virtB - (k / (virtA + sellAmount))
+// 	return result / sellAmount
+// }
+
+func calcRateSimple(virtA, virtB float64) float64 {
+	return virtB / virtA
 }
 
 func willSwapTokenPlace(token1ID, token2ID string, tokenPriorityList []string) bool {
