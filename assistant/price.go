@@ -302,6 +302,13 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 			v.PastPrice = v.CurrentPrice
 			v.UpdatedAt = time.Now().UTC()
 		}
+		currPrice, _ := strconv.ParseFloat(v.CurrentPrice, 64)
+		pastPrice, _ := strconv.ParseFloat(v.PastPrice, 64)
+
+		if pastPrice == 0 && currPrice != 0 {
+			v.PastPrice = v.CurrentPrice
+			v.UpdatedAt = time.Now().UTC()
+		}
 		result = append(result, v)
 
 	}
