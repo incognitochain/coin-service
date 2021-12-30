@@ -38,7 +38,7 @@ func StartAssistant() {
 			panic(err)
 		}
 
-		tokenInfoUpdate, err := getInternalTokenPrice()
+		tokenInfoUpdate, err := getInternalTokenPrice(extraTokenInfo)
 		if err != nil {
 			panic(err)
 		}

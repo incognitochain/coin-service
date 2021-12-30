@@ -189,7 +189,7 @@ func getPairRanking() ([]shared.PairRanking, error) {
 	return result, nil
 }
 
-func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
+func getInternalTokenPrice(extraTokenInfo []shared.ExtraTokenInfo) ([]shared.TokenInfoData, error) {
 	var result []shared.TokenInfoData
 
 	baseToken, err := database.DBGetBasePriceToken()
@@ -345,7 +345,11 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 
 				//all pools
 				if rate == 0 {
-
+					for _, tk := range extraTokenInfo {
+						if tk.TokenID == v.TokenID {
+							rate = tk.PriceUsd
+						}
+					}
 				}
 			}
 			v.CurrentPrice = fmt.Sprintf("%f", rate)
