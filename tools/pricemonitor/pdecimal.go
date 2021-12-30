@@ -64,10 +64,10 @@ retry:
 	resp.Body.Close()
 	var result []ExtraTokenInfo
 	for _, v := range decimal.Result {
-		listChildTkBytes, err := json.Marshal(v.ListChildToken)
-		if err != nil {
-			return nil, err
-		}
+		// listChildTkBytes, err := json.Marshal(v.ListChildToken)
+		// if err != nil {
+		// 	return nil, err
+		// }
 		result = append(result, ExtraTokenInfo{
 			TokenID:            v.TokenID,
 			Name:               v.Name,
@@ -82,7 +82,6 @@ retry:
 			Default:            v.Default,
 			Verified:           v.Verified,
 			UserID:             v.UserID,
-			ListChildToken:     string(listChildTkBytes),
 			PriceUsd:           v.PriceUsd,
 			PercentChange1h:    v.PercentChange1h,
 			PercentChangePrv1h: v.PercentChangePrv1h,

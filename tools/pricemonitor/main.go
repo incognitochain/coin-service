@@ -220,15 +220,31 @@ func ProcessPrice(state *jsonresult.CurrentPDEState, tokenID string) float64 {
 func APIGetTokens(c *gin.Context) {
 	c.Header("access-control-allow-origin", "*")
 	c.Header("Access-Control-Allow-Methods", "PUT, POST, GET, DELETE, OPTIONS")
-
-	tokenInfoListLock.Lock()
-	list := []*ExtraTokenInfo{}
-	for _, v := range tokenInfoList {
-		list = append(list, v)
+	var result struct {
+		Result []ExtraTokenInfo
+		Error  *string
 	}
-	tokenInfoListLock.Unlock()
+retry:
+	resp, err := http.Get("https://api-coinservice.incognito.org/coins/tokenlist")
+	if err != nil {
+		log.Println(err)
+		time.Sleep(2 * time.Second)
+		goto retry
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+		goto retry
+	}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		log.Println(err)
+		goto retry
+	}
+	resp.Body.Close()
+
 	respond := APIRespond{
-		Result: list,
+		Result: result.Result,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

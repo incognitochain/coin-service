@@ -31,7 +31,6 @@ type ExtraTokenInfo struct {
 	LiquidityReward    float64 `json:"LiquidityReward" `
 
 	Network         string `json:"Network" `
-	ListChildToken  string `json:"ListChildToken" `
 	LastPiceUpdated time.Time
 	PriceUsd24h     float64
 }
