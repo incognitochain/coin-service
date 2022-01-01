@@ -294,7 +294,7 @@ func getInternalTokenPrice(extraTokenInfo []shared.ExtraTokenInfo) ([]shared.Tok
 					}
 				}
 
-				dcrate, _, _, err := getPdecimalRate(v.TokenID, common.PRVCoinID.String())
+				dcrate, _, tkbDecimal, err := getPdecimalRate(v.TokenID, common.PRVCoinID.String())
 				if err != nil {
 					log.Println("getPdecimalRate", err)
 					// continue
@@ -348,6 +348,18 @@ func getInternalTokenPrice(extraTokenInfo []shared.ExtraTokenInfo) ([]shared.Tok
 					for _, tk := range extraTokenInfo {
 						if tk.TokenID == v.TokenID {
 							rate = tk.PriceUsd
+						}
+					}
+					if rate == 0 {
+						_, re1 := pathfinder.FindGoodTradePath(
+							pdexv3Meta.MaxTradePathLength,
+							pools,
+							poolPairStates,
+							baseToken,
+							v.TokenID,
+							uint64(math.Pow10(tkbDecimal+1)))
+						if re1 > 0 {
+							rate, _, _ = getRateMinimum(v.TokenID, baseToken, re1, pools, poolPairStates)
 						}
 					}
 				}
