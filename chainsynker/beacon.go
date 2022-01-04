@@ -119,49 +119,51 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 			prevStateV2 = &shared.PDEStateV2{
 				StakingPoolsState: make(map[string]*pdex.StakingPoolState),
 			}
-			if pdexV3State == nil {
-				prevBeaconFeatureStateDB, err := Localnode.GetBlockchain().GetBestStateBeaconFeatureStateDBByHeight(height-1, Localnode.GetBlockchain().GetBeaconChainDatabase())
-				if err != nil {
-					log.Println(err)
-				}
-				params, err := statedb.GetPdexv3Params(prevBeaconFeatureStateDB)
-				if err != nil {
-					panic(err)
-				}
-				for stakingPoolID := range params.StakingPoolsShare() {
-					stakers, liquidity, err := initStakers(stakingPoolID, prevBeaconFeatureStateDB)
+			if height > config.Param().PDexParams.Pdexv3BreakPointHeight+10 {
+				if pdexV3State == nil {
+					prevBeaconFeatureStateDB, err := Localnode.GetBlockchain().GetBestStateBeaconFeatureStateDBByHeight(height-1, Localnode.GetBlockchain().GetBeaconChainDatabase())
+					if err != nil {
+						log.Println(err)
+					}
+					params, err := statedb.GetPdexv3Params(prevBeaconFeatureStateDB)
 					if err != nil {
 						panic(err)
 					}
-					rewardsPerShare, err := statedb.GetPdexv3StakingPoolRewardsPerShare(prevBeaconFeatureStateDB, stakingPoolID)
+					for stakingPoolID := range params.StakingPoolsShare() {
+						stakers, liquidity, err := initStakers(stakingPoolID, prevBeaconFeatureStateDB)
+						if err != nil {
+							panic(err)
+						}
+						rewardsPerShare, err := statedb.GetPdexv3StakingPoolRewardsPerShare(prevBeaconFeatureStateDB, stakingPoolID)
+						if err != nil {
+							panic(err)
+						}
+						prevStateV2.StakingPoolsState[stakingPoolID] = pdex.NewStakingPoolStateWithValue(liquidity, stakers, rewardsPerShare)
+					}
+					poolPairs, err := initPoolPairStatesFromDB(prevBeaconFeatureStateDB)
 					if err != nil {
 						panic(err)
 					}
-					prevStateV2.StakingPoolsState[stakingPoolID] = pdex.NewStakingPoolStateWithValue(liquidity, stakers, rewardsPerShare)
+					pools := make(map[string]*shared.PoolPairState)
+					d, err := json.Marshal(poolPairs)
+					if err != nil {
+						panic(err)
+					}
+					err = json.Unmarshal(d, &pools)
+					if err != nil {
+						panic(err)
+					}
+					prevStateV2.PoolPairs = pools
+				} else {
+					prevPdexv3State := pdexV3State.Clone()
+					pools := make(map[string]*shared.PoolPairState)
+					err = json.Unmarshal(prevPdexv3State.Reader().PoolPairs(), &pools)
+					if err != nil {
+						panic(err)
+					}
+					prevStateV2.PoolPairs = pools
+					prevStateV2.StakingPoolsState = prevPdexv3State.Reader().StakingPools()
 				}
-				poolPairs, err := initPoolPairStatesFromDB(prevBeaconFeatureStateDB)
-				if err != nil {
-					panic(err)
-				}
-				pools := make(map[string]*shared.PoolPairState)
-				d, err := json.Marshal(poolPairs)
-				if err != nil {
-					panic(err)
-				}
-				err = json.Unmarshal(d, &pools)
-				if err != nil {
-					panic(err)
-				}
-				prevStateV2.PoolPairs = pools
-			} else {
-				prevPdexv3State := pdexV3State.Clone()
-				pools := make(map[string]*shared.PoolPairState)
-				err = json.Unmarshal(prevPdexv3State.Reader().PoolPairs(), &pools)
-				if err != nil {
-					panic(err)
-				}
-				prevStateV2.PoolPairs = pools
-				prevStateV2.StakingPoolsState = prevPdexv3State.Reader().StakingPools()
 			}
 
 		}
@@ -187,7 +189,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}
 		pdexV3State.ClearCache()
 		params := pdexV3State.Reader().Params()
-		pdexV3State.Reader().PoolPairs()
 		stateV2.StakingPoolsState = pdexV3State.Reader().StakingPools()
 		pools := make(map[string]*shared.PoolPairState)
 		err = json.Unmarshal(pdexV3State.Reader().PoolPairs(), &pools)

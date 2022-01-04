@@ -170,7 +170,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 				Volume:         0,
 				PriceChange24h: 0,
 				AMP:            d.AMP,
-				Price:          calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100) * dcrate,
+				Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
 				TotalShare:     totalShare,
 			}
 
@@ -410,28 +410,34 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			}
 			amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
 			minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
+			uniqIdx := getUniqueIdx(tradeInfo.RespondTxs)
 			trade := TradeDataRespond{
-				RequestTx:      tradeInfo.RequestTx,
-				RespondTxs:     tradeInfo.RespondTxs,
-				RespondTokens:  tradeInfo.RespondTokens,
-				RespondAmounts: tradeInfo.RespondAmount,
-				WithdrawTxs:    nil,
-				PoolID:         tradeInfo.PoolID,
-				PairID:         tradeInfo.PairID,
-				SellTokenID:    tradeInfo.SellTokenID,
-				BuyTokenID:     tradeInfo.BuyTokenID,
-				Amount:         amount,
-				MinAccept:      minAccept,
-				Matched:        matchedAmount,
-				Status:         status,
-				StatusCode:     tradeInfo.Status,
-				Requestime:     tradeInfo.Requesttime,
-				NFTID:          tradeInfo.NFTID,
-				Fee:            tradeInfo.Fee,
-				FeeToken:       tradeInfo.FeeToken,
-				Receiver:       tradeInfo.Receiver,
-				IsCompleted:    isCompleted,
-				TradingPath:    tradeInfo.TradingPath,
+				RequestTx: tradeInfo.RequestTx,
+				// RespondTxs: tradeInfo.RespondTxs,
+				// RespondTokens:  tradeInfo.RespondTokens,
+				// RespondAmounts: tradeInfo.RespondAmount,
+				WithdrawTxs: nil,
+				PoolID:      tradeInfo.PoolID,
+				PairID:      tradeInfo.PairID,
+				SellTokenID: tradeInfo.SellTokenID,
+				BuyTokenID:  tradeInfo.BuyTokenID,
+				Amount:      amount,
+				MinAccept:   minAccept,
+				Matched:     matchedAmount,
+				Status:      status,
+				StatusCode:  tradeInfo.Status,
+				Requestime:  tradeInfo.Requesttime,
+				NFTID:       tradeInfo.NFTID,
+				Fee:         tradeInfo.Fee,
+				FeeToken:    tradeInfo.FeeToken,
+				Receiver:    tradeInfo.Receiver,
+				IsCompleted: isCompleted,
+				TradingPath: tradeInfo.TradingPath,
+			}
+			for _, v := range uniqIdx {
+				trade.RespondTxs = append(trade.RespondTxs, tradeInfo.RespondTxs[v])
+				trade.RespondTokens = append(trade.RespondTokens, tradeInfo.RespondTokens[v])
+				trade.RespondAmounts = append(trade.RespondAmounts, tradeInfo.RespondAmount[v])
 			}
 			result = append(result, trade)
 		}
@@ -1022,7 +1028,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			PriceChange24h: 0,
 			Volume:         0,
 			AMP:            v.AMP,
-			Price:          calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100) * dcrate,
+			Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
 			TotalShare:     totalShare,
 		}
 
@@ -1242,12 +1248,12 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		return
 	}
 	// dcrate := float64(1)
-	dcrate, tk1Decimal, tk2Decimal, err := getPdecimalRate(buyToken, sellToken)
+	dcrate, tk1Decimal, _, err := getPdecimalRate(buyToken, sellToken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	_ = tk2Decimal
+	// _ = tk2Decimal
 	if !req.Pdecimal {
 		dcrate = 1
 	}
@@ -1399,10 +1405,10 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		if ((rt1/rt)-1)*100 >= 20 {
 			feePRV.IsSignificant = true
 		}
-		feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
-		feePRV.Debug.Rate = rt
-		feePRV.Debug.Rate1 = rt1
-		fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
+		// feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
+		// feePRV.Debug.Rate = rt
+		// feePRV.Debug.Rate1 = rt1
+		// fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
 	}
 	if feeToken.Fee != 0 {
 		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), pools, poolPairStates)
@@ -1416,16 +1422,21 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		if ((rt1/rt)-1)*100 >= 20 {
 			feeToken.IsSignificant = true
 		}
-		feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
-		feeToken.Debug.Rate = rt
-		feeToken.Debug.Rate1 = rt1
-		fmt.Println("feeToken.Debug.ImpactAmount", feeToken.Debug.ImpactAmount, feeToken.Debug.Rate, feeToken.Debug.Rate1)
+		// feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
+		// feeToken.Debug.Rate = rt
+		// feeToken.Debug.Rate1 = rt1
+		// fmt.Println("feeToken.Debug.ImpactAmount", feeToken.Debug.ImpactAmount, feeToken.Debug.Rate, feeToken.Debug.Rate1)
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken
+	var errStr *string
+	if feePRV.Fee == 0 && feeToken.Fee == 0 {
+		e := "no trade route found"
+		errStr = &e
+	}
 	respond := APIRespond{
 		Result: result,
-		Error:  nil,
+		Error:  errStr,
 	}
 	c.JSON(http.StatusOK, respond)
 }
@@ -1556,28 +1567,35 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 				isCompleted = true
 			}
 
+			uniqIdx := getUniqueIdx(tradeInfo.RespondTxs)
+
 			trade := TradeDataRespond{
-				RequestTx:      tradeInfo.RequestTx,
-				RespondTxs:     tradeInfo.RespondTxs,
-				RespondTokens:  tradeInfo.RespondTokens,
-				RespondAmounts: tradeInfo.RespondAmount,
-				WithdrawTxs:    nil,
-				PoolID:         tradeInfo.PoolID,
-				PairID:         tradeInfo.PairID,
-				SellTokenID:    tradeInfo.SellTokenID,
-				BuyTokenID:     tradeInfo.BuyTokenID,
-				Amount:         amount,
-				MinAccept:      minAccept,
-				Matched:        matchedAmount,
-				Status:         status,
-				StatusCode:     tradeInfo.Status,
-				Requestime:     tradeInfo.Requesttime,
-				NFTID:          tradeInfo.NFTID,
-				Fee:            tradeInfo.Fee,
-				FeeToken:       tradeInfo.FeeToken,
-				Receiver:       tradeInfo.Receiver,
-				IsCompleted:    isCompleted,
-				TradingPath:    tradeInfo.TradingPath,
+				RequestTx: tradeInfo.RequestTx,
+				// RespondTxs:     tradeInfo.RespondTxs,
+				// RespondTokens:  tradeInfo.RespondTokens,
+				// RespondAmounts: tradeInfo.RespondAmount,
+				WithdrawTxs: nil,
+				PoolID:      tradeInfo.PoolID,
+				PairID:      tradeInfo.PairID,
+				SellTokenID: tradeInfo.SellTokenID,
+				BuyTokenID:  tradeInfo.BuyTokenID,
+				Amount:      amount,
+				MinAccept:   minAccept,
+				Matched:     matchedAmount,
+				Status:      status,
+				StatusCode:  tradeInfo.Status,
+				Requestime:  tradeInfo.Requesttime,
+				NFTID:       tradeInfo.NFTID,
+				Fee:         tradeInfo.Fee,
+				FeeToken:    tradeInfo.FeeToken,
+				Receiver:    tradeInfo.Receiver,
+				IsCompleted: isCompleted,
+				TradingPath: tradeInfo.TradingPath,
+			}
+			for _, v := range uniqIdx {
+				trade.RespondTxs = append(trade.RespondTxs, tradeInfo.RespondTxs[v])
+				trade.RespondTokens = append(trade.RespondTokens, tradeInfo.RespondTokens[v])
+				trade.RespondAmounts = append(trade.RespondAmounts, tradeInfo.RespondAmount[v])
 			}
 			result = append(result, trade)
 		} else {
@@ -1830,6 +1848,14 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 	tradeList, err := database.DBGetPendingLimitOrderByNftID(req.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	if len(tradeList) == 0 {
+		respond := APIRespond{
+			Result: []TradeDataRespond{},
+			Error:  nil,
+		}
+		c.JSON(http.StatusOK, respond)
 		return
 	}
 	txRequest := []string{}

@@ -1,6 +1,7 @@
 package trade
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -36,7 +37,7 @@ func StartProcessor() {
 	for {
 		time.Sleep(10 * time.Second)
 		startTime := time.Now()
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 10000)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 1000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -74,10 +75,10 @@ func StartProcessor() {
 			}
 		}
 
-		// err = updateTradeStatus()
-		// if err != nil {
-		// 	panic(err)
-		// }
+		err = updateTradeStatus()
+		if err != nil {
+			panic(err)
+		}
 
 		fmt.Println("process time", time.Since(startTime))
 	}
@@ -100,7 +101,7 @@ func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 		"_id":      bson.M{operator.Gt: obID},
 		"metatype": bson.M{operator.In: metas},
 	}
-	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(context.Background(), &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"_id", 1}},
 		Limit: &limit,
 	})
