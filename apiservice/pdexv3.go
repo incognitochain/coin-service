@@ -1349,20 +1349,46 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
-
+	var priorityTokens []string
+	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
+		priorityTokens, err = database.DBGetTokenPriority()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(tokenPriorityKey, priorityTokens)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
+	tokenIDs := strings.Split(poolid, "-")
+	token1ID := tokenIDs[0]
+	token2ID := tokenIDs[1]
 	var result []PdexV3PriceHistoryRespond
 
+	willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
 	for _, v := range analyticsData.Result {
 		tm, _ := time.Parse(time.RFC3339, v.Timestamp)
-
-		var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
-			Timestamp: tm.Unix(),
-			High:      v.High,
-			Low:       v.Low,
-			Open:      v.Open,
-			Close:     v.Close,
+		if willSwap {
+			var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
+				Timestamp: tm.Unix(),
+				High:      1 / v.High,
+				Low:       1 / v.Low,
+				Open:      1 / v.Open,
+				Close:     1 / v.Close,
+			}
+			result = append(result, pdexV3PriceHistoryRespond)
+		} else {
+			var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
+				Timestamp: tm.Unix(),
+				High:      v.High,
+				Low:       v.Low,
+				Open:      v.Open,
+				Close:     v.Close,
+			}
+			result = append(result, pdexV3PriceHistoryRespond)
 		}
-		result = append(result, pdexV3PriceHistoryRespond)
 	}
 
 	respond := APIRespond{
