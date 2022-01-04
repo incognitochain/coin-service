@@ -30,7 +30,7 @@ func getPriceAgainstPRV(sellToken string, pdexState jsonresult.PdexState) [3]*bi
 
 		// compare normalized PRV reserve against minPRVReserve -> compare PRV vReserve * baseAmplifer against minPRVReserve * amplifier rate
 		temp1 := big.NewInt(0).Mul(virtualPRVReserve, big.NewInt(BaseAmplifier))
-		temp2 := big.NewInt(0).Mul(big.NewInt(0).SetUint64(pdexState.Params.MinPRVReserve), big.NewInt(0).SetUint64(uint64(pair.State.Amplifier)))
+		temp2 := big.NewInt(0).Mul(big.NewInt(0).SetUint64(pdexState.Params.MinPRVReserveTradingRate), big.NewInt(0).SetUint64(uint64(pair.State.Amplifier)))
 		if temp1.Cmp(temp2) < 0 {
 			continue
 		}

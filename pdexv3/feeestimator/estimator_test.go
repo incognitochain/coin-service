@@ -127,9 +127,9 @@ func TestEstimator(t *testing.T) {
 				feeInPRV:   true,
 				pdexState: jsonresult.PdexState{
 					Params: jsonresult.PdexParams{
-						DefaultFeeRateBPS:  15,
-						PRVDiscountPercent: 25,
-						MinPRVReserve:      200,
+						DefaultFeeRateBPS:        15,
+						PRVDiscountPercent:       25,
+						MinPRVReserveTradingRate: 200,
 					},
 					PoolPairs: map[string]*jsonresult.PoolPair{
 						"ETH-PRV": {
@@ -155,9 +155,9 @@ func TestEstimator(t *testing.T) {
 				feeInPRV:   true,
 				pdexState: jsonresult.PdexState{
 					Params: jsonresult.PdexParams{
-						DefaultFeeRateBPS:  15,
-						PRVDiscountPercent: 25,
-						MinPRVReserve:      200,
+						DefaultFeeRateBPS:        15,
+						PRVDiscountPercent:       25,
+						MinPRVReserveTradingRate: 200,
 					},
 					PoolPairs: map[string]*jsonresult.PoolPair{},
 				},
