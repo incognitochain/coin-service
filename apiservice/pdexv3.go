@@ -1155,6 +1155,29 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		dcrate = 1
 	}
 
+	var defaultPools map[string]struct{}
+	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
+		defaultPools, err = database.DBGetDefaultPool()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(defaultPoolsKey, defaultPools)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
+	var newPools []*shared.Pdexv3PoolPairWithId
+	for _, pool := range pools {
+		if _, ok := defaultPools[pool.PoolID]; ok {
+			newPools = append(newPools, pool)
+		} else {
+			delete(poolPairStates, pool.PoolID)
+			delete(pdexState.PoolPairs, pool.PoolID)
+		}
+	}
+
 	// var chosenPath []*shared.Pdexv3PoolPairWithId
 	// var foundSellAmount uint64
 	// var receive uint64
@@ -1163,7 +1186,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		//feePRV
 		chosenPath, receive := pathfinder.FindGoodTradePath(
 			pdexv3Meta.MaxTradePathLength,
-			pools,
+			newPools,
 			poolPairStates,
 			sellToken,
 			buyToken,
@@ -1190,7 +1213,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				newSellAmount := sellAmount - tradingFeeToken - 100
 				chosenPath, receive := pathfinder.FindGoodTradePath(
 					pdexv3Meta.MaxTradePathLength,
-					pools,
+					newPools,
 					poolPairStates,
 					sellToken,
 					buyToken,
@@ -1231,7 +1254,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					newSellAmount := sellAmount - tradingFeeToken
 					chosenPath, receive := pathfinder.FindGoodTradePath(
 						pdexv3Meta.MaxTradePathLength,
-						pools,
+						newPools,
 						poolPairStates,
 						sellToken,
 						buyToken,
@@ -1255,7 +1278,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	} else {
 		chosenPath, foundSellAmount := pathfinder.FindSellAmount(
 			pdexv3Meta.MaxTradePathLength,
-			pools,
+			newPools,
 			poolPairStates,
 			sellToken,
 			buyToken,
@@ -1291,7 +1314,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 	if feePRV.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), pools, poolPairStates)
+		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
 		if rt == 0 {
 			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
 			if rt == 0 {
@@ -1308,7 +1331,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		// fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
 	}
 	if feeToken.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), pools, poolPairStates)
+		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
 		if rt == 0 {
 			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
 			if rt == 0 {
