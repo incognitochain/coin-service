@@ -303,7 +303,6 @@ func APIGetTokenList(c *gin.Context) {
 			if strings.Contains(v, baseToken) && strings.Contains(v, common.PRVCoinID.String()) {
 				prvUsdtPair24h = getPoolPair24hChange(v)
 				break
-
 			}
 		}
 
@@ -378,7 +377,7 @@ func APIGetTokenList(c *gin.Context) {
 			if data.TokenID == common.PRVCoinID.String() {
 				data.PercentChange24h = fmt.Sprintf("%.2f", prvUsdtPair24h)
 			} else {
-				if data.DefaultPairToken != "" {
+				if data.DefaultPairToken != "" && data.TokenID != baseToken {
 					data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, baseToken, prvUsdtPair24h))
 				}
 			}
