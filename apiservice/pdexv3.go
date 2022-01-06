@@ -1258,6 +1258,29 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		dcrate = 1
 	}
 
+	var defaultPools map[string]struct{}
+	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
+		defaultPools, err = database.DBGetDefaultPool()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(defaultPoolsKey, defaultPools)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
+	var newPools []*shared.Pdexv3PoolPairWithId
+	for _, pool := range pools {
+		if _, ok := defaultPools[pool.PoolID]; ok {
+			newPools = append(newPools, pool)
+		} else {
+			delete(poolPairStates, pool.PoolID)
+			delete(pdexState.PoolPairs, pool.PoolID)
+		}
+	}
+
 	// var chosenPath []*shared.Pdexv3PoolPairWithId
 	// var foundSellAmount uint64
 	// var receive uint64
@@ -1266,7 +1289,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		//feePRV
 		chosenPath, receive := pathfinder.FindGoodTradePath(
 			pdexv3Meta.MaxTradePathLength,
-			pools,
+			newPools,
 			poolPairStates,
 			sellToken,
 			buyToken,
@@ -1293,7 +1316,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				newSellAmount := sellAmount - tradingFeeToken - 100
 				chosenPath, receive := pathfinder.FindGoodTradePath(
 					pdexv3Meta.MaxTradePathLength,
-					pools,
+					newPools,
 					poolPairStates,
 					sellToken,
 					buyToken,
@@ -1334,7 +1357,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					newSellAmount := sellAmount - tradingFeeToken
 					chosenPath, receive := pathfinder.FindGoodTradePath(
 						pdexv3Meta.MaxTradePathLength,
-						pools,
+						newPools,
 						poolPairStates,
 						sellToken,
 						buyToken,
@@ -1358,7 +1381,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	} else {
 		chosenPath, foundSellAmount := pathfinder.FindSellAmount(
 			pdexv3Meta.MaxTradePathLength,
-			pools,
+			newPools,
 			poolPairStates,
 			sellToken,
 			buyToken,
@@ -1394,7 +1417,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 	if feePRV.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), pools, poolPairStates)
+		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
 		if rt == 0 {
 			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
 			if rt == 0 {
@@ -1411,7 +1434,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		// fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
 	}
 	if feeToken.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), pools, poolPairStates)
+		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
 		if rt == 0 {
 			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
 			if rt == 0 {
@@ -1452,20 +1475,46 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
-
+	var priorityTokens []string
+	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
+		priorityTokens, err = database.DBGetTokenPriority()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		err = cacheStore(tokenPriorityKey, priorityTokens)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	}
+	tokenIDs := strings.Split(poolid, "-")
+	token1ID := tokenIDs[0]
+	token2ID := tokenIDs[1]
 	var result []PdexV3PriceHistoryRespond
 
+	willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
 	for _, v := range analyticsData.Result {
 		tm, _ := time.Parse(time.RFC3339, v.Timestamp)
-
-		var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
-			Timestamp: tm.Unix(),
-			High:      v.High,
-			Low:       v.Low,
-			Open:      v.Open,
-			Close:     v.Close,
+		if willSwap {
+			var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
+				Timestamp: tm.Unix(),
+				High:      1 / v.High,
+				Low:       1 / v.Low,
+				Open:      1 / v.Open,
+				Close:     1 / v.Close,
+			}
+			result = append(result, pdexV3PriceHistoryRespond)
+		} else {
+			var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
+				Timestamp: tm.Unix(),
+				High:      v.High,
+				Low:       v.Low,
+				Open:      v.Open,
+				Close:     v.Close,
+			}
+			result = append(result, pdexV3PriceHistoryRespond)
 		}
-		result = append(result, pdexV3PriceHistoryRespond)
 	}
 
 	respond := APIRespond{
