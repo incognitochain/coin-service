@@ -420,6 +420,9 @@ func getPoolPair24hChange(poolID string) float64 {
 		log.Println(err)
 		return 0
 	}
+	if len(analyticsData.Result) == 0 {
+		return 0
+	}
 	p1 := analyticsData.Result[0].Close
 	p2 := analyticsData.Result[len(analyticsData.Result)-1].Close
 	r := (p2 - p1) / p1 * 100
