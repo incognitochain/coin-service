@@ -1322,9 +1322,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
-		if ((rt1/rt)-1)*100 >= 20 {
+		ia := ((rt1 / rt) - 1) * 100
+		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
+		feePRV.ImpactAmount = ia
 		// feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
 		// feePRV.Debug.Rate = rt
 		// feePRV.Debug.Rate1 = rt1
@@ -1339,9 +1341,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
-		if ((rt1/rt)-1)*100 >= 20 {
+		ia := ((rt1 / rt) - 1) * 100
+		if ia >= 20 {
 			feeToken.IsSignificant = true
 		}
+		feeToken.ImpactAmount = ia
 		// feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
 		// feeToken.Debug.Rate = rt
 		// feeToken.Debug.Rate1 = rt1
