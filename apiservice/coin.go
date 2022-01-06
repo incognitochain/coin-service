@@ -296,6 +296,17 @@ func APIGetTokenList(c *gin.Context) {
 		}
 		chainTkListMap := make(map[string]struct{})
 
+		baseToken, _ := database.DBGetBasePriceToken()
+
+		prvUsdtPair24h := float64(0)
+		for v, _ := range defaultPools {
+			if strings.Contains(v, baseToken) && strings.Contains(v, common.PRVCoinID.String()) {
+				prvUsdtPair24h = getPoolPair24hChange(v)
+				break
+
+			}
+		}
+
 		for _, v := range tokenList {
 			chainTkListMap[v.TokenID] = struct{}{}
 			currPrice, _ := strconv.ParseFloat(v.CurrentPrice, 64)
@@ -314,6 +325,64 @@ func APIGetTokenList(c *gin.Context) {
 				PriceUsd:         currPrice,
 				PercentChange24h: fmt.Sprintf("%.2f", percent24h),
 			}
+
+			defaultPool := ""
+			defaultPairToken := ""
+			defaultPairTokenIdx := -1
+			currentPoolAmount := uint64(0)
+			for poolID, _ := range defaultPools {
+				if strings.Contains(poolID, data.TokenID) {
+					pa := getPoolAmount(poolID, data.TokenID)
+					if pa == 0 {
+						continue
+					}
+					tks := strings.Split(poolID, "-")
+					tkPair := tks[0]
+					if tks[0] == data.TokenID {
+						tkPair = tks[1]
+					}
+					for idx, ptk := range priorityTokens {
+						if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
+							if idx > defaultPairTokenIdx {
+								defaultPool = poolID
+								defaultPairToken = tkPair
+								defaultPairTokenIdx = idx
+								currentPoolAmount = pa
+							}
+							if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
+								defaultPool = poolID
+								defaultPairToken = tkPair
+								defaultPairTokenIdx = idx
+								currentPoolAmount = pa
+							}
+						}
+					}
+
+					if defaultPool == "" {
+						if pa > 0 {
+							defaultPool = poolID
+							defaultPairToken = tkPair
+							currentPoolAmount = pa
+						}
+					} else {
+						if (pa > currentPoolAmount) && (defaultPairTokenIdx == -1) {
+							defaultPool = poolID
+							defaultPairToken = tkPair
+							currentPoolAmount = pa
+						}
+					}
+				}
+			}
+			data.DefaultPairToken = defaultPairToken
+			data.DefaultPoolPair = defaultPool
+			if data.TokenID == common.PRVCoinID.String() {
+				data.PercentChange24h = fmt.Sprintf("%.2f", prvUsdtPair24h)
+			} else {
+				if data.DefaultPairToken != "" {
+					data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, baseToken, prvUsdtPair24h))
+				}
+			}
+
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 				data.Name = etki.Name
 				data.Decimals = etki.Decimals
@@ -343,55 +412,6 @@ func APIGetTokenList(c *gin.Context) {
 				if data.PriceUsd == 0 {
 					data.PriceUsd = etki.PriceUsd
 				}
-				defaultPool := ""
-				defaultPairToken := ""
-				defaultPairTokenIdx := -1
-				currentPoolAmount := uint64(0)
-				for poolID, _ := range defaultPools {
-					if strings.Contains(poolID, data.TokenID) {
-						pa := getPoolAmount(poolID, data.TokenID)
-						if pa == 0 {
-							continue
-						}
-						tks := strings.Split(poolID, "-")
-						tkPair := tks[0]
-						if tks[0] == data.TokenID {
-							tkPair = tks[1]
-						}
-						for idx, ptk := range priorityTokens {
-							if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
-								if idx > defaultPairTokenIdx {
-									defaultPool = poolID
-									defaultPairToken = tkPair
-									defaultPairTokenIdx = idx
-									currentPoolAmount = pa
-								}
-								if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
-									defaultPool = poolID
-									defaultPairToken = tkPair
-									defaultPairTokenIdx = idx
-									currentPoolAmount = pa
-								}
-							}
-						}
-
-						if defaultPool == "" {
-							if pa > 0 {
-								defaultPool = poolID
-								defaultPairToken = tkPair
-								currentPoolAmount = pa
-							}
-						} else {
-							if (pa > currentPoolAmount) && (defaultPairTokenIdx == -1) {
-								defaultPool = poolID
-								defaultPairToken = tkPair
-								currentPoolAmount = pa
-							}
-						}
-					}
-				}
-				data.DefaultPairToken = defaultPairToken
-				data.DefaultPoolPair = defaultPool
 				if allToken != "true" {
 					datalist = append(datalist, data)
 				}
