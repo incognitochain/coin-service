@@ -1371,11 +1371,11 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 	intervals := c.Query("intervals")
 
 	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolid, period, intervals)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
+
 	var priorityTokens []string
 	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
 		priorityTokens, err = database.DBGetTokenPriority()
@@ -1400,8 +1400,8 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 		if willSwap {
 			var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
 				Timestamp: tm.Unix(),
-				High:      1 / v.High,
-				Low:       1 / v.Low,
+				High:      1 / v.Low,
+				Low:       1 / v.High,
 				Open:      1 / v.Open,
 				Close:     1 / v.Close,
 			}

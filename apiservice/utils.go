@@ -3,11 +3,13 @@ package apiservice
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
@@ -400,4 +402,26 @@ func getUniqueIdx(list []string) []int {
 		}
 	}
 	return result
+}
+
+func getToken24hPriceChange(tokenID, pairTokenID, poolPair, baseToken string, prv24hChange float64) float64 {
+	if pairTokenID == baseToken {
+		return getPoolPair24hChange(poolPair)
+	}
+	if pairTokenID == common.PRVCoinID.String() {
+		return getPoolPair24hChange(poolPair) + prv24hChange
+	}
+	return 0
+}
+
+func getPoolPair24hChange(poolID string) float64 {
+	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT15M", "PT24H")
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	p1 := analyticsData.Result[0].Close
+	p2 := analyticsData.Result[len(analyticsData.Result)-1].Close
+	r := (p2 - p1) / p1 * 100
+	return r
 }
