@@ -428,3 +428,17 @@ func getPoolPair24hChange(poolID string) float64 {
 	r := (p2 - p1) / p1 * 100
 	return r
 }
+func getTokenRoute(sellToken string, route []string) []string {
+	tokenRoute := []string{sellToken}
+	intermediateToken := sellToken
+	for _, poolID := range route {
+		tks := strings.Split(poolID, "-")
+		if tks[0] != intermediateToken {
+			tokenRoute = append(tokenRoute, tks[0])
+		} else {
+			tokenRoute = append(tokenRoute, tks[1])
+			intermediateToken = tks[1]
+		}
+	}
+	return tokenRoute
+}
