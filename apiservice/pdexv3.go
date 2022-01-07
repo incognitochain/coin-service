@@ -1306,6 +1306,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				// return
 			}
 			feePRV.Fee = tradingFeePRV
+			feePRV.TokenRoute = getTokenRoute(sellToken, feePRV.Route)
 			tradingFeeToken, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, feePRV.Route, *pdexState, false)
 			if err != nil {
 				log.Print("can not estimate fee: ", err)
