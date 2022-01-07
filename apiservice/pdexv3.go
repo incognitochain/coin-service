@@ -1232,6 +1232,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				}
 				feePRV.Fee = tradingFeeToken
 			}
+			feePRV.TokenRoute = getTokenRoute(sellToken, feePRV.Route)
 		}
 
 		//feeToken
@@ -1273,6 +1274,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					}
 					feeToken.Fee = tradingFeeToken
 				}
+				feeToken.TokenRoute = getTokenRoute(sellToken, feeToken.Route)
 			}
 		}
 	} else {
@@ -1311,6 +1313,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				// return
 			}
 			feeToken.Fee = tradingFeeToken
+			feeToken.TokenRoute = getTokenRoute(sellToken, feeToken.Route)
 		}
 	}
 	if feePRV.Fee != 0 {
@@ -1327,10 +1330,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feePRV.IsSignificant = true
 		}
 		feePRV.ImpactAmount = ia
-		// feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
-		// feePRV.Debug.Rate = rt
-		// feePRV.Debug.Rate1 = rt1
-		// fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
 	}
 	if feeToken.Fee != 0 {
 		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
@@ -1346,10 +1345,6 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feeToken.IsSignificant = true
 		}
 		feeToken.ImpactAmount = ia
-		// feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
-		// feeToken.Debug.Rate = rt
-		// feeToken.Debug.Rate1 = rt1
-		// fmt.Println("feeToken.Debug.ImpactAmount", feeToken.Debug.ImpactAmount, feeToken.Debug.Rate, feeToken.Debug.Rate1)
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken
