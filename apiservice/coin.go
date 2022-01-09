@@ -317,6 +317,7 @@ func APIGetTokenList(c *gin.Context) {
 			data := TokenInfo{
 				TokenID:          v.TokenID,
 				Name:             v.Name,
+				Symbol:           v.Symbol,
 				Image:            v.Image,
 				IsPrivacy:        v.IsPrivacy,
 				IsBridge:         v.IsBridge,
@@ -383,9 +384,13 @@ func APIGetTokenList(c *gin.Context) {
 			}
 
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
-				data.Name = etki.Name
+				if etki.Name != "" {
+					data.Name = etki.Name
+				}
 				data.Decimals = etki.Decimals
-				data.Symbol = etki.Symbol
+				if etki.Symbol != "" {
+					data.Symbol = etki.Symbol
+				}
 				data.PSymbol = etki.PSymbol
 				data.PDecimals = int(etki.PDecimals)
 				data.ContractID = etki.ContractID
