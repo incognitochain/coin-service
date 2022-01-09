@@ -132,7 +132,7 @@ func tokenListWatcher() {
 					if database.DBIsTokenNFT(newK.String()) {
 						nftToken[newK.String()] = true
 					} else {
-						tokenStates[newK] = newV
+						tokenStates[newK] = v
 					}
 				}
 			}
