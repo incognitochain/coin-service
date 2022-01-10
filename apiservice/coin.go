@@ -279,6 +279,13 @@ func APIGetTokenList(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
 		}
+		customTokenInfo, err := database.DBGetAllCustomTokenInfo()
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+			return
+		}
+
 		defaultPools, err := database.DBGetDefaultPool()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -293,6 +300,11 @@ func APIGetTokenList(c *gin.Context) {
 		extraTokenInfoMap := make(map[string]shared.ExtraTokenInfo)
 		for _, v := range extraTokenInfo {
 			extraTokenInfoMap[v.TokenID] = v
+		}
+
+		customTokenInfoMap := make(map[string]shared.CustomTokenInfo)
+		for _, v := range customTokenInfo {
+			customTokenInfoMap[v.TokenID] = v
 		}
 		chainTkListMap := make(map[string]struct{})
 
@@ -418,6 +430,15 @@ func APIGetTokenList(c *gin.Context) {
 				}
 				if allToken != "true" {
 					datalist = append(datalist, data)
+				}
+			}
+			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
+				if etki.Name != "" {
+					data.Name = etki.Name
+				}
+				data.Decimals = etki.Decimals
+				if etki.Symbol != "" {
+					data.Symbol = etki.Symbol
 				}
 			}
 
