@@ -395,12 +395,20 @@ func APIGetTokenList(c *gin.Context) {
 				}
 			}
 
-			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
+			if etki, ok := customTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
 					data.Name = etki.Name
 				}
-				data.Decimals = etki.Decimals
 				if etki.Symbol != "" {
+					data.Symbol = etki.Symbol
+				}
+			}
+			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
+				if etki.Name != "" && data.Name == "" {
+					data.Name = etki.Name
+				}
+				data.Decimals = etki.Decimals
+				if etki.Symbol != "" && data.Symbol == "" {
 					data.Symbol = etki.Symbol
 				}
 				data.PSymbol = etki.PSymbol
@@ -430,15 +438,6 @@ func APIGetTokenList(c *gin.Context) {
 				}
 				if allToken != "true" {
 					datalist = append(datalist, data)
-				}
-			}
-			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
-				if etki.Name != "" {
-					data.Name = etki.Name
-				}
-				data.Decimals = etki.Decimals
-				if etki.Symbol != "" {
-					data.Symbol = etki.Symbol
 				}
 			}
 
