@@ -402,6 +402,9 @@ func APIGetTokenList(c *gin.Context) {
 				if etki.Symbol != "" {
 					data.Symbol = etki.Symbol
 				}
+				if etki.Verified {
+					data.Verified = etki.Verified
+				}
 			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
@@ -418,7 +421,9 @@ func APIGetTokenList(c *gin.Context) {
 				data.Type = etki.Type
 				data.CurrencyType = etki.CurrencyType
 				data.Default = etki.Default
-				data.Verified = etki.Verified
+				if etki.Verified {
+					data.Verified = etki.Verified
+				}
 				data.UserID = etki.UserID
 				data.PercentChange1h = etki.PercentChange1h
 				data.PercentChangePrv1h = etki.PercentChangePrv1h
