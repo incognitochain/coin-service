@@ -441,17 +441,13 @@ func APIGetTokenList(c *gin.Context) {
 				if data.PriceUsd == 0 {
 					data.PriceUsd = etki.PriceUsd
 				}
-				if allToken != "true" {
-					datalist = append(datalist, data)
-				}
-			}
 
+			}
+			if !v.IsNFT {
+				datalist = append(datalist, data)
+			}
 			if includeNFT == "true" && v.IsNFT {
 				datalist = append(datalist, data)
-			} else {
-				if allToken == "true" {
-					datalist = append(datalist, data)
-				}
 			}
 		}
 
