@@ -1026,7 +1026,7 @@ func APISubmitOTA(c *gin.Context) {
 	err = <-resp
 	errStr := ""
 	if err != nil {
-		if !mongo.IsDuplicateKeyError(err) {
+		if mongo.IsDuplicateKeyError(err) {
 			respond := APIRespond{
 				Result: "true",
 			}
@@ -1035,7 +1035,8 @@ func APISubmitOTA(c *gin.Context) {
 		}
 		errStr = err.Error()
 		respond := APIRespond{
-			Error: &errStr,
+			Result: "false",
+			Error:  &errStr,
 		}
 		c.JSON(http.StatusOK, respond)
 		return
