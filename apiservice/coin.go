@@ -23,7 +23,6 @@ import (
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"github.com/incognitochain/incognito-chain/wallet"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func APICheckKeyImages(c *gin.Context) {
@@ -1026,7 +1025,7 @@ func APISubmitOTA(c *gin.Context) {
 	err = <-resp
 	errStr := ""
 	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
+		if strings.Contains(err.Error(), "already exist") {
 			respond := APIRespond{
 				Result: "true",
 			}
