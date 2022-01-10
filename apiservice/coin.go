@@ -404,11 +404,11 @@ func APIGetTokenList(c *gin.Context) {
 				}
 			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
-				if etki.Name != "" && data.Name == "" {
+				if etki.Name != "" {
 					data.Name = etki.Name
 				}
 				data.Decimals = etki.Decimals
-				if etki.Symbol != "" && data.Symbol == "" {
+				if etki.Symbol != "" {
 					data.Symbol = etki.Symbol
 				}
 				data.PSymbol = etki.PSymbol
