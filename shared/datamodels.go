@@ -1013,7 +1013,7 @@ type CustomTokenInfo struct {
 	mgm.DefaultModel `bson:",inline"`
 	TokenID          string `json:"TokenID" bson:"tokenid"`
 	Image            string `json:"Image" bson:"image"`
-	IsPrivacy        bool   `json:"IsPrivacy" bson:"isprivacy"`
+	IsPrivacy        int    `json:"IsPrivacy" bson:"isprivacy"`
 	Name             string `json:"Name" bson:"name"`
 	Symbol           string `json:"Symbol" bson:"symbol"`
 	OwnerAddress     string `json:"OwnerAddress" bson:"owneraddress"`
