@@ -1008,3 +1008,36 @@ func (model *ExtraTokenInfo) Saving() error {
 
 	return nil
 }
+
+type CustomTokenInfo struct {
+	mgm.DefaultModel `bson:",inline"`
+	TokenID          string `json:"TokenID" bson:"tokenid"`
+	Image            string `json:"Image" bson:"image"`
+	IsPrivacy        int    `json:"IsPrivacy" bson:"isprivacy"`
+	Name             string `json:"Name" bson:"name"`
+	Symbol           string `json:"Symbol" bson:"symbol"`
+	OwnerAddress     string `json:"OwnerAddress" bson:"owneraddress"`
+	OwnerName        string `json:"OwnerName" bson:"ownername"`
+	OwnerEmail       string `json:"OwnerEmail" bson:"owneremail"`
+	OwnerWebsite     string `json:"OwnerWebsite" bson:"ownerwebsite"`
+	ShowOwnerAddress int    `json:"ShowOwnerAddress" bson:"showowneraddress"`
+	Description      string `json:"Description" bson:"description"`
+	Verified         bool   `json:"Verified" bson:"verified"`
+}
+
+func (model *CustomTokenInfo) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *CustomTokenInfo) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}

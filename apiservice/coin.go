@@ -279,6 +279,13 @@ func APIGetTokenList(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
 		}
+		customTokenInfo, err := database.DBGetAllCustomTokenInfo()
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+			return
+		}
+
 		defaultPools, err := database.DBGetDefaultPool()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -293,6 +300,11 @@ func APIGetTokenList(c *gin.Context) {
 		extraTokenInfoMap := make(map[string]shared.ExtraTokenInfo)
 		for _, v := range extraTokenInfo {
 			extraTokenInfoMap[v.TokenID] = v
+		}
+
+		customTokenInfoMap := make(map[string]shared.CustomTokenInfo)
+		for _, v := range customTokenInfo {
+			customTokenInfoMap[v.TokenID] = v
 		}
 		chainTkListMap := make(map[string]struct{})
 
@@ -383,6 +395,14 @@ func APIGetTokenList(c *gin.Context) {
 				}
 			}
 
+			if etki, ok := customTokenInfoMap[v.TokenID]; ok {
+				if etki.Name != "" {
+					data.Name = etki.Name
+				}
+				if etki.Symbol != "" {
+					data.Symbol = etki.Symbol
+				}
+			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
 					data.Name = etki.Name
@@ -1005,15 +1025,23 @@ func APISubmitOTA(c *gin.Context) {
 	err = <-resp
 	errStr := ""
 	if err != nil {
-		// if !mongo.IsDuplicateKeyError(err) {
-		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		// 	return
-		// }
+		if strings.Contains(err.Error(), "already exist") {
+			respond := APIRespond{
+				Result: "true",
+			}
+			c.JSON(http.StatusOK, respond)
+			return
+		}
 		errStr = err.Error()
+		respond := APIRespond{
+			Result: "false",
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
 	}
 	respond := APIRespond{
 		Result: "true",
-		Error:  &errStr,
 	}
 	c.JSON(http.StatusOK, respond)
 }
