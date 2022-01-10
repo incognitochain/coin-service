@@ -1014,8 +1014,8 @@ type CustomTokenInfo struct {
 	TokenID          string `json:"TokenID" bson:"tokenid"`
 	Image            string `json:"Image" bson:"image"`
 	IsPrivacy        bool   `json:"IsPrivacy" bson:"isprivacy"`
-	Name             bool   `json:"Name" bson:"name"`
-	Symbol           bool   `json:"Symbol" bson:"symbol"`
+	Name             string `json:"Name" bson:"name"`
+	Symbol           string `json:"Symbol" bson:"symbol"`
 	OwnerAddress     string `json:"OwnerAddress" bson:"owneraddress"`
 	OwnerName        string `json:"OwnerName" bson:"ownername"`
 	OwnerEmail       string `json:"OwnerEmail" bson:"owneremail"`

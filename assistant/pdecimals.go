@@ -105,8 +105,21 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 func getCustomTokenInfo() ([]shared.CustomTokenInfo, error) {
 	if shared.ServiceCfg.ExternalDecimals != "" {
 		var decimal struct {
-			Result []shared.CustomTokenInfo
-			Error  string `json:"Error"`
+			Result []struct {
+				TokenID          string `json:"TokenID" bson:"tokenid"`
+				Image            string `json:"Image" bson:"image"`
+				IsPrivacy        bool   `json:"IsPrivacy" bson:"isprivacy"`
+				Name             string `json:"Name" bson:"name"`
+				Symbol           string `json:"Symbol" bson:"symbol"`
+				OwnerAddress     string `json:"OwnerAddress" bson:"owneraddress"`
+				OwnerName        string `json:"OwnerName" bson:"ownername"`
+				OwnerEmail       string `json:"OwnerEmail" bson:"owneremail"`
+				OwnerWebsite     string `json:"OwnerWebsite" bson:"ownerwebsite"`
+				ShowOwnerAddress int    `json:"ShowOwnerAddress" bson:"showowneraddress"`
+				Description      string `json:"Description" bson:"description"`
+				Verified         bool   `json:"Verified" bson:"verified"`
+			}
+			Error string `json:"Error"`
 		}
 		retryTimes := 0
 	retry:
