@@ -523,6 +523,23 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		}
 		wg.Add(3)
 		go func() {
+
+			defaultPools, err := database.DBGetDefaultPool()
+			if err != nil {
+				log.Println("database.DBGetDefaultPool", err)
+			}
+			var newPools []*shared.Pdexv3PoolPairWithId
+			for _, pool := range poolPairsArr {
+				if _, ok := defaultPools[pool.PoolID]; ok {
+					newPools = append(newPools, pool)
+				} else {
+					delete(*stateV2Json.PoolPairs, pool.PoolID)
+				}
+			}
+			if len(defaultPools) > 0 {
+				poolPairsArr = newPools
+			}
+
 			for poolID, state := range statev2.StakingPoolsState {
 				rw, err := extractPDEStakingReward(poolID, statev2.StakingPoolsState, prevStatev2.StakingPoolsState, beaconHeight)
 				if err != nil {
@@ -572,7 +589,6 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				}
 				rewardRecords = append(rewardRecords, data)
 			}
-			// if beaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
 			for poolID, state := range statev2.PoolPairs {
 				rw, err := extractLqReward(poolID, statev2.PoolPairs, prevStatev2.PoolPairs)
 				if err != nil {
@@ -581,23 +597,34 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				rewardReceive := uint64(0)
 				token1Amount := state.State.Token0RealAmount()
 				token2Amount := state.State.Token1RealAmount()
+				total1 := uint64(0)
+				total2 := uint64(0)
+				if state.State.Token0ID().String() == common.PRVCoinID.String() || state.State.Token1ID().String() == common.PRVCoinID.String() {
+					if state.State.Token0ID().String() == common.PRVCoinID.String() {
+						total1 = token1Amount
+						total2 = token1Amount
+					} else {
+						total1 = token2Amount
+						total2 = token2Amount
+					}
+				} else {
+					_, total1 = pathfinder.FindGoodTradePath(
+						5,
+						poolPairsArr,
+						*stateV2Json.PoolPairs,
+						state.State.Token0ID().String(),
+						common.PRVCoinID.String(),
+						token1Amount)
+					_, total2 = pathfinder.FindGoodTradePath(
+						5,
+						poolPairsArr,
+						*stateV2Json.PoolPairs,
+						state.State.Token1ID().String(),
+						common.PRVCoinID.String(),
+						token2Amount)
+				}
 
-				_, receive1 := pathfinder.FindGoodTradePath(
-					5,
-					poolPairsArr,
-					*stateV2Json.PoolPairs,
-					state.State.Token0ID().String(),
-					common.PRVCoinID.String(),
-					token1Amount)
-				_, receive2 := pathfinder.FindGoodTradePath(
-					5,
-					poolPairsArr,
-					*stateV2Json.PoolPairs,
-					state.State.Token1ID().String(),
-					common.PRVCoinID.String(),
-					token2Amount)
-
-				totalAmount := receive1 + receive2
+				totalAmount := total1 + total2
 				for tk, v := range rw {
 					_, receive := pathfinder.FindGoodTradePath(
 						5,
@@ -632,7 +659,6 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				}
 				rewardRecords = append(rewardRecords, data)
 			}
-			// }
 			wg.Done()
 		}()
 
