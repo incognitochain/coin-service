@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"sort"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
-	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
@@ -540,30 +540,47 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				poolPairsArr = newPools
 			}
 
-			for poolID, state := range statev2.StakingPoolsState {
-				rw, err := extractPDEStakingReward(poolID, statev2.StakingPoolsState, prevStatev2.StakingPoolsState, beaconHeight)
+			for tokenID, state := range statev2.StakingPoolsState {
+				rw, err := extractPDEStakingReward(tokenID, statev2.StakingPoolsState, prevStatev2.StakingPoolsState, beaconHeight)
 				if err != nil {
 					panic(err)
 				}
 				rewardReceive := uint64(0)
 				tokenStakeAmount := state.Liquidity()
+				receiveStake := uint64(0)
 
-				_, receiveStake := pathfinder.FindGoodTradePath(
-					5,
-					poolPairsArr,
-					*stateV2Json.PoolPairs,
-					poolID,
-					common.PRVCoinID.String(),
-					tokenStakeAmount)
+				if tokenID == common.PRVCoinID.String() {
+					receiveStake = tokenStakeAmount
+				} else {
+					tkInfo, err := database.DBGetExtraTokenInfo(tokenID)
+					if err != nil {
+						log.Println(err)
+					}
+					tkDecimal := 1
+					if tkInfo != nil {
+						tkDecimal = int(tkInfo.PDecimals)
+					}
+					rateRw := getRateMinimum(tokenID, common.PRVCoinID.String(), uint64(math.Pow10(tkDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+
+					receiveStake = uint64(float64(tokenStakeAmount) * rateRw)
+				}
 
 				for tk, v := range rw {
-					_, receive := pathfinder.FindGoodTradePath(
-						5,
-						poolPairsArr,
-						*stateV2Json.PoolPairs,
-						tk,
-						common.PRVCoinID.String(),
-						v)
+					if tk == common.PRVCoinID.String() {
+						rewardReceive += v
+						continue
+					}
+					tkInfo, err := database.DBGetExtraTokenInfo(tk)
+					if err != nil {
+						log.Println(err)
+					}
+					tkRwDecimal := 1
+					if tkInfo != nil {
+						tkRwDecimal = int(tkInfo.PDecimals)
+					}
+					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+
+					receive := uint64(float64(v) * rateRw)
 					rewardReceive += receive
 				}
 				var rwInfo struct {
@@ -574,7 +591,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				}
 				rwInfo.TokenAmount = make(map[string]uint64)
 				rwInfo.RewardPerToken = rw
-				rwInfo.TokenAmount[poolID] = tokenStakeAmount
+				rwInfo.TokenAmount[tokenID] = tokenStakeAmount
 				rwInfo.RewardReceiveInPRV = rewardReceive
 				rwInfo.TotalAmountInPRV = receiveStake
 
@@ -583,7 +600,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					panic(err)
 				}
 				data := shared.RewardRecord{
-					DataID:       poolID,
+					DataID:       tokenID,
 					Data:         string(rwInfoBytes),
 					BeaconHeight: beaconHeight,
 				}
@@ -608,31 +625,47 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 						total2 = token2Amount
 					}
 				} else {
-					_, total1 = pathfinder.FindGoodTradePath(
-						5,
-						poolPairsArr,
-						*stateV2Json.PoolPairs,
-						state.State.Token0ID().String(),
-						common.PRVCoinID.String(),
-						token1Amount)
-					_, total2 = pathfinder.FindGoodTradePath(
-						5,
-						poolPairsArr,
-						*stateV2Json.PoolPairs,
-						state.State.Token1ID().String(),
-						common.PRVCoinID.String(),
-						token2Amount)
+					tk1, err := database.DBGetExtraTokenInfo(state.State.Token0ID().String())
+					if err != nil {
+						log.Println(err)
+					}
+					tk2, err := database.DBGetExtraTokenInfo(state.State.Token1ID().String())
+					if err != nil {
+						log.Println(err)
+					}
+					tk1Decimal := 1
+					tk2Decimal := 2
+					if tk1 != nil {
+						tk1Decimal = int(tk1.PDecimals)
+					}
+					if tk2 != nil {
+						tk2Decimal = int(tk2.PDecimals)
+					}
+					rate1 := getRateMinimum(state.State.Token0ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk1Decimal)), poolPairsArr, *stateV2Json.PoolPairs)
+
+					rate2 := getRateMinimum(state.State.Token1ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk2Decimal)), poolPairsArr, *stateV2Json.PoolPairs)
+
+					total1 = uint64(float64(token1Amount) * rate1)
+					total2 = uint64(float64(token2Amount) * rate2)
 				}
 
 				totalAmount := total1 + total2
 				for tk, v := range rw {
-					_, receive := pathfinder.FindGoodTradePath(
-						5,
-						poolPairsArr,
-						*stateV2Json.PoolPairs,
-						tk,
-						common.PRVCoinID.String(),
-						v)
+					if tk == common.PRVCoinID.String() {
+						rewardReceive += v
+						continue
+					}
+					tkInfo, err := database.DBGetExtraTokenInfo(tk)
+					if err != nil {
+						log.Println(err)
+					}
+					tkRwDecimal := 1
+					if tkInfo != nil {
+						tkRwDecimal = int(tkInfo.PDecimals)
+					}
+					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+
+					receive := uint64(float64(v) * rateRw)
 					rewardReceive += receive
 				}
 				var rwInfo struct {
