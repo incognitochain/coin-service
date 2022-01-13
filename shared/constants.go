@@ -20,7 +20,7 @@ const (
 	DefaultMaxConcurrentOTACheck = 100
 	DefaultChainFolder           = "chain"
 	DefaultFullnode              = ""
-	DefaultMode                  = FULLMODE
+	DefaultMode                  = QUERYMODE
 	DefaultNetwork               = "testnet2"
 	DefaultHighway               = "74.207.247.250:9330"
 	DefaultNumOfShard            = 8
@@ -32,7 +32,11 @@ const (
 	INDEXERMODE   = "indexer"
 	QUERYMODE     = "query"
 	WORKERMODE    = "indexworker"
-	FULLMODE      = "full"
+	// FULLMODE      = "full"
+	LIQUIDITYMODE = "liquidity"
+	SHIELDMODE    = "shield"
+	TRADEMODE     = "trade"
+	ASTMODE       = "assistant"
 )
 
 const (
@@ -40,4 +44,10 @@ const (
 	MONGO_STATUS_NOK  = "disconnected"
 	HEALTH_STATUS_OK  = "healthy"
 	HEALTH_STATUS_NOK = "unhealthy"
+)
+
+const (
+	TOKENTYPE_PIRCE_STABLE = iota
+	TOKENTYPE_PIRCE_VOLATILE
+	TOKENTYPE_PIRCE_UNKNOW
 )

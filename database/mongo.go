@@ -240,9 +240,9 @@ func DBGetCoinInfo() (map[int]uint64, map[int]uint64, map[int]uint64, map[int]ui
 
 	for i := 0; i < shared.ServiceCfg.NumOfShard; i++ {
 
-		pv2 := DBGetCoinV2OfShardCount(i, common.PRVCoinID.String())
+		pv2, _ := DBGetCoinV2OfShardCount(i, common.PRVCoinID.String())
 
-		tkv2 := DBGetCoinV2OfShardCount(i, common.ConfidentialAssetID.String())
+		tkv2, _ := DBGetCoinV2OfShardCount(i, common.ConfidentialAssetID.String())
 
 		pv1 := DBGetCoinV1OfShardCount(i, common.PRVCoinID.String())
 

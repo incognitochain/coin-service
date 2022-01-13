@@ -28,6 +28,10 @@ type Config struct {
 	NumOfShard            int    `json:"numberofshard"`
 	IndexerID             int    `json:"indexerid"`
 	MasterIndexerAddr     string `json:"masterindexer"`
+	AnalyticService       string `json:"analyticservice"`
+	// FullnodeEndpoint      string `json:"fullnodeendpoint"`
+	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
+	ExternalDecimals     string `json:"externaldecimals"`
 }
 
 type ConfigJSON struct {
@@ -41,6 +45,10 @@ type ConfigJSON struct {
 	ChainNetwork          string `json:"chainnetwork"`
 	IndexerID             int    `json:"indexerid"`
 	MasterIndexerAddr     string `json:"masterindexer"`
+	AnalyticService       string `json:"analyticservice"`
+	// FullnodeEndpoint      string `json:"fullnodeendpoint"`
+	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
+	ExternalDecimals     string `json:"externaldecimals"`
 }
 
 func ReadConfigAndArg() {
@@ -104,6 +112,7 @@ func ReadConfigAndArg() {
 	fmt.Println("===========================")
 	fmt.Println(cfg.Network())
 	fmt.Println(param.ActiveShards)
+	fmt.Println(cfg.DiscoverPeersAddress)
 	fmt.Println("===========================")
 
 	RESET_FLAG = *argResetDB
@@ -121,6 +130,10 @@ func ReadConfigAndArg() {
 	ServiceCfg.NumOfShard = param.ActiveShards
 	ServiceCfg.IndexerID = tempCfg.IndexerID
 	ServiceCfg.MasterIndexerAddr = tempCfg.MasterIndexerAddr
+	ServiceCfg.AnalyticService = tempCfg.AnalyticService
+	// ServiceCfg.FullnodeEndpoint = tempCfg.FullnodeEndpoint
+	ServiceCfg.AnalyticsAPIEndpoint = tempCfg.AnalyticsAPIEndpoint
+	ServiceCfg.ExternalDecimals = tempCfg.ExternalDecimals
 
 	common.MaxShardNumber = param.ActiveShards
 }

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
@@ -53,7 +54,7 @@ func DBSaveTXs(list []shared.TxData) error {
 	return nil
 }
 
-func DBUpdateTxPubkeyReceiver(txHashes []string, pubKey, tokenID string, ctx context.Context) error {
+func DBUpdateTxPubkeyReceiverAndTokenID(txHashes []string, pubKey, tokenID string, ctx context.Context) error {
 	docs := []interface{}{}
 	for _ = range txHashes {
 		update := bson.M{
@@ -129,6 +130,20 @@ func DBGetTxByHash(txHashes []string) ([]shared.TxData, error) {
 	return resultFn, nil
 }
 
+func DBIsTokenNFT(tokenid string) bool {
+	filter := bson.M{"tokenid": bson.M{operator.Eq: tokenid}, "isnft": bson.M{operator.Eq: true}}
+	ctx, _ := context.WithTimeout(context.Background(), 2*shared.DB_OPERATION_TIMEOUT)
+	result := mgm.Coll(&shared.TxData{}).FindOne(ctx, filter)
+	if result.Err() != nil {
+		if result.Err() == mongo.ErrNoDocuments {
+			return false
+		} else {
+			panic(result.Err())
+		}
+	}
+	return true
+}
+
 func DBGetCountTxByPubkey(pubkey string, tokenID string, txversion int) (int64, error) {
 	filter := bson.M{}
 	if txversion == 1 {
@@ -147,7 +162,7 @@ func DBGetCountTxByPubkey(pubkey string, tokenID string, txversion int) (int64, 
 
 func DBGetLatestTxByShardID(shardID int, limit int64) ([]shared.TxData, error) {
 	var result []shared.TxData
-	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}}
+	filter := bson.M{"shardID": bson.M{operator.Eq: shardID}}
 	if shardID == -1 {
 		filter = bson.M{}
 	}
@@ -160,5 +175,54 @@ func DBGetLatestTxByShardID(shardID int, limit int64) ([]shared.TxData, error) {
 		return nil, err
 	}
 
+	return result, nil
+}
+
+func DBGetTxByMetaAndOTA(pubkey string, metatype int, limit int64, offset int64) ([]shared.TxData, error) {
+	var result []shared.TxData
+	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.Eq: strconv.Itoa(metatype)}}
+	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBUpdateTxsWithPubkeyReceiver(list []shared.TxData) error {
+	startTime := time.Now()
+	docs := []interface{}{}
+	for _, tx := range list {
+		update := bson.M{
+			"$addToSet": bson.M{"pubkeyreceivers": bson.M{operator.Each: tx.PubKeyReceivers}},
+		}
+		docs = append(docs, update)
+	}
+	for idx, doc := range docs {
+		_, err := mgm.Coll(&shared.TxData{}).UpdateByID(context.Background(), list[idx].GetID(), doc)
+		if err != nil {
+			log.Printf("failed to update %v txs in %v", len(list), time.Since(startTime))
+			return err
+		}
+	}
+	log.Printf("updated %v txs in %v", len(list), time.Since(startTime))
+	return nil
+}
+
+func DBGetLatestTradeTx(isswap bool) ([]shared.TradeOrderData, error) {
+	limit := int64(20)
+	currentTime := time.Now().Unix()
+	var result []shared.TradeOrderData
+	filter := bson.M{"requesttime": bson.M{operator.Lte: currentTime}, "isswap": bson.M{operator.Eq: isswap}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"locktime", -1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
