@@ -88,7 +88,9 @@ type PdexV3EstimateTradeRespond struct {
 	MaxGet        float64
 	Fee           uint64
 	Route         []string
+	TokenRoute    []string
 	IsSignificant bool
+	ImpactAmount  float64
 	// Debug         struct {
 	// 	ImpactAmount float64
 	// 	Rate         float64

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"sort"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/database"
-	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
@@ -36,20 +36,22 @@ var pdexV3State pdex.State
 
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
 	log.Printf("start processing coin for block %v beacon\n", height)
-	startTime1 := time.Now()
-	var beaconBestState *blockchain.BeaconBestState
-	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
-		beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
-	} else {
-		beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, true)
-	}
-	blk := beaconBestState.BestBlock
-	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
-	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
+	// var beaconBestState *blockchain.BeaconBestState
+	// if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
+	// 	beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
+	// } else {
+	// beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, true)
+	// }
+	// blk := beaconBestState.BestBlock
+	// beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
+	// beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
+	// if err != nil {
+	// 	log.Println(err)
+	// }
+	blk, _, err := Localnode.GetBlockchain().GetBeaconBlockByHash(h)
 	if err != nil {
-		log.Println(err)
+		panic(err)
 	}
-	log.Printf("beaconFeatureStateDB loaded for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime1))
 	// this is a requirement check
 	for shardID, blks := range blk.Body.ShardState {
 		sort.Slice(blks, func(i, j int) bool { return blks[i].Height > blks[j].Height })
@@ -66,9 +68,10 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}
 	}
 	startTime := time.Now()
-	log.Printf("beaconFeatureStateDB loaded for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+	_ = startTime
 	// Process PDEstatev1
 	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
+		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
 		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
 		tradingFees := state.Reader().TradingFees()
 		shares := state.Reader().Shares()
@@ -106,7 +109,10 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	}
 
 	//process PDEstateV2
-	if beaconBestState.BeaconHeight >= config.Param().PDexParams.Pdexv3BreakPointHeight {
+	if blk.GetHeight() >= config.Param().PDexParams.Pdexv3BreakPointHeight {
+		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
+		beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
+		beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
 		var prevStateV2 *shared.PDEStateV2
 		stateV2 := &shared.PDEStateV2{
 			StakingPoolsState: make(map[string]*pdex.StakingPoolState),
@@ -167,7 +173,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 
 		}
 		if pdexV3State == nil {
-			pdeStates, err := pdex.InitStatesFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight)
+			pdeStates, err := pdex.InitStatesFromDB(beaconFeatureStateDB, blk.GetHeight())
 			if err != nil {
 				panic(err)
 			}
@@ -207,7 +213,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		go func() {
 			paramJSON := pdexV3State.Reader().Params().Clone()
 			pdeStateJSON = jsonresult.Pdexv3State{
-				BeaconTimeStamp: beaconBestState.BestBlock.Header.Timestamp,
+				BeaconTimeStamp: blk.Header.Timestamp,
 				PoolPairs:       &poolPairsJSON,
 				StakingPools:    &stateV2.StakingPoolsState,
 				Params:          paramJSON,
@@ -222,7 +228,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		var instructions []shared.InstructionBeaconData
 		go func() {
 			log.Printf("extractBeaconInstruction %v \n", blk.GetHeight())
-			instructions, err = extractBeaconInstruction(beaconBestState.BestBlock.Body.Instructions)
+			instructions, err = extractBeaconInstruction(blk.Body.Instructions)
 			if err != nil {
 				panic(err)
 			}
@@ -231,7 +237,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		wg.Wait()
 
 		log.Printf("prepare state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, beaconBestState.BeaconHeight)
+		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, blk.GetHeight())
 		if err != nil {
 			panic(err)
 		}
@@ -523,30 +529,64 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		}
 		wg.Add(3)
 		go func() {
-			for poolID, state := range statev2.StakingPoolsState {
-				rw, err := extractPDEStakingReward(poolID, statev2.StakingPoolsState, prevStatev2.StakingPoolsState, beaconHeight)
+
+			defaultPools, err := database.DBGetDefaultPool()
+			if err != nil {
+				log.Println("database.DBGetDefaultPool", err)
+			}
+			var newPools []*shared.Pdexv3PoolPairWithId
+			for _, pool := range poolPairsArr {
+				if _, ok := defaultPools[pool.PoolID]; ok {
+					newPools = append(newPools, pool)
+				} else {
+					delete(*stateV2Json.PoolPairs, pool.PoolID)
+				}
+			}
+			if len(defaultPools) > 0 {
+				poolPairsArr = newPools
+			}
+
+			for tokenID, state := range statev2.StakingPoolsState {
+				rw, err := extractPDEStakingReward(tokenID, statev2.StakingPoolsState, prevStatev2.StakingPoolsState, beaconHeight)
 				if err != nil {
 					panic(err)
 				}
 				rewardReceive := uint64(0)
 				tokenStakeAmount := state.Liquidity()
+				receiveStake := uint64(0)
 
-				_, receiveStake := pathfinder.FindGoodTradePath(
-					5,
-					poolPairsArr,
-					*stateV2Json.PoolPairs,
-					poolID,
-					common.PRVCoinID.String(),
-					tokenStakeAmount)
+				if tokenID == common.PRVCoinID.String() {
+					receiveStake = tokenStakeAmount
+				} else {
+					tkInfo, err := database.DBGetExtraTokenInfo(tokenID)
+					if err != nil {
+						log.Println(err)
+					}
+					tkDecimal := 1
+					if tkInfo != nil {
+						tkDecimal = int(tkInfo.PDecimals)
+					}
+					rateRw := getRateMinimum(tokenID, common.PRVCoinID.String(), uint64(math.Pow10(tkDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+
+					receiveStake = uint64(float64(tokenStakeAmount) * rateRw)
+				}
 
 				for tk, v := range rw {
-					_, receive := pathfinder.FindGoodTradePath(
-						5,
-						poolPairsArr,
-						*stateV2Json.PoolPairs,
-						tk,
-						common.PRVCoinID.String(),
-						v)
+					if tk == common.PRVCoinID.String() {
+						rewardReceive += v
+						continue
+					}
+					tkInfo, err := database.DBGetExtraTokenInfo(tk)
+					if err != nil {
+						log.Println(err)
+					}
+					tkRwDecimal := 1
+					if tkInfo != nil {
+						tkRwDecimal = int(tkInfo.PDecimals)
+					}
+					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+
+					receive := uint64(float64(v) * rateRw)
 					rewardReceive += receive
 				}
 				var rwInfo struct {
@@ -557,7 +597,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				}
 				rwInfo.TokenAmount = make(map[string]uint64)
 				rwInfo.RewardPerToken = rw
-				rwInfo.TokenAmount[poolID] = tokenStakeAmount
+				rwInfo.TokenAmount[tokenID] = tokenStakeAmount
 				rwInfo.RewardReceiveInPRV = rewardReceive
 				rwInfo.TotalAmountInPRV = receiveStake
 
@@ -566,13 +606,12 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					panic(err)
 				}
 				data := shared.RewardRecord{
-					DataID:       poolID,
+					DataID:       tokenID,
 					Data:         string(rwInfoBytes),
 					BeaconHeight: beaconHeight,
 				}
 				rewardRecords = append(rewardRecords, data)
 			}
-			// if beaconHeight%config.Param().EpochParam.NumberOfBlockInEpoch == 0 {
 			for poolID, state := range statev2.PoolPairs {
 				rw, err := extractLqReward(poolID, statev2.PoolPairs, prevStatev2.PoolPairs)
 				if err != nil {
@@ -581,31 +620,58 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				rewardReceive := uint64(0)
 				token1Amount := state.State.Token0RealAmount()
 				token2Amount := state.State.Token1RealAmount()
+				total1 := uint64(0)
+				total2 := uint64(0)
+				if state.State.Token0ID().String() == common.PRVCoinID.String() || state.State.Token1ID().String() == common.PRVCoinID.String() {
+					if state.State.Token0ID().String() == common.PRVCoinID.String() {
+						total1 = token1Amount
+						total2 = token1Amount
+					} else {
+						total1 = token2Amount
+						total2 = token2Amount
+					}
+				} else {
+					tk1, err := database.DBGetExtraTokenInfo(state.State.Token0ID().String())
+					if err != nil {
+						log.Println(err)
+					}
+					tk2, err := database.DBGetExtraTokenInfo(state.State.Token1ID().String())
+					if err != nil {
+						log.Println(err)
+					}
+					tk1Decimal := 1
+					tk2Decimal := 2
+					if tk1 != nil {
+						tk1Decimal = int(tk1.PDecimals)
+					}
+					if tk2 != nil {
+						tk2Decimal = int(tk2.PDecimals)
+					}
+					rate1 := getRateMinimum(state.State.Token0ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk1Decimal)), poolPairsArr, *stateV2Json.PoolPairs)
 
-				_, receive1 := pathfinder.FindGoodTradePath(
-					5,
-					poolPairsArr,
-					*stateV2Json.PoolPairs,
-					state.State.Token0ID().String(),
-					common.PRVCoinID.String(),
-					token1Amount)
-				_, receive2 := pathfinder.FindGoodTradePath(
-					5,
-					poolPairsArr,
-					*stateV2Json.PoolPairs,
-					state.State.Token1ID().String(),
-					common.PRVCoinID.String(),
-					token2Amount)
+					rate2 := getRateMinimum(state.State.Token1ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk2Decimal)), poolPairsArr, *stateV2Json.PoolPairs)
 
-				totalAmount := receive1 + receive2
+					total1 = uint64(float64(token1Amount) * rate1)
+					total2 = uint64(float64(token2Amount) * rate2)
+				}
+
+				totalAmount := total1 + total2
 				for tk, v := range rw {
-					_, receive := pathfinder.FindGoodTradePath(
-						5,
-						poolPairsArr,
-						*stateV2Json.PoolPairs,
-						tk,
-						common.PRVCoinID.String(),
-						v)
+					if tk == common.PRVCoinID.String() {
+						rewardReceive += v
+						continue
+					}
+					tkInfo, err := database.DBGetExtraTokenInfo(tk)
+					if err != nil {
+						log.Println(err)
+					}
+					tkRwDecimal := 1
+					if tkInfo != nil {
+						tkRwDecimal = int(tkInfo.PDecimals)
+					}
+					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+
+					receive := uint64(float64(v) * rateRw)
 					rewardReceive += receive
 				}
 				var rwInfo struct {
@@ -632,7 +698,6 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				}
 				rewardRecords = append(rewardRecords, data)
 			}
-			// }
 			wg.Done()
 		}()
 

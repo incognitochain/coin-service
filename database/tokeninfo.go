@@ -127,6 +127,40 @@ func DBSaveExtraTokenInfo(list []shared.ExtraTokenInfo) error {
 	return nil
 }
 
+func DBSaveCustomTokenInfo(list []shared.CustomTokenInfo) error {
+	docs := []interface{}{}
+	for _, tx := range list {
+		update := bson.M{
+			"$set": tx,
+		}
+		docs = append(docs, update)
+	}
+	for idx, v := range list {
+		filter := bson.M{"tokenid": bson.M{operator.Eq: v.TokenID}}
+		_, err := mgm.Coll(&shared.CustomTokenInfo{}).UpdateOne(context.Background(), filter, docs[idx], mgm.UpsertTrueOption())
+		if err != nil {
+			writeErr, ok := err.(mongo.WriteException)
+			if !ok {
+				panic(err)
+			}
+			if !writeErr.HasErrorCode(11000) {
+				panic(err)
+			}
+		}
+	}
+	return nil
+}
+
+func DBGetAllCustomTokenInfo() ([]shared.CustomTokenInfo, error) {
+	list := []shared.CustomTokenInfo{}
+	filter := bson.M{}
+	err := mgm.Coll(&shared.CustomTokenInfo{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
 func DBGetAllExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 	list := []shared.ExtraTokenInfo{}
 	filter := bson.M{}

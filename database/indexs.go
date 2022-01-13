@@ -365,6 +365,10 @@ func DBCreateLiquidityIndex() error {
 	if err != nil {
 		return err
 	}
+	_, err = mgm.Coll(&shared.CustomTokenInfo{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)
+	if err != nil {
+		return err
+	}
 
 	pdexStateModel := []mongo.IndexModel{
 		{
