@@ -185,7 +185,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 				return
 			}
 			if apy != nil {
-				data.APY = uint64(apy.APY)
+				data.APY = uint64(apy.APY2)
 			}
 			if _, found := defaultPools[d.PoolID]; found {
 				data.IsVerify = true
@@ -704,7 +704,7 @@ func (pdexv3) StakingPool(c *gin.Context) {
 		data := PdexV3StakingPoolInfo{
 			Amount:  v.Amount,
 			TokenID: v.TokenID,
-			APY:     int(apy.APY),
+			APY:     int(apy.APY2),
 		}
 		result = append(result, data)
 	}
@@ -940,7 +940,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			return
 		}
 		if apy != nil {
-			data.APY = uint64(apy.APY)
+			data.APY = uint64(apy.APY2)
 		}
 		if _, found := defaultPools[v.PoolID]; found {
 			data.IsVerify = true

@@ -780,7 +780,6 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
 			p := (percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
-			// data.APY = uint64(math.Pow(float64(1+p/12), 12) - 1)
 			data.APY = p
 		}
 		result = append(result, data)

@@ -345,8 +345,8 @@ retry:
 }
 
 func getPdecimalRate(tokenID1, tokenID2 string) (float64, int, int, error) {
-	tk1Decimal := 1
-	tk2Decimal := 1
+	tk1Decimal := 0
+	tk2Decimal := 0
 	tk1, err := database.DBGetExtraTokenInfo(tokenID1)
 	if err != nil {
 		log.Println(err)

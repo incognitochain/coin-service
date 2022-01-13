@@ -402,6 +402,9 @@ func APIGetTokenList(c *gin.Context) {
 				if etki.Symbol != "" {
 					data.Symbol = etki.Symbol
 				}
+				if etki.Verified {
+					data.Verified = etki.Verified
+				}
 			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
@@ -418,7 +421,9 @@ func APIGetTokenList(c *gin.Context) {
 				data.Type = etki.Type
 				data.CurrencyType = etki.CurrencyType
 				data.Default = etki.Default
-				data.Verified = etki.Verified
+				if etki.Verified {
+					data.Verified = etki.Verified
+				}
 				data.UserID = etki.UserID
 				data.PercentChange1h = etki.PercentChange1h
 				data.PercentChangePrv1h = etki.PercentChangePrv1h
@@ -436,17 +441,13 @@ func APIGetTokenList(c *gin.Context) {
 				if data.PriceUsd == 0 {
 					data.PriceUsd = etki.PriceUsd
 				}
-				if allToken != "true" {
-					datalist = append(datalist, data)
-				}
-			}
 
+			}
+			if !v.IsNFT {
+				datalist = append(datalist, data)
+			}
 			if includeNFT == "true" && v.IsNFT {
 				datalist = append(datalist, data)
-			} else {
-				if allToken == "true" {
-					datalist = append(datalist, data)
-				}
 			}
 		}
 
