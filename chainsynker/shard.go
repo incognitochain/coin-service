@@ -118,9 +118,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 						idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
 						if err != nil {
 							log.Println("len(outs))", len(tx.OutputCoin), base58.Base58Check{}.Encode(publicKeyBytes, 0))
-							panic(err)
+							if publicKeyStr != shared.BurnCoinID {
+								panic(err)
+							}
+						} else {
+							coinIdx = idxBig.Uint64()
 						}
-						coinIdx = idxBig.Uint64()
 					} else {
 						idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, prvout.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 						if err != nil {
@@ -163,9 +166,13 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 						if tkout.GetVersion() == 2 {
 							idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], tkouts.PropertyID, publicKeyBytes)
 							if err != nil {
-								panic(err)
+								log.Println("len(outs))", len(tx.OutputCoin), base58.Base58Check{}.Encode(publicKeyBytes, 0))
+								if publicKeyStr != shared.BurnCoinID {
+									panic(err)
+								}
+							} else {
+								coinIdx = idxBig.Uint64()
 							}
-							coinIdx = idxBig.Uint64()
 							tokenStr = common.ConfidentialAssetID.String()
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], tkouts.PropertyID, tkout.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
@@ -234,9 +241,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 						idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
 						if err != nil {
 							log.Println("len(outs))", len(outs), base58.Base58Check{}.Encode(publicKeyBytes, 0))
-							panic(err)
+							if publicKeyStr != shared.BurnCoinID {
+								panic(err)
+							}
+						} else {
+							coinIdx = idxBig.Uint64()
 						}
-						coinIdx = idxBig.Uint64()
 					} else {
 						idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 						if err != nil {
@@ -298,9 +308,13 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 							isCoinV2Output = true
 							idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], *tx.GetTokenID(), publicKeyBytes)
 							if err != nil {
-								panic(err)
+								log.Println("len(outs))", len(tokenOuts), base58.Base58Check{}.Encode(publicKeyBytes, 0))
+								if publicKeyStr != shared.BurnCoinID {
+									panic(err)
+								}
+							} else {
+								coinIdx = idxBig.Uint64()
 							}
-							coinIdx = idxBig.Uint64()
 							tokenStr = common.ConfidentialAssetID.String()
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], *txToken.GetTokenID(), coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
@@ -356,9 +370,13 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 						if coin.GetVersion() == 2 {
 							idxBig, err := statedb.GetOTACoinIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, publicKeyBytes)
 							if err != nil {
-								panic(err)
+								log.Println("len(outs))", len(outs), base58.Base58Check{}.Encode(publicKeyBytes, 0))
+								if publicKeyStr != shared.BurnCoinID {
+									panic(err)
+								}
+							} else {
+								coinIdx = idxBig.Uint64()
 							}
-							coinIdx = idxBig.Uint64()
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(TransactionStateDB[byte(blk.GetShardID())], common.PRVCoinID, coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
 							if err != nil {
