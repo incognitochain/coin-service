@@ -185,7 +185,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 				return
 			}
 			if apy != nil {
-				data.APY = uint64(apy.APY)
+				data.APY = uint64(apy.APY2)
 			}
 			if _, found := defaultPools[d.PoolID]; found {
 				data.IsVerify = true
@@ -770,7 +770,7 @@ func (pdexv3) StakingPool(c *gin.Context) {
 		data := PdexV3StakingPoolInfo{
 			Amount:  v.Amount,
 			TokenID: v.TokenID,
-			APY:     int(apy.APY),
+			APY:     int(apy.APY2),
 		}
 		result = append(result, data)
 	}
@@ -1043,7 +1043,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 			return
 		}
 		if apy != nil {
-			data.APY = uint64(apy.APY)
+			data.APY = uint64(apy.APY2)
 		}
 		if _, found := defaultPools[v.PoolID]; found {
 			data.IsVerify = true
@@ -1305,15 +1305,15 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			for _, v := range chosenPath {
 				feePRV.Route = append(feePRV.Route, v.PoolID)
 			}
-			tradingFeeToken, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, feePRV.Route, *pdexState, true)
+			tradingFeePRV, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, feePRV.Route, *pdexState, true)
 			if err != nil {
 				log.Print("can not estimate fee: ", err)
 				// c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 				// return
 			}
-			feePRV.Fee = tradingFeeToken
+			feePRV.Fee = tradingFeePRV + (tradingFeePRV / 100)
 			if req.IsMax && sellToken == common.PRVCoinID.String() && feePRV.Fee > 0 {
-				newSellAmount := sellAmount - tradingFeeToken - 100
+				newSellAmount := sellAmount - tradingFeePRV - 100 - (tradingFeePRV / 100)
 				chosenPath, receive := pathfinder.FindGoodTradePath(
 					pdexv3Meta.MaxTradePathLength,
 					newPools,
@@ -1327,14 +1327,15 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				for _, v := range chosenPath {
 					feePRV.Route = append(feePRV.Route, v.PoolID)
 				}
-				tradingFeeToken, err := feeestimator.EstimateTradingFee(uint64(newSellAmount), sellToken, feePRV.Route, *pdexState, true)
+				tradingFeePRV, err := feeestimator.EstimateTradingFee(uint64(newSellAmount), sellToken, feePRV.Route, *pdexState, true)
 				if err != nil {
 					log.Print("can not estimate fee: ", err)
 					// c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 					// return
 				}
-				feePRV.Fee = tradingFeeToken
+				feePRV.Fee = tradingFeePRV + (tradingFeePRV / 100)
 			}
+			feePRV.TokenRoute = getTokenRoute(sellToken, feePRV.Route)
 		}
 
 		//feeToken
@@ -1376,6 +1377,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					}
 					feeToken.Fee = tradingFeeToken
 				}
+				feeToken.TokenRoute = getTokenRoute(sellToken, feeToken.Route)
 			}
 		}
 	} else {
@@ -1406,7 +1408,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				// c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 				// return
 			}
-			feePRV.Fee = tradingFeePRV
+			feePRV.Fee = tradingFeePRV + (tradingFeePRV / 100)
+			feePRV.TokenRoute = getTokenRoute(sellToken, feePRV.Route)
 			tradingFeeToken, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, feePRV.Route, *pdexState, false)
 			if err != nil {
 				log.Print("can not estimate fee: ", err)
@@ -1414,6 +1417,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				// return
 			}
 			feeToken.Fee = tradingFeeToken
+			feeToken.TokenRoute = getTokenRoute(sellToken, feeToken.Route)
 		}
 	}
 	if feePRV.Fee != 0 {
@@ -1425,13 +1429,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
-		if ((rt1/rt)-1)*100 >= 20 {
+		ia := ((rt1 / rt) - 1) * 100
+		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
-		// feePRV.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
-		// feePRV.Debug.Rate = rt
-		// feePRV.Debug.Rate1 = rt1
-		// fmt.Println("feePRV.Debug.ImpactAmount", feePRV.Debug.ImpactAmount, feePRV.Debug.Rate, feePRV.Debug.Rate1)
+		feePRV.ImpactAmount = ia
 	}
 	if feeToken.Fee != 0 {
 		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
@@ -1442,13 +1444,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
-		if ((rt1/rt)-1)*100 >= 20 {
+		ia := ((rt1 / rt) - 1) * 100
+		if ia >= 20 {
 			feeToken.IsSignificant = true
 		}
-		// feeToken.Debug.ImpactAmount = ((rt1 / rt) - 1) * 100
-		// feeToken.Debug.Rate = rt
-		// feeToken.Debug.Rate1 = rt1
-		// fmt.Println("feeToken.Debug.ImpactAmount", feeToken.Debug.ImpactAmount, feeToken.Debug.Rate, feeToken.Debug.Rate1)
+		feeToken.ImpactAmount = ia
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken
@@ -1470,11 +1470,11 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 	intervals := c.Query("intervals")
 
 	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolid, period, intervals)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
+
 	var priorityTokens []string
 	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
 		priorityTokens, err = database.DBGetTokenPriority()
@@ -1499,8 +1499,8 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 		if willSwap {
 			var pdexV3PriceHistoryRespond = PdexV3PriceHistoryRespond{
 				Timestamp: tm.Unix(),
-				High:      1 / v.High,
-				Low:       1 / v.Low,
+				High:      1 / v.Low,
+				Low:       1 / v.High,
 				Open:      1 / v.Open,
 				Close:     1 / v.Close,
 			}

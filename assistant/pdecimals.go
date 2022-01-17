@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
@@ -100,5 +101,70 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 		}
 		return result, nil
 	}
+	return nil, nil
+}
+
+func getCustomTokenInfo() ([]shared.CustomTokenInfo, error) {
+	if shared.ServiceCfg.ExternalDecimals != "" {
+		var decimal struct {
+			Result []struct {
+				TokenID          string `json:"TokenID" bson:"tokenid"`
+				Image            string `json:"Image" bson:"image"`
+				IsPrivacy        int    `json:"IsPrivacy" bson:"isprivacy"`
+				Name             string `json:"Name" bson:"name"`
+				Symbol           string `json:"Symbol" bson:"symbol"`
+				OwnerAddress     string `json:"OwnerAddress" bson:"owneraddress"`
+				OwnerName        string `json:"OwnerName" bson:"ownername"`
+				OwnerEmail       string `json:"OwnerEmail" bson:"owneremail"`
+				OwnerWebsite     string `json:"OwnerWebsite" bson:"ownerwebsite"`
+				ShowOwnerAddress int    `json:"ShowOwnerAddress" bson:"showowneraddress"`
+				Description      string `json:"Description" bson:"description"`
+				Verified         bool   `json:"Verified" bson:"verified"`
+			}
+			Error string `json:"Error"`
+		}
+		retryTimes := 0
+	retry:
+		retryTimes++
+		if retryTimes > 5 {
+			return nil, errors.New("retry reached updatePDecimal")
+		}
+		urls := strings.Split(shared.ServiceCfg.ExternalDecimals, "/")
+		resp, err := http.Get(urls[0] + "//" + urls[2] + "/pcustomtoken/list")
+		if err != nil {
+			log.Println(err)
+			time.Sleep(2 * time.Second)
+			goto retry
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		err = json.Unmarshal(body, &decimal)
+		if err != nil {
+			log.Println(err)
+			goto retry
+		}
+		resp.Body.Close()
+		var result []shared.CustomTokenInfo
+		for _, v := range decimal.Result {
+			result = append(result, shared.CustomTokenInfo{
+				TokenID:          v.TokenID,
+				Name:             v.Name,
+				Symbol:           v.Symbol,
+				Image:            v.Image,
+				IsPrivacy:        v.IsPrivacy,
+				OwnerAddress:     v.OwnerAddress,
+				OwnerName:        v.OwnerName,
+				OwnerEmail:       v.OwnerEmail,
+				OwnerWebsite:     v.OwnerWebsite,
+				ShowOwnerAddress: v.ShowOwnerAddress,
+				Description:      v.Description,
+				Verified:         v.Verified,
+			})
+		}
+		return result, nil
+	}
+
 	return nil, nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/incognitochain/coin-service/processors/shield"
 	"github.com/incognitochain/coin-service/processors/trade"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/wallet"
 )
 
 func main() {
@@ -23,6 +24,10 @@ func main() {
 		panic(err)
 	}
 	log.Println("service mode:", shared.ServiceCfg.Mode)
+	err = wallet.InitPublicKeyBurningAddressByte()
+	if err != nil {
+		panic(err)
+	}
 	switch shared.ServiceCfg.Mode {
 	// case shared.FULLMODE:
 	// 	chainsynker.InitChainSynker(shared.ServiceCfg)

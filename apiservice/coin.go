@@ -190,7 +190,7 @@ func APIGetRandomCommitments(c *gin.Context) {
 				i--
 				continue
 			}
-			if coinData.CoinPubkey == "1y4gnYS1Ns2K7BjQTjgfZ5nTR8JZMkMJ3CTGMj2Pk7CQkSTFgA" {
+			if coinData.CoinPubkey == shared.BurnCoinID {
 				i--
 				continue
 			}
@@ -279,6 +279,13 @@ func APIGetTokenList(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 			return
 		}
+		customTokenInfo, err := database.DBGetAllCustomTokenInfo()
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+			return
+		}
+
 		defaultPools, err := database.DBGetDefaultPool()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -294,7 +301,22 @@ func APIGetTokenList(c *gin.Context) {
 		for _, v := range extraTokenInfo {
 			extraTokenInfoMap[v.TokenID] = v
 		}
+
+		customTokenInfoMap := make(map[string]shared.CustomTokenInfo)
+		for _, v := range customTokenInfo {
+			customTokenInfoMap[v.TokenID] = v
+		}
 		chainTkListMap := make(map[string]struct{})
+
+		baseToken, _ := database.DBGetBasePriceToken()
+
+		prvUsdtPair24h := float64(0)
+		for v, _ := range defaultPools {
+			if strings.Contains(v, baseToken) && strings.Contains(v, common.PRVCoinID.String()) {
+				prvUsdtPair24h = getPoolPair24hChange(v)
+				break
+			}
+		}
 
 		for _, v := range tokenList {
 			chainTkListMap[v.TokenID] = struct{}{}
@@ -307,6 +329,7 @@ func APIGetTokenList(c *gin.Context) {
 			data := TokenInfo{
 				TokenID:          v.TokenID,
 				Name:             v.Name,
+				Symbol:           v.Symbol,
 				Image:            v.Image,
 				IsPrivacy:        v.IsPrivacy,
 				IsBridge:         v.IsBridge,
@@ -314,10 +337,83 @@ func APIGetTokenList(c *gin.Context) {
 				PriceUsd:         currPrice,
 				PercentChange24h: fmt.Sprintf("%.2f", percent24h),
 			}
+
+			defaultPool := ""
+			defaultPairToken := ""
+			defaultPairTokenIdx := -1
+			currentPoolAmount := uint64(0)
+			for poolID, _ := range defaultPools {
+				if strings.Contains(poolID, data.TokenID) {
+					pa := getPoolAmount(poolID, data.TokenID)
+					if pa == 0 {
+						continue
+					}
+					tks := strings.Split(poolID, "-")
+					tkPair := tks[0]
+					if tks[0] == data.TokenID {
+						tkPair = tks[1]
+					}
+					for idx, ptk := range priorityTokens {
+						if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
+							if idx > defaultPairTokenIdx {
+								defaultPool = poolID
+								defaultPairToken = tkPair
+								defaultPairTokenIdx = idx
+								currentPoolAmount = pa
+							}
+							if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
+								defaultPool = poolID
+								defaultPairToken = tkPair
+								defaultPairTokenIdx = idx
+								currentPoolAmount = pa
+							}
+						}
+					}
+
+					if defaultPool == "" {
+						if pa > 0 {
+							defaultPool = poolID
+							defaultPairToken = tkPair
+							currentPoolAmount = pa
+						}
+					} else {
+						if (pa > currentPoolAmount) && (defaultPairTokenIdx == -1) {
+							defaultPool = poolID
+							defaultPairToken = tkPair
+							currentPoolAmount = pa
+						}
+					}
+				}
+			}
+			data.DefaultPairToken = defaultPairToken
+			data.DefaultPoolPair = defaultPool
+			if data.TokenID == common.PRVCoinID.String() {
+				data.PercentChange24h = fmt.Sprintf("%.2f", prvUsdtPair24h)
+			} else {
+				if data.DefaultPairToken != "" && data.TokenID != baseToken {
+					data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, baseToken, prvUsdtPair24h))
+				}
+			}
+
+			if etki, ok := customTokenInfoMap[v.TokenID]; ok {
+				if etki.Name != "" {
+					data.Name = etki.Name
+				}
+				if etki.Symbol != "" {
+					data.Symbol = etki.Symbol
+				}
+				if etki.Verified {
+					data.Verified = etki.Verified
+				}
+			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
-				data.Name = etki.Name
+				if etki.Name != "" {
+					data.Name = etki.Name
+				}
 				data.Decimals = etki.Decimals
-				data.Symbol = etki.Symbol
+				if etki.Symbol != "" {
+					data.Symbol = etki.Symbol
+				}
 				data.PSymbol = etki.PSymbol
 				data.PDecimals = int(etki.PDecimals)
 				data.ContractID = etki.ContractID
@@ -325,7 +421,9 @@ func APIGetTokenList(c *gin.Context) {
 				data.Type = etki.Type
 				data.CurrencyType = etki.CurrencyType
 				data.Default = etki.Default
-				data.Verified = etki.Verified
+				if etki.Verified {
+					data.Verified = etki.Verified
+				}
 				data.UserID = etki.UserID
 				data.PercentChange1h = etki.PercentChange1h
 				data.PercentChangePrv1h = etki.PercentChangePrv1h
@@ -343,66 +441,13 @@ func APIGetTokenList(c *gin.Context) {
 				if data.PriceUsd == 0 {
 					data.PriceUsd = etki.PriceUsd
 				}
-				defaultPool := ""
-				defaultPairToken := ""
-				defaultPairTokenIdx := -1
-				currentPoolAmount := uint64(0)
-				for poolID, _ := range defaultPools {
-					if strings.Contains(poolID, data.TokenID) {
-						pa := getPoolAmount(poolID, data.TokenID)
-						if pa == 0 {
-							continue
-						}
-						tks := strings.Split(poolID, "-")
-						tkPair := tks[0]
-						if tks[0] == data.TokenID {
-							tkPair = tks[1]
-						}
-						for idx, ptk := range priorityTokens {
-							if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
-								if idx > defaultPairTokenIdx {
-									defaultPool = poolID
-									defaultPairToken = tkPair
-									defaultPairTokenIdx = idx
-									currentPoolAmount = pa
-								}
-								if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
-									defaultPool = poolID
-									defaultPairToken = tkPair
-									defaultPairTokenIdx = idx
-									currentPoolAmount = pa
-								}
-							}
-						}
 
-						if defaultPool == "" {
-							if pa > 0 {
-								defaultPool = poolID
-								defaultPairToken = tkPair
-								currentPoolAmount = pa
-							}
-						} else {
-							if (pa > currentPoolAmount) && (defaultPairTokenIdx == -1) {
-								defaultPool = poolID
-								defaultPairToken = tkPair
-								currentPoolAmount = pa
-							}
-						}
-					}
-				}
-				data.DefaultPairToken = defaultPairToken
-				data.DefaultPoolPair = defaultPool
-				if allToken != "true" {
-					datalist = append(datalist, data)
-				}
 			}
-
+			if !v.IsNFT {
+				datalist = append(datalist, data)
+			}
 			if includeNFT == "true" && v.IsNFT {
 				datalist = append(datalist, data)
-			} else {
-				if allToken == "true" {
-					datalist = append(datalist, data)
-				}
 			}
 		}
 
@@ -981,15 +1026,23 @@ func APISubmitOTA(c *gin.Context) {
 	err = <-resp
 	errStr := ""
 	if err != nil {
-		// if !mongo.IsDuplicateKeyError(err) {
-		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		// 	return
-		// }
+		if strings.Contains(err.Error(), "already exist") {
+			respond := APIRespond{
+				Result: "true",
+			}
+			c.JSON(http.StatusOK, respond)
+			return
+		}
 		errStr = err.Error()
+		respond := APIRespond{
+			Result: "false",
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
 	}
 	respond := APIRespond{
 		Result: "true",
-		Error:  &errStr,
 	}
 	c.JSON(http.StatusOK, respond)
 }

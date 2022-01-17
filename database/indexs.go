@@ -155,9 +155,12 @@ func DBCreateTxIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "pubkeyreceivers", Value: bsonx.Int32(1)}, {Key: "realtokenid", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
 		},
-
 		{
 			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}},
+		},
+
+		{
+			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}, {Key: "shardid", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
@@ -362,6 +365,10 @@ func DBCreateLiquidityIndex() error {
 		},
 	}
 	_, err = mgm.Coll(&shared.ExtraTokenInfo{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)
+	if err != nil {
+		return err
+	}
+	_, err = mgm.Coll(&shared.CustomTokenInfo{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)
 	if err != nil {
 		return err
 	}

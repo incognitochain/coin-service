@@ -3,11 +3,13 @@ package apiservice
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
@@ -370,6 +372,12 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 	if strings.Contains(pair14, tokenID1) && strings.Contains(pair14, tokenID2) {
 		return 100
 	}
+	if strings.Contains(pair15, tokenID1) && strings.Contains(pair15, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair16, tokenID1) && strings.Contains(pair16, tokenID2) {
+		return 2
+	}
 	return 0
 }
 
@@ -388,6 +396,8 @@ var (
 	pair12 = "1ff2da446abfebea3ba30385e2ca99b0f0bbeda5c6371f4c23c939672b429a42" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
 	pair13 = "3f89c75324b46f13c7b036871060e641d996a24c09b3065835cb1d38b799d6c1" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
 	pair14 = "be02b225bcd26eeae00d3a51e554ac0adcdcc09de77ad03202904666d427a7e4" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair15 = common.PRVCoinID.String() + "e5032c083f0da67ca141331b6005e4a3740c50218f151a5e829e9d03227e33e2"
+	pair16 = common.PRVCoinID.String() + "dae027b21d8d57114da11209dce8eeb587d01adf59d4fc356a8be5eedc146859"
 )
 
 func getUniqueIdx(list []string) []int {
@@ -400,4 +410,44 @@ func getUniqueIdx(list []string) []int {
 		}
 	}
 	return result
+}
+
+func getToken24hPriceChange(tokenID, pairTokenID, poolPair, baseToken string, prv24hChange float64) float64 {
+	if pairTokenID == baseToken {
+		return getPoolPair24hChange(poolPair)
+	}
+	if pairTokenID == common.PRVCoinID.String() {
+		return getPoolPair24hChange(poolPair) + prv24hChange
+	}
+	return 0
+}
+
+func getPoolPair24hChange(poolID string) float64 {
+	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT15M", "PT24H")
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	if len(analyticsData.Result) == 0 {
+		return 0
+	}
+	p1 := analyticsData.Result[0].Close
+	p2 := analyticsData.Result[len(analyticsData.Result)-1].Close
+	r := (p2 - p1) / p1 * 100
+	return r
+}
+func getTokenRoute(sellToken string, route []string) []string {
+	tokenRoute := []string{sellToken}
+	intermediateToken := sellToken
+	for _, poolID := range route {
+		tks := strings.Split(poolID, "-")
+		if tks[0] != intermediateToken {
+			tokenRoute = append(tokenRoute, tks[0])
+			intermediateToken = tks[0]
+		} else {
+			tokenRoute = append(tokenRoute, tks[1])
+			intermediateToken = tks[1]
+		}
+	}
+	return tokenRoute
 }
