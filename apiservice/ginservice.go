@@ -129,6 +129,10 @@ func StartGinService() {
 		astGroup.GET("/checkrate", APICheckRate)
 		astGroup.GET("/plist", APIGetPdecimal)
 
+		localNodeGroup := r.Group("/localnode")
+		localNodeGroup.GET("/getcoinbyindex", APIGetOTACoinsByIndices)
+		localNodeGroup.GET("/getcoinlengths", APIGetOTACoinLength)
+
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
