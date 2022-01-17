@@ -1,7 +1,6 @@
 package chainsynker
 
 import (
-	"fmt"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
@@ -9,10 +8,7 @@ import (
 )
 
 func GetOTACoinsByIndices(shardID byte, tokenID common.Hash, idxList []uint64) (map[uint64]jsonresult.ICoinInfo, error) {
-	txDb, ok := TransactionStateDB[shardID]
-	if !ok {
-		return nil, fmt.Errorf("shardID %v not found", shardID)
-	}
+	txDb := Localnode.GetBlockchain().GetBestStateShard(shardID).GetCopiedTransactionStateDB()
 	res := make(map[uint64]jsonresult.ICoinInfo)
 	for _, idx := range idxList {
 		coinBytes, err := statedb.GetOTACoinByIndex(txDb, tokenID, idx, shardID)
@@ -37,10 +33,7 @@ func GetOTACoinLength() (map[string]map[byte]uint64, error) {
 	prvLength := make(map[byte]uint64)
 	tokenLength := make(map[byte]uint64)
 	for shardID := byte(0); shardID < byte(common.MaxShardNumber); shardID++ {
-		txDb, ok := TransactionStateDB[shardID]
-		if !ok {
-			return nil, fmt.Errorf("shardID %v not found", shardID)
-		}
+		txDb := Localnode.GetBlockchain().GetBestStateShard(shardID).GetCopiedTransactionStateDB()
 		shardPRVLength, err := statedb.GetOTACoinLength(txDb, common.PRVCoinID, shardID)
 		if err != nil {
 			return nil, err
