@@ -1202,15 +1202,15 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			for _, v := range chosenPath {
 				feePRV.Route = append(feePRV.Route, v.PoolID)
 			}
-			tradingFeeToken, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, feePRV.Route, *pdexState, true)
+			tradingFeePRV, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, feePRV.Route, *pdexState, true)
 			if err != nil {
 				log.Print("can not estimate fee: ", err)
 				// c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 				// return
 			}
-			feePRV.Fee = tradingFeeToken
+			feePRV.Fee = tradingFeePRV + (tradingFeePRV / 100)
 			if req.IsMax && sellToken == common.PRVCoinID.String() && feePRV.Fee > 0 {
-				newSellAmount := sellAmount - tradingFeeToken - 100
+				newSellAmount := sellAmount - tradingFeePRV - 100 - (tradingFeePRV / 100)
 				chosenPath, receive := pathfinder.FindGoodTradePath(
 					pdexv3Meta.MaxTradePathLength,
 					newPools,
@@ -1224,13 +1224,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				for _, v := range chosenPath {
 					feePRV.Route = append(feePRV.Route, v.PoolID)
 				}
-				tradingFeeToken, err := feeestimator.EstimateTradingFee(uint64(newSellAmount), sellToken, feePRV.Route, *pdexState, true)
+				tradingFeePRV, err := feeestimator.EstimateTradingFee(uint64(newSellAmount), sellToken, feePRV.Route, *pdexState, true)
 				if err != nil {
 					log.Print("can not estimate fee: ", err)
 					// c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 					// return
 				}
-				feePRV.Fee = tradingFeeToken
+				feePRV.Fee = tradingFeePRV + (tradingFeePRV / 100)
 			}
 			feePRV.TokenRoute = getTokenRoute(sellToken, feePRV.Route)
 		}
@@ -1305,7 +1305,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				// c.JSON(http.StatusUnprocessableEntity, buildGinErrorRespond(errors.New("can not estimate fee: "+err.Error())))
 				// return
 			}
-			feePRV.Fee = tradingFeePRV
+			feePRV.Fee = tradingFeePRV + (tradingFeePRV / 100)
 			feePRV.TokenRoute = getTokenRoute(sellToken, feePRV.Route)
 			tradingFeeToken, err := feeestimator.EstimateTradingFee(uint64(sellAmount), sellToken, feePRV.Route, *pdexState, false)
 			if err != nil {
