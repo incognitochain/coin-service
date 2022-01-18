@@ -31,6 +31,10 @@ func StartGinService() {
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/health", APIHealthCheck)
 
+	localNodeGroup := r.Group("/localnode")
+	localNodeGroup.GET("/getcoinbyindex", APIGetOTACoinsByIndices)
+	localNodeGroup.GET("/getcoinlengths", APIGetOTACoinLength)
+
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
