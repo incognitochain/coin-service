@@ -6,7 +6,7 @@ import (
 	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
-	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
+	"github.com/incognitochain/incognito-chain/privacy/coin"
 	"log"
 	"net/http"
 	"strconv"
@@ -33,13 +33,14 @@ func APIGetOTACoinsByIndices(c *gin.Context) {
 		return
 	}
 	type tmpHolder struct {
-		Data   jsonresult.ICoinInfo
+		Data   string
 		PubKey string
 	}
-	tmpCoin := res[uint64(idx)]
+	tmpCoin := res[uint64(idx)].(*coin.CoinV2)
+	coinStr := base58.Base58Check{}.Encode(tmpCoin.Bytes(), 0)
 	respond := APIRespond{
 		Result: tmpHolder{
-			Data:   tmpCoin,
+			Data:   coinStr,
 			PubKey: base58.Base58Check{}.Encode(tmpCoin.GetPublicKey().ToBytesS(), 0),
 		},
 		Error: nil,
