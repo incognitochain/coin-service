@@ -210,9 +210,9 @@ func cleanAssignedOTA() {
 func scanOTACoins() {
 	var err error
 	startTime := time.Now()
-	lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
 	//scan coins
 	for {
+		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
 		coinList := GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
 		if len(coinList) == 0 {
 			break
@@ -524,6 +524,7 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 		log.Println("len(otaCoins)", len(otaCoins))
 		log.Printf("filtered %v coins with %v keys in %v", len(coinList), assignedOTAKeys.TotalKeys, time.Since(startTime))
 		log.Println("lastPRVIndex", lastPRVIndex, lastTokenIndex)
+
 		return otaCoins, otherCoins, lastPRVIndex, lastTokenIndex, nil
 	}
 	return nil, nil, nil, nil, errors.New("no key to scan")
