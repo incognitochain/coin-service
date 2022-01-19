@@ -12,6 +12,7 @@ var cachedb *cache.Cache
 
 func StartAssistant() {
 	cachedb = cache.New(5*time.Minute, 5*time.Minute)
+	scanQualifyPools := time.Now().Truncate(scanQualifyPoolsInterval)
 	log.Println("starting assistant")
 	err := database.DBCreateClientAssistantIndex()
 	if err != nil {
@@ -76,6 +77,17 @@ func StartAssistant() {
 		err = database.DBUpdateTokenInfoPrice(tokenInfoUpdate)
 		if err != nil {
 			panic(err)
+		}
+		if time.Since(scanQualifyPools) >= scanQualifyPoolsInterval {
+			qualifyPools, err := checkPoolQualify(extraTokenInfo)
+			if err != nil {
+				panic(err)
+			}
+			err = database.DBSetQualifyPool(qualifyPools)
+			if err != nil {
+				panic(err)
+			}
+			scanQualifyPools = time.Now()
 		}
 
 		time.Sleep(updateInterval)

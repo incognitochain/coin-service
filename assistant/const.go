@@ -16,3 +16,7 @@ const (
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+
+const (
+	scanQualifyPoolsInterval = 4 * time.Hour
+)
