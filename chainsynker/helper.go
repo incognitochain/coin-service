@@ -8,7 +8,7 @@ import (
 )
 
 func GetOTACoinsByIndices(shardID byte, tokenID common.Hash, idxList []uint64) (map[uint64]jsonresult.ICoinInfo, error) {
-	txDb := Localnode.GetBlockchain().GetBestStateShard(shardID).GetCopiedTransactionStateDB()
+	txDb := TransactionStateDB[shardID]
 	res := make(map[uint64]jsonresult.ICoinInfo)
 	for _, idx := range idxList {
 		coinBytes, err := statedb.GetOTACoinByIndex(txDb, tokenID, idx, shardID)
@@ -33,7 +33,7 @@ func GetOTACoinLength() (map[string]map[byte]uint64, error) {
 	prvLength := make(map[byte]uint64)
 	tokenLength := make(map[byte]uint64)
 	for shardID := byte(0); shardID < byte(common.MaxShardNumber); shardID++ {
-		txDb := Localnode.GetBlockchain().GetBestStateShard(shardID).GetCopiedTransactionStateDB()
+		txDb := TransactionStateDB[shardID]
 		shardPRVLength, err := statedb.GetOTACoinLength(txDb, common.PRVCoinID, shardID)
 		if err != nil {
 			return nil, err
