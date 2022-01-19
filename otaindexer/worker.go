@@ -208,21 +208,36 @@ func cleanAssignedOTA() {
 }
 
 func scanOTACoins() {
-	var err error
 	startTime := time.Now()
+	lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
 	//scan coins
 	for {
-		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
 		coinList := GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
 		if len(coinList) == 0 {
 			break
 		}
-		filteredCoins := make(map[string][]shared.CoinData)
-		filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
+		filteredCoins, _, lastPRVIndexNew, lastTokenIndexNew, err := filterCoinsByOTAKey(coinList)
 		if err != nil {
 			panic(err)
 		}
-		updateCoinState(filteredCoins, lastPRVIndex, lastTokenIndex)
+		updateCoinState(filteredCoins, lastPRVIndexNew, lastTokenIndexNew)
+
+		unchange := true
+		for k, v := range lastPRVIndexNew {
+			if v != lastPRVIndex[k] {
+				unchange = false
+			}
+		}
+		for k, v := range lastTokenIndexNew {
+			if v != lastTokenIndex[k] {
+				unchange = false
+			}
+		}
+		if unchange {
+			break
+		}
+		lastPRVIndex = lastPRVIndexNew
+		lastTokenIndex = lastTokenIndexNew
 	}
 	log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
 }
