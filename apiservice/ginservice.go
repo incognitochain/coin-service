@@ -67,6 +67,7 @@ func StartGinService() {
 		coinsGroup.GET("/tokenlist", APIGetTokenList)
 		coinsGroup.GET("/getcoinspending", APIGetCoinsPending)
 		coinsGroup.GET("/getcoins", APIGetCoins)
+		coinsGroup.GET("/getcoinbyindex", APIGetOTACoinsByIndicesMongo)
 		coinsGroup.GET("/getkeyinfo", APIGetKeyInfo)
 		coinsGroup.POST("/checkkeyimages", APICheckKeyImages)
 		coinsGroup.POST("/getrandomcommitments", APIGetRandomCommitments)

@@ -1089,3 +1089,41 @@ func APISubmitOTAFullmode(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, respond)
 }
+
+func APIGetOTACoinsByIndicesMongo(c *gin.Context) {
+	shardID, _ := strconv.ParseInt(c.Query("shardID"), 10, 64)
+	isToken, _ := strconv.ParseBool(c.Query("isToken"))
+	idx, _ := strconv.ParseInt(c.Query("idx"), 10, 64)
+
+	tokenID := common.PRVCoinID
+	if isToken {
+		tokenID = common.ConfidentialAssetID
+	}
+
+	res, err := database.DBGetCoinsByIndex(uint64(idx), int(shardID), tokenID.String())
+	if err != nil {
+		log.Printf("[APIGetOTACoinsByIndices] error: %v\n", err)
+		errStr := fmt.Sprintf("shard %v, index %v, isToken %v not retrievable", shardID, idx, isToken)
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+	type tmpHolder struct {
+		Data   string
+		PubKey string
+	}
+	tmpCoin := coin.CoinV2{}
+	tmpCoin.SetBytes(res.Coin)
+	coinStr := base58.Base58Check{}.Encode(tmpCoin.Bytes(), 0)
+	respond := APIRespond{
+		Result: tmpHolder{
+			Data:   coinStr,
+			PubKey: base58.Base58Check{}.Encode(tmpCoin.GetPublicKey().ToBytesS(), 0),
+		},
+		Error: nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}

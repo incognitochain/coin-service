@@ -2,14 +2,15 @@ package apiservice
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
-	"log"
-	"net/http"
-	"strconv"
 )
 
 func APIGetOTACoinsByIndices(c *gin.Context) {
