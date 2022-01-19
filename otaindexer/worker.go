@@ -236,6 +236,8 @@ func scanOTACoins() {
 		if unchange {
 			break
 		}
+		lastPRVIndex = lastPRVIndexNew
+		lastTokenIndex = lastTokenIndexNew
 	}
 	log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
 }
