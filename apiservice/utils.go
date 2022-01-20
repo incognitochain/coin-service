@@ -3,13 +3,17 @@ package apiservice
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
 	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
@@ -211,11 +215,15 @@ func extractPubkeyFromKey(key string, otakeyOnly bool) (string, error) {
 	return result, nil
 }
 
-func calcAMPRate(virtA, virtB, sellAmount float64) float64 {
-	var result float64
-	k := virtA * virtB
-	result = virtB - (k / (virtA + sellAmount))
-	return result / sellAmount
+// func calcAMPRate(virtA, virtB, sellAmount float64) float64 {
+// 	var result float64
+// 	k := virtA * virtB
+// 	result = virtB - (k / (virtA + sellAmount))
+// 	return result / sellAmount
+// }
+
+func calcRateSimple(virtA, virtB float64) float64 {
+	return virtB / virtA
 }
 
 func willSwapTokenPlace(token1ID, token2ID string, tokenPriorityList []string) bool {
@@ -319,4 +327,127 @@ retry:
 		}
 	}
 	return float64(receive) / float64(a)
+}
+
+func ampHardCode(tokenID1, tokenID2 string) float64 {
+	if strings.Contains(pair1, tokenID1) && strings.Contains(pair1, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair2, tokenID1) && strings.Contains(pair2, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair3, tokenID1) && strings.Contains(pair3, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair4, tokenID1) && strings.Contains(pair4, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair5, tokenID1) && strings.Contains(pair5, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair6, tokenID1) && strings.Contains(pair6, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair7, tokenID1) && strings.Contains(pair7, tokenID2) {
+		return 2.2
+	}
+	if strings.Contains(pair8, tokenID1) && strings.Contains(pair8, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair9, tokenID1) && strings.Contains(pair9, tokenID2) {
+		return 2.5
+	}
+	if strings.Contains(pair10, tokenID1) && strings.Contains(pair10, tokenID2) {
+		return 2
+	}
+	if strings.Contains(pair11, tokenID1) && strings.Contains(pair11, tokenID2) {
+		return 2.5
+	}
+	if strings.Contains(pair12, tokenID1) && strings.Contains(pair12, tokenID2) {
+		return 100
+	}
+	if strings.Contains(pair13, tokenID1) && strings.Contains(pair13, tokenID2) {
+		return 100
+	}
+	if strings.Contains(pair14, tokenID1) && strings.Contains(pair14, tokenID2) {
+		return 100
+	}
+	if strings.Contains(pair15, tokenID1) && strings.Contains(pair15, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair16, tokenID1) && strings.Contains(pair16, tokenID2) {
+		return 2
+	}
+	return 0
+}
+
+var (
+	pair1  = common.PRVCoinID.String() + "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696"
+	pair2  = common.PRVCoinID.String() + "ffd8d42dc40a8d166ea4848baf8b5f6e912ad79875f4373070b59392b1756c8f"
+	pair3  = common.PRVCoinID.String() + "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4"
+	pair4  = common.PRVCoinID.String() + "7450ad98cb8c967afb76503944ab30b4ce3560ed8f3acc3155f687641ae34135"
+	pair5  = common.PRVCoinID.String() + "447b088f1c2a8e08bff622ef43a477e98af22b64ea34f99278f4b550d285fbff"
+	pair6  = common.PRVCoinID.String() + "a609150120c0247407e6d7725f2a9701dcbb7bab5337a70b9cef801f34bc2b5c"
+	pair7  = common.PRVCoinID.String() + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair8  = "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair9  = "ffd8d42dc40a8d166ea4848baf8b5f6e912ad79875f4373070b59392b1756c8f" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair10 = "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair11 = "e5032c083f0da67ca141331b6005e4a3740c50218f151a5e829e9d03227e33e2" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair12 = "1ff2da446abfebea3ba30385e2ca99b0f0bbeda5c6371f4c23c939672b429a42" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair13 = "3f89c75324b46f13c7b036871060e641d996a24c09b3065835cb1d38b799d6c1" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair14 = "be02b225bcd26eeae00d3a51e554ac0adcdcc09de77ad03202904666d427a7e4" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
+	pair15 = common.PRVCoinID.String() + "e5032c083f0da67ca141331b6005e4a3740c50218f151a5e829e9d03227e33e2"
+	pair16 = common.PRVCoinID.String() + "dae027b21d8d57114da11209dce8eeb587d01adf59d4fc356a8be5eedc146859"
+)
+
+func getUniqueIdx(list []string) []int {
+	unique := make(map[string]int)
+	result := []int{}
+	for idx, v := range list {
+		if _, ok := unique[v]; !ok {
+			unique[v] = idx
+			result = append(result, idx)
+		}
+	}
+	return result
+}
+
+func getToken24hPriceChange(tokenID, pairTokenID, poolPair, baseToken string, prv24hChange float64) float64 {
+	if pairTokenID == baseToken {
+		return getPoolPair24hChange(poolPair)
+	}
+	if pairTokenID == common.PRVCoinID.String() {
+		return getPoolPair24hChange(poolPair) + prv24hChange
+	}
+	return 0
+}
+
+func getPoolPair24hChange(poolID string) float64 {
+	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT15M", "PT24H")
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	if len(analyticsData.Result) == 0 {
+		return 0
+	}
+	p1 := analyticsData.Result[0].Close
+	p2 := analyticsData.Result[len(analyticsData.Result)-1].Close
+	r := (p2 - p1) / p1 * 100
+	return r
+}
+func getTokenRoute(sellToken string, route []string) []string {
+	tokenRoute := []string{sellToken}
+	intermediateToken := sellToken
+	for _, poolID := range route {
+		tks := strings.Split(poolID, "-")
+		if tks[0] != intermediateToken {
+			tokenRoute = append(tokenRoute, tks[0])
+			intermediateToken = tks[0]
+		} else {
+			tokenRoute = append(tokenRoute, tks[1])
+			intermediateToken = tks[1]
+		}
+	}
+	return tokenRoute
 }

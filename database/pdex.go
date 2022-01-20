@@ -557,27 +557,27 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 		return nil
 	}
 	for _, order := range orders {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
+		// ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 		fitler := bson.M{"withdrawtxs": bson.M{operator.Eq: order.WithdrawTxs[0]}}
 		prefix := "withdrawinfos." + order.WithdrawTxs[0]
 		update := bson.M{
 			"$push": bson.M{prefix + ".responds": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Responds}, prefix + ".status": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].Status}, prefix + ".respondtokens": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondTokens}, prefix + ".respondamount": bson.M{operator.Each: order.WithdrawInfos[order.WithdrawTxs[0]].RespondAmount}},
 			"$pull": bson.M{"withdrawpendings": bson.M{operator.In: order.WithdrawPendings}},
 		}
-		result, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
+		result, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(context.Background(), fitler, update)
 		if err != nil {
 			return err
 		}
 		// fully matched auto-gen response
 		if result.MatchedCount == 0 {
-			ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
+			// ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 			fitler := bson.M{"requesttx": bson.M{operator.Eq: order.WithdrawTxs[0]}}
 			update := bson.M{
 				"$set": bson.M{
 					"withdrawinfos": order.WithdrawInfos,
 				},
 			}
-			_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
+			_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(context.Background(), fitler, update)
 			if err != nil {
 				return err
 			}
@@ -780,7 +780,7 @@ func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
 
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction, "nftid": order.NftID},
 		}
 		_, err := mgm.Coll(&shared.LimitOrderStatus{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -1569,4 +1569,27 @@ func DBGetLimitOrderStatusByPairID(pairid string) ([]shared.LimitOrderStatus, er
 		return nil, err
 	}
 	return tradeStatus, nil
+}
+func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, error) {
+	var orders []shared.LimitOrderStatus
+	filter := bson.M{"nftid": bson.M{operator.In: nftIDs}}
+	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&orders, filter)
+	if err != nil {
+		return nil, err
+	}
+	var requestTxs []string
+	if len(orders) == 0 {
+		return nil, nil
+	}
+	for _, v := range orders {
+		requestTxs = append(requestTxs, v.RequestTx)
+	}
+
+	list := []shared.TradeOrderData{}
+	filter = bson.M{"requesttx": bson.M{operator.In: requestTxs}}
+	err = mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&list, filter)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }

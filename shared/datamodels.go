@@ -768,6 +768,7 @@ type LimitOrderStatus struct {
 	Token1Balance    string `json:"token1balance" bson:"token1balance"`
 	Token2Balance    string `json:"token2balance" bson:"token2balance"`
 	Direction        byte   `json:"direction" bson:"direction"`
+	NftID            string `json:"nftid" bson:"nftid"`
 }
 
 func (model *LimitOrderStatus) Creating() error {
@@ -1000,6 +1001,39 @@ func (model *ExtraTokenInfo) Creating() error {
 	return nil
 }
 func (model *ExtraTokenInfo) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type CustomTokenInfo struct {
+	mgm.DefaultModel `bson:",inline"`
+	TokenID          string `json:"TokenID" bson:"tokenid"`
+	Image            string `json:"Image" bson:"image"`
+	IsPrivacy        int    `json:"IsPrivacy" bson:"isprivacy"`
+	Name             string `json:"Name" bson:"name"`
+	Symbol           string `json:"Symbol" bson:"symbol"`
+	OwnerAddress     string `json:"OwnerAddress" bson:"owneraddress"`
+	OwnerName        string `json:"OwnerName" bson:"ownername"`
+	OwnerEmail       string `json:"OwnerEmail" bson:"owneremail"`
+	OwnerWebsite     string `json:"OwnerWebsite" bson:"ownerwebsite"`
+	ShowOwnerAddress int    `json:"ShowOwnerAddress" bson:"showowneraddress"`
+	Description      string `json:"Description" bson:"description"`
+	Verified         bool   `json:"Verified" bson:"verified"`
+}
+
+func (model *CustomTokenInfo) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *CustomTokenInfo) Saving() error {
 	// Call the DefaultModel Creating hook
 	if err := model.DefaultModel.Saving(); err != nil {
 		return err

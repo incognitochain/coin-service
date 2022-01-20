@@ -38,7 +38,12 @@ func StartAssistant() {
 			panic(err)
 		}
 
-		tokenInfoUpdate, err := getInternalTokenPrice()
+		customTokenInfo, err := getCustomTokenInfo()
+		if err != nil {
+			panic(err)
+		}
+
+		tokenInfoUpdate, err := getInternalTokenPrice(extraTokenInfo)
 		if err != nil {
 			panic(err)
 		}
@@ -54,6 +59,11 @@ func StartAssistant() {
 		}
 
 		err = database.DBSaveTokenPrice(tokensPrice)
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBSaveCustomTokenInfo(customTokenInfo)
 		if err != nil {
 			panic(err)
 		}

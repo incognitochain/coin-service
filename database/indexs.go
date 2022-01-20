@@ -155,9 +155,12 @@ func DBCreateTxIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "pubkeyreceivers", Value: bsonx.Int32(1)}, {Key: "realtokenid", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(-1)}},
 		},
-
 		{
 			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}},
+		},
+
+		{
+			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}, {Key: "shardid", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
@@ -365,6 +368,10 @@ func DBCreateLiquidityIndex() error {
 	if err != nil {
 		return err
 	}
+	_, err = mgm.Coll(&shared.CustomTokenInfo{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)
+	if err != nil {
+		return err
+	}
 
 	pdexStateModel := []mongo.IndexModel{
 		{
@@ -414,6 +421,9 @@ func DBCreateTradeIndex() error {
 		},
 		{
 			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},

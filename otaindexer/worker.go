@@ -23,6 +23,7 @@ import (
 	"github.com/kamva/mgm/v3/operator"
 	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
@@ -192,7 +193,7 @@ func StartOTAIndexing() {
 			}
 			assignedOTAKeys.Lock()
 			scanOTACoins()
-			// scanTxsSwap()
+			scanTxsSwap()
 			assignedOTAKeys.Unlock()
 		}
 	}
@@ -206,7 +207,6 @@ func cleanAssignedOTA() {
 }
 
 func scanOTACoins() {
-	var err error
 	startTime := time.Now()
 	shardKeyGroup := make(map[int]map[string]map[uint64][]*OTAkeyInfo)
 	for shardID, keyinfos := range assignedOTAKeys.Keys {
@@ -314,7 +314,7 @@ func scanTxsSwap() {
 	lastTxIndex := GetOTAKeyListMinScannedTxIndex()
 	//scan coins
 	for {
-		txList, err := getTxToProcess(lastTxIndex, 1000)
+		txList, err := getTxToProcess(lastTxIndex, 5000)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -606,6 +606,7 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 		log.Println("len(otaCoins)", len(otaCoins))
 		log.Printf("filtered %v coins with %v keys in %v", len(coinList), assignedOTAKeys.TotalKeys, time.Since(startTime))
 		log.Println("lastPRVIndex", lastPRVIndex, lastTokenIndex)
+
 		return otaCoins, otherCoins, lastPRVIndex, lastTokenIndex, nil
 	}
 	return nil, nil, nil, nil, errors.New("no key to scan")
@@ -706,20 +707,35 @@ func getTxToProcess(lastID map[int]string, limit int64) ([]shared.TxData, error)
 	for shardID, v := range lastID {
 		var txList []shared.TxData
 		metas := []string{strconv.Itoa(metadataCommon.Pdexv3TradeRequestMeta)}
-		filter := bson.M{
-			"_id":             bson.M{operator.Gt: v},
-			"shardid":         bson.M{operator.Eq: shardID},
-			"metatype":        bson.M{operator.In: metas},
-			"pubkeyreceivers": bson.M{operator.Size: 0},
+		var obID primitive.ObjectID
+		var err error
+		if v == "" {
+			obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+		} else {
+			obID, err = primitive.ObjectIDFromHex(v)
+			if err != nil {
+				return nil, err
+			}
 		}
-		err := mgm.Coll(&shared.TxData{}).SimpleFind(&txList, filter, &options.FindOptions{
+
+		filter := bson.M{
+			"_id":      bson.M{operator.Gt: obID},
+			"shardid":  bson.M{operator.Eq: shardID},
+			"metatype": bson.M{operator.In: metas},
+		}
+		err = mgm.Coll(&shared.TxData{}).SimpleFind(&txList, filter, &options.FindOptions{
 			Sort:  bson.D{{"locktime", 1}},
 			Limit: &limit,
 		})
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, txList...)
+		for _, v := range txList {
+			if len(v.PubKeyReceivers) == 0 {
+				result = append(result, v)
+			}
+		}
+
 	}
 
 	return result, nil
@@ -733,6 +749,11 @@ func GetOTAKeyListMinScannedTxIndex() map[int]string {
 		for _, keyData := range keys {
 			if strings.Compare(keyData.KeyInfo.LastScanTxID, minTxIdx[shardID]) == -1 {
 				minTxIdx[shardID] = keyData.KeyInfo.LastScanTxID
+			}
+			if keyData.KeyInfo.LastScanTxID == "" {
+				id := primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				minTxIdx[shardID] = id.Hex()
+				break
 			}
 		}
 	}

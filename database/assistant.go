@@ -174,7 +174,7 @@ func DBGetTokenMkcap(symbols []string) ([]shared.TokenMarketCap, error) {
 func DBGetStableCoinID() ([]string, error) {
 	var datas []shared.ClientAssistantData
 	var list []string
-	filter := bson.M{"dataname": bson.M{operator.Eq: "defaultpools"}}
+	filter := bson.M{"dataname": bson.M{operator.Eq: "stablecoins"}}
 	err := mgm.Coll(&shared.ClientAssistantData{}).SimpleFind(&datas, filter)
 	if err != nil {
 		return nil, err

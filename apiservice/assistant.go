@@ -126,7 +126,7 @@ const (
 func APICheckRate(c *gin.Context) {
 	var result struct {
 		Rate   string
-		MaxAMP int
+		MaxAMP float64
 	}
 	token1 := c.Query("token1")
 	token2 := c.Query("token2")
@@ -204,7 +204,12 @@ func APICheckRate(c *gin.Context) {
 			}
 			rate := float64(tk1Price) / float64(tk2Price)
 			result.Rate = fmt.Sprintf("%g", rate)
-			result.MaxAMP = newAmp
+			ampH := ampHardCode(token1, token2)
+			if ampH == 0 {
+				result.MaxAMP = float64(newAmp)
+			} else {
+				result.MaxAMP = ampH
+			}
 			respond := APIRespond{
 				Result: result,
 				Error:  nil,
@@ -232,7 +237,12 @@ func APICheckRate(c *gin.Context) {
 		}
 	}
 	result.Rate = fmt.Sprintf("%g", userRate*dcrate)
-	result.MaxAMP = amp
+	ampH := ampHardCode(token1, token2)
+	if ampH == 0 {
+		result.MaxAMP = float64(amp)
+	} else {
+		result.MaxAMP = ampH
+	}
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
@@ -335,8 +345,8 @@ retry:
 }
 
 func getPdecimalRate(tokenID1, tokenID2 string) (float64, int, int, error) {
-	tk1Decimal := 1
-	tk2Decimal := 1
+	tk1Decimal := 0
+	tk2Decimal := 0
 	tk1, err := database.DBGetExtraTokenInfo(tokenID1)
 	if err != nil {
 		log.Println(err)
