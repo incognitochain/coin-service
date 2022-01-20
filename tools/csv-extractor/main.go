@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
-	"github.com/incognitochain/incognito-chain/metadata"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -43,20 +41,45 @@ func processTrade(fromTime, toTime int64) {
 	defer csvTradeFile.Close()
 	d := TradeCSV{}
 	d.CSVheader(csvTradeFile)
+
+	var swapList []TradeCSV
+	var orderList []TradeCSV
+	var list []TradeCSV
+
 	offset := int64(0)
 	for {
-		list, err := getTradeCSV(fromTime, toTime, offset)
+		list, err := getTradeCSVSwap(fromTime, toTime, offset)
 		if err != nil {
 			panic(err)
 		}
 		if list == nil {
-			return
+			break
 		}
-		for _, v := range list {
-			v.CSVrow(csvTradeFile)
-		}
+		swapList = append(swapList, list...)
 		fmt.Println("processed", len(list))
 		offset += 40000
+	}
+
+	offset = int64(0)
+	for {
+		list, err := getTradeCSVOrder(fromTime, toTime, offset)
+		if err != nil {
+			panic(err)
+		}
+		if list == nil {
+			break
+		}
+		orderList = append(orderList, list...)
+		fmt.Println("processed", len(list))
+		offset += 40000
+	}
+
+	list = append(list, swapList...)
+	list = append(list, orderList...)
+	sort.Slice(list, func(i, j int) bool { return list[i].unixint < list[j].unixint })
+
+	for _, v := range list {
+		v.CSVrow(csvTradeFile)
 	}
 }
 
@@ -74,17 +97,16 @@ func connectDB(dbName string, mongoAddr string) error {
 	return nil
 }
 
-func getTradeCSV(fromTime, toTime, offset int64) ([]TradeCSV, error) {
+func getTradeCSVSwap(fromTime, toTime, offset int64) ([]TradeCSV, error) {
 	limit := int64(40000)
 	var result []TradeCSV
-	var tradeSuccess []shared.TradeData
-	var txList []shared.TxData
-	var txHashs []string
+	var tradeSwapList []shared.TradeOrderData
 
 	AllowDiskUse := true
-	filter := bson.M{"locktime": bson.M{operator.Gte: fromTime, operator.Lt: toTime}, "metatype": bson.M{operator.In: []string{strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta), strconv.Itoa(metadata.PDETradeRequestMeta)}}}
-	err := mgm.Coll(&shared.TxData{}).SimpleFind(&txList, filter, &options.FindOptions{
-		Sort:         bson.D{{"locktime", 1}},
+
+	filter := bson.M{"requesttime": bson.M{operator.Gte: fromTime, operator.Lt: toTime}, "isswap": bson.M{operator.Eq: true}, "status": bson.M{operator.Eq: 1}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&tradeSwapList, filter, &options.FindOptions{
+		Sort:         bson.D{{"requesttime", 1}},
 		AllowDiskUse: &AllowDiskUse,
 		Limit:        &limit,
 		Skip:         &offset,
@@ -92,69 +114,79 @@ func getTradeCSV(fromTime, toTime, offset int64) ([]TradeCSV, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(txList) == 0 {
-		return nil, nil
-	}
-	for _, v := range txList {
-		txHashs = append(txHashs, v.TxHash)
-	}
 
-	filter = bson.M{"status": bson.M{operator.In: []string{"accepted", "xPoolTradeAccepted"}}, "requesttx": bson.M{operator.In: txHashs}}
-	err = mgm.Coll(&shared.TradeData{}).SimpleFind(&tradeSuccess, filter, &options.FindOptions{AllowDiskUse: &AllowDiskUse})
-	if err != nil {
-		return nil, err
-	}
-	if len(tradeSuccess) == 0 {
-		return nil, nil
-	}
-
-	for _, v := range tradeSuccess {
-		tx := shared.TxData{}
-		for _, h := range txList {
-			if v.RequestTx == h.TxHash {
-				tx = h
-				break
-			}
-		}
-		timeText := time.Unix(tx.Locktime, 0).String()
-		data := TradeCSV{
-			TxRequest:    v.RequestTx,
-			TxRespond:    v.RespondTx,
-			Receive:      v.Amount,
-			BuyToken:     v.TokenID,
-			Unix:         fmt.Sprintf("%v", tx.Locktime),
-			FormatedDate: timeText,
-		}
-
-		if tx.Metatype == strconv.Itoa(metadata.PDETradeRequestMeta) {
-			md := metadata.PDETradeRequest{}
-			err := json.Unmarshal([]byte(tx.Metadata), &md)
-			if err != nil {
-				panic(err)
-			}
-			data.Amount = md.SellAmount
-			data.TradingFee = md.TradingFee
-			data.MinAcceptableReceiver = md.MinAcceptableAmount
-			data.SellToken = md.TokenIDToSellStr
-			data.User = md.TraderAddressStr
-		}
-		if tx.Metatype == strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta) {
-			md := metadata.PDECrossPoolTradeRequest{}
-			err := json.Unmarshal([]byte(tx.Metadata), &md)
-			if err != nil {
-				panic(err)
-			}
-			data.Amount = md.SellAmount
-			data.TradingFee = md.TradingFee
-			data.MinAcceptableReceiver = md.MinAcceptableAmount
-			data.SellToken = md.TokenIDToSellStr
-			data.User = md.TraderAddressStr
-		}
-		data.unixint = tx.Locktime
+	for _, tradeInfo := range tradeSwapList {
+		var data TradeCSV
+		amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
+		minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
+		data.BuyToken = tradeInfo.BuyTokenID
+		data.SellToken = tradeInfo.SellTokenID
+		data.Amount = amount
+		data.MinAcceptableReceiver = minAccept
+		data.Receive = tradeInfo.RespondAmount[0]
+		data.TradingFee = tradeInfo.Fee
+		data.FeeToken = tradeInfo.FeeToken
+		data.TxRequest = tradeInfo.RequestTx
+		data.TxRespond = tradeInfo.RespondTxs[0]
+		timeText := time.Unix(tradeInfo.Requesttime, 0).String()
+		data.FormatedDate = timeText
+		data.Unix = fmt.Sprintf("%v", tradeInfo.Requesttime)
+		data.unixint = tradeInfo.Requesttime
 		result = append(result, data)
 	}
 
-	sort.Slice(result, func(i, j int) bool { return result[i].unixint < result[j].unixint })
+	return result, nil
+}
+
+func getTradeCSVOrder(fromTime, toTime, offset int64) ([]TradeCSV, error) {
+	limit := int64(40000)
+	var result []TradeCSV
+	var tradeOrderList []shared.TradeOrderData
+
+	AllowDiskUse := true
+
+	filter := bson.M{"requesttime": bson.M{operator.Gte: fromTime, operator.Lt: toTime}, "isswap": bson.M{operator.Eq: false}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&tradeOrderList, filter, &options.FindOptions{
+		Sort:         bson.D{{"requesttime", 1}},
+		AllowDiskUse: &AllowDiskUse,
+		Limit:        &limit,
+		Skip:         &offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, tradeInfo := range tradeOrderList {
+		var data TradeCSV
+		amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
+		minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
+		data.BuyToken = tradeInfo.BuyTokenID
+		data.SellToken = tradeInfo.SellTokenID
+		data.Amount = amount
+		data.MinAcceptableReceiver = minAccept
+		data.TradingFee = tradeInfo.Fee
+		data.FeeToken = tradeInfo.FeeToken
+		data.TxRequest = tradeInfo.RequestTx
+		// data.TxRespond = tradeInfo.RespondTxs
+		timeText := time.Unix(tradeInfo.Requesttime, 0).String()
+		data.FormatedDate = timeText
+		data.Unix = fmt.Sprintf("%v", tradeInfo.Requesttime)
+		data.unixint = tradeInfo.Requesttime
+		if len(tradeInfo.WithdrawPendings) == 0 && len(tradeInfo.WithdrawInfos) > 0 {
+			for _, wdi := range tradeInfo.WithdrawInfos {
+				for idx, rpTk := range wdi.RespondTokens {
+					if rpTk == data.BuyToken {
+						data.Receive += wdi.RespondAmount[idx]
+					}
+				}
+			}
+			if data.Receive > 0 {
+				result = append(result, data)
+			}
+		}
+
+	}
 
 	return result, nil
 }
+
+// ./extractcsv -mongo='mongodb://root:example@0.0.0.0:8041' -from=1642076814 -to=1642676814
