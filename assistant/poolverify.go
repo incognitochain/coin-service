@@ -28,17 +28,24 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	poolsLq := make(map[string]uint64)
 	for _, pool := range pools {
 		_, ok1 := verifiedTks[pool.TokenID1]
 		_, ok2 := verifiedTks[pool.TokenID1]
 		if ok1 && ok2 {
 			q1 := false
 			if pool.TokenID1 == common.PRVCoinID.String() || pool.TokenID2 == common.PRVCoinID.String() {
-
+				q1 = true
 			} else {
 				for _, v := range stableCoins {
-
+					if pool.TokenID1 == v || pool.TokenID2 == v {
+						q1 = true
+						break
+					}
 				}
+			}
+			if q1 {
+
 			}
 		}
 
