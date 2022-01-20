@@ -286,7 +286,7 @@ func scanOTACoins() {
 		}
 	}
 
-	err = updateSubmittedOTAKey(context.Background())
+	err := updateSubmittedOTAKey(context.Background())
 	if err != nil {
 		panic(err)
 	}
