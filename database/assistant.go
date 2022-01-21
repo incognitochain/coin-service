@@ -12,22 +12,36 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func DBRemoveDefaultPool(pools []string) error {
-	filter := bson.M{"dataname": bson.M{operator.Eq: "defaultpools"}}
+func DBSetQualifyPools(pools string) error {
+	filter := bson.M{"dataname": bson.M{operator.Eq: "qualifypools"}}
 	update := bson.M{
-		"$pull": bson.M{operator.In: pools},
+		"$set": bson.M{"data": pools},
 	}
-	_, err := mgm.Coll(&shared.ClientAssistantData{}).UpdateOne(context.Background(), filter, update)
+	_, err := mgm.Coll(&shared.ClientAssistantData{}).UpdateOne(context.Background(), filter, update, mgm.UpsertTrueOption())
 	return err
 }
 
-func DBSetDefaultPool(pools []string) error {
-	filter := bson.M{"dataname": bson.M{operator.Eq: "defaultpools"}}
-	update := bson.M{
-		"$addToSet": bson.M{operator.Each: pools},
+func DBGetQualifyPools() (map[string]struct{}, error) {
+	result := make(map[string]struct{})
+	datas := []shared.ClientAssistantData{}
+	list := []string{}
+	filter := bson.M{"dataname": bson.M{operator.Eq: "qualifypools"}}
+	err := mgm.Coll(&shared.ClientAssistantData{}).SimpleFind(&datas, filter)
+	if err != nil {
+		return nil, err
 	}
-	_, err := mgm.Coll(&shared.ClientAssistantData{}).UpdateOne(context.Background(), filter, update)
-	return err
+	if len(datas) == 0 {
+		return result, nil
+	}
+	err = json.Unmarshal([]byte(datas[0].Data), &list)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range list {
+		result[v] = struct{}{}
+	}
+	return result, nil
 }
 
 func DBGetDefaultPool() (map[string]struct{}, error) {
