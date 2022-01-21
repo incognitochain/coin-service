@@ -68,7 +68,7 @@ func StartProcessor() {
 func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 	var result []shared.TxData
 	metas := []string{strconv.Itoa(metadata.IssuingRequestMeta), strconv.Itoa(metadata.IssuingBSCRequestMeta), strconv.Itoa(metadata.IssuingETHRequestMeta), strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta), strconv.Itoa(metadata.IssuingBSCResponseMeta), strconv.Itoa(metadataCommon.IssuingPRVERC20RequestMeta), strconv.Itoa(metadataCommon.IssuingPRVBEP20RequestMeta), strconv.Itoa(metadataCommon.IssuingPRVERC20ResponseMeta), strconv.Itoa(metadataCommon.IssuingPRVBEP20ResponseMeta)}
-
+	// , strconv.Itoa(metadataCommon.IssuingPLGRequestMeta), strconv.Itoa(metadataCommon.IssuingPLGResponseMeta)
 	var obID primitive.ObjectID
 	if lastID == "" {
 		obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
