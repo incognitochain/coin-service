@@ -404,7 +404,7 @@ func DBCreateTradeIndex() error {
 			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
 		},
 		{
-			Keys: bsonx.Doc{{Key: "requesttime", Value: bsonx.Int32(1)}, {Key: "isswap", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}},
+			Keys: bsonx.Doc{{Key: "version", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(1)}, {Key: "isswap", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys: bsonx.Doc{{Key: "withdrawpendings", Value: bsonx.Int32(1)}},
