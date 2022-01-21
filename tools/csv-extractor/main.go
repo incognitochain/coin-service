@@ -104,7 +104,7 @@ func getTradeCSVSwap(fromTime, toTime, offset int64) ([]TradeCSV, error) {
 
 	AllowDiskUse := true
 
-	filter := bson.M{"requesttime": bson.M{operator.Gte: fromTime, operator.Lt: toTime}, "isswap": bson.M{operator.Eq: true}, "status": bson.M{operator.Eq: 1}}
+	filter := bson.M{"version": bson.M{operator.Eq: 2}, "requesttime": bson.M{operator.Gte: fromTime, operator.Lt: toTime}, "isswap": bson.M{operator.Eq: true}, "status": bson.M{operator.Eq: 1}}
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&tradeSwapList, filter, &options.FindOptions{
 		Sort:         bson.D{{"requesttime", 1}},
 		AllowDiskUse: &AllowDiskUse,
@@ -145,7 +145,7 @@ func getTradeCSVOrder(fromTime, toTime, offset int64) ([]TradeCSV, error) {
 
 	AllowDiskUse := true
 
-	filter := bson.M{"requesttime": bson.M{operator.Gte: fromTime, operator.Lt: toTime}, "isswap": bson.M{operator.Eq: false}}
+	filter := bson.M{"version": bson.M{operator.Eq: 2}, "requesttime": bson.M{operator.Gte: fromTime, operator.Lt: toTime}, "isswap": bson.M{operator.Eq: false}}
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&tradeOrderList, filter, &options.FindOptions{
 		Sort:         bson.D{{"requesttime", 1}},
 		AllowDiskUse: &AllowDiskUse,
