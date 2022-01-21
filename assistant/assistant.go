@@ -79,15 +79,17 @@ func StartAssistant() {
 			panic(err)
 		}
 		if time.Since(scanQualifyPools) >= scanQualifyPoolsInterval {
+			log.Println("checkPoolQualify")
 			qualifyPools, err := checkPoolQualify(extraTokenInfo)
 			if err != nil {
 				panic(err)
 			}
-			err = database.DBSetQualifyPool(qualifyPools)
+			err = database.DBSetQualifyPools(qualifyPools)
 			if err != nil {
 				panic(err)
 			}
 			scanQualifyPools = time.Now()
+			log.Println("done checkPoolQualify")
 		}
 
 		time.Sleep(updateInterval)
