@@ -408,6 +408,7 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 	return nil
 }
 
+//TODO: rescan Tx too
 func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	Submitted_OTAKey.RLock()
 	defer Submitted_OTAKey.RUnlock()

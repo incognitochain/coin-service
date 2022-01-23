@@ -91,7 +91,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}
 
 		pdeStateJSON := jsonresult.CurrentPDEState{
-			BeaconTimeStamp:         beaconBestState.BestBlock.Header.Timestamp,
+			BeaconTimeStamp:         blk.Header.Timestamp,
 			PDEPoolPairs:            poolPairs,
 			PDEShares:               shares,
 			WaitingPDEContributions: waitingContributions,
@@ -350,7 +350,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}()
 		wg.Wait()
 		log.Printf("save pdex state 11 %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-
 	}
 
 	statePrefix := BeaconData
@@ -363,6 +362,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	blockProcessedLock.Lock()
 	blockProcessed[-1] = blk.Header.Height
 	blockProcessedLock.Unlock()
+	delete(preloadedBeaconState, h.String())
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 

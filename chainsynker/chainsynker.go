@@ -9,6 +9,7 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common/base58"
+	"github.com/incognitochain/incognito-chain/config"
 	"github.com/incognitochain/incognito-chain/privacy"
 	"github.com/incognitochain/incognito-chain/wallet"
 	jsoniter "github.com/json-iterator/go"
@@ -145,6 +146,7 @@ func InitChainSynker(cfg shared.Config) {
 	ShardProcessedState := make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
 	ProcessedBeaconBestState := uint64(1)
+
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		statePrefix := fmt.Sprintf("%v%v", ShardData, i)
 		v, err := Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
@@ -160,6 +162,7 @@ func InitChainSynker(cfg shared.Config) {
 		}
 		TransactionStateDB[byte(i)] = Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
 	}
+
 	beaconStatePrefix := BeaconData
 	v, err := Localnode.GetUserDatabase().Get([]byte(beaconStatePrefix), nil)
 	if err != nil {
@@ -208,6 +211,7 @@ func InitChainSynker(cfg shared.Config) {
 	// 	}
 	// }
 	// }()
+	preloadedBeaconState = make(map[string]*blockchain.BeaconBestState)
 	time.Sleep(5 * time.Second)
 	blockProcessed[-1] = ProcessedBeaconBestState
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
@@ -279,6 +283,39 @@ func getCrossShardData(result map[string]string, txList []metadata.Transaction, 
 	}
 
 	return nil
+}
+
+var preloadedBeaconStateLock sync.Mutex
+var preloadedBeaconState map[string]*blockchain.BeaconBestState
+
+func preloadBeaconState(bestHeight, currentHeight uint64) {
+	chainBestView := Localnode.GetBlockchain().BeaconChain.GetBestView()
+	chainFinalView := Localnode.GetBlockchain().BeaconChain.GetFinalView()
+	var wg sync.WaitGroup
+
+	height := currentHeight + 100
+	if height > bestHeight {
+		height = currentHeight + (bestHeight - currentHeight)
+	}
+	for i := currentHeight; i < height; i++ {
+		wg.Add(1)
+		go func(h uint64) {
+			defer wg.Done()
+			var beaconBestState *blockchain.BeaconBestState
+			hash, err := Localnode.GetBlockchain().GetBeaconBlockHashByHeight(chainFinalView, chainBestView, h)
+			if err == nil {
+				if h < config.Param().PDexParams.Pdexv3BreakPointHeight {
+					beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(*hash, false, false)
+				} else {
+					beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(*hash, false, true)
+				}
+				preloadedBeaconStateLock.Lock()
+				preloadedBeaconState[hash.String()] = beaconBestState
+				preloadedBeaconStateLock.Unlock()
+			}
+		}(i)
+	}
+	wg.Wait()
 }
 
 func getTokenID(assetTag string) string {

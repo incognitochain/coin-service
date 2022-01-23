@@ -78,15 +78,25 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 	}
 
 	crossShardCoinMap := make(map[string]string)
-	for _, txlist := range blk.Body.CrossTransactions {
+	for sID, txlist := range blk.Body.CrossTransactions {
 		for _, tx := range txlist {
 			var crsblk types.ShardBlock
-		retryGetBlock:
 			blkBytes, err := Localnode.GetUserDatabase().Get(tx.BlockHash.Bytes(), nil)
 			if err != nil {
-				log.Println(err)
-				time.Sleep(5 * time.Second)
-				goto retryGetBlock
+				i := 0
+			retryGetBlock:
+				if i == 5 {
+					panic("OnNewShardBlock err")
+				}
+				fmt.Println("tx.BlockHash.String()", tx.BlockHash.String())
+				blkBytes, err = Localnode.SyncSpecificShardBlockBytes(int(sID), 0, tx.BlockHash.String())
+				if err != nil {
+					fmt.Println(err)
+					i++
+					panic("OnNewShardBlock err")
+					time.Sleep(5 * time.Second)
+					goto retryGetBlock
+				}
 			}
 			if err := json.Unmarshal(blkBytes, &crsblk); err != nil {
 				panic(err)
