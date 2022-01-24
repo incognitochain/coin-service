@@ -203,7 +203,7 @@ func getInternalTokenPrice(extraTokenInfo []shared.ExtraTokenInfo) ([]shared.Tok
 	if baseToken == "" {
 		return nil, nil
 	}
-	tokenList, err := database.DBGetTokenInfo()
+	tokenList, err := database.DBGetAllTokenInfo()
 	if err != nil {
 		return nil, err
 	}

@@ -327,3 +327,6 @@ type ContributionDataV1 struct {
 	ContributorAddressStr string `json:"contributor"`
 	Respondblock          uint64 `json:"respondblock"`
 }
+type APITokenInfoRequest struct {
+	TokenIDs []string
+}

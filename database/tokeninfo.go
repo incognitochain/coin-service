@@ -64,7 +64,7 @@ func DBGetTokenCount() (int64, error) {
 	return c, nil
 }
 
-func DBGetTokenInfo() ([]shared.TokenInfoData, error) {
+func DBGetAllTokenInfo() ([]shared.TokenInfoData, error) {
 	list := []shared.TokenInfoData{}
 	filter := bson.M{"isnft": bson.M{operator.Eq: false}}
 	err := mgm.Coll(&shared.TokenInfoData{}).SimpleFind(&list, filter, nil)
@@ -155,6 +155,25 @@ func DBGetAllCustomTokenInfo() ([]shared.CustomTokenInfo, error) {
 	list := []shared.CustomTokenInfo{}
 	filter := bson.M{}
 	err := mgm.Coll(&shared.CustomTokenInfo{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+func DBGetCustomTokenInfoByTokenID(tokenids []string) ([]shared.CustomTokenInfo, error) {
+	list := []shared.CustomTokenInfo{}
+	filter := bson.M{"tokenid": bson.M{operator.In: tokenids}}
+	err := mgm.Coll(&shared.CustomTokenInfo{}).SimpleFind(&list, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+func DBGetExtraTokenInfoByTokenID(tokenids []string) ([]shared.ExtraTokenInfo, error) {
+	list := []shared.ExtraTokenInfo{}
+	filter := bson.M{"tokenid": bson.M{operator.In: tokenids}}
+	err := mgm.Coll(&shared.ExtraTokenInfo{}).SimpleFind(&list, filter, nil)
 	if err != nil {
 		return nil, err
 	}
