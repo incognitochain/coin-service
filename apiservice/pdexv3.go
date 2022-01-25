@@ -80,7 +80,7 @@ func (pdexv3) ListPools(c *gin.Context) {
 	var defaultPools map[string]struct{}
 	var priorityTokens []string
 	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
-		defaultPools, err = database.DBGetDefaultPool()
+		defaultPools, err = database.DBGetDefaultPool(true)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -851,7 +851,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 	var defaultPools map[string]struct{}
 	var priorityTokens []string
 	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
-		defaultPools, err = database.DBGetDefaultPool()
+		defaultPools, err = database.DBGetDefaultPool(true)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -1157,7 +1157,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 	var defaultPools map[string]struct{}
 	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
-		defaultPools, err = database.DBGetDefaultPool()
+		defaultPools, err = database.DBGetDefaultPool(true)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
