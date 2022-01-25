@@ -44,7 +44,7 @@ func StartAssistant() {
 			panic(err)
 		}
 
-		tokenInfoUpdate, err := getInternalTokenPrice(extraTokenInfo)
+		tokenInfoUpdate, err := getInternalTokenPrice()
 		if err != nil {
 			panic(err)
 		}
@@ -80,7 +80,7 @@ func StartAssistant() {
 		}
 		if time.Since(scanQualifyPools) >= scanQualifyPoolsInterval {
 			log.Println("checkPoolQualify")
-			qualifyPools, err := checkPoolQualify(extraTokenInfo)
+			qualifyPools, err := checkPoolQualify(extraTokenInfo, customTokenInfo)
 			if err != nil {
 				panic(err)
 			}

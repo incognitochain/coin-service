@@ -530,7 +530,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		wg.Add(3)
 		go func() {
 
-			defaultPools, err := database.DBGetDefaultPool()
+			defaultPools, err := database.DBGetDefaultPool(true)
 			if err != nil {
 				log.Println("database.DBGetDefaultPool", err)
 			}
