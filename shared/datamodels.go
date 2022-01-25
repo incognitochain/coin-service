@@ -940,8 +940,8 @@ type RewardAPYTracking struct {
 	DataID           string  `json:"dataid" bson:"dataid"`
 	APY              float64 `json:"apy" bson:"apy"`
 	BeaconHeight     uint64  `json:"beaconheight" bson:"beaconheight"`
-	TotalReceive     uint64  `json:"totalreceive" bson:"totalreceive"`
-	TotalAmount      uint64  `json:"totalamount" bson:"totalamount"`
+	TotalReceive     int64   `json:"totalreceive" bson:"totalreceive"`
+	TotalAmount      int64   `json:"totalamount" bson:"totalamount"`
 	APY2             float64 `json:"apy2" bson:"apy2"`
 }
 

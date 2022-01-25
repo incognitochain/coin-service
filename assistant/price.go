@@ -160,7 +160,7 @@ func getPairRanking() ([]shared.PairRanking, error) {
 	var result []shared.PairRanking
 	var defaultPools map[string]struct{}
 	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
-		defaultPools, err = database.DBGetDefaultPool()
+		defaultPools, err = database.DBGetDefaultPool(true)
 		if err != nil {
 			return nil, err
 		}
@@ -189,21 +189,21 @@ func getPairRanking() ([]shared.PairRanking, error) {
 	return result, nil
 }
 
-func getInternalTokenPrice(extraTokenInfo []shared.ExtraTokenInfo) ([]shared.TokenInfoData, error) {
+func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 	var result []shared.TokenInfoData
 
 	baseToken, err := database.DBGetBasePriceToken()
 	if err != nil {
 		return nil, err
 	}
-	defaultPools, err := database.DBGetDefaultPool()
+	defaultPools, err := database.DBGetDefaultPool(true)
 	if err != nil {
 		return nil, err
 	}
 	if baseToken == "" {
 		return nil, nil
 	}
-	tokenList, err := database.DBGetTokenInfo()
+	tokenList, err := database.DBGetAllTokenInfo()
 	if err != nil {
 		return nil, err
 	}

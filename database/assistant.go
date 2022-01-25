@@ -44,7 +44,7 @@ func DBGetQualifyPools() (map[string]struct{}, error) {
 	return result, nil
 }
 
-func DBGetDefaultPool() (map[string]struct{}, error) {
+func DBGetDefaultPool(includeQualify bool) (map[string]struct{}, error) {
 	var datas []shared.ClientAssistantData
 	var list []string
 	result := make(map[string]struct{})
@@ -62,6 +62,15 @@ func DBGetDefaultPool() (map[string]struct{}, error) {
 	}
 	for _, v := range list {
 		result[v] = struct{}{}
+	}
+	if includeQualify {
+		list, err := DBGetQualifyPools()
+		if err != nil {
+			return nil, err
+		}
+		for v, _ := range list {
+			result[v] = struct{}{}
+		}
 	}
 	return result, nil
 }

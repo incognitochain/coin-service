@@ -121,7 +121,7 @@ func retrieveTokenIDList() error {
 		return err
 	}
 	if tokenCount != lastTokenListCount {
-		tokenInfos, err := database.DBGetTokenInfo()
+		tokenInfos, err := database.DBGetAllTokenInfo()
 		if err != nil {
 			return err
 		}
