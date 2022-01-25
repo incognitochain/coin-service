@@ -61,6 +61,7 @@ func StartGinService() {
 		//coins
 		coinsGroup := r.Group("/coins")
 		coinsGroup.GET("/tokenlist", APIGetTokenList)
+		coinsGroup.POST("/tokeninfo", APIGetTokenInfo)
 		coinsGroup.GET("/getcoinspending", APIGetCoinsPending)
 		coinsGroup.GET("/getcoins", APIGetCoins)
 		coinsGroup.GET("/getkeyinfo", APIGetKeyInfo)
