@@ -274,7 +274,7 @@ func APIGetTokenInfo(c *gin.Context) {
 		return
 	}
 
-	defaultPools, err := database.DBGetDefaultPool()
+	defaultPools, err := database.DBGetDefaultPool(true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -503,7 +503,7 @@ func APIGetTokenList(c *gin.Context) {
 		}
 	} else {
 		if err := cacheGet(tokenInfoKey+"all", &datalist); err != nil {
-			tokenList, err := database.DBGetTokenInfo()
+			tokenList, err := database.DBGetAllTokenInfo()
 			if err != nil {
 				log.Println(err)
 				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
