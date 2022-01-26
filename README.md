@@ -18,11 +18,11 @@ git clone github.com/incognitochain/coin-service
 ```
 ### Step 2: Switch to release branch
 ```
-git clone github.com/incognitochain/coin-service
+git checkout docs
 ```
 ### Step 3: Edit env config at `deploy/service.env`
 ```
-This file contain information about mongo access, which network coinservice will sync from, service port and
+This file contain information about mongo access, which network coinservice will sync from, internal service port and some external services.
 ```
 ### Step 4: Edit nginx config at `deploy/nginx/nginx.conf`
 ```
