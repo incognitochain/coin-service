@@ -1,12 +1,14 @@
 package otaindexer
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"log"
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,8 +19,14 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	"github.com/incognitochain/incognito-chain/privacy/coin"
+	"github.com/kamva/mgm/v3"
+	"github.com/kamva/mgm/v3/operator"
 	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 )
 
 var assignedOTAKeys = struct {
@@ -26,6 +34,8 @@ var assignedOTAKeys = struct {
 	Keys      map[int][]*OTAkeyInfo
 	TotalKeys int
 }{}
+var workerID string
+var willRun bool
 
 func connectMasterIndexer(addr string, id string, readCh chan []byte, writeCh chan []byte) {
 retry:
@@ -37,6 +47,7 @@ retry:
 	})
 	if err != nil {
 		log.Println(err)
+		time.Sleep(5 * time.Second)
 		goto retry
 	}
 	defer c.Close()
@@ -44,15 +55,20 @@ retry:
 	done := make(chan struct{})
 
 	go func() {
-		defer close(done)
 		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
+			select {
+			case <-done:
 				return
+			default:
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Println("read:", err)
+					close(done)
+					return
+				}
+				log.Printf("recv: %s", message)
+				readCh <- message
 			}
-			log.Printf("recv: %s", message)
-			readCh <- message
 		}
 	}()
 
@@ -66,7 +82,8 @@ retry:
 			err := c.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
-				return
+				close(done)
+				continue
 			}
 		case <-t.C:
 			go func() {
@@ -80,97 +97,172 @@ retry:
 func processMsgFromMaster(readCh chan []byte, writeCh chan []byte) {
 	for {
 		msg := <-readCh
-		var key OTAkeyInfo
-		err := json.Unmarshal(msg, &key)
+		var keyAction WorkerOTACmd
+		err := json.Unmarshal(msg, &keyAction)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 		assignedOTAKeys.Lock()
-		pubkey, _, err := base58.Base58Check{}.Decode(key.Pubkey)
-		if err != nil {
-			log.Fatalln(err)
+		switch keyAction.Action {
+		case RUN:
+			willRun = true
+		case REINDEX:
+			pubkey, _, err := base58.Base58Check{}.Decode(keyAction.Key.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+			for _, v := range assignedOTAKeys.Keys[int(shardID)] {
+				if v.OTAKey == keyAction.Key.OTAKey {
+					for tokenID, coinInfo := range keyAction.Key.KeyInfo.CoinIndex {
+						v.KeyInfo.CoinIndex[tokenID] = coinInfo
+						v.KeyInfo.TotalReceiveTxs[tokenID] = keyAction.Key.KeyInfo.TotalReceiveTxs[tokenID]
+					}
+				}
+			}
+		case INDEX:
+			pubkey, _, err := base58.Base58Check{}.Decode(keyAction.Key.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes, _, err := base58.Base58Check{}.Decode(keyAction.Key.OTAKey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			keyBytes = append(keyBytes, pubkey...)
+			if len(keyBytes) != 64 {
+				log.Fatalln(errors.New("keyBytes length isn't 64"))
+			}
+			otaKey := shared.OTAKeyFromRaw(keyBytes)
+			ks := &incognitokey.KeySet{}
+			ks.OTAKey = otaKey
+			shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+			data, err := database.DBGetCoinV2PubkeyInfo(keyAction.Key.Pubkey)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			data.OTAKey = keyAction.Key.OTAKey
+
+			k := OTAkeyInfo{
+				KeyInfo: keyAction.Key.KeyInfo,
+				ShardID: int(shardID),
+				OTAKey:  keyAction.Key.OTAKey,
+				Pubkey:  keyAction.Key.Pubkey,
+				keyset:  ks,
+			}
+			isAlreadyAssigned := false
+			for _, v := range assignedOTAKeys.Keys[int(shardID)] {
+				if v.OTAKey == keyAction.Key.OTAKey {
+					log.Println("key already assign")
+					isAlreadyAssigned = true
+					break
+				}
+			}
+			if !isAlreadyAssigned {
+				assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
+				assignedOTAKeys.TotalKeys += 1
+			}
 		}
-		keyBytes, _, err := base58.Base58Check{}.Decode(key.OTAKey)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		keyBytes = append(keyBytes, pubkey...)
-		if len(keyBytes) != 64 {
-			log.Fatalln(errors.New("keyBytes length isn't 64"))
-		}
-		otaKey := shared.OTAKeyFromRaw(keyBytes)
-		ks := &incognitokey.KeySet{}
-		ks.OTAKey = otaKey
-		shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
-		data, err := database.DBGetCoinV2PubkeyInfo(key.Pubkey)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		data.OTAKey = key.OTAKey
-		k := OTAkeyInfo{
-			KeyInfo: data,
-			ShardID: int(shardID),
-			OTAKey:  key.OTAKey,
-			Pubkey:  key.Pubkey,
-			keyset:  ks,
-		}
-		assignedOTAKeys.Keys[int(shardID)] = append(assignedOTAKeys.Keys[int(shardID)], &k)
-		assignedOTAKeys.TotalKeys += 1
 		assignedOTAKeys.Unlock()
-		log.Printf("success added key %v for indexing", key.Pubkey)
+		log.Printf("success added key %v for indexing", keyAction.Key.Pubkey)
 	}
 }
 
 func StartOTAIndexing() {
 	log.Println("initiating ota-indexing-service...")
 	id := uuid.NewV4()
+	workerID = id.String()
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
-	interval := time.NewTicker(6 * time.Second)
-	var coinList []shared.CoinData
 	go processMsgFromMaster(readCh, writeCh)
+	time.Sleep(10 * time.Second)
 	for {
-		<-interval.C
+		time.Sleep(5 * time.Second)
 		err := retrieveTokenIDList()
 		if err != nil {
 			panic(err)
 		}
-
-		log.Println("scanning coins...")
-		if len(assignedOTAKeys.Keys) == 0 {
-			log.Println("len(assignedOTAKeys.Keys) == 0")
-			continue
-		}
-		startTime := time.Now()
-
-		assignedOTAKeys.Lock()
-		lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex()
-		for {
-			filteredCoins := make(map[string][]shared.CoinData)
-			coinList = GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
-			if len(coinList) == 0 {
-				break
+		if willRun {
+			log.Println("scanning coins...")
+			if len(assignedOTAKeys.Keys) == 0 {
+				log.Println("len(assignedOTAKeys.Keys) == 0")
+				continue
 			}
-			filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
-			if err != nil {
-				panic(err)
-			}
-			updateState(filteredCoins, lastPRVIndex, lastTokenIndex)
+
+			assignedOTAKeys.Lock()
+			scanOTACoins()
+			scanTxsSwap()
+			assignedOTAKeys.Unlock()
 		}
-		log.Println("finish scanning coins in", time.Since(startTime))
-		assignedOTAKeys.Unlock()
 	}
 }
 
 func cleanAssignedOTA() {
 	assignedOTAKeys.Lock()
 	assignedOTAKeys.Keys = make(map[int][]*OTAkeyInfo)
+	assignedOTAKeys.TotalKeys = 0
 	assignedOTAKeys.Unlock()
 }
 
-func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTokenIndex map[int]uint64) {
+func scanOTACoins() {
+	var err error
+	startTime := time.Now()
+	lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
+	//scan coins
+	for {
+		coinList := GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
+		if len(coinList) == 0 {
+			break
+		}
+		filteredCoins := make(map[string][]shared.CoinData)
+		filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
+		if err != nil {
+			panic(err)
+		}
+		updateCoinState(filteredCoins, lastPRVIndex, lastTokenIndex)
+	}
+	log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
+}
+
+func scanTxsSwap() {
+	startTime := time.Now()
+	lastTxIndex := GetOTAKeyListMinScannedTxIndex()
+	//scan coins
+	for {
+		txList, err := getTxToProcess(lastTxIndex, 5000)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		if len(txList) == 0 {
+			break
+		}
+		filteredTx := []shared.TxData{}
+		filteredTx, lastTxIndex, err = filterTxsByOTAKey(txList)
+		if err != nil {
+			panic(err)
+		}
+		updateTxState(filteredTx, lastTxIndex)
+	}
+	log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
+}
+
+func updateTxState(txList []shared.TxData, lastTxIndex map[int]string) {
+	for shardID, keyDatas := range assignedOTAKeys.Keys {
+		for _, keyData := range keyDatas {
+			keyData.KeyInfo.LastScanTxID = lastTxIndex[shardID]
+		}
+	}
+	err := database.DBUpdateTxsWithPubkeyReceiver(txList)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func updateCoinState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTokenIndex map[int]uint64) {
 	pubkeys := make(map[string]string)
 
 	coinsToUpdate := []shared.CoinData{}
@@ -219,6 +311,9 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 			if len(keyData.KeyInfo.CoinIndex) == 0 {
 				keyData.KeyInfo.CoinIndex = make(map[string]shared.CoinInfo)
 			}
+			if len(keyData.KeyInfo.NFTIndex) == 0 {
+				keyData.KeyInfo.NFTIndex = make(map[string]shared.CoinInfo)
+			}
 			if len(keyData.KeyInfo.TotalReceiveTxs) == 0 {
 				keyData.KeyInfo.TotalReceiveTxs = make(map[string]uint64)
 			}
@@ -229,26 +324,50 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 				}
 				sort.Slice(cd, func(i, j int) bool { return cd[i].CoinIndex < cd[j].CoinIndex })
 				for _, v := range cd {
-					if _, ok := keyData.KeyInfo.CoinIndex[v.RealTokenID]; !ok {
-						keyData.KeyInfo.CoinIndex[v.RealTokenID] = shared.CoinInfo{
-							Start: v.CoinIndex,
-							End:   v.CoinIndex,
-							Total: 1,
+					if !v.IsNFT {
+						if _, ok := keyData.KeyInfo.CoinIndex[v.RealTokenID]; !ok {
+							keyData.KeyInfo.CoinIndex[v.RealTokenID] = shared.CoinInfo{
+								Start: v.CoinIndex,
+								End:   v.CoinIndex,
+								Total: 1,
+							}
+						} else {
+							d := keyData.KeyInfo.CoinIndex[v.RealTokenID]
+							if d.Total == 0 {
+								d.Start = v.CoinIndex
+								d.End = v.CoinIndex
+							}
+							if d.Start > v.CoinIndex {
+								d.Start = v.CoinIndex
+							}
+							if d.End < v.CoinIndex {
+								d.End = v.CoinIndex
+							}
+							d.Total += 1
+							keyData.KeyInfo.CoinIndex[v.RealTokenID] = d
 						}
 					} else {
-						d := keyData.KeyInfo.CoinIndex[v.RealTokenID]
-						if d.Total == 0 {
-							d.Start = v.CoinIndex
-							d.End = v.CoinIndex
+						if _, ok := keyData.KeyInfo.NFTIndex[v.RealTokenID]; !ok {
+							keyData.KeyInfo.NFTIndex[v.RealTokenID] = shared.CoinInfo{
+								Start: v.CoinIndex,
+								End:   v.CoinIndex,
+								Total: 1,
+							}
+						} else {
+							d := keyData.KeyInfo.NFTIndex[v.RealTokenID]
+							if d.Total == 0 {
+								d.Start = v.CoinIndex
+								d.End = v.CoinIndex
+							}
+							if d.Start > v.CoinIndex {
+								d.Start = v.CoinIndex
+							}
+							if d.End < v.CoinIndex {
+								d.End = v.CoinIndex
+							}
+							d.Total += 1
+							keyData.KeyInfo.NFTIndex[v.RealTokenID] = d
 						}
-						if d.Start > v.CoinIndex {
-							d.Start = v.CoinIndex
-						}
-						if d.End < v.CoinIndex {
-							d.End = v.CoinIndex
-						}
-						d.Total += 1
-						keyData.KeyInfo.CoinIndex[v.RealTokenID] = d
 					}
 				}
 			}
@@ -276,18 +395,19 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 			}
 		}
 	}
-	err := updateSubmittedOTAKey()
-	if err != nil {
-		panic(err)
-	}
+
 	if len(coinsToUpdate) > 0 {
 		log.Println("\n=========================================")
 		log.Println("len(coinsToUpdate)", len(coinsToUpdate))
 		log.Println("=========================================\n")
-		err := database.DBUpdateCoins(coinsToUpdate)
+		err := database.DBUpdateCoins(coinsToUpdate, context.Background())
 		if err != nil {
 			panic(err)
 		}
+	}
+	err := updateSubmittedOTAKey(context.Background())
+	if err != nil {
+		panic(err)
 	}
 
 	for key, tokenTxs := range totalTxs {
@@ -296,12 +416,16 @@ func updateState(otaCoinList map[string][]shared.CoinData, lastPRVIndex, lastTok
 			for txHash := range txList {
 				txHashs = append(txHashs, txHash)
 			}
-			err := database.DBUpdateTxPubkeyReceiver(txHashs, pubkeys[key], tokenID)
+			err := database.DBUpdateTxPubkeyReceiverAndTokenID(txHashs, pubkeys[key], tokenID, context.Background())
 			if err != nil {
 				panic(err)
 			}
 		}
 	}
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinData, []shared.CoinData, map[int]uint64, map[int]uint64, error) {
@@ -312,6 +436,10 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 	for k, v := range lastTokenIDMap {
 		tokenIDMap[k] = v
 	}
+	nftIDMap := make(map[string]string)
+	for k, v := range lastNFTIDMap {
+		nftIDMap[k] = v
+	}
 	tokenListLock.RUnlock()
 	if len(assignedOTAKeys.Keys) > 0 {
 		otaCoins := make(map[string][]shared.CoinData)
@@ -320,7 +448,6 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 		var wg sync.WaitGroup
 		tempOTACoinsCh := make(chan map[string]shared.CoinData, shared.ServiceCfg.MaxConcurrentOTACheck)
 		for idx, c := range coinList {
-			log.Println("coinIdx", c.CoinIndex)
 			wg.Add(1)
 			go func(cn shared.CoinData) {
 				newCoin := new(coin.CoinV2)
@@ -330,15 +457,25 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 				}
 				pass := false
 				tokenID := ""
+				isNFT := false
 				for _, keyData := range assignedOTAKeys.Keys[cn.ShardID] {
 					if _, ok := keyData.KeyInfo.CoinIndex[cn.TokenID]; ok {
 						if cn.CoinIndex < keyData.KeyInfo.CoinIndex[cn.TokenID].LastScanned {
 							continue
 						}
 					}
-					pass, tokenID, _ = doesCoinBelongToKeySet(newCoin, keyData.keyset, tokenIDMap)
+					checkToken := true
+					if cn.IsNFT {
+						checkToken = false
+					}
+					pass, tokenID, _, isNFT = doesCoinBelongToKeySet(newCoin, keyData.keyset, tokenIDMap, nftIDMap, checkToken)
 					if pass {
-						cn.RealTokenID = tokenID
+						if !cn.IsNFT {
+							cn.RealTokenID = tokenID
+						}
+						if isNFT {
+							cn.IsNFT = isNFT
+						}
 						tempOTACoinsCh <- map[string]shared.CoinData{keyData.OTAKey: cn}
 						break
 					}
@@ -392,7 +529,7 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 	return nil, nil, nil, nil, errors.New("no key to scan")
 }
 
-func updateSubmittedOTAKey() error {
+func updateSubmittedOTAKey(ctx context.Context) error {
 	docs := []interface{}{}
 	KeyInfoList := []*shared.KeyInfoData{}
 	for _, keys := range assignedOTAKeys.Keys {
@@ -406,19 +543,19 @@ func updateSubmittedOTAKey() error {
 		}
 	}
 	for idx, doc := range docs {
-		err := database.DBUpdateKeyInfoV2(doc, KeyInfoList[idx])
+		err := database.DBUpdateKeyInfoV2(doc, KeyInfoList[idx], ctx)
 		if err != nil {
-			assignedOTAKeys.Unlock()
 			return err
 		}
 	}
 	return nil
 }
 
-func GetOTAKeyListMinScannedCoinIndex() (map[int]uint64, map[int]uint64) {
+func GetOTAKeyListMinScannedCoinIndex(keylist map[int][]*OTAkeyInfo) (map[int]uint64, map[int]uint64) {
 	minPRVIdx := make(map[int]uint64)
 	minTokenIdx := make(map[int]uint64)
-	for shardID, keys := range assignedOTAKeys.Keys {
+
+	for shardID, keys := range keylist {
 		if _, ok := keys[0].KeyInfo.CoinIndex[common.PRVCoinID.String()]; ok {
 			minPRVIdx[shardID] = keys[0].KeyInfo.CoinIndex[common.PRVCoinID.String()].LastScanned
 		}
@@ -443,7 +580,7 @@ func GetOTAKeyListMinScannedCoinIndex() (map[int]uint64, map[int]uint64) {
 		}
 	}
 
-	log.Println("minPRVIdx", minPRVIdx, minTokenIdx)
+	log.Printf("worker/%v minPRVIdx %v %v\n", workerID, minPRVIdx, minTokenIdx)
 	return minPRVIdx, minTokenIdx
 }
 
@@ -453,7 +590,7 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 		if v != 0 {
 			v += 1
 		}
-		coinList, err := database.DBGetUnknownCoinsV2(shardID, common.PRVCoinID.String(), int64(v), 1000)
+		coinList, err := database.DBGetUnknownCoinsV21(shardID, common.PRVCoinID.String(), int64(v), 10000)
 		if err != nil {
 			panic(err)
 		}
@@ -463,11 +600,213 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 		if v != 0 {
 			v += 1
 		}
-		coinList, err := database.DBGetUnknownCoinsV2(shardID, common.ConfidentialAssetID.String(), int64(v), 1000)
+		coinList, err := database.DBGetUnknownCoinsV21(shardID, common.ConfidentialAssetID.String(), int64(v), 10000)
 		if err != nil {
 			panic(err)
 		}
 		result = append(result, coinList...)
+	}
+	return result
+}
+
+func getTxToProcess(lastID map[int]string, limit int64) ([]shared.TxData, error) {
+	result := []shared.TxData{}
+	for shardID, v := range lastID {
+		var txList []shared.TxData
+		metas := []string{strconv.Itoa(metadataCommon.Pdexv3TradeRequestMeta)}
+		var obID primitive.ObjectID
+		var err error
+		if v == "" {
+			obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+		} else {
+			obID, err = primitive.ObjectIDFromHex(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		filter := bson.M{
+			"_id":      bson.M{operator.Gt: obID},
+			"shardid":  bson.M{operator.Eq: shardID},
+			"metatype": bson.M{operator.In: metas},
+		}
+		err = mgm.Coll(&shared.TxData{}).SimpleFind(&txList, filter, &options.FindOptions{
+			Sort:  bson.D{{"locktime", 1}},
+			Limit: &limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range txList {
+			if len(v.PubKeyReceivers) == 0 {
+				result = append(result, v)
+			}
+		}
+
+	}
+
+	return result, nil
+}
+
+func GetOTAKeyListMinScannedTxIndex() map[int]string {
+	minTxIdx := make(map[int]string)
+
+	for shardID, keys := range assignedOTAKeys.Keys {
+		minTxIdx[shardID] = keys[0].KeyInfo.LastScanTxID
+		for _, keyData := range keys {
+			if strings.Compare(keyData.KeyInfo.LastScanTxID, minTxIdx[shardID]) == -1 {
+				minTxIdx[shardID] = keyData.KeyInfo.LastScanTxID
+			}
+			if keyData.KeyInfo.LastScanTxID == "" {
+				id := primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				minTxIdx[shardID] = id.Hex()
+				break
+			}
+		}
+	}
+
+	log.Printf("worker/%v minTxIdx %v \n", workerID, minTxIdx)
+	return minTxIdx
+}
+
+func filterTxsByOTAKey(txList []shared.TxData) ([]shared.TxData, map[int]string, error) {
+
+	lastTxID := make(map[int]string)
+	if len(assignedOTAKeys.Keys) > 0 {
+		var otaTxs []shared.TxData
+		// var otherTxs []shared.TxData
+		startTime := time.Now()
+		var wg sync.WaitGroup
+		tempTxsCh := make(chan map[string]shared.TxData, shared.ServiceCfg.MaxConcurrentOTACheck)
+		for idx, tx := range txList {
+			wg.Add(1)
+			go func(txd shared.TxData) {
+				pass := false
+				for _, keyData := range assignedOTAKeys.Keys[tx.ShardID] {
+					if strings.Compare(txd.TxHash, keyData.KeyInfo.LastScanTxID) != -1 {
+						continue
+					}
+					txRan, pubkey, err := extractPubkeyAndTxRandom(txd)
+					if err != nil {
+						panic(err)
+					}
+
+					pass = checkPubkeyAndTxRandom(*txRan, *pubkey, keyData.keyset)
+					if pass {
+						tempTxsCh <- map[string]shared.TxData{keyData.Pubkey: txd}
+						break
+					}
+				}
+				if !pass {
+					tempTxsCh <- map[string]shared.TxData{"nil": txd}
+				}
+				wg.Done()
+			}(tx)
+			if (idx+1)%shared.ServiceCfg.MaxConcurrentOTACheck == 0 || idx+1 == len(txList) {
+				wg.Wait()
+				close(tempTxsCh)
+				for k := range tempTxsCh {
+					for key, v := range k {
+						if key == "nil" {
+							// otherTxs = append(otherTxs, v)
+							continue
+						}
+						v.PubKeyReceivers = append(v.PubKeyReceivers, key)
+						otaTxs = append(otaTxs, v)
+					}
+				}
+				// if idx+1 != len(coinList) {
+				tempTxsCh = make(chan map[string]shared.TxData, shared.ServiceCfg.MaxConcurrentOTACheck)
+				// }
+			}
+			if _, ok := lastTxID[tx.ShardID]; !ok {
+				lastTxID[tx.ShardID] = tx.TxHash
+			} else {
+				if strings.Compare(tx.TxHash, lastTxID[tx.ShardID]) == -1 {
+					lastTxID[tx.ShardID] = tx.TxHash
+				}
+			}
+		}
+		close(tempTxsCh)
+		log.Printf("filtered %v coins with %v keys in %v", len(txList), assignedOTAKeys.TotalKeys, time.Since(startTime))
+		return otaTxs, lastTxID, errors.New("no key to scan")
+	}
+	return nil, nil, errors.New("no key to scan")
+}
+
+func groupLastScannedIndexs(keys []*OTAkeyInfo) map[string][]uint64 {
+	tempIndexMap := make(map[string][]uint64)
+	indexMap := make(map[string][]uint64)
+	for _, v := range keys {
+		prvLsc := uint64(0)
+		if _, ok := v.KeyInfo.CoinIndex[common.PRVCoinID.String()]; ok {
+			prvLsc = v.KeyInfo.CoinIndex[common.PRVCoinID.String()].LastScanned
+		}
+		tokenLsc := uint64(0)
+		if _, ok := v.KeyInfo.CoinIndex[common.PRVCoinID.String()]; ok {
+			tokenLsc = v.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()].LastScanned
+		}
+		tempIndexMap[common.PRVCoinID.String()] = append(tempIndexMap[common.PRVCoinID.String()], prvLsc)
+		tempIndexMap[common.ConfidentialAssetID.String()] = append(tempIndexMap[common.ConfidentialAssetID.String()], tokenLsc)
+	}
+	tempIndexMap[common.PRVCoinID.String()] = removeDuplicateInt(tempIndexMap[common.PRVCoinID.String()])
+	tempIndexMap[common.ConfidentialAssetID.String()] = removeDuplicateInt(tempIndexMap[common.ConfidentialAssetID.String()])
+
+	sort.SliceStable(tempIndexMap[common.PRVCoinID.String()], func(i, j int) bool {
+		return tempIndexMap[common.PRVCoinID.String()][i] < tempIndexMap[common.PRVCoinID.String()][j]
+	})
+	sort.SliceStable(tempIndexMap[common.ConfidentialAssetID.String()], func(i, j int) bool {
+		return tempIndexMap[common.ConfidentialAssetID.String()][i] < tempIndexMap[common.ConfidentialAssetID.String()][j]
+	})
+
+	tempIndexMap[common.ConfidentialAssetID.String()] = reduceSlice(tempIndexMap[common.ConfidentialAssetID.String()], 10000)
+	tempIndexMap[common.PRVCoinID.String()] = reduceSlice(tempIndexMap[common.PRVCoinID.String()], 10000)
+
+	return indexMap
+}
+
+func removeDuplicateInt(slice []uint64) []uint64 {
+	allKeys := make(map[uint64]bool)
+	list := []uint64{}
+	for _, item := range slice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
+
+func reduceSlice(slice []uint64, r uint64) []uint64 {
+	var result []uint64
+	i := uint64(0)
+	for _, v := range slice {
+		if i+r < v || i == 0 {
+			result = append(result, v)
+			i = v + r
+		}
+	}
+	return result
+}
+
+func groupKeysToCoinIndex(coinIndex map[string][]uint64, keys []*OTAkeyInfo) map[string]map[uint64][]*OTAkeyInfo {
+	result := make(map[string]map[uint64][]*OTAkeyInfo)
+	result[common.ConfidentialAssetID.String()] = make(map[uint64][]*OTAkeyInfo)
+	result[common.PRVCoinID.String()] = make(map[uint64][]*OTAkeyInfo)
+
+	for token, idxs := range coinIndex {
+		for _, kinfo := range keys {
+			if cinfo, ok := kinfo.KeyInfo.CoinIndex[token]; ok {
+				for _, v := range idxs {
+					if cinfo.LastScanned < v {
+						result[token][v] = append(result[token][v], kinfo)
+						break
+					}
+				}
+			} else {
+				result[token][0] = append(result[token][0], kinfo)
+			}
+		}
 	}
 	return result
 }

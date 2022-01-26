@@ -15,6 +15,7 @@ type OTAkeyInfo struct {
 
 type OTAAssignRequest struct {
 	Key     *shared.SubmittedOTAKeyData
+	FromNow bool
 	Respond chan error
 }
 
@@ -24,4 +25,10 @@ type worker struct {
 	OTAAssigned int
 	readCh      chan []byte
 	writeCh     chan []byte
+	closeCh     chan struct{}
+}
+
+type WorkerOTACmd struct {
+	Action string
+	Key    OTAkeyInfo
 }

@@ -14,9 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func DBUpdateCoins(list []shared.CoinData) error {
+func DBUpdateCoins(list []shared.CoinData, ctx context.Context) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
 	docs := []interface{}{}
 	for _, coin := range list {
 		update := bson.M{
@@ -35,7 +34,7 @@ func DBUpdateCoins(list []shared.CoinData) error {
 	return nil
 }
 
-func DBGetCoinsByIndex(idx int, shardID int, tokenID string) (*shared.CoinData, error) {
+func DBGetCoinsByIndex(idx uint64, shardID int, tokenID string) (*shared.CoinData, error) {
 	var result shared.CoinData
 	filter := bson.M{"coinidx": bson.M{operator.Eq: idx}, "shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	err := mgm.Coll(&shared.CoinData{}).First(filter, &result)
@@ -51,16 +50,53 @@ func DBGetUnknownCoinsV2(shardID int, tokenID string, fromidx, limit int64) ([]s
 	if limit == 0 {
 		limit = 10000
 	}
-	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx, operator.Lte: fromidx + limit}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
 	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
-		// Sort: bson.D{{Key: "coinidx", Value: 1}},
-		// Limit: &limit,
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
 	})
 	if err != nil {
 		return nil, err
 	}
+	newList := filterByIndexedCoins(list)
+	sort.Slice(newList, func(i, j int) bool { return newList[i].CoinIndex < newList[j].CoinIndex })
+	log.Printf("found %v/%v fromidx %v shard %v coins in %v", len(newList), len(list), fromidx, shardID, time.Since(startTime))
+	return newList, err
+}
+
+func DBGetUnknownCoinsV21(shardID int, tokenID string, fromidx, limit int64) ([]shared.CoinData, error) {
+	startTime := time.Now()
+	list := []shared.CoinData{}
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
-	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	log.Printf("found %v fromidx %v shard %v coins in %v", len(list), fromidx, shardID, time.Since(startTime))
+	return list, err
+}
+
+func DBGetUnknownCoinsV22(shardID int, tokenID string, fromidx, toidx, limit int64) ([]shared.CoinData, error) {
+	list := []shared.CoinData{}
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: ""}, "tokenid": bson.M{operator.Eq: tokenID}, "coinidx": bson.M{operator.Gte: fromidx, operator.Lte: toidx}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return list, err
 }
 
@@ -165,7 +201,8 @@ func DBGetCoinV2PubkeyInfo(key string) (*shared.KeyInfoData, error) {
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return &shared.KeyInfoData{
-				Pubkey: key,
+				Pubkey:    key,
+				CoinIndex: make(map[string]shared.CoinInfo),
 			}, nil
 		}
 		return nil, err
@@ -173,16 +210,75 @@ func DBGetCoinV2PubkeyInfo(key string) (*shared.KeyInfoData, error) {
 	return &result, nil
 }
 
-func DBGetCoinV2OfShardCount(shardID int, tokenID string) int64 {
+func DBGetCoinV2OfShardCount(shardID int, tokenID string) (int64, error) {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	doc := shared.CoinData{}
 	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
 	if err != nil {
-		log.Println(err)
-		return -1
+		return -1, err
 	}
-	return count
+	return count, nil
+}
+
+func DBGetCoinV2OfOTAkeyCount(shardID int, tokenID, otakey string) (uint64, error) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(500)*shared.DB_OPERATION_TIMEOUT)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "realtokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
+	doc := shared.CoinData{}
+	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(count), nil
+}
+
+func DBGetAllCoinV2OfOTAkey(shardID int, tokenID, otakey string, offset int64) ([]shared.CoinData, error) {
+	var coinList []shared.CoinData
+	limit := int64(10000)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&coinList, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+		Skip:  &offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return coinList, nil
+}
+
+func DBGetLastCoinV2OfOTAkey(shardID int, tokenID, otakey string) (uint64, error) {
+	var coinList []shared.CoinData
+	limit := int64(1)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "realtokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&coinList, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", -1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return 0, err
+	}
+	if len(coinList) == 0 {
+		return 0, nil
+	}
+	return coinList[0].CoinIndex, nil
+}
+
+func DBGetStartCoinV2OfOTAkey(shardID int, tokenID, otakey string) (uint64, error) {
+	var coinList []shared.CoinData
+	limit := int64(1)
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "realtokenid": bson.M{operator.Eq: tokenID}, "otasecret": bson.M{operator.Eq: otakey}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&coinList, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Limit: &limit,
+	})
+	if err != nil {
+		return 0, err
+	}
+	if len(coinList) == 0 {
+		return 0, nil
+	}
+	return coinList[0].CoinIndex, nil
 }
 
 func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {
@@ -221,4 +317,49 @@ func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {
 	}
 
 	return result, pubkeyTxs, nil
+}
+
+func filterByIndexedCoins(coins []shared.CoinData) []shared.CoinData {
+	var result []shared.CoinData
+	for _, v := range coins {
+		if v.OTASecret == "" {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func DBGetNFTByOTAKey(shardID int, OTASecret string, offset, limit int64) (map[string][]shared.CoinData, error) {
+	result := make(map[string][]shared.CoinData)
+	startTime := time.Now()
+	list := []shared.CoinData{}
+	if limit == 0 {
+		limit = 10000
+	}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "otasecret": bson.M{operator.Eq: OTASecret}, "isnft": bson.M{operator.Eq: true}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&list, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
+	log.Printf("found %v coins in %v", len(list), time.Since(startTime))
+	for _, coin := range list {
+		result[coin.RealTokenID] = append(result[coin.RealTokenID], coin)
+	}
+	return result, err
+}
+
+func DBGetCoinsV2ByShardID(shardID int, tokenID string, limit, offset int64) ([]shared.CoinData, error) {
+	var result []shared.CoinData
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"coinidx", 1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	return result, err
 }

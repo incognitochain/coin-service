@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
@@ -11,6 +12,7 @@ import (
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -28,10 +30,12 @@ func ConnectDB(dbName string, mongoAddr string) error {
 	return nil
 }
 
-func DBSaveCoins(list []shared.CoinData) error {
+func DBSaveCoins(list []shared.CoinData) (error, []shared.CoinDataV1) {
 	startTime := time.Now()
+	coinV1AlreadyWrite := []shared.CoinDataV1{}
 	docs := []interface{}{}
 	docsV1 := []interface{}{}
+	sort.Slice(list, func(i, j int) bool { return list[i].CoinIndex < list[j].CoinIndex })
 	for _, coin := range list {
 		coin.Creating()
 		if coin.CoinVersion == 2 {
@@ -42,23 +46,67 @@ func DBSaveCoins(list []shared.CoinData) error {
 	}
 	if len(docs) > 0 {
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+2)*shared.DB_OPERATION_TIMEOUT)
-		_, err := mgm.Coll(&shared.CoinData{}).InsertMany(ctx, docs)
+		_, err := mgm.Coll(&shared.CoinData{}).InsertMany(ctx, docs, options.MergeInsertManyOptions().SetOrdered(true))
 		if err != nil {
-			log.Printf("failed to insert %v coins in %v", len(docs), time.Since(startTime))
-			return err
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				panic(err)
+			}
+			if ctx.Err() != nil {
+				t, k := ctx.Deadline()
+				log.Println("context error:", ctx.Err(), t, k)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			} else {
+				for _, v := range docs {
+					ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+					_, err = mgm.Coll(&shared.CoinData{}).InsertOne(ctx, v)
+					if err != nil {
+						writeErr, ok := err.(mongo.WriteException)
+						if !ok {
+							panic(err)
+						}
+						if !writeErr.HasErrorCode(11000) {
+							panic(err)
+						}
+					}
+				}
+			}
 		}
 		log.Printf("inserted %v v2coins in %v", len(docs), time.Since(startTime))
 	}
 	if len(docsV1) > 0 {
 		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+2)*shared.DB_OPERATION_TIMEOUT)
-		_, err := mgm.Coll(&shared.CoinDataV1{}).InsertMany(ctx, docsV1)
+		_, err := mgm.Coll(&shared.CoinDataV1{}).InsertMany(ctx, docsV1, options.MergeInsertManyOptions().SetOrdered(true))
 		if err != nil {
-			log.Printf("failed to insert %v coins in %v", len(docsV1), time.Since(startTime))
-			return err
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				panic(err)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			} else {
+				for _, v := range docsV1 {
+					ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+					_, err = mgm.Coll(&shared.CoinDataV1{}).InsertOne(ctx, v)
+					if err != nil {
+						writeErr, ok := err.(mongo.WriteException)
+						if !ok {
+							panic(err)
+						}
+						if !writeErr.HasErrorCode(11000) {
+							panic(err)
+						}
+					}
+				}
+			}
 		}
 		log.Printf("inserted %v v1coins in %v", len(docsV1), time.Since(startTime))
 	}
-	return nil
+	return nil, coinV1AlreadyWrite
 }
 
 func DBSavePendingTx(list []shared.CoinPendingData) error {
@@ -71,8 +119,28 @@ func DBSavePendingTx(list []shared.CoinPendingData) error {
 		}
 		_, err := mgm.Coll(&shared.CoinPendingData{}).InsertMany(ctx, docs)
 		if err != nil {
-			log.Println(err)
-			return err
+			writeErr, ok := err.(mongo.BulkWriteException)
+			if !ok {
+				panic(err)
+			}
+			er := writeErr.WriteErrors[0]
+			if er.WriteError.Code != 11000 {
+				panic(err)
+			} else {
+				for _, v := range docs {
+					ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+					_, err = mgm.Coll(&shared.CoinPendingData{}).InsertOne(ctx, v)
+					if err != nil {
+						writeErr, ok := err.(mongo.WriteException)
+						if !ok {
+							panic(err)
+						}
+						if !writeErr.HasErrorCode(11000) {
+							panic(err)
+						}
+					}
+				}
+			}
 		}
 	}
 	return nil
@@ -164,25 +232,27 @@ func DBCheckTxsExist(txList []string, shardID int) ([]bool, error) {
 	return result, nil
 }
 
-func DBGetCoinInfo() (int64, int64, int64, int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
-	prvFilter := bson.M{"tokenid": bson.M{operator.Eq: common.PRVCoinID.String()}}
-	prvV2, err := mgm.Coll(&shared.CoinData{}).CountDocuments(ctx, prvFilter)
-	if err != nil {
-		return 0, 0, 0, 0, err
+func DBGetCoinInfo() (map[int]uint64, map[int]uint64, map[int]uint64, map[int]uint64, error) {
+	prvV1 := make(map[int]uint64)
+	prvV2 := make(map[int]uint64)
+	tokenV1 := make(map[int]uint64)
+	tokenV2 := make(map[int]uint64)
+
+	for i := 0; i < shared.ServiceCfg.NumOfShard; i++ {
+
+		pv2, _ := DBGetCoinV2OfShardCount(i, common.PRVCoinID.String())
+
+		tkv2, _ := DBGetCoinV2OfShardCount(i, common.ConfidentialAssetID.String())
+
+		pv1 := DBGetCoinV1OfShardCount(i, common.PRVCoinID.String())
+
+		tkv1 := DBGetCoinTokenV1OfShardCount(i)
+
+		prvV1[i] = uint64(pv1)
+		prvV2[i] = uint64(pv2)
+		tokenV1[i] = uint64(tkv1)
+		tokenV2[i] = uint64(tkv2)
 	}
-	prvV1, err := mgm.Coll(&shared.CoinDataV1{}).CountDocuments(ctx, prvFilter)
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-	tokenFilter := bson.M{"tokenid": bson.M{operator.Ne: common.PRVCoinID.String()}}
-	tokenV2, err := mgm.Coll(&shared.CoinData{}).CountDocuments(ctx, tokenFilter)
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-	tokenV1, err := mgm.Coll(&shared.CoinDataV1{}).CountDocuments(ctx, tokenFilter)
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
+
 	return prvV1, prvV2, tokenV1, tokenV2, nil
 }

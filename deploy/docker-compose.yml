@@ -1,0 +1,148 @@
+version: "2.2"
+services:
+  chainsync:
+    image: coinservice
+    build:
+      context: ./csv
+      dockerfile: Dockerfile
+    volumes:
+      - ./data/chain:/home/chain
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: -1
+      MODE: "chainsync"
+    env_file:
+      - service.env
+    depends_on:
+      - mongo
+
+  query:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "query"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+
+  indexer:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "indexer"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
+  worker:
+    image: coinservice
+    scale: 1
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "indexworker"
+    env_file:
+      - service.env
+    depends_on:
+      - indexer
+
+  liquidity-processor:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "liquidity"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
+  trade-processor:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "trade"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
+  shield-processor:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "shield"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
+  assistant:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "assistant"
+    env_file:
+      - service.env
+    depends_on:
+      - chainsync
+      - mongo
+
+  nginx-server:
+    image: nginx-load-balancer
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - ${NGINX_PORT}:80
+    restart: unless-stopped
+    depends_on:
+      - query
+      - indexer
+
+  # watcher:
+  #   image: alpine
+  #   volumes:
+  #     - .:/home
+  #   entrypoint: [/home/servicewatcher]
+  #   environment:
+  #     SLACKHOOKCSV: ""
+  #     CSVSYNCKER: "http://chainsyncv3:9001"
+  #     FULLNODE: "http://51.161.119.66:9334"
+  #   depends_on:
+  #     - chainsyncv3
+
+  mongo:
+    image: mongo
+    restart: always
+    volumes:
+      - ./data/mongodb:/data/db
+      - ./data/mongodb_config:/data/configdb
+    env_file:
+      - service.env
+  mongo-express:
+    image: mongo-express
+    restart: always
+    env_file:
+      - service.env
+    ports:
+      - 4000:8081
