@@ -293,7 +293,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 			txToken := tx.(transaction.TransactionToken)
 			txTokenData := txToken.GetTxTokenData()
 
-			if tx.GetMetadataType() == metadataCommon.Pdexv3MintNftResponseMeta || tx.GetMetadataType() == metadataCommon.Pdexv3UserMintNftResponseMeta {
+			if tx.GetMetadataType() == metadataCommon.Pdexv3MintNftResponseMeta || tx.GetMetadataType() == metadataCommon.Pdexv3UserMintNftResponseMeta || tx.GetMetadataType() == metadataCommon.Pdexv3MintAccessTokenMeta {
 				isNFT = true
 			}
 
@@ -324,6 +324,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 								}
 							} else {
 								coinIdx = idxBig.Uint64()
+							}
+							if coin.GetAssetTag().String() == shared.AccessTokenAssetTag {
+								isNFT = true
 							}
 							tokenStr = common.ConfidentialAssetID.String()
 						} else {
@@ -357,6 +360,9 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 						outCoin.IsNFT = isNFT
 						if isNFT {
 							outCoin.RealTokenID = tokenID
+							if coin.GetAssetTag().String() == shared.AccessTokenAssetTag {
+								outCoin.RealTokenID = common.PdexAccessCoinID.String()
+							}
 						}
 						outCoinList = append(outCoinList, *outCoin)
 					}

@@ -291,21 +291,6 @@ func scanOTACoins() {
 		panic(err)
 	}
 
-	//Old
-	// lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
-	// //scan coins
-	// for {
-	// 	coinList := GetUnknownCoinsFromDB(lastPRVIndex, lastTokenIndex)
-	// 	if len(coinList) == 0 {
-	// 		break
-	// 	}
-	// 	filteredCoins := make(map[string][]shared.CoinData)
-	// 	filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	updateCoinState(filteredCoins, lastPRVIndex, lastTokenIndex)
-	// }
 	log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
 }
 
@@ -694,7 +679,7 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 
 func GetUnknownCoinsV2(shardID int, fromIndex uint64, tokenID string) []shared.CoinData {
 	var result []shared.CoinData
-	coinList, err := database.DBGetUnknownCoinsV21(shardID, common.PRVCoinID.String(), int64(fromIndex), 10000)
+	coinList, err := database.DBGetUnknownCoinsV21(shardID, tokenID, int64(fromIndex), 10000)
 	if err != nil {
 		panic(err)
 	}
