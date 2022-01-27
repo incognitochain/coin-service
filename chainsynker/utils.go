@@ -113,10 +113,18 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 			v := item.Value()
 			orderbook.InsertOrder(&v)
 		}
+		lmRewardsPerShare, err := statedb.GetPdexv3PoolPairLmRewardPerShares(stateDB, poolPairID)
+		if err != nil {
+			return nil, err
+		}
+		lmLockedShare, err := statedb.GetPdexv3PoolPairLmLockedShare(stateDB, poolPairID)
+		if err != nil {
+			return nil, err
+		}
+
 		poolPair := pdex.NewPoolPairStateWithValue(
 			poolPairState.Value(), shares, *orderbook,
-			lpFeesPerShare, protocolFees, stakingPoolFees, makingVolume2, orderReward2,
-		)
+			lpFeesPerShare, lmRewardsPerShare, protocolFees, stakingPoolFees, makingVolume2, orderReward2, lmLockedShare)
 		res[poolPairID] = poolPair
 	}
 	return res, nil
@@ -137,7 +145,11 @@ func initShares(poolPairID string, stateDB *statedb.StateDB) (map[string]*pdex.S
 		if err != nil {
 			return nil, err
 		}
-		res[nftID] = pdex.NewShareWithValue(shareState.Amount(), tradingFees, lastLPFeesPerShare)
+		lastLmRewardsPerShare, err := statedb.GetPdexv3ShareLastLmRewardPerShare(stateDB, poolPairID, nftID)
+		if err != nil {
+			return nil, err
+		}
+		res[nftID] = pdex.NewShareWithValue(shareState.Amount(), shareState.LmLockedAmount(), tradingFees, lastLPFeesPerShare, lastLmRewardsPerShare)
 	}
 	return res, nil
 }
