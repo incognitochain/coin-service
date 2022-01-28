@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"log"
 
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/kamva/mgm/v3"
@@ -66,7 +67,8 @@ func DBGetDefaultPool(includeQualify bool) (map[string]struct{}, error) {
 	if includeQualify {
 		list, err := DBGetQualifyPools()
 		if err != nil {
-			return nil, err
+			log.Println(err)
+			return result, nil
 		}
 		for v, _ := range list {
 			result[v] = struct{}{}
