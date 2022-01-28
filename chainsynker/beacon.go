@@ -406,7 +406,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				if err != nil {
 					panic(err)
 				}
-				rewards, err := recomputeLPFee(state.Shares, state.LpFeesPerShare, *shareIDHash)
+				rewards, err := recomputeLPFee(state.Shares, state.LpFeesPerShare, state.LmRewardsPerShare, *shareIDHash)
 				if err != nil {
 					panic(err)
 				}
