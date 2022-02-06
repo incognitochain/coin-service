@@ -32,6 +32,7 @@ type Config struct {
 	// FullnodeEndpoint      string `json:"fullnodeendpoint"`
 	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
 	ExternalDecimals     string `json:"externaldecimals"`
+	FullnodeData         bool   `json:"fullnodedata"`
 }
 
 type ConfigJSON struct {
@@ -49,6 +50,7 @@ type ConfigJSON struct {
 	// FullnodeEndpoint      string `json:"fullnodeendpoint"`
 	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
 	ExternalDecimals     string `json:"externaldecimals"`
+	FullnodeData         bool   `json:"fullnodedata"`
 }
 
 func ReadConfigAndArg() {
