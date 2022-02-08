@@ -399,6 +399,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 			poolPairs = append(poolPairs, poolData)
 			pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)
+			collectedShared := make(map[string]struct{})
 			for shareID, share := range state.Shares {
 				tradingFee := make(map[string]uint64)
 				orderReward := make(map[string]uint64)
@@ -414,6 +415,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					for tokenID, amount := range state.OrderRewards[shareID].UncollectedRewards {
 						orderReward[tokenID.String()] = amount
 					}
+					collectedShared[shareID] = struct{}{}
 				}
 				for k, v := range rewards {
 					tradingFee[k.String()] = v
@@ -427,6 +429,22 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					NFTID:       shareID,
 				}
 				poolShare = append(poolShare, shareData)
+			}
+
+			for shareID, share := range state.OrderRewards {
+				orderReward := make(map[string]uint64)
+				if _, ok := collectedShared[shareID]; !ok {
+					for tokenID, amount := range share.UncollectedRewards {
+						orderReward[tokenID.String()] = amount
+					}
+					shareData := shared.PoolShareData{
+						Version:     2,
+						PoolID:      poolID,
+						OrderReward: orderReward,
+						NFTID:       shareID,
+					}
+					poolShare = append(poolShare, shareData)
+				}
 			}
 
 			for _, order := range state.Orderbook.Orders {
@@ -735,7 +753,9 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					for shareID, _ := range state.Shares {
 						willDelete := false
 						if _, ok := newState.Shares[shareID]; !ok {
-							willDelete = true
+							if _, ok2 := newState.OrderRewards[shareID]; !ok2 {
+								willDelete = true
+							}
 						}
 						if willDelete {
 							shareData := shared.PoolShareData{
@@ -804,7 +824,6 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		}()
 		wg.Wait()
 	}
-
 	return pairList, poolPairs, poolShare, stakePools, poolStaking, orderStatus, poolPairsToBeDelete, poolShareToBeDelete, stakePoolsToBeDelete, poolStakingToBeDelete, orderStatusToBeDelete, rewardRecords, nil
 }
 
