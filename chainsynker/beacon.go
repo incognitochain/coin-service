@@ -984,12 +984,12 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 func extractLqReward(poolID string, curPools map[string]*shared.PoolPairState, prevPools map[string]*shared.PoolPairState) (map[string]uint64, error) {
 	result := make(map[string]uint64)
 
-	curLPFeesPerShare, curLMFeesPerShare, shareAmount, err := getLPFeesPerShare(poolID, curPools)
+	curLPFeesPerShare, curLMFeesPerShare, shareAmount, LmLockedShareAmount, err := getLPFeesPerShare(poolID, curPools)
 	if err != nil {
 		return nil, err
 	}
 
-	oldLPFeesPerShare, oldLMFeesPerShare, _, err := getLPFeesPerShare(poolID, prevPools)
+	oldLPFeesPerShare, oldLMFeesPerShare, _, _, err := getLPFeesPerShare(poolID, prevPools)
 	if err != nil {
 		oldLPFeesPerShare = map[common.Hash]*big.Int{}
 	}
@@ -1017,9 +1017,9 @@ func extractLqReward(poolID string, curPools map[string]*shared.PoolPairState, p
 		if !isExisted {
 			oldFees = big.NewInt(0)
 		}
-		newFees := curLPFeesPerShare[tokenID]
+		newFees := curLMFeesPerShare[tokenID]
 
-		reward := new(big.Int).Mul(new(big.Int).Sub(newFees, oldFees), new(big.Int).SetUint64(shareAmount))
+		reward := new(big.Int).Mul(new(big.Int).Sub(newFees, oldFees), new(big.Int).SetUint64(shareAmount-LmLockedShareAmount))
 		reward = new(big.Int).Div(reward, pdex.BaseLPFeesPerShare)
 
 		if !reward.IsUint64() {
@@ -1038,12 +1038,12 @@ func extractLqReward(poolID string, curPools map[string]*shared.PoolPairState, p
 	return result, nil
 }
 
-func getLPFeesPerShare(pairID string, pools map[string]*shared.PoolPairState) (map[common.Hash]*big.Int, map[common.Hash]*big.Int, uint64, error) {
+func getLPFeesPerShare(pairID string, pools map[string]*shared.PoolPairState) (map[common.Hash]*big.Int, map[common.Hash]*big.Int, uint64, uint64, error) {
 	if _, ok := pools[pairID]; !ok {
-		return nil, nil, 0, fmt.Errorf("Pool pair %s not found", pairID)
+		return nil, nil, 0, 0, fmt.Errorf("Pool pair %s not found", pairID)
 	}
 	pair := pools[pairID]
-	return pair.LpFeesPerShare, pair.LmRewardsPerShare, pair.State.ShareAmount(), nil
+	return pair.LpFeesPerShare, pair.LmRewardsPerShare, pair.State.ShareAmount(), pair.State.LmLockedShareAmount(), nil
 }
 
 func getStakingRewardsPerShare(
