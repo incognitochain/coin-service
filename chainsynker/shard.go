@@ -68,15 +68,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 
 	TransactionStateDB[byte(shardID)].ClearObjects()
 
-	batchData := bc.GetShardChainDatabase(blk.Header.ShardID).NewBatch()
-	err = bc.BackupShardViews(batchData, blk.Header.ShardID)
-	if err != nil {
-		panic("Backup shard view error")
-	}
-	if err := batchData.Write(); err != nil {
-		panic(err)
-	}
-
 	crossShardCoinMap := make(map[string]string)
 	for _, txlist := range blk.Body.CrossTransactions {
 		for _, tx := range txlist {
@@ -520,6 +511,16 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 	if err != nil {
 		panic(err)
 	}
+
+	batchData := bc.GetShardChainDatabase(blk.Header.ShardID).NewBatch()
+	err = bc.BackupShardViews(batchData, blk.Header.ShardID)
+	if err != nil {
+		panic("Backup shard view error")
+	}
+	if err := batchData.Write(); err != nil {
+		panic(err)
+	}
+
 	blockProcessedLock.Lock()
 	blockProcessed[shardID] = blk.Header.Height
 	blockProcessedLock.Unlock()
