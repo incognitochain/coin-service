@@ -109,7 +109,7 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 		isDup := false
 		ps := strings.Split(p, "-")
 		for p2, v2 := range poolsLq {
-			if strings.Contains(p2, ps[0]) && strings.Contains(p2, ps[1]) {
+			if strings.Contains(p2, ps[0]) && strings.Contains(p2, ps[1]) && p2 != p {
 				isDup = true
 				if v > v2 {
 					willAdd = true
@@ -128,9 +128,9 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 
 	qualifyPools = "["
 	i := 0
-	for poolID, _ := range poolsLq {
+	for poolID, _ := range poolsLqNew {
 		i++
-		if i == len(poolsLq) {
+		if i == len(poolsLqNew) {
 			qualifyPools += fmt.Sprintf("\"%v\"", poolID)
 		} else {
 			qualifyPools += fmt.Sprintf("\"%v\",", poolID)
