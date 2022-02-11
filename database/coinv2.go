@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
 	"go.mongodb.org/mongo-driver/bson"
@@ -362,4 +363,19 @@ func DBGetCoinsV2ByShardID(shardID int, tokenID string, limit, offset int64) ([]
 		Limit: &limit,
 	})
 	return result, err
+}
+
+func DBGetAllAccessCoin(otakey string) ([]shared.CoinData, error) {
+	var coinList []shared.CoinData
+	// limit := int64(10000)
+	filter := bson.M{"tokenid": bson.M{operator.Eq: common.PdexAccessCoinID.String()}, "otasecret": bson.M{operator.Eq: otakey}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&coinList, filter, &options.FindOptions{
+		Sort: bson.D{{"coinidx", 1}},
+		// Limit: &limit,
+		// Skip:  &offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return coinList, nil
 }
