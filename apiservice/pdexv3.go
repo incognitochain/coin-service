@@ -56,6 +56,11 @@ func (pdexv3) ListPairs(c *gin.Context) {
 
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
+	verify := c.Query("verify")
+	isverify := false
+	if verify == "true" {
+		isverify = true
+	}
 	if pair == "all" {
 		var result []PdexV3PoolDetail
 		err := cacheGet("ListPools-all", &result)
@@ -190,7 +195,9 @@ func (pdexv3) ListPools(c *gin.Context) {
 			if _, found := defaultPools[d.PoolID]; found {
 				data.IsVerify = true
 			}
-			return
+			if isverify && !data.IsVerify {
+				data = nil
+			}
 		}(v)
 	}
 	wg.Wait()
