@@ -179,7 +179,7 @@ func APIGetRandomCommitments(c *gin.Context) {
 			time.Sleep(100 * time.Millisecond)
 			goto retry
 		}
-		lenOTA := new(big.Int).SetInt64(count - 1)
+		lenOTA := new(big.Int).SetInt64(count)
 		var hasAssetTags bool = true
 		for i := 0; i < req.Limit; i++ {
 			idx, _ := common.RandBigIntMaxRange(lenOTA)

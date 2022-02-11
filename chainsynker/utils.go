@@ -113,10 +113,18 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 			v := item.Value()
 			orderbook.InsertOrder(&v)
 		}
+		lmRewardsPerShare, err := statedb.GetPdexv3PoolPairLmRewardPerShares(stateDB, poolPairID)
+		if err != nil {
+			return nil, err
+		}
+		lmLockedShare, err := statedb.GetPdexv3PoolPairLmLockedShare(stateDB, poolPairID)
+		if err != nil {
+			return nil, err
+		}
+
 		poolPair := pdex.NewPoolPairStateWithValue(
 			poolPairState.Value(), shares, *orderbook,
-			lpFeesPerShare, protocolFees, stakingPoolFees, makingVolume2, orderReward2,
-		)
+			lpFeesPerShare, lmRewardsPerShare, protocolFees, stakingPoolFees, makingVolume2, orderReward2, lmLockedShare)
 		res[poolPairID] = poolPair
 	}
 	return res, nil
@@ -137,7 +145,11 @@ func initShares(poolPairID string, stateDB *statedb.StateDB) (map[string]*pdex.S
 		if err != nil {
 			return nil, err
 		}
-		res[nftID] = pdex.NewShareWithValue(shareState.Amount(), tradingFees, lastLPFeesPerShare)
+		lastLmRewardsPerShare, err := statedb.GetPdexv3ShareLastLmRewardPerShare(stateDB, poolPairID, nftID)
+		if err != nil {
+			return nil, err
+		}
+		res[nftID] = pdex.NewShareWithValue(shareState.Amount(), shareState.LmLockedAmount(), tradingFees, lastLPFeesPerShare, lastLmRewardsPerShare)
 	}
 	return res, nil
 }
@@ -145,9 +157,9 @@ func initShares(poolPairID string, stateDB *statedb.StateDB) (map[string]*pdex.S
 func recomputeLPFee(
 	shares map[string]*pdex.Share,
 	lpFeesPerShare map[common.Hash]*big.Int,
+	lmRewardsPerShare map[common.Hash]*big.Int,
 	nftID common.Hash,
 ) (map[common.Hash]uint64, error) {
-	result := map[common.Hash]uint64{}
 
 	curShare, ok := shares[nftID.String()]
 	if !ok {
@@ -157,8 +169,10 @@ func recomputeLPFee(
 	curLPFeesPerShare := lpFeesPerShare
 	oldLPFeesPerShare := curShare.LastLPFeesPerShare()
 
+	result := curShare.TradingFees()
+
 	for tokenID := range curLPFeesPerShare {
-		tradingFee, isExisted := curShare.TradingFees()[tokenID]
+		tradingFee, isExisted := result[tokenID]
 		if !isExisted {
 			tradingFee = 0
 		}
@@ -169,6 +183,32 @@ func recomputeLPFee(
 		newFees := curLPFeesPerShare[tokenID]
 
 		reward := new(big.Int).Mul(new(big.Int).Sub(newFees, oldFees), new(big.Int).SetUint64(curShare.Amount()))
+		reward = new(big.Int).Div(reward, pdex.BaseLPFeesPerShare)
+		reward = new(big.Int).Add(reward, new(big.Int).SetUint64(tradingFee))
+
+		if !reward.IsUint64() {
+			return nil, fmt.Errorf("Reward of token %v is out of range", tokenID)
+		}
+		if reward.Uint64() > 0 {
+			result[tokenID] = reward.Uint64()
+		}
+	}
+
+	curLMRewardsPerShare := lmRewardsPerShare
+	oldLMRewardsPerShare := curShare.LastLmRewardsPerShare()
+
+	for tokenID := range curLMRewardsPerShare {
+		tradingFee, isExisted := result[tokenID]
+		if !isExisted {
+			tradingFee = 0
+		}
+		oldFees, isExisted := oldLMRewardsPerShare[tokenID]
+		if !isExisted {
+			oldFees = big.NewInt(0)
+		}
+		newFees := curLMRewardsPerShare[tokenID]
+
+		reward := new(big.Int).Mul(new(big.Int).Sub(newFees, oldFees), new(big.Int).SetUint64(curShare.Amount()-curShare.LmLockedShareAmount()))
 		reward = new(big.Int).Div(reward, pdex.BaseLPFeesPerShare)
 		reward = new(big.Int).Add(reward, new(big.Int).SetUint64(tradingFee))
 

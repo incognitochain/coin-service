@@ -17,6 +17,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20211208023608-4f0f1e8784b6 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20211208023608-4f0f1e8784b6/go.mod h1:4w/GxoRw+54KmS33ZUyVjj7GonpZt7Y4EaBIIj0tgaE=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20211229035717-aed32e32d180 h1:Lv/Yt40XvvB3XTdjcl42xOkvnUPrtQWEnXghLhxNWo4=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20211229035717-aed32e32d180/go.mod h1:9LdcwNYtNibnCEo1ev6Pp3LvypDFzHIxoF7HX171las=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20220113151325-22ee45bf9966 h1:aXvIQj/BCgTnMZPZsgijFV9mdjBT471lHZGuD1unELg=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20220113151325-22ee45bf9966/go.mod h1:xy+W4/ZJJrdA7sodNWuP22j9KibBPglGlcJthW87tks=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
@@ -81,6 +83,7 @@ github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3Ee
 github.com/cosmos/go-bip39 v0.0.0-20180819234021-555e2067c45d h1:49RLWk1j44Xu4fjHb6JFYmeUnDORVwHNkDxaQ0ctCVU=
 github.com/cosmos/go-bip39 v0.0.0-20180819234021-555e2067c45d/go.mod h1:tSxLoYXyBmiFeKpvmq4dzayMdCjCnu8uqmCysIGBT2Y=
 github.com/cpuguy83/go-md2man v1.0.10/go.mod h1:SmD6nW6nTyfqj6ABTjUi3V3JVMnlJmwcJI5acqYI6dE=
+github.com/cweill/gotests v1.6.0/go.mod h1:CaRYbxQZGQOxXDvM9l0XJVV2Tjb2E5H53vq+reR2GrA=
 github.com/davecgh/go-spew v0.0.0-20171005155431-ecdeabc65495/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
@@ -284,12 +287,15 @@ github.com/incognitochain/incognito-chain v0.0.0-20220111134249-96f0031bb42d h1:
 github.com/incognitochain/incognito-chain v0.0.0-20220111134249-96f0031bb42d/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
 github.com/incognitochain/incognito-chain v0.0.0-20220112093307-74ebc3edaddc h1:FjZwYFG8+qO5Ctwv8VNYWpvktNbObPP+TPKUt5ZObdI=
 github.com/incognitochain/incognito-chain v0.0.0-20220112093307-74ebc3edaddc/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
+github.com/incognitochain/incognito-chain v0.0.0-20220112101406-0b09d212a957/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
 github.com/incognitochain/incognito-chain v0.0.0-20220112101425-4f3887f6e36b h1:1WvSILyjl+mQbIUnTQv0XT+uzsSjCqq+0lD7t7ibehg=
 github.com/incognitochain/incognito-chain v0.0.0-20220112101425-4f3887f6e36b/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
 github.com/incognitochain/incognito-chain v0.0.0-20220125004610-282e1c334653 h1:fk7csjwM8FY//nBtAG5B1DgL4rgXcXvkIFeTReXNoik=
 github.com/incognitochain/incognito-chain v0.0.0-20220125004610-282e1c334653/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
 github.com/incognitochain/incognito-chain v0.0.0-20220126111237-17b09876de77 h1:x7rw82VAxIvNXeqOmeOofXO6Gp92ewNJfIWVe1yvsUs=
 github.com/incognitochain/incognito-chain v0.0.0-20220126111237-17b09876de77/go.mod h1:pG2Rv364aFS+HjUR8QawOoNorlxfs858uk86+oAlwAE=
+github.com/incognitochain/incognito-chain v0.0.0-20220127023411-adc75017efe7 h1:bPWkXs74ejJMlPW63yCE+Fs/y3EAgcTjDQOuu7vN+cs=
+github.com/incognitochain/incognito-chain v0.0.0-20220127023411-adc75017efe7/go.mod h1:buTuXZERwWz+W1C3kMr3lJI9lB3iIgQ/Bnf/4xxJzTU=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
@@ -964,6 +970,7 @@ golang.org/x/tools v0.0.0-20190621195816-6e04913cbbac/go.mod h1:/rFqwRUd4F7ZHNgw
 golang.org/x/tools v0.0.0-20191029041327-9cc4af7d6b2c/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20191029190741-b9c20aec41a5/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20191108193012-7d206e10da11/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
+golang.org/x/tools v0.0.0-20191109212701-97ad0ed33101/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20191216052735-49a3e744a425 h1:VvQyQJN0tSuecqgcIxMWnnfG5kSmgy9KZR9sW3W5QeA=
 golang.org/x/tools v0.0.0-20191216052735-49a3e744a425/go.mod h1:TB2adYChydJhpapKDTa4BR/hXlZSLoq2Wpct/0txZ28=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
