@@ -286,6 +286,10 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
+		},
 	}
 	_, err = mgm.Coll(&shared.PoolInfoData{}).Indexes().CreateMany(context.Background(), poolPairModel)
 	if err != nil {
@@ -295,6 +299,10 @@ func DBCreateLiquidityIndex() error {
 	poolShareModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
 		},
 	}
 	_, err = mgm.Coll(&shared.PoolShareData{}).Indexes().CreateMany(context.Background(), poolShareModel)
@@ -306,6 +314,10 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
+		},
 	}
 	_, err = mgm.Coll(&shared.PoolStakeData{}).Indexes().CreateMany(context.Background(), poolStakeModel)
 	if err != nil {
@@ -315,6 +327,10 @@ func DBCreateLiquidityIndex() error {
 	poolStakerModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
 		},
 	}
 	_, err = mgm.Coll(&shared.PoolStakerData{}).Indexes().CreateMany(context.Background(), poolStakerModel)
@@ -440,7 +456,7 @@ func DBCreateTradeIndex() error {
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
-			Options: options.Index().SetExpireAfterSeconds(60 * 5),
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
 		},
 	}
 	_, err = mgm.Coll(&shared.LimitOrderStatus{}).Indexes().CreateMany(context.Background(), orderStatusModel)
