@@ -394,7 +394,19 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-
+			for _, v := range coinList {
+				coinBytes, _, err := base58.Base58Check{}.Decode(v.CoinPubkey)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+					return
+				}
+				accessID := common.Hash{}
+				err = accessID.SetBytes(coinBytes)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+					return
+				}
+			}
 		} else {
 			pubkey, err := extractPubkeyFromKey(otakey, true)
 			if err != nil {

@@ -608,6 +608,7 @@ type PoolShareData struct {
 	mgm.DefaultModel `bson:",inline"`
 	PoolID           string            `json:"poolid" bson:"poolid"`
 	NFTID            string            `json:"nftid" bson:"nftid"`
+	CurrentAccessID  string            `json:"currentaccess" bson:"currentaccess"`
 	Amount           uint64            `json:"amount" bson:"amount"`
 	TradingFee       map[string]uint64 `json:"tradingfee" bson:"tradingfee"`
 	OrderReward      map[string]uint64 `json:"orderreward" bson:"orderreward"`

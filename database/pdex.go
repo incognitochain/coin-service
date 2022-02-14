@@ -761,7 +761,7 @@ func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
 	for _, share := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
 		update := bson.M{
-			"$set": bson.M{"poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee},
+			"$set": bson.M{"poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee, "version": share.Version, "orderreward": share.OrderReward, "currentaccess": share.CurrentAccessID},
 		}
 		_, err := mgm.Coll(&shared.PoolShareData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {

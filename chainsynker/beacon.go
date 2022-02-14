@@ -407,12 +407,13 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					tradingFee[k.String()] = v
 				}
 				shareData := shared.PoolShareData{
-					Version:     2,
-					PoolID:      poolID,
-					Amount:      share.Amount(),
-					TradingFee:  tradingFee,
-					OrderReward: orderReward,
-					NFTID:       shareID,
+					Version:         2,
+					PoolID:          poolID,
+					Amount:          share.Amount(),
+					TradingFee:      tradingFee,
+					OrderReward:     orderReward,
+					NFTID:           shareID,
+					CurrentAccessID: hex.EncodeToString(share.AccessOTA()),
 				}
 				poolShare = append(poolShare, shareData)
 			}
