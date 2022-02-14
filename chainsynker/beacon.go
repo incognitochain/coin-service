@@ -424,7 +424,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				orderReward := make(map[string]uint64)
 				if _, ok := collectedShared[shareID]; !ok {
 					for tokenID, amount := range share.UncollectedRewards {
-						orderReward[tokenID.String()] = amount
+						orderReward[tokenID.String()] = amount.Amount
 					}
 					shareData := shared.PoolShareData{
 						Version:     2,
