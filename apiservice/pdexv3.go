@@ -1713,7 +1713,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			Token2Remain: tk2Amount - tk2Balance,
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
-			Rate:         float64(tk2Amount) / float64(tk1Amount),
+		}
+		if tk1Amount != 0 {
+			data.Rate = float64(tk2Amount) / float64(tk1Amount)
 		}
 		if willSwap {
 			data = PdexV3PendingOrderData{
@@ -1722,7 +1724,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 				Token2Remain: tk1Balance,
 				Token1Amount: tk2Amount,
 				Token2Amount: tk1Amount,
-				Rate:         float64(tk1Amount) / float64(tk2Amount),
+			}
+			if tk2Amount != 0 {
+				data.Rate = float64(tk1Amount) / float64(tk2Amount)
 			}
 		}
 		sellOrders = append(sellOrders, data)
@@ -1741,7 +1745,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			Token2Remain: tk2Balance,
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
-			Rate:         float64(tk2Amount) / float64(tk1Amount),
+		}
+		if tk1Amount != 0 {
+			data.Rate = float64(tk2Amount) / float64(tk1Amount)
 		}
 		if willSwap {
 			data = PdexV3PendingOrderData{
@@ -1750,7 +1756,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 				Token2Remain: tk1Amount - tk1Balance,
 				Token1Amount: tk2Amount,
 				Token2Amount: tk1Amount,
-				Rate:         float64(tk1Amount) / float64(tk2Amount),
+			}
+			if tk2Amount != 0 {
+				data.Rate = float64(tk1Amount) / float64(tk2Amount)
 			}
 		}
 		buyOrders = append(buyOrders, data)
