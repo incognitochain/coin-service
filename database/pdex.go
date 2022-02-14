@@ -725,7 +725,7 @@ func DBUpdatePDEPairListData(list []shared.PairInfoData) error {
 	for _, pool := range list {
 		fitler := bson.M{"pairid": bson.M{operator.Eq: pool.PairID}}
 		update := bson.M{
-			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "poolcount": pool.PoolCount},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "poolcount": pool.PoolCount},
 		}
 		_, err := mgm.Coll(&shared.PairInfoData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -743,7 +743,7 @@ func DBUpdatePDEPoolInfoData(list []shared.PoolInfoData) error {
 	for _, pool := range list {
 		fitler := bson.M{"poolid": bson.M{operator.Eq: pool.PoolID}}
 		update := bson.M{
-			"$set": bson.M{"pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "virtual1amount": pool.Virtual1Amount, "virtual2amount": pool.Virtual2Amount, "amp": pool.AMP, "version": pool.Version, "totalshare": pool.TotalShare},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": pool.PairID, "tokenid1": pool.TokenID1, "tokenid2": pool.TokenID2, "token1amount": pool.Token1Amount, "token2amount": pool.Token2Amount, "virtual1amount": pool.Virtual1Amount, "virtual2amount": pool.Virtual2Amount, "amp": pool.AMP, "version": pool.Version, "totalshare": pool.TotalShare},
 		}
 		_, err := mgm.Coll(&shared.PoolInfoData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -761,7 +761,7 @@ func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
 	for _, share := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
 		update := bson.M{
-			"$set": bson.M{"poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee, "orderreward": share.OrderReward},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee, "orderreward": share.OrderReward},
 		}
 		_, err := mgm.Coll(&shared.PoolShareData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -798,7 +798,7 @@ func DBUpdatePDEPoolStakeData(list []shared.PoolStakeData) error {
 	for _, stake := range list {
 		fitler := bson.M{"tokenid": bson.M{operator.Eq: stake.TokenID}}
 		update := bson.M{
-			"$set": bson.M{"tokenid": stake.TokenID, "amount": stake.Amount},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "tokenid": stake.TokenID, "amount": stake.Amount},
 		}
 		_, err := mgm.Coll(&shared.PoolStakeData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -816,7 +816,7 @@ func DBUpdatePDEPoolStakerData(list []shared.PoolStakerData) error {
 	for _, stake := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
 		update := bson.M{
-			"$set": bson.M{"nftid": stake.NFTID, "tokenid": stake.TokenID, "amount": stake.Amount, "reward": stake.Reward},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "nftid": stake.NFTID, "tokenid": stake.TokenID, "amount": stake.Amount, "reward": stake.Reward},
 		}
 		_, err := mgm.Coll(&shared.PoolStakerData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {

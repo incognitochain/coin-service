@@ -237,7 +237,12 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		wg.Wait()
 
 		log.Printf("prepare state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, blk.GetHeight())
+		willProcess := true
+
+		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-100 {
+			willProcess = false
+		}
+		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, blk.GetHeight(), willProcess)
 		if err != nil {
 			panic(err)
 		}
@@ -365,7 +370,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
-func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, stateV2Json *jsonresult.Pdexv3State, beaconHeight uint64) ([]shared.PairInfoData, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.RewardRecord, error) {
+func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, stateV2Json *jsonresult.Pdexv3State, beaconHeight uint64, willProcess bool) ([]shared.PairInfoData, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.RewardRecord, error) {
 	var pairList []shared.PairInfoData
 	pairListMap := make(map[string][]shared.PoolInfoData)
 	var poolPairs []shared.PoolInfoData
@@ -380,6 +385,9 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 	var stakePoolsToBeDelete []shared.PoolStakeData
 	var poolStakingToBeDelete []shared.PoolStakerData
 	var orderStatusToBeDelete []shared.LimitOrderStatus
+	if !willProcess {
+		return pairList, poolPairs, poolShare, stakePools, poolStaking, orderStatus, poolPairsToBeDelete, poolShareToBeDelete, stakePoolsToBeDelete, poolStakingToBeDelete, orderStatusToBeDelete, rewardRecords, nil
+	}
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
