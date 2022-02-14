@@ -692,12 +692,18 @@ func APIGetTokenList(c *gin.Context) {
 				}
 
 				if !v.IsNFT {
+					if !data.Verified && isverify {
+						continue
+					}
 					datalist = append(datalist, data)
 				}
 			}
 
 			for _, tkInfo := range extraTokenInfo {
 				if _, ok := chainTkListMap[tkInfo.TokenID]; !ok {
+					if !tkInfo.Verified && isverify {
+						continue
+					}
 					tkdata := TokenInfo{
 						TokenID:      tkInfo.TokenID,
 						Name:         tkInfo.Name,
