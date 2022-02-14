@@ -183,38 +183,6 @@ func recomputeLPFee(
 	lmRewardsPerShare map[common.Hash]*big.Int,
 	nftID common.Hash,
 ) (map[common.Hash]uint64, error) {
-	// result := map[common.Hash]uint64{}
-
-	// curShare, ok := shares[nftID.String()]
-	// if !ok {
-	// 	return nil, fmt.Errorf("Share not found")
-	// }
-
-	// curLPFeesPerShare := lpFeesPerShare
-	// oldLPFeesPerShare := curShare.LastLPFeesPerShare()
-
-	// for tokenID := range curLPFeesPerShare {
-	// 	tradingFee, isExisted := curShare.TradingFees()[tokenID]
-	// 	if !isExisted {
-	// 		tradingFee = 0
-	// 	}
-	// 	oldFees, isExisted := oldLPFeesPerShare[tokenID]
-	// 	if !isExisted {
-	// 		oldFees = big.NewInt(0)
-	// 	}
-	// 	newFees := curLPFeesPerShare[tokenID]
-
-	// 	reward := new(big.Int).Mul(new(big.Int).Sub(newFees, oldFees), new(big.Int).SetUint64(curShare.Amount()))
-	// 	reward = new(big.Int).Div(reward, pdex.BaseLPFeesPerShare)
-	// 	reward = new(big.Int).Add(reward, new(big.Int).SetUint64(tradingFee))
-
-	// 	if !reward.IsUint64() {
-	// 		return nil, fmt.Errorf("Reward of token %v is out of range", tokenID)
-	// 	}
-	// 	if reward.Uint64() > 0 {
-	// 		result[tokenID] = reward.Uint64()
-	// 	}
-	// }
 
 	curShare, ok := shares[nftID.String()]
 	if !ok {

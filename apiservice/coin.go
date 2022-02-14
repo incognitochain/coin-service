@@ -484,6 +484,11 @@ func APIGetTokenInfo(c *gin.Context) {
 func APIGetTokenList(c *gin.Context) {
 	nftOnly := c.Query("nft")
 
+	verify := c.Query("verify")
+	isverify := false
+	if verify == "true" {
+		isverify = true
+	}
 	var datalist []TokenInfo
 
 	if nftOnly == "true" {
@@ -646,6 +651,9 @@ func APIGetTokenList(c *gin.Context) {
 					if etki.Verified {
 						data.Verified = etki.Verified
 					}
+					if !etki.Verified && isverify {
+						continue
+					}
 				}
 				if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 					if etki.Name != "" {
@@ -665,6 +673,9 @@ func APIGetTokenList(c *gin.Context) {
 					if etki.Verified {
 						data.Verified = etki.Verified
 					}
+					if !etki.Verified && isverify {
+						continue
+					}
 					data.UserID = etki.UserID
 					data.PercentChange1h = etki.PercentChange1h
 					data.PercentChangePrv1h = etki.PercentChangePrv1h
@@ -682,7 +693,6 @@ func APIGetTokenList(c *gin.Context) {
 					if data.PriceUsd == 0 {
 						data.PriceUsd = etki.PriceUsd
 					}
-
 				}
 
 				if !v.IsNFT {
@@ -1193,6 +1203,9 @@ func APIGetKeyInfo(c *gin.Context) {
 				return
 			}
 			delete(result.CoinIndex, common.ConfidentialAssetID.String())
+			for id, _ := range result.NFTIndex {
+				delete(result.CoinIndex, id)
+			}
 			respond := APIRespond{
 				Result: result,
 				Error:  nil,

@@ -387,6 +387,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 			poolPairs = append(poolPairs, poolData)
 			pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)
+			collectedShared := make(map[string]struct{})
 			for shareID, share := range state.Shares {
 				tradingFee := make(map[string]uint64)
 				orderReward := make(map[string]uint64)
@@ -402,6 +403,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					for tokenID, amount := range state.OrderRewards[shareID].UncollectedRewards {
 						orderReward[tokenID.String()] = amount.Amount
 					}
+					collectedShared[shareID] = struct{}{}
 				}
 				for k, v := range rewards {
 					tradingFee[k.String()] = v
@@ -416,6 +418,22 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					CurrentAccessID: hex.EncodeToString(share.AccessOTA()),
 				}
 				poolShare = append(poolShare, shareData)
+			}
+
+			for shareID, share := range state.OrderRewards {
+				orderReward := make(map[string]uint64)
+				if _, ok := collectedShared[shareID]; !ok {
+					for tokenID, amount := range share.UncollectedRewards {
+						orderReward[tokenID.String()] = amount
+					}
+					shareData := shared.PoolShareData{
+						Version:     2,
+						PoolID:      poolID,
+						OrderReward: orderReward,
+						NFTID:       shareID,
+					}
+					poolShare = append(poolShare, shareData)
+				}
 			}
 
 			for _, order := range state.Orderbook.Orders {
@@ -728,7 +746,9 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					for shareID, _ := range state.Shares {
 						willDelete := false
 						if _, ok := newState.Shares[shareID]; !ok {
-							willDelete = true
+							if _, ok2 := newState.OrderRewards[shareID]; !ok2 {
+								willDelete = true
+							}
 						}
 						if willDelete {
 							shareData := shared.PoolShareData{
@@ -797,7 +817,6 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		}()
 		wg.Wait()
 	}
-
 	return pairList, poolPairs, poolShare, stakePools, poolStaking, orderStatus, poolPairsToBeDelete, poolShareToBeDelete, stakePoolsToBeDelete, poolStakingToBeDelete, orderStatusToBeDelete, rewardRecords, nil
 }
 
@@ -958,12 +977,12 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 func extractLqReward(poolID string, curPools map[string]*shared.PoolPairState, prevPools map[string]*shared.PoolPairState) (map[string]uint64, error) {
 	result := make(map[string]uint64)
 
-	curLPFeesPerShare, shareAmount, err := getLPFeesPerShare(poolID, curPools)
+	curLPFeesPerShare, curLMFeesPerShare, shareAmount, LmLockedShareAmount, err := getLPFeesPerShare(poolID, curPools)
 	if err != nil {
 		return nil, err
 	}
 
-	oldLPFeesPerShare, _, err := getLPFeesPerShare(poolID, prevPools)
+	oldLPFeesPerShare, oldLMFeesPerShare, _, _, err := getLPFeesPerShare(poolID, prevPools)
 	if err != nil {
 		oldLPFeesPerShare = map[common.Hash]*big.Int{}
 	}
@@ -986,15 +1005,38 @@ func extractLqReward(poolID string, curPools map[string]*shared.PoolPairState, p
 		}
 	}
 
+	for tokenID := range curLMFeesPerShare {
+		oldFees, isExisted := oldLMFeesPerShare[tokenID]
+		if !isExisted {
+			oldFees = big.NewInt(0)
+		}
+		newFees := curLMFeesPerShare[tokenID]
+
+		reward := new(big.Int).Mul(new(big.Int).Sub(newFees, oldFees), new(big.Int).SetUint64(shareAmount-LmLockedShareAmount))
+		reward = new(big.Int).Div(reward, pdex.BaseLPFeesPerShare)
+
+		if !reward.IsUint64() {
+			return nil, fmt.Errorf("Reward of token %v is out of range", tokenID)
+		}
+		if reward.Uint64() > 0 {
+			if _, ok := result[tokenID.String()]; ok {
+				result[tokenID.String()] += reward.Uint64()
+			} else {
+
+				result[tokenID.String()] = reward.Uint64()
+			}
+		}
+	}
+
 	return result, nil
 }
 
-func getLPFeesPerShare(pairID string, pools map[string]*shared.PoolPairState) (map[common.Hash]*big.Int, uint64, error) {
+func getLPFeesPerShare(pairID string, pools map[string]*shared.PoolPairState) (map[common.Hash]*big.Int, map[common.Hash]*big.Int, uint64, uint64, error) {
 	if _, ok := pools[pairID]; !ok {
-		return nil, 0, fmt.Errorf("Pool pair %s not found", pairID)
+		return nil, nil, 0, 0, fmt.Errorf("Pool pair %s not found", pairID)
 	}
 	pair := pools[pairID]
-	return pair.LpFeesPerShare, pair.State.ShareAmount(), nil
+	return pair.LpFeesPerShare, pair.LmRewardsPerShare, pair.State.ShareAmount(), pair.State.LmLockedShareAmount(), nil
 }
 
 func getStakingRewardsPerShare(
