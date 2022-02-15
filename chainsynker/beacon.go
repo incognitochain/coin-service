@@ -241,7 +241,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		if err != nil {
 			panic(err)
 		}
-
 		wg.Add(14)
 		go func() {
 			log.Printf("done process state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))

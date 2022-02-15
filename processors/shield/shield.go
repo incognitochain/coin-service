@@ -33,9 +33,9 @@ func StartProcessor() {
 		panic(err)
 	}
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 1000)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 5000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
