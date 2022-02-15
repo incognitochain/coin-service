@@ -59,6 +59,9 @@ func InitChainSynker(cfg shared.Config) {
 	highwayAddress := cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
 	useFullnodeData = cfg.FullnodeData
+	if cfg.FullnodeData == false {
+		panic(8888)
+	}
 	if shared.RESET_FLAG {
 		err := ResetMongoAndReSync()
 		if err != nil {

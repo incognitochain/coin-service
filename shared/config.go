@@ -136,6 +136,7 @@ func ReadConfigAndArg() {
 	// ServiceCfg.FullnodeEndpoint = tempCfg.FullnodeEndpoint
 	ServiceCfg.AnalyticsAPIEndpoint = tempCfg.AnalyticsAPIEndpoint
 	ServiceCfg.ExternalDecimals = tempCfg.ExternalDecimals
+	ServiceCfg.FullnodeData = tempCfg.FullnodeData
 
 	common.MaxShardNumber = param.ActiveShards
 }
