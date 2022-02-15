@@ -57,10 +57,6 @@ func (pdexv3) ListPairs(c *gin.Context) {
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
 	verify := c.Query("verify")
-	isverify := false
-	if verify == "true" {
-		isverify = true
-	}
 	if pair == "all" {
 		var result []PdexV3PoolDetail
 		err := cacheGet("ListPools-all", &result)
@@ -195,8 +191,13 @@ func (pdexv3) ListPools(c *gin.Context) {
 			if _, found := defaultPools[d.PoolID]; found {
 				data.IsVerify = true
 			}
-			if isverify && !data.IsVerify {
-				data = nil
+			if verify != "" {
+				if verify == "true" && !data.IsVerify {
+					data = nil
+				}
+				if verify == "false" && data.IsVerify {
+					data = nil
+				}
 			}
 		}(v)
 	}
@@ -1703,7 +1704,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			Token2Remain: tk2Amount - tk2Balance,
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
-			Rate:         float64(tk2Amount) / float64(tk1Amount),
+		}
+		if tk1Amount != 0 {
+			data.Rate = float64(tk2Amount) / float64(tk1Amount)
 		}
 		if willSwap {
 			data = PdexV3PendingOrderData{
@@ -1712,7 +1715,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 				Token2Remain: tk1Balance,
 				Token1Amount: tk2Amount,
 				Token2Amount: tk1Amount,
-				Rate:         float64(tk1Amount) / float64(tk2Amount),
+			}
+			if tk2Amount != 0 {
+				data.Rate = float64(tk1Amount) / float64(tk2Amount)
 			}
 		}
 		sellOrders = append(sellOrders, data)
@@ -1731,7 +1736,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			Token2Remain: tk2Balance,
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
-			Rate:         float64(tk2Amount) / float64(tk1Amount),
+		}
+		if tk1Amount != 0 {
+			data.Rate = float64(tk2Amount) / float64(tk1Amount)
 		}
 		if willSwap {
 			data = PdexV3PendingOrderData{
@@ -1740,7 +1747,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 				Token2Remain: tk1Amount - tk1Balance,
 				Token1Amount: tk2Amount,
 				Token2Amount: tk1Amount,
-				Rate:         float64(tk1Amount) / float64(tk2Amount),
+			}
+			if tk2Amount != 0 {
+				data.Rate = float64(tk1Amount) / float64(tk2Amount)
 			}
 		}
 		buyOrders = append(buyOrders, data)

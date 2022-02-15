@@ -485,10 +485,6 @@ func APIGetTokenList(c *gin.Context) {
 	nftOnly := c.Query("nft")
 
 	verify := c.Query("verify")
-	isverify := false
-	if verify == "true" {
-		isverify = true
-	}
 	var datalist []TokenInfo
 
 	if nftOnly == "true" {
@@ -573,10 +569,10 @@ func APIGetTokenList(c *gin.Context) {
 					percent24h = ((currPrice - pastPrice) / pastPrice) * 100
 				}
 				data := TokenInfo{
-					TokenID:          v.TokenID,
-					Name:             v.Name,
-					Symbol:           v.Symbol,
-					Image:            v.Image,
+					TokenID: v.TokenID,
+					Name:    v.Name,
+					Symbol:  v.Symbol,
+					// Image:            v.Image,
 					IsPrivacy:        v.IsPrivacy,
 					IsBridge:         v.IsBridge,
 					ExternalID:       v.ExternalID,
@@ -651,8 +647,16 @@ func APIGetTokenList(c *gin.Context) {
 					if etki.Verified {
 						data.Verified = etki.Verified
 					}
-					if !etki.Verified && isverify {
-						continue
+					if etki.Image != "" {
+						data.Image = etki.Image
+					}
+					if verify != "" {
+						if verify == "true" && !etki.Verified {
+							continue
+						}
+						if verify == "false" && etki.Verified {
+							continue
+						}
 					}
 				}
 				if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
@@ -673,8 +677,13 @@ func APIGetTokenList(c *gin.Context) {
 					if etki.Verified {
 						data.Verified = etki.Verified
 					}
-					if !etki.Verified && isverify {
-						continue
+					if verify != "" {
+						if verify == "true" && !etki.Verified {
+							continue
+						}
+						if verify == "false" && etki.Verified {
+							continue
+						}
 					}
 					data.UserID = etki.UserID
 					data.PercentChange1h = etki.PercentChange1h
@@ -696,12 +705,28 @@ func APIGetTokenList(c *gin.Context) {
 				}
 
 				if !v.IsNFT {
+					if verify != "" {
+						if verify == "true" && !data.Verified {
+							continue
+						}
+						if verify == "false" && data.Verified {
+							continue
+						}
+					}
 					datalist = append(datalist, data)
 				}
 			}
 
 			for _, tkInfo := range extraTokenInfo {
 				if _, ok := chainTkListMap[tkInfo.TokenID]; !ok {
+					if verify != "" {
+						if verify == "true" && !tkInfo.Verified {
+							continue
+						}
+						if verify == "false" && tkInfo.Verified {
+							continue
+						}
+					}
 					tkdata := TokenInfo{
 						TokenID:      tkInfo.TokenID,
 						Name:         tkInfo.Name,
