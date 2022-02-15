@@ -59,7 +59,7 @@ func InitChainSynker(cfg shared.Config) {
 	highwayAddress := cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
 	useFullnodeData = cfg.FullnodeData
-	if cfg.FullnodeData == false {
+	if !cfg.FullnodeData {
 		panic(8888)
 	}
 	if shared.RESET_FLAG {
@@ -126,7 +126,7 @@ func InitChainSynker(cfg shared.Config) {
 
 	var netw devframework.NetworkParam
 	netw.HighwayAddress = highwayAddress
-	node := devframework.NewAppNode(chainDataFolder, netw, true, false, false, cfg.EnableChainLog)
+	node := devframework.NewAppNode(chainDataFolder, netw, !useFullnodeData, false, false, cfg.EnableChainLog)
 	Localnode = node
 	log.Println("initiating chain-synker...")
 	if shared.RESET_FLAG {

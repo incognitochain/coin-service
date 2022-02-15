@@ -171,6 +171,9 @@ func APIHealthCheck(c *gin.Context) {
 		for i := 0; i < chainsynker.Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 			chainheight := chainsynker.Localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
 			height, _ := chainsynker.Localnode.GetShardState(i)
+			if shared.ServiceCfg.FullnodeData {
+				height = chainsynker.Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetHeight()
+			}
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
 			v, err := chainsynker.Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 			if err != nil {
@@ -183,7 +186,7 @@ func APIHealthCheck(c *gin.Context) {
 			if chainheight-height > 5 || height-uint64(coinHeight) > 5 {
 				status = shared.HEALTH_STATUS_NOK
 			}
-			shardsHeight[i] = fmt.Sprintf("%v|%v|%v", coinHeight, height, chainheight)
+			shardsHeight[i] = fmt.Sprintf("%v|%v|%v|%v", coinHeight, height, chainheight, shared.ServiceCfg.FullnodeData)
 		}
 	}
 	_, cd, _, _ := mgm.DefaultConfigs()
