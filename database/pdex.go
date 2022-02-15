@@ -197,12 +197,12 @@ func DBGetPDEContributeRespond(address string, limit int64, offset int64) ([]sha
 	return result, nil
 }
 
-func DBGetPDEV3ContributeRespond(nftID string, limit int64, offset int64) ([]shared.ContributionData, error) {
+func DBGetPDEV3ContributeRespond(nftID []string, limit int64, offset int64) ([]shared.ContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.ContributionData
-	filter := bson.M{"nftid": bson.M{operator.Eq: nftID}}
+	filter := bson.M{"nftid": bson.M{operator.In: nftID}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},
@@ -858,9 +858,9 @@ func DBGetTradeStatus(requestTx []string) (map[string]shared.LimitOrderStatus, e
 	return result, nil
 }
 
-func DBGetShare(nftID string) ([]shared.PoolShareData, error) {
+func DBGetShare(nftID []string) ([]shared.PoolShareData, error) {
 	var result []shared.PoolShareData
-	filter := bson.M{"nftid": bson.M{operator.Eq: nftID}}
+	filter := bson.M{"nftid": bson.M{operator.In: nftID}}
 	err := mgm.Coll(&shared.PoolShareData{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
@@ -871,6 +871,20 @@ func DBGetShare(nftID string) ([]shared.PoolShareData, error) {
 func DBGetTxTradeFromPoolAndNFT(poolid, nftid string, limit, offset int64) ([]shared.TradeOrderData, error) {
 	var result []shared.TradeOrderData
 	filter := bson.M{"nftid": bson.M{operator.Eq: nftid}, "poolid": bson.M{operator.Eq: poolid}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"requesttime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetTxTradeFromPoolAndAccessID(poolid string, accessIDs []string, limit, offset int64) ([]shared.TradeOrderData, error) {
+	var result []shared.TradeOrderData
+	filter := bson.M{"nftid": bson.M{operator.In: accessIDs}, "poolid": bson.M{operator.Eq: poolid}}
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},
 		Skip:  &offset,

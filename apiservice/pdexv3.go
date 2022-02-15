@@ -19,11 +19,9 @@ import (
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
-	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/metadata"
 	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
-	"github.com/incognitochain/incognito-chain/wallet"
 )
 
 type pdexv3 struct{}
@@ -269,9 +267,9 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 
 func (pdexv3) PoolShare(c *gin.Context) {
 	nftID := c.Query("nftid")
-	accessID := c.Query("accessid")
-	if nftID == "" && accessID == "" {
-		errStr := "accessID/nftID can't be empty"
+	otakey := c.Query("otakey")
+	if nftID == "" && otakey == "" {
+		errStr := "nftID/otakey can't be empty"
 		respond := APIRespond{
 			Result: nil,
 			Error:  &errStr,
@@ -279,73 +277,37 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	if accessID == "" {
-		accessID = nftID
-	}
-	list, err := database.DBGetShare(accessID)
-	if err != nil {
-		errStr := err.Error()
-		respond := APIRespond{
-			Result: nil,
-			Error:  &errStr,
-		}
-		c.JSON(http.StatusOK, respond)
-		return
-	}
-	var result []PdexV3PoolShareRespond
-	priorityTokens, err := database.DBGetTokenPriority()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	// err = cacheStore(tokenPriorityKey, priorityTokens)
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-	// 	return
-	// }
-	for _, v := range list {
-		l, err := database.DBGetPoolPairsByPoolID([]string{v.PoolID})
+	var list []shared.PoolShareData
+	var err error
+	if otakey != "" {
+		accessOTAList, err := retrieveAccessOTAList(otakey)
 		if err != nil {
-			errStr := err.Error()
-			respond := APIRespond{
-				Result: nil,
-				Error:  &errStr,
-			}
-			c.JSON(http.StatusOK, respond)
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		if len(l) == 0 {
-			continue
+		list, err = database.DBGetShare(accessOTAList)
+		if err != nil {
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
 		}
-		if (v.Amount == 0) && len(v.TradingFee) == 0 && len(v.OrderReward) == 0 {
-			continue
+	} else {
+		list, err = database.DBGetShare([]string{nftID})
+		if err != nil {
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
 		}
-		token1ID := l[0].TokenID1
-		token2ID := l[0].TokenID2
-		tk1Amount, _ := strconv.ParseUint(l[0].Token1Amount, 10, 64)
-		tk2Amount, _ := strconv.ParseUint(l[0].Token2Amount, 10, 64)
-		totalShare, _ := strconv.ParseUint(l[0].TotalShare, 10, 64)
+	}
 
-		willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
-		if willSwap {
-			token1ID = l[0].TokenID2
-			token2ID = l[0].TokenID1
-			tk1Amount, _ = strconv.ParseUint(l[0].Token2Amount, 10, 64)
-			tk2Amount, _ = strconv.ParseUint(l[0].Token1Amount, 10, 64)
+	result, err := producePoolShareRespond(list)
+	if err != nil {
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
 		}
-
-		result = append(result, PdexV3PoolShareRespond{
-			PoolID:       v.PoolID,
-			Share:        v.Amount,
-			Rewards:      v.TradingFee,
-			AMP:          l[0].AMP,
-			TokenID1:     token1ID,
-			TokenID2:     token2ID,
-			Token1Amount: tk1Amount,
-			Token2Amount: tk2Amount,
-			TotalShare:   totalShare,
-			OrderRewards: v.OrderReward,
-		})
 	}
 	respond := APIRespond{
 		Result: result,
@@ -357,13 +319,13 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 	startTime := time.Now()
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	otakey := c.Query("otakey")
 	poolid := c.Query("poolid")
 	nftID := c.Query("nftid")
 	isOrder := c.Query("isorder")
 	getOrder := false
-	if nftID == "" {
-		errStr := "nftID can't be empty"
+	otakey := c.Query("otakey")
+	if nftID == "" && otakey == "" {
+		errStr := "nftID/otakey can't be empty"
 		respond := APIRespond{
 			Result: nil,
 			Error:  &errStr,
@@ -374,9 +336,8 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 	if otakey != "" && isOrder == "true" {
 		getOrder = true
 	}
-
+	var result []TradeDataRespond
 	if otakey != "" {
-		var result []TradeDataRespond
 		if getOrder {
 			if poolid == "" {
 				errStr := "poolid can't be empty"
@@ -387,32 +348,30 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				c.JSON(http.StatusOK, respond)
 				return
 			}
-			wl, err := wallet.Base58CheckDeserialize(otakey)
+			accessOTAList, err := retrieveAccessOTAList(otakey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid otakey")))
-				return
-			}
-			coinList, err := database.DBGetAllAccessCoin(base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()))
+			//limit order
+			tradeList, err := database.DBGetTxTradeFromPoolAndAccessID(poolid, accessOTAList, int64(limit), int64(offset))
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			for _, v := range coinList {
-				coinBytes, _, err := base58.Base58Check{}.Decode(v.CoinPubkey)
-				if err != nil {
-					c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-					return
-				}
-				accessID := common.Hash{}
-				err = accessID.SetBytes(coinBytes)
-				if err != nil {
-					c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-					return
-				}
+			txRequest := []string{}
+			for _, tx := range tradeList {
+				txRequest = append(txRequest, tx.RequestTx)
+			}
+			tradeStatusList, err := database.DBGetTradeStatus(txRequest)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			result, err = produceTradeDataRespond(tradeList, tradeStatusList)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
 			}
 		} else {
 			pubkey, err := extractPubkeyFromKey(otakey, true)
@@ -459,10 +418,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
 				uniqIdx := getUniqueIdx(tradeInfo.RespondTxs)
 				trade := TradeDataRespond{
-					RequestTx: tradeInfo.RequestTx,
-					// RespondTxs: tradeInfo.RespondTxs,
-					// RespondTokens:  tradeInfo.RespondTokens,
-					// RespondAmounts: tradeInfo.RespondAmount,
+					RequestTx:   tradeInfo.RequestTx,
 					WithdrawTxs: nil,
 					PoolID:      tradeInfo.PoolID,
 					PairID:      tradeInfo.PairID,
@@ -489,13 +445,6 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				result = append(result, trade)
 			}
 		}
-
-		respond := APIRespond{
-			Result: result,
-			Error:  nil,
-		}
-		log.Println("APIGetTradeHistory time:", time.Since(startTime))
-		c.JSON(http.StatusOK, respond)
 	} else {
 		//limit order
 		tradeList, err := database.DBGetTxTradeFromPoolAndNFT(poolid, nftID, int64(limit), int64(offset))
@@ -512,55 +461,19 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		var result []TradeDataRespond
-		for _, tradeInfo := range tradeList {
-			matchedAmount := uint64(0)
-			var tradeStatus *shared.LimitOrderStatus
-			if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
-				tradeStatus = &t
-			}
-			matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
-			minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
-			trade := TradeDataRespond{
-				RequestTx:           tradeInfo.RequestTx,
-				RespondTxs:          tradeInfo.RespondTxs,
-				RespondTokens:       tradeInfo.RespondTokens,
-				RespondAmounts:      tradeInfo.RespondAmount,
-				WithdrawTxs:         withdrawTxs,
-				PoolID:              tradeInfo.PoolID,
-				PairID:              tradeInfo.PairID,
-				SellTokenID:         tradeInfo.SellTokenID,
-				BuyTokenID:          tradeInfo.BuyTokenID,
-				Amount:              amount,
-				MinAccept:           minAccept,
-				Matched:             matchedAmount,
-				Status:              status,
-				StatusCode:          statusCode,
-				Requestime:          tradeInfo.Requesttime,
-				NFTID:               tradeInfo.NFTID,
-				Fee:                 tradeInfo.Fee,
-				FeeToken:            tradeInfo.FeeToken,
-				Receiver:            tradeInfo.Receiver,
-				IsCompleted:         isCompleted,
-				SellTokenBalance:    sellTokenBl,
-				BuyTokenBalance:     buyTokenBl,
-				SellTokenWithdrawed: sellTokenWD,
-				BuyTokenWithdrawed:  buyTokenWD,
-			}
-			result = append(result, trade)
+		result, err = produceTradeDataRespond(tradeList, tradeStatusList)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
 		}
-		respond := APIRespond{
-			Result: result,
-			Error:  nil,
-		}
-		log.Println("APIGetTradeHistory time:", time.Since(startTime))
-		c.JSON(http.StatusOK, respond)
 	}
+
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	log.Println("APIGetTradeHistory time:", time.Since(startTime))
+	c.JSON(http.StatusOK, respond)
 }
 
 func (pdexv3) ContributeHistory(c *gin.Context) {
@@ -568,9 +481,9 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
-	accessID := c.Query("accessid")
-	if nftID == "" && accessID == "" {
-		errStr := "accessID/nftID can't be empty"
+	otakey := c.Query("otakey")
+	if nftID == "" && otakey == "" {
+		errStr := "nftID/otakey can't be empty"
 		respond := APIRespond{
 			Result: nil,
 			Error:  &errStr,
@@ -578,75 +491,35 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	if accessID == "" {
-		accessID = nftID
-	}
 
 	var err error
 	var list []shared.ContributionData
 	if poolID != "" {
-
+		//todo
 	} else {
-		list, err = database.DBGetPDEV3ContributeRespond(accessID, int64(limit), int64(offset))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
+		if otakey == "" {
+			list, err = database.DBGetPDEV3ContributeRespond([]string{nftID}, int64(limit), int64(offset))
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+		} else {
+			accessOTAList, err := retrieveAccessOTAList(otakey)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+			list, err = database.DBGetPDEV3ContributeRespond(accessOTAList, int64(limit), int64(offset))
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
 		}
 	}
-
-	var result []PdexV3ContributionData
-
-	for _, v := range list {
-		ctrbAmount := []uint64{}
-		ctrbToken := []string{}
-		if len(v.RequestTxs) > len(v.ContributeAmount) {
-			a, _ := strconv.ParseUint(v.ContributeAmount[0], 10, 64)
-			ctrbAmount = append(ctrbAmount, a)
-			ctrbAmount = append(ctrbAmount, a)
-		} else {
-			for _, v := range v.ContributeAmount {
-				a, _ := strconv.ParseUint(v, 10, 64)
-				ctrbAmount = append(ctrbAmount, a)
-			}
-
-		}
-		if len(v.RequestTxs) > len(v.ContributeTokens) {
-			ctrbToken = append(ctrbToken, v.ContributeTokens[0])
-			ctrbToken = append(ctrbToken, v.ContributeTokens[0])
-		} else {
-			ctrbToken = v.ContributeTokens
-		}
-		returnAmount := []uint64{}
-		for _, v := range v.ReturnAmount {
-			a, _ := strconv.ParseUint(v, 10, 64)
-			returnAmount = append(returnAmount, a)
-		}
-
-		data := PdexV3ContributionData{
-			RequestTxs:       v.RequestTxs,
-			RespondTxs:       v.RespondTxs,
-			ContributeTokens: ctrbToken,
-			ContributeAmount: ctrbAmount,
-			PairID:           v.PairID,
-			PairHash:         v.PairHash,
-			ReturnTokens:     v.ReturnTokens,
-			ReturnAmount:     returnAmount,
-			NFTID:            v.NFTID,
-			RequestTime:      v.RequestTime,
-			PoolID:           v.PoolID,
-			Status:           "waiting",
-		}
-		if len(v.RequestTxs) == 2 && len(v.RespondTxs) == 0 {
-			if v.ContributeTokens[0] != v.ContributeTokens[1] {
-				data.Status = "completed"
-			} else {
-				data.Status = "refunding"
-			}
-		}
-		if len(v.RespondTxs) > 0 {
-			data.Status = "refunded"
-		}
-		result = append(result, data)
+	result, err := produceContributeData(list)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
 	}
 	respond := APIRespond{
 		Result: result,
@@ -690,7 +563,6 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 	if accessID == "" {
 		accessID = nftID
 	}
-	var result []PdexV3WithdrawRespond
 	var err error
 	var list []shared.WithdrawContributionData
 
@@ -707,37 +579,10 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 			return
 		}
 	}
-
-	for _, v := range list {
-		var token1, token2 string
-		var amount1, amount2 uint64
-		if len(v.RespondTxs) == 2 {
-			amount1, _ = strconv.ParseUint(v.WithdrawAmount[0], 10, 64)
-			amount2, _ = strconv.ParseUint(v.WithdrawAmount[1], 10, 64)
-		}
-		if len(v.RespondTxs) == 1 {
-			amount1, _ = strconv.ParseUint(v.WithdrawAmount[0], 10, 64)
-		}
-		tks := strings.Split(v.PoolID, "-")
-		token1 = tks[0]
-		token2 = tks[1]
-		shareAmount, err := strconv.ParseUint(v.ShareAmount, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		result = append(result, PdexV3WithdrawRespond{
-			PoolID:      v.PoolID,
-			RequestTx:   v.RequestTx,
-			RespondTxs:  v.RespondTxs,
-			TokenID1:    token1,
-			Amount1:     amount1,
-			TokenID2:    token2,
-			Amount2:     amount2,
-			Status:      v.Status,
-			ShareAmount: shareAmount,
-			Requestime:  v.RequestTime,
-		})
+	result, err := produceWithdrawContributeData(list)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
 	}
 	respond := APIRespond{
 		Result: result,
