@@ -479,10 +479,9 @@ func APIGetTokenInfo(c *gin.Context) {
 
 func APIGetTokenList(c *gin.Context) {
 	nftOnly := c.Query("nft")
-
-	// verify := c.Query("verify")
+	startTime := time.Now()
+	all := c.Query("all")
 	var datalist []TokenInfo
-
 	if nftOnly == "true" {
 		if err := cacheGet(tokenInfoKey+"nft", &datalist); err != nil {
 			nftList, err := database.DBGetNFTInfo()
@@ -503,46 +502,52 @@ func APIGetTokenList(c *gin.Context) {
 			}
 		}
 	} else {
-		// if err := cacheGet(tokenInfoKey+"all", &datalist); err != nil {
-		tokenList, err := database.DBGetAllTokenInfo()
-		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-			return
-		}
+		var wg sync.WaitGroup
+		wg.Add(4)
+		var err error
+		var extraTokenInfo []shared.ExtraTokenInfo
+		var customTokenInfo []shared.CustomTokenInfo
+		var defaultPools map[string]struct{}
+		var priorityTokens []string
 
-		extraTokenInfo, err := database.DBGetAllExtraTokenInfo()
-		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-			return
-		}
-		customTokenInfo, err := database.DBGetAllCustomTokenInfo()
-		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-			return
-		}
+		go func() {
+			defer wg.Done()
+			extraTokenInfo, err = database.DBGetAllExtraTokenInfo()
+		}()
 
-		defaultPools, err := database.DBGetDefaultPool(true)
+		go func() {
+			defer wg.Done()
+			if all == "true" {
+				customTokenInfo, err = database.DBGetAllCustomTokenInfo(false)
+			} else {
+				customTokenInfo, err = database.DBGetAllCustomTokenInfo(true)
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			defaultPools, err = database.DBGetDefaultPool(true)
+		}()
+		go func() {
+			defer wg.Done()
+			priorityTokens, err = database.DBGetTokenPriority()
+		}()
+		wg.Wait()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		priorityTokens, err := database.DBGetTokenPriority()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-
+		totalTokenList := []string{}
 		extraTokenInfoMap := make(map[string]shared.ExtraTokenInfo)
 		for _, v := range extraTokenInfo {
 			extraTokenInfoMap[v.TokenID] = v
+			totalTokenList = append(totalTokenList, v.TokenID)
 		}
 
 		customTokenInfoMap := make(map[string]shared.CustomTokenInfo)
 		for _, v := range customTokenInfo {
 			customTokenInfoMap[v.TokenID] = v
+			totalTokenList = append(totalTokenList, v.TokenID)
 		}
 		chainTkListMap := make(map[string]struct{})
 
@@ -555,7 +560,30 @@ func APIGetTokenList(c *gin.Context) {
 				break
 			}
 		}
-
+		var tokenList []shared.TokenInfoData
+		if all != "true" {
+			cacheKey := tokenInfoKey + "totalTokenList" + strconv.Itoa(len(totalTokenList))
+			if err := cacheGet(cacheKey, &tokenList); err != nil {
+				tokenList, err = database.DBGetTokenByTokenID(totalTokenList)
+				if err != nil {
+					log.Println(err)
+					c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+					return
+				}
+				err = cacheStoreCustom(cacheKey, tokenList, 20*time.Minute)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		} else {
+			tokenList, err = database.DBGetAllTokenInfo()
+			if err != nil {
+				log.Println(err)
+				c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+				return
+			}
+		}
+		fmt.Println("APIGetTokenList1", time.Since(startTime))
 		for _, v := range tokenList {
 			chainTkListMap[v.TokenID] = struct{}{}
 			currPrice, _ := strconv.ParseFloat(v.CurrentPrice, 64)
@@ -632,8 +660,8 @@ func APIGetTokenList(c *gin.Context) {
 					data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, baseToken, prvUsdtPair24h))
 				}
 			}
-			ok1 := false
-			ok2 := false
+			// ok1 := false
+			// ok2 := false
 			if etki, ok := customTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
 					data.Name = etki.Name
@@ -647,15 +675,7 @@ func APIGetTokenList(c *gin.Context) {
 				if etki.Image != "" {
 					data.Image = etki.Image
 				}
-				// if verify != "" {
-				// 	if verify == "true" && !etki.Verified {
-				// 		continue
-				// 	}
-				// 	if verify == "false" && etki.Verified {
-				// 		continue
-				// 	}
-				// }
-				ok1 = true
+				// ok1 = true
 			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
@@ -675,14 +695,6 @@ func APIGetTokenList(c *gin.Context) {
 				if etki.Verified {
 					data.Verified = etki.Verified
 				}
-				// if verify != "" {
-				// 	if verify == "true" && !etki.Verified {
-				// 		continue
-				// 	}
-				// 	if verify == "false" && etki.Verified {
-				// 		continue
-				// 	}
-				// }
 				data.UserID = etki.UserID
 				data.PercentChange1h = etki.PercentChange1h
 				data.PercentChangePrv1h = etki.PercentChangePrv1h
@@ -700,32 +712,20 @@ func APIGetTokenList(c *gin.Context) {
 				if data.PriceUsd == 0 {
 					data.PriceUsd = etki.PriceUsd
 				}
-				ok2 = true
+				// ok2 = true
 			}
 
-			if !v.IsNFT && (ok1 || ok2) {
-				// if verify != "" {
-				// 	if verify == "true" && !data.Verified {
-				// 		continue
-				// 	}
-				// 	if verify == "false" && data.Verified {
-				// 		continue
-				// 	}
-				// }
+			// if !v.IsNFT && (ok1 || ok2) {
+			// 	datalist = append(datalist, data)
+			// }
+			if !v.IsNFT {
 				datalist = append(datalist, data)
 			}
 		}
 
+		fmt.Println("APIGetTokenList2", time.Since(startTime))
 		for _, tkInfo := range extraTokenInfo {
 			if _, ok := chainTkListMap[tkInfo.TokenID]; !ok {
-				// if verify != "" {
-				// 	if verify == "true" && !tkInfo.Verified {
-				// 		continue
-				// 	}
-				// 	if verify == "false" && tkInfo.Verified {
-				// 		continue
-				// 	}
-				// }
 				tkdata := TokenInfo{
 					TokenID:      tkInfo.TokenID,
 					Name:         tkInfo.Name,
@@ -760,12 +760,8 @@ func APIGetTokenList(c *gin.Context) {
 				datalist = append(datalist, tkdata)
 			}
 		}
-		// 	err = cacheStoreCustom(tokenInfoKey+"all", datalist, 20*time.Second)
-		// 	if err != nil {
-		// 		log.Println(err)
-		// 	}
-		// }
 	}
+	fmt.Println("APIGetTokenList3", time.Since(startTime))
 	respond := APIRespond{
 		Result: datalist,
 		Error:  nil,
