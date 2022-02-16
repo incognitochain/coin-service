@@ -632,7 +632,7 @@ func APIGetTokenList(c *gin.Context) {
 					data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, baseToken, prvUsdtPair24h))
 				}
 			}
-
+			ok1 := false
 			if etki, ok := customTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
 					data.Name = etki.Name
@@ -654,6 +654,7 @@ func APIGetTokenList(c *gin.Context) {
 				// 		continue
 				// 	}
 				// }
+				ok1 = true
 			}
 			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
@@ -700,7 +701,7 @@ func APIGetTokenList(c *gin.Context) {
 				}
 			}
 
-			if !v.IsNFT {
+			if !v.IsNFT && ok1 {
 				// if verify != "" {
 				// 	if verify == "true" && !data.Verified {
 				// 		continue

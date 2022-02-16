@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -183,7 +184,7 @@ func APIHealthCheck(c *gin.Context) {
 			if err != nil {
 				coinHeight = 0
 			}
-			if chainheight-height > 5 || height-uint64(coinHeight) > 5 {
+			if math.Abs(float64(chainheight-height)) > 5 || math.Abs(float64(height-uint64(coinHeight))) > 5 {
 				status = shared.HEALTH_STATUS_NOK
 			}
 			shardsHeight[i] = fmt.Sprintf("%v|%v|%v|%v", coinHeight, height, chainheight, shared.ServiceCfg.FullnodeData)
