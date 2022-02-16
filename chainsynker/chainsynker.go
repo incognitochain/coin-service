@@ -51,13 +51,17 @@ var blockProcessedLock sync.RWMutex
 var lastTokenIDMap map[string]string
 var lastTokenIDLock sync.RWMutex
 var chainDataFolder string
+var useFullnodeData bool
 
 func InitChainSynker(cfg shared.Config) {
 	lastTokenIDMap = make(map[string]string)
 	blockProcessed = make(map[int]uint64)
 	highwayAddress := cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
-
+	useFullnodeData = cfg.FullnodeData
+	if !cfg.FullnodeData {
+		panic(8888)
+	}
 	if shared.RESET_FLAG {
 		err := ResetMongoAndReSync()
 		if err != nil {
@@ -122,7 +126,7 @@ func InitChainSynker(cfg shared.Config) {
 
 	var netw devframework.NetworkParam
 	netw.HighwayAddress = highwayAddress
-	node := devframework.NewAppNode(chainDataFolder, netw, true, false, false, cfg.EnableChainLog)
+	node := devframework.NewAppNode(chainDataFolder, netw, !useFullnodeData, false, false, cfg.EnableChainLog)
 	Localnode = node
 	log.Println("initiating chain-synker...")
 	if shared.RESET_FLAG {
@@ -158,7 +162,12 @@ func InitChainSynker(cfg shared.Config) {
 			}
 			ShardProcessedState[byte(i)] = height
 		}
-		TransactionStateDB[byte(i)] = Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
+		if !useFullnodeData {
+			TransactionStateDB[byte(i)] = Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetCopiedTransactionStateDB()
+		} else {
+			TransactionStateDB[byte(i)] = Localnode.GetBlockchain().GetBestStateTransactionStateDB(byte(i))
+		}
+
 	}
 	beaconStatePrefix := BeaconData
 	v, err := Localnode.GetUserDatabase().Get([]byte(beaconStatePrefix), nil)
