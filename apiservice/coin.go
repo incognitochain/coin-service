@@ -480,7 +480,7 @@ func APIGetTokenInfo(c *gin.Context) {
 func APIGetTokenList(c *gin.Context) {
 	nftOnly := c.Query("nft")
 
-	verify := c.Query("verify")
+	// verify := c.Query("verify")
 	var datalist []TokenInfo
 
 	if nftOnly == "true" {
@@ -646,14 +646,14 @@ func APIGetTokenList(c *gin.Context) {
 					if etki.Image != "" {
 						data.Image = etki.Image
 					}
-					if verify != "" {
-						if verify == "true" && !etki.Verified {
-							continue
-						}
-						if verify == "false" && etki.Verified {
-							continue
-						}
-					}
+					// if verify != "" {
+					// 	if verify == "true" && !etki.Verified {
+					// 		continue
+					// 	}
+					// 	if verify == "false" && etki.Verified {
+					// 		continue
+					// 	}
+					// }
 				}
 				if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
 					if etki.Name != "" {
@@ -673,14 +673,14 @@ func APIGetTokenList(c *gin.Context) {
 					if etki.Verified {
 						data.Verified = etki.Verified
 					}
-					if verify != "" {
-						if verify == "true" && !etki.Verified {
-							continue
-						}
-						if verify == "false" && etki.Verified {
-							continue
-						}
-					}
+					// if verify != "" {
+					// 	if verify == "true" && !etki.Verified {
+					// 		continue
+					// 	}
+					// 	if verify == "false" && etki.Verified {
+					// 		continue
+					// 	}
+					// }
 					data.UserID = etki.UserID
 					data.PercentChange1h = etki.PercentChange1h
 					data.PercentChangePrv1h = etki.PercentChangePrv1h
@@ -701,28 +701,28 @@ func APIGetTokenList(c *gin.Context) {
 				}
 
 				if !v.IsNFT {
-					if verify != "" {
-						if verify == "true" && !data.Verified {
-							continue
-						}
-						if verify == "false" && data.Verified {
-							continue
-						}
-					}
+					// if verify != "" {
+					// 	if verify == "true" && !data.Verified {
+					// 		continue
+					// 	}
+					// 	if verify == "false" && data.Verified {
+					// 		continue
+					// 	}
+					// }
 					datalist = append(datalist, data)
 				}
 			}
 
 			for _, tkInfo := range extraTokenInfo {
 				if _, ok := chainTkListMap[tkInfo.TokenID]; !ok {
-					if verify != "" {
-						if verify == "true" && !tkInfo.Verified {
-							continue
-						}
-						if verify == "false" && tkInfo.Verified {
-							continue
-						}
-					}
+					// if verify != "" {
+					// 	if verify == "true" && !tkInfo.Verified {
+					// 		continue
+					// 	}
+					// 	if verify == "false" && tkInfo.Verified {
+					// 		continue
+					// 	}
+					// }
 					tkdata := TokenInfo{
 						TokenID:      tkInfo.TokenID,
 						Name:         tkInfo.Name,
