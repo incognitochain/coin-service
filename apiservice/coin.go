@@ -633,6 +633,7 @@ func APIGetTokenList(c *gin.Context) {
 				}
 			}
 			ok1 := false
+			ok2 := false
 			if etki, ok := customTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
 					data.Name = etki.Name
@@ -699,9 +700,10 @@ func APIGetTokenList(c *gin.Context) {
 				if data.PriceUsd == 0 {
 					data.PriceUsd = etki.PriceUsd
 				}
+				ok2 = true
 			}
 
-			if !v.IsNFT && ok1 {
+			if !v.IsNFT && (ok1 || ok2) {
 				// if verify != "" {
 				// 	if verify == "true" && !data.Verified {
 				// 		continue
