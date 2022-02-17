@@ -59,7 +59,13 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	startTime := time.Now()
 	_ = startTime
 	// Process PDEstatev1
-	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
+	willProcess := true
+
+	if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-100 {
+		willProcess = false
+	}
+	if height < config.Param().PDexParams.Pdexv3BreakPointHeight && willProcess {
+		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
 		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
 		tradingFees := state.Reader().TradingFees()
 		shares := state.Reader().Shares()
@@ -225,11 +231,11 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		wg.Wait()
 
 		log.Printf("prepare state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-		willProcess := true
+		// willProcess := true
 
-		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-100 {
-			willProcess = false
-		}
+		// if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-100 {
+		// 	willProcess = false
+		// }
 		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, blk.GetHeight(), willProcess)
 		if err != nil {
 			panic(err)
