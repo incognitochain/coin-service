@@ -105,7 +105,12 @@ func tokenListWatcher() {
 		shardStateDB := make(map[byte]*statedb.StateDB)
 		for i := 0; i < activeShards; i++ {
 			shardID := byte(i)
-			shardStateDB[shardID] = TransactionStateDB[shardID].Copy()
+			if useFullnodeData {
+				shardStateDB[shardID] = Localnode.GetBlockchain().GetBestStateTransactionStateDB(byte(shardID))
+			} else {
+				shardStateDB[shardID] = TransactionStateDB[shardID].Copy()
+			}
+
 		}
 
 		tokenStates := make(map[common.Hash]*statedb.TokenState)
