@@ -1372,16 +1372,8 @@ func APIGetDefaultTokens(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	var result []shared.TokenInfoData
-	if len(tokenList) != 0 {
-		result, err = database.DBGetTokenByTokenID(tokenList)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-	}
 	respond := APIRespond{
-		Result: result,
+		Result: tokenList,
 	}
 	c.JSON(http.StatusOK, respond)
 }
