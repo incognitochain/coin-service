@@ -315,10 +315,10 @@ func APIGetTokenInfo(c *gin.Context) {
 			percent24h = ((currPrice - pastPrice) / pastPrice) * 100
 		}
 		data := TokenInfo{
-			TokenID:          v.TokenID,
-			Name:             v.Name,
-			Symbol:           v.Symbol,
-			Image:            v.Image,
+			TokenID: v.TokenID,
+			Name:    v.Name,
+			Symbol:  v.Symbol,
+			// Image:            v.Image,
 			IsPrivacy:        v.IsPrivacy,
 			IsBridge:         v.IsBridge,
 			ExternalID:       v.ExternalID,
@@ -389,6 +389,9 @@ func APIGetTokenInfo(c *gin.Context) {
 			}
 			if etki.Symbol != "" {
 				data.Symbol = etki.Symbol
+			}
+			if etki.Image != "" {
+				data.Image = etki.Image
 			}
 			if etki.Verified {
 				data.Verified = etki.Verified
