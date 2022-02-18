@@ -33,6 +33,7 @@ func StartGinService() {
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
+		go tokenListWatcher()
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
