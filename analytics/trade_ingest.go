@@ -1,0 +1,5 @@
+package analytics
+
+func startTradeVolumeAnalytic() {
+
+}

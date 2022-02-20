@@ -65,7 +65,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		willProcess = false
 	}
 	if height < config.Param().PDexParams.Pdexv3BreakPointHeight && willProcess {
-		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
 		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
 		tradingFees := state.Reader().TradingFees()
 		shares := state.Reader().Shares()
