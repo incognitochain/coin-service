@@ -88,16 +88,17 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 	for sID, txlist := range blk.Body.CrossTransactions {
 		for _, tx := range txlist {
 			crsblk := &types.ShardBlock{}
+			blkHash := &tx.BlockHash
 			if !useFullnodeData {
-				blkBytes, err := Localnode.GetUserDatabase().Get(tx.BlockHash.Bytes(), nil)
+				blkBytes, err := Localnode.GetUserDatabase().Get(blkHash.Bytes(), nil)
 				if err != nil {
 					i := 0
 				retryGetBlock:
 					if i == 5 {
 						panic("OnNewShardBlock err")
 					}
-					fmt.Println("tx.BlockHash.String()", tx.BlockHash.String())
-					blkBytes, err = Localnode.SyncSpecificShardBlockBytes(int(sID), 0, tx.BlockHash.String())
+					fmt.Println("tx.BlockHash.String()", blkHash.String())
+					blkBytes, err = Localnode.SyncSpecificShardBlockBytes(int(sID), 0, blkHash.String())
 					if err != nil {
 						fmt.Println(err)
 						i++
@@ -113,9 +114,17 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 					panic(err)
 				}
 			} else {
-				blkInterface, err := bc.GetBlockByHash(proto.BlkType_BlkShard, &h, byte(shardID), byte(shardID))
+				i := 0
+			retryGetBlock2:
+				if i == 50 {
+					panic("OnNewShardBlock err " + blkHash.String())
+				}
+				blkInterface, err := bc.GetBlockByHash(proto.BlkType_BlkShard, blkHash, byte(sID), byte(sID))
 				if err != nil {
-					panic(err)
+					fmt.Println(err)
+					i++
+					time.Sleep(5 * time.Second)
+					goto retryGetBlock2
 				}
 				crsblk = blkInterface.(*types.ShardBlock)
 				err = getCrossShardData(crossShardCoinMap, crsblk.Body.Transactions, byte(shardID))
@@ -180,7 +189,11 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 							coinV1PubkeyInfo[publicKeyStr][common.PRVCoinID.String()] = newCoinInfo
 						}
 					}
-					outCoin := shared.NewCoinData(beaconHeight, coinIdx, prvout.Bytes(), common.PRVCoinID.String(), publicKeyStr, "", crossShardCoinMap[prvout.GetCommitment().String()], shardID, int(prvout.GetVersion()))
+					txh, ok := crossShardCoinMap[prvout.GetCommitment().String()]
+					if !ok {
+						panic("crossShardCoinMap not found")
+					}
+					outCoin := shared.NewCoinData(beaconHeight, coinIdx, prvout.Bytes(), common.PRVCoinID.String(), publicKeyStr, "", txh, shardID, int(prvout.GetVersion()))
 					outCoinList = append(outCoinList, *outCoin)
 				}
 			}
@@ -230,7 +243,12 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 								coinV1PubkeyInfo[publicKeyStr][tokenStr] = newCoinInfo
 							}
 						}
-						outCoin := shared.NewCoinData(beaconHeight, coinIdx, tkout.Bytes(), tokenStr, publicKeyStr, "", crossShardCoinMap[tkout.GetCommitment().String()], shardID, int(tkout.GetVersion()))
+
+						txh, ok := crossShardCoinMap[tkout.GetCommitment().String()]
+						if !ok {
+							panic("crossShardCoinMap not found")
+						}
+						outCoin := shared.NewCoinData(beaconHeight, coinIdx, tkout.Bytes(), tokenStr, publicKeyStr, "", txh, shardID, int(tkout.GetVersion()))
 						outCoinList = append(outCoinList, *outCoin)
 					}
 				}
