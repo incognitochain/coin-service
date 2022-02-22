@@ -481,7 +481,6 @@ func retrieveTokenList(isAll bool) {
 	var wg sync.WaitGroup
 	wg.Add(4)
 
-	var err error
 	var extraTokenInfo []shared.ExtraTokenInfo
 	var customTokenInfo []shared.CustomTokenInfo
 	var defaultPools map[string]struct{}
@@ -490,31 +489,48 @@ func retrieveTokenList(isAll bool) {
 
 	go func() {
 		defer wg.Done()
+		var err error
 		extraTokenInfo, err = database.DBGetAllExtraTokenInfo()
-	}()
-
-	go func() {
-		defer wg.Done()
-		if isAll {
-			customTokenInfo, err = database.DBGetAllCustomTokenInfo(false)
-		} else {
-			customTokenInfo, err = database.DBGetAllCustomTokenInfo(true)
+		if err != nil {
+			log.Println(err)
+			return
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
+		var err error
+		if isAll {
+			customTokenInfo, err = database.DBGetAllCustomTokenInfo(false)
+		} else {
+			customTokenInfo, err = database.DBGetAllCustomTokenInfo(true)
+		}
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}()
+
+	go func() {
+		var err error
+		defer wg.Done()
 		defaultPools, err = database.DBGetDefaultPool(true)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	}()
 	go func() {
+		var err error
 		defer wg.Done()
 		priorityTokens, err = database.DBGetTokenPriority()
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	}()
 	wg.Wait()
-	if err != nil {
-		log.Println(err)
-		return
-	}
+
 	totalTokenList := []string{}
 	extraTokenInfoMap := make(map[string]shared.ExtraTokenInfo)
 	for _, v := range extraTokenInfo {
@@ -538,6 +554,7 @@ func retrieveTokenList(isAll bool) {
 			break
 		}
 	}
+	var err error
 	var tokenList []shared.TokenInfoData
 	if !isAll {
 		tokenList, err = database.DBGetTokenByTokenID(totalTokenList)
