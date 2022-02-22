@@ -4,16 +4,16 @@ import "github.com/incognitochain/coin-service/database"
 
 var currentState State
 
-func updateState() error {
+func updateState(processor string) error {
 	result, err := json.Marshal(currentState)
 	if err != nil {
 		panic(err)
 	}
-	return database.DBUpdateProcessorState("trade", string(result))
+	return database.DBUpdateProcessorState(processor, string(result))
 }
 
-func loadState() error {
-	result, err := database.DBGetProcessorState("trade")
+func loadState(processor string) error {
+	result, err := database.DBGetProcessorState(processor)
 	if err != nil {
 		return err
 	}
