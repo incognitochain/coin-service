@@ -317,7 +317,6 @@ func checkMissingCrossShardTx(shardID int, currentHeight uint64) {
 		}
 		coinList := getCrossShardTxs(shardID, currentHeight)
 		fmt.Println("checkMissingCrossShardTx", shardID, currentHeight, len(coinList))
-		isWillBreak := false
 		for coinPubkey, txhash := range coinList {
 			if shared.BurnCoinID == coinPubkey {
 				continue
@@ -361,9 +360,6 @@ func checkMissingCrossShardTx(shardID int, currentHeight uint64) {
 		err := Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", currentHeight)), nil)
 		if err != nil {
 			panic(err)
-		}
-		if isWillBreak {
-			break
 		}
 		currentHeight -= 1
 	}
