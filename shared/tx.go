@@ -32,6 +32,7 @@ type TransactionDetail struct {
 	SigPubKey string `json:"SigPubKey,omitempty"` // 64 bytes
 	Sig       string `json:"Sig,omitempty"`       // 64 bytes
 
+	Metatype                      int                    `json:"Metatype"`
 	Metadata                      string                 `json:"Metadata"`
 	CustomTokenData               string                 `json:"CustomTokenData"`
 	PrivacyCustomTokenID          string                 `json:"PrivacyCustomTokenID"`
