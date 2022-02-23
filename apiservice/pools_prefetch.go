@@ -29,13 +29,12 @@ func getPoolList(isAll bool) []PdexV3PoolDetail {
 
 func poolListWatcher() {
 	for {
-		go retrievePoolList(true)
-		go retrievePoolList(false)
+		go retrievePoolList()
 		time.Sleep(15 * time.Second)
 	}
 }
 
-func retrievePoolList(verify bool) {
+func retrievePoolList() {
 	list, err := database.DBGetPoolPairsByPairID("all")
 	if err != nil {
 		log.Println(err)
@@ -68,12 +67,6 @@ func retrievePoolList(verify bool) {
 			isVerify := false
 			if _, found := defaultPools[d.PoolID]; found {
 				isVerify = true
-			}
-			if verify && !isVerify {
-				return
-			}
-			if verify && isVerify {
-				return
 			}
 
 			tk1Amount, _ := strconv.ParseUint(d.Token1Amount, 10, 64)
@@ -151,9 +144,11 @@ func retrievePoolList(verify bool) {
 	}
 	poolListLock.Lock()
 	defer poolListLock.Unlock()
-	if !verify {
-		allPoolList = result
-	} else {
-		verifyPoolList = result
+	allPoolList = result
+	verifyPoolList = []PdexV3PoolDetail{}
+	for _, v := range result {
+		if v.IsVerify {
+			verifyPoolList = append(verifyPoolList, v)
+		}
 	}
 }

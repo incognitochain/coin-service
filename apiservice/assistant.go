@@ -362,7 +362,6 @@ func getPdecimalRate(tokenID1, tokenID2 string) (float64, int, int, error) {
 		tk2Decimal = int(tk2.PDecimals)
 	}
 	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
-	fmt.Println("getPdecimalRate", result)
 	return result, tk1Decimal, tk2Decimal, nil
 }
 
