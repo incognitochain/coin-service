@@ -7,6 +7,7 @@ import (
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
+	"github.com/incognitochain/incognito-chain/blockchain/types"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 	"github.com/incognitochain/incognito-chain/privacy"
@@ -277,4 +278,24 @@ retry:
 		}
 	}
 	return float64(receive) / float64(a)
+}
+
+func extractInstructionFromBeaconBlocks(shardPrevBlkHash []byte, currentBeaconHeight uint64) ([][]string, error) {
+	var blk types.ShardBlock
+	blkBytes, err := Localnode.GetUserDatabase().Get(shardPrevBlkHash, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(blkBytes, &blk); err != nil {
+		panic(err)
+	}
+	var insts [][]string
+	for i := blk.Header.BeaconHeight + 1; i <= currentBeaconHeight; i++ {
+		bblk, err := Localnode.GetBlockchain().GetBeaconBlockByHeight(i)
+		if err != nil {
+			return nil, err
+		}
+		insts = append(insts, bblk[0].Body.Instructions...)
+	}
+	return insts, nil
 }

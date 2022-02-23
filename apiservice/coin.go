@@ -319,10 +319,10 @@ func APIGetTokenInfo(c *gin.Context) {
 			percent24h = ((currPrice - pastPrice) / pastPrice) * 100
 		}
 		data := TokenInfo{
-			TokenID:          v.TokenID,
-			Name:             v.Name,
-			Symbol:           v.Symbol,
-			Image:            v.Image,
+			TokenID: v.TokenID,
+			Name:    v.Name,
+			Symbol:  v.Symbol,
+			// Image:            v.Image,
 			IsPrivacy:        v.IsPrivacy,
 			IsBridge:         v.IsBridge,
 			ExternalID:       v.ExternalID,
@@ -393,6 +393,9 @@ func APIGetTokenInfo(c *gin.Context) {
 			}
 			if etki.Symbol != "" {
 				data.Symbol = etki.Symbol
+			}
+			if etki.Image != "" {
+				data.Image = etki.Image
 			}
 			if etki.Verified {
 				data.Verified = etki.Verified
@@ -483,10 +486,8 @@ func APIGetTokenInfo(c *gin.Context) {
 
 func APIGetTokenList(c *gin.Context) {
 	nftOnly := c.Query("nft")
-
-	// verify := c.Query("verify")
+	all := c.Query("all")
 	var datalist []TokenInfo
-
 	if nftOnly == "true" {
 		if err := cacheGet(tokenInfoKey+"nft", &datalist); err != nil {
 			nftList, err := database.DBGetNFTInfo()
@@ -507,268 +508,11 @@ func APIGetTokenList(c *gin.Context) {
 			}
 		}
 	} else {
-		// if err := cacheGet(tokenInfoKey+"all", &datalist); err != nil {
-		tokenList, err := database.DBGetAllTokenInfo()
-		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-			return
+		if all == "true" {
+			datalist = getTokenList(true)
+		} else {
+			datalist = getTokenList(false)
 		}
-
-		extraTokenInfo, err := database.DBGetAllExtraTokenInfo()
-		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-			return
-		}
-		customTokenInfo, err := database.DBGetAllCustomTokenInfo()
-		if err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
-			return
-		}
-
-		defaultPools, err := database.DBGetDefaultPool(true)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		priorityTokens, err := database.DBGetTokenPriority()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-
-		extraTokenInfoMap := make(map[string]shared.ExtraTokenInfo)
-		for _, v := range extraTokenInfo {
-			extraTokenInfoMap[v.TokenID] = v
-		}
-
-		customTokenInfoMap := make(map[string]shared.CustomTokenInfo)
-		for _, v := range customTokenInfo {
-			customTokenInfoMap[v.TokenID] = v
-		}
-		chainTkListMap := make(map[string]struct{})
-
-		baseToken, _ := database.DBGetBasePriceToken()
-
-		prvUsdtPair24h := float64(0)
-		for v, _ := range defaultPools {
-			if strings.Contains(v, baseToken) && strings.Contains(v, common.PRVCoinID.String()) {
-				prvUsdtPair24h = getPoolPair24hChange(v)
-				break
-			}
-		}
-
-		for _, v := range tokenList {
-			chainTkListMap[v.TokenID] = struct{}{}
-			currPrice, _ := strconv.ParseFloat(v.CurrentPrice, 64)
-			pastPrice, _ := strconv.ParseFloat(v.PastPrice, 64)
-			percent24h := float64(0)
-			if pastPrice != 0 && currPrice != 0 {
-				percent24h = ((currPrice - pastPrice) / pastPrice) * 100
-			}
-			data := TokenInfo{
-				TokenID: v.TokenID,
-				Name:    v.Name,
-				Symbol:  v.Symbol,
-				// Image:            v.Image,
-				IsPrivacy:        v.IsPrivacy,
-				IsBridge:         v.IsBridge,
-				ExternalID:       v.ExternalID,
-				PriceUsd:         currPrice,
-				PercentChange24h: fmt.Sprintf("%.2f", percent24h),
-			}
-
-			defaultPool := ""
-			defaultPairToken := ""
-			defaultPairTokenIdx := -1
-			currentPoolAmount := uint64(0)
-			for poolID, _ := range defaultPools {
-				if strings.Contains(poolID, data.TokenID) {
-					pa := getPoolAmount(poolID, data.TokenID)
-					if pa == 0 {
-						continue
-					}
-					tks := strings.Split(poolID, "-")
-					tkPair := tks[0]
-					if tks[0] == data.TokenID {
-						tkPair = tks[1]
-					}
-					for idx, ptk := range priorityTokens {
-						if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
-							if idx > defaultPairTokenIdx {
-								defaultPool = poolID
-								defaultPairToken = tkPair
-								defaultPairTokenIdx = idx
-								currentPoolAmount = pa
-							}
-							if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
-								defaultPool = poolID
-								defaultPairToken = tkPair
-								defaultPairTokenIdx = idx
-								currentPoolAmount = pa
-							}
-						}
-					}
-
-					if defaultPool == "" {
-						if pa > 0 {
-							defaultPool = poolID
-							defaultPairToken = tkPair
-							currentPoolAmount = pa
-						}
-					} else {
-						if (pa > currentPoolAmount) && (defaultPairTokenIdx == -1) {
-							defaultPool = poolID
-							defaultPairToken = tkPair
-							currentPoolAmount = pa
-						}
-					}
-				}
-			}
-			data.DefaultPairToken = defaultPairToken
-			data.DefaultPoolPair = defaultPool
-			if data.TokenID == common.PRVCoinID.String() {
-				data.PercentChange24h = fmt.Sprintf("%.2f", prvUsdtPair24h)
-			} else {
-				if data.DefaultPairToken != "" && data.TokenID != baseToken {
-					data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, baseToken, prvUsdtPair24h))
-				}
-			}
-			ok1 := false
-			ok2 := false
-			if etki, ok := customTokenInfoMap[v.TokenID]; ok {
-				if etki.Name != "" {
-					data.Name = etki.Name
-				}
-				if etki.Symbol != "" {
-					data.Symbol = etki.Symbol
-				}
-				if etki.Verified {
-					data.Verified = etki.Verified
-				}
-				if etki.Image != "" {
-					data.Image = etki.Image
-				}
-				// if verify != "" {
-				// 	if verify == "true" && !etki.Verified {
-				// 		continue
-				// 	}
-				// 	if verify == "false" && etki.Verified {
-				// 		continue
-				// 	}
-				// }
-				ok1 = true
-			}
-			if etki, ok := extraTokenInfoMap[v.TokenID]; ok {
-				if etki.Name != "" {
-					data.Name = etki.Name
-				}
-				data.Decimals = etki.Decimals
-				if etki.Symbol != "" {
-					data.Symbol = etki.Symbol
-				}
-				data.PSymbol = etki.PSymbol
-				data.PDecimals = int(etki.PDecimals)
-				data.ContractID = etki.ContractID
-				data.Status = etki.Status
-				data.Type = etki.Type
-				data.CurrencyType = etki.CurrencyType
-				data.Default = etki.Default
-				if etki.Verified {
-					data.Verified = etki.Verified
-				}
-				// if verify != "" {
-				// 	if verify == "true" && !etki.Verified {
-				// 		continue
-				// 	}
-				// 	if verify == "false" && etki.Verified {
-				// 		continue
-				// 	}
-				// }
-				data.UserID = etki.UserID
-				data.PercentChange1h = etki.PercentChange1h
-				data.PercentChangePrv1h = etki.PercentChangePrv1h
-				data.CurrentPrvPool = etki.CurrentPrvPool
-				data.PricePrv = etki.PricePrv
-				data.Volume24 = etki.Volume24
-				data.ParentID = etki.ParentID
-				data.OriginalSymbol = etki.OriginalSymbol
-				data.LiquidityReward = etki.LiquidityReward
-				data.Network = etki.Network
-				err = json.UnmarshalFromString(etki.ListChildToken, &data.ListChildToken)
-				if err != nil {
-					panic(err)
-				}
-				if data.PriceUsd == 0 {
-					data.PriceUsd = etki.PriceUsd
-				}
-				ok2 = true
-			}
-
-			if !v.IsNFT && (ok1 || ok2) {
-				// if verify != "" {
-				// 	if verify == "true" && !data.Verified {
-				// 		continue
-				// 	}
-				// 	if verify == "false" && data.Verified {
-				// 		continue
-				// 	}
-				// }
-				datalist = append(datalist, data)
-			}
-		}
-
-		for _, tkInfo := range extraTokenInfo {
-			if _, ok := chainTkListMap[tkInfo.TokenID]; !ok {
-				// if verify != "" {
-				// 	if verify == "true" && !tkInfo.Verified {
-				// 		continue
-				// 	}
-				// 	if verify == "false" && tkInfo.Verified {
-				// 		continue
-				// 	}
-				// }
-				tkdata := TokenInfo{
-					TokenID:      tkInfo.TokenID,
-					Name:         tkInfo.Name,
-					Symbol:       tkInfo.Symbol,
-					PSymbol:      tkInfo.PSymbol,
-					PDecimals:    int(tkInfo.PDecimals),
-					Decimals:     tkInfo.Decimals,
-					ContractID:   tkInfo.ContractID,
-					Status:       tkInfo.Status,
-					Type:         tkInfo.Type,
-					CurrencyType: tkInfo.CurrencyType,
-					Default:      tkInfo.Default,
-					Verified:     tkInfo.Verified,
-					UserID:       tkInfo.UserID,
-
-					PriceUsd:           tkInfo.PriceUsd,
-					PercentChange1h:    tkInfo.PercentChange1h,
-					PercentChangePrv1h: tkInfo.PercentChangePrv1h,
-					CurrentPrvPool:     tkInfo.CurrentPrvPool,
-					PricePrv:           tkInfo.PricePrv,
-					Volume24:           tkInfo.Volume24,
-					ParentID:           tkInfo.ParentID,
-					OriginalSymbol:     tkInfo.OriginalSymbol,
-					LiquidityReward:    tkInfo.LiquidityReward,
-
-					Network: tkInfo.Network,
-				}
-				err = json.UnmarshalFromString(tkInfo.ListChildToken, &tkdata.ListChildToken)
-				if err != nil {
-					panic(err)
-				}
-				datalist = append(datalist, tkdata)
-			}
-		}
-		// 	err = cacheStoreCustom(tokenInfoKey+"all", datalist, 20*time.Second)
-		// 	if err != nil {
-		// 		log.Println(err)
-		// 	}
-		// }
 	}
 	respond := APIRespond{
 		Result: datalist,
@@ -1370,6 +1114,18 @@ func APISubmitOTAFullmode(c *gin.Context) {
 	respond := APIRespond{
 		Result: "true",
 		Error:  &errStr,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetDefaultTokens(c *gin.Context) {
+	tokenList, err := database.DBGetDefaultTokens()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: tokenList,
 	}
 	c.JSON(http.StatusOK, respond)
 }

@@ -383,6 +383,9 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys: bsonx.Doc{{Key: "verified", Value: bsonx.Int32(1)}},
+		},
 	}
 	_, err = mgm.Coll(&shared.ExtraTokenInfo{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)
 	if err != nil {

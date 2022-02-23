@@ -8,7 +8,9 @@ import (
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/config"
+	"github.com/incognitochain/incognito-chain/peerv2/proto"
 	"github.com/incognitochain/incognito-chain/privacy"
 	jsoniter "github.com/json-iterator/go"
 
@@ -181,11 +183,12 @@ func InitChainSynker(cfg shared.Config) {
 	go mempoolWatcher()
 	go tokenListWatcher()
 
-	preloadedBeaconState = make(map[string]*blockchain.BeaconBestState)
 	time.Sleep(5 * time.Second)
 	blockProcessed[-1] = ProcessedBeaconBestState
+	cacheOTAMap = make(map[string]string)
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		blockProcessed[i] = ShardProcessedState[byte(i)]
+		go checkMissingCrossShardTx(i, ShardProcessedState[byte(i)])
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
 	Localnode.OnNewBlockFromParticularHeight(-1, int64(ProcessedBeaconBestState), true, processBeacon)
@@ -255,74 +258,145 @@ func getCrossShardData(result map[string]string, txList []metadata.Transaction, 
 	return nil
 }
 
-var preloadedBeaconStateLock sync.Mutex
-var preloadedBeaconState map[string]*blockchain.BeaconBestState
-
-func preloadBeaconState(bestHeight, currentHeight uint64) {
-	chainBestView := Localnode.GetBlockchain().BeaconChain.GetBestView()
-	chainFinalView := Localnode.GetBlockchain().BeaconChain.GetFinalView()
-	var wg sync.WaitGroup
-
-	height := currentHeight + 100
-	if height > bestHeight {
-		height = currentHeight + (bestHeight - currentHeight)
-	}
-	for i := currentHeight; i < height; i++ {
-		wg.Add(1)
-		go func(h uint64) {
-			defer wg.Done()
-			var beaconBestState *blockchain.BeaconBestState
-			hash, err := Localnode.GetBlockchain().GetBeaconBlockHashByHeight(chainFinalView, chainBestView, h)
-			if err == nil {
-				if h < config.Param().PDexParams.Pdexv3BreakPointHeight {
-					beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(*hash, false, false)
-				} else {
-					beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(*hash, false, true)
-				}
-				preloadedBeaconStateLock.Lock()
-				preloadedBeaconState[hash.String()] = beaconBestState
-				preloadedBeaconStateLock.Unlock()
+func getCrossShardDataPubkey(result map[string]string, txList []metadata.Transaction, shardID byte) error {
+	for _, tx := range txList {
+		var prvProof privacy.Proof
+		txHash := tx.Hash().String()
+		if tx.GetType() == common.TxCustomTokenPrivacyType || tx.GetType() == common.TxTokenConversionType {
+			customTokenPrivacyTx, ok := tx.(transaction.TransactionToken)
+			if !ok {
+				return errors.New("Cannot cast transaction")
 			}
-		}(i)
+			prvProof = customTokenPrivacyTx.GetTxBase().GetProof()
+			txTokenData := customTokenPrivacyTx.GetTxTokenData()
+			txTokenProof := txTokenData.TxNormal.GetProof()
+			if txTokenProof != nil {
+				for _, outCoin := range txTokenProof.GetOutputCoins() {
+					coinShardID, err := outCoin.GetShardID()
+					if err == nil && coinShardID == shardID {
+						if outCoin.GetVersion() == 2 {
+							result[base58.EncodeCheck(outCoin.GetPublicKey().ToBytesS())] = txHash
+						}
+					}
+				}
+			}
+		} else {
+			prvProof = tx.GetProof()
+		}
+		if prvProof != nil {
+			for _, outCoin := range prvProof.GetOutputCoins() {
+				coinShardID, err := outCoin.GetShardID()
+				if err == nil && coinShardID == shardID {
+					if outCoin.GetVersion() == 2 {
+						result[base58.EncodeCheck(outCoin.GetPublicKey().ToBytesS())] = txHash
+					}
+				}
+			}
+		}
 	}
-	wg.Wait()
+
+	return nil
 }
 
-func getTokenID(assetTag string) string {
-retry:
-	if len(lastTokenIDMap) == 0 {
-		time.Sleep(5 * time.Second)
-		fmt.Println("ahaaaaaa could be stuck here 1")
-		goto retry
-	}
-	lastTokenIDLock.RLock()
-	tokenIDStr, ok := lastTokenIDMap[assetTag]
-	if !ok {
-		time.Sleep(5 * time.Second)
-		fmt.Println("ahaaaaaa could be stuck here 2")
-		lastTokenIDLock.RUnlock()
-		goto retry
-	}
-	lastTokenIDLock.RUnlock()
-	return tokenIDStr
-}
+var cacheOTAMap map[string]string
+var cacheLck sync.RWMutex
 
-func extractInstructionFromBeaconBlocks(shardPrevBlkHash []byte, currentBeaconHeight uint64) ([][]string, error) {
-	var blk types.ShardBlock
-	blkBytes, err := Localnode.GetUserDatabase().Get(shardPrevBlkHash, nil)
+func checkMissingCrossShardTx(shardID int, currentHeight uint64) {
+	statePrefix := fmt.Sprintf("fixCRSSshard-%v", shardID)
+	v, err := Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 	if err != nil {
-		return nil, err
+		log.Println(err)
+		currentHeight = currentHeight
+	} else {
+		currentHeight, err = strconv.ParseUint(string(v), 0, 64)
+		if err != nil {
+			panic(err)
+		}
 	}
-	if err := json.Unmarshal(blkBytes, &blk); err != nil {
+	for {
+		if currentHeight <= config.Param().CoinVersion2LowestHeight {
+			break
+		}
+		coinList := getCrossShardTxs(shardID, currentHeight)
+		fmt.Println("checkMissingCrossShardTx", shardID, currentHeight, len(coinList))
+		for coinPubkey, txhash := range coinList {
+			if shared.BurnCoinID == coinPubkey {
+				continue
+			}
+			coins, err := database.DBGetCoinV2ByPubkey([]string{coinPubkey})
+			if err != nil {
+				log.Fatalln("DBGetCoinV2ByPubkey", err)
+			}
+			if len(coins) != 1 {
+				panic(fmt.Sprint("len(coins) != 1 "+coinPubkey, " ", len(coins), " ", txhash))
+			}
+			for _, v := range coins {
+				if v.OTASecret != "" {
+					cacheLck.RLock()
+					pubkey, ok := cacheOTAMap[v.OTASecret]
+					cacheLck.RUnlock()
+					if !ok {
+						key, err := database.DBGetCoinV2PubkeyInfoByOTAsecret(v.OTASecret)
+						if err != nil {
+							log.Fatalln("DBGetCoinV2PubkeyInfo", err)
+						}
+						if key == nil {
+							panic("otakey not found " + v.OTASecret)
+						}
+						cacheLck.Lock()
+						cacheOTAMap[v.OTASecret] = key.Pubkey
+						cacheLck.Unlock()
+						pubkey = key.Pubkey
+					}
+					err = database.DBUpdateTxPubkeyReceiverAndTokenID([]string{txhash}, pubkey, v.RealTokenID, context.Background())
+					if err != nil {
+						log.Fatalln("DBUpdateTxPubkeyReceiverAndTokenID", err)
+					}
+				}
+				err := database.DBUpdateCoinsTx(v.CoinPubkey, txhash)
+				if err != nil {
+					log.Fatalln("DBUpdateCoinsTx", err)
+				}
+			}
+		}
+		err := Localnode.GetUserDatabase().Put([]byte(statePrefix), []byte(fmt.Sprintf("%v", currentHeight)), nil)
+		if err != nil {
+			panic(err)
+		}
+		currentHeight -= 1
+	}
+
+}
+
+func getCrossShardTxs(shardID int, height uint64) map[string]string {
+	result := make(map[string]string)
+	blkInterface, err := Localnode.GetBlockchain().GetBlockByHeight(proto.BlkType_BlkShard, height, byte(shardID), byte(shardID))
+	if err != nil {
 		panic(err)
 	}
-	var insts [][]string
-	for i := blk.Header.BeaconHeight + 1; i <= currentBeaconHeight; i++ {
-		bblk, err := Localnode.GetBlockchain().GetBeaconBlockByHeight(i)
-		if err != nil {
-			return nil, err
+	blk := blkInterface.(*types.ShardBlock)
+	for sID, txlist := range blk.Body.CrossTransactions {
+		for _, tx := range txlist {
+			blkHash := &tx.BlockHash
+			i := 0
+		retryGetBlock2:
+			if i == 50 {
+				panic("OnNewShardBlock err " + blkHash.String())
+			}
+			blkInterface, err := Localnode.GetBlockchain().GetBlockByHash(proto.BlkType_BlkShard, blkHash, byte(sID), byte(sID))
+			if err != nil {
+				fmt.Println(err)
+				i++
+				time.Sleep(5 * time.Second)
+				goto retryGetBlock2
+			}
+			crsblk := blkInterface.(*types.ShardBlock)
+			err = getCrossShardDataPubkey(result, crsblk.Body.Transactions, byte(shardID))
+			if err != nil {
+				panic(err)
+			}
 		}
-		insts = append(insts, bblk[0].Body.Instructions...)
 	}
-	return insts, nil
+
+	return result
 }

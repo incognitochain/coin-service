@@ -56,7 +56,7 @@ func (pdexv3) ListPairs(c *gin.Context) {
 
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
-	// verify := c.Query("verify")
+	verify := c.Query("verify")
 	// if pair == "all" {
 	// 	var result []PdexV3PoolDetail
 	// 	err := cacheGet("ListPools-all", &result)
@@ -104,17 +104,6 @@ func (pdexv3) ListPools(c *gin.Context) {
 			return
 		}
 	}
-	// Get pool pair rate changes
-	poolIds := make([]string, 0)
-	for _, v := range list {
-		poolIds = append(poolIds, v.PoolID)
-	}
-	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(poolIds)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
 
 	var result []PdexV3PoolDetail
 	var wg sync.WaitGroup
@@ -129,6 +118,19 @@ func (pdexv3) ListPools(c *gin.Context) {
 					resultCh <- *data
 				}
 			}()
+			isVerify := false
+			if _, found := defaultPools[d.PoolID]; found {
+				isVerify = true
+			}
+			if verify != "" {
+				if verify == "true" && !isVerify {
+					return
+				}
+				if verify == "false" && isVerify {
+					return
+				}
+			}
+
 			tk1Amount, _ := strconv.ParseUint(d.Token1Amount, 10, 64)
 			tk2Amount, _ := strconv.ParseUint(d.Token2Amount, 10, 64)
 			if tk1Amount == 0 || tk2Amount == 0 {
@@ -173,6 +175,13 @@ func (pdexv3) ListPools(c *gin.Context) {
 				AMP:            d.AMP,
 				Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
 				TotalShare:     totalShare,
+				IsVerify:       isVerify,
+			}
+
+			poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h([]string{d.PoolID})
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
 			}
 
 			if poolChange, found := poolLiquidityChanges[d.PoolID]; found {
@@ -188,17 +197,6 @@ func (pdexv3) ListPools(c *gin.Context) {
 			if apy != nil {
 				data.APY = uint64(apy.APY2)
 			}
-			if _, found := defaultPools[d.PoolID]; found {
-				data.IsVerify = true
-			}
-			// if verify != "" {
-			// 	if verify == "true" && !data.IsVerify {
-			// 		data = nil
-			// 	}
-			// 	if verify == "false" && data.IsVerify {
-			// 		data = nil
-			// 	}
-			// }
 		}(v)
 	}
 	wg.Wait()
