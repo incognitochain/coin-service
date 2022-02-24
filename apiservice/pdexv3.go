@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -59,131 +58,17 @@ func (pdexv3) ListPools(c *gin.Context) {
 	verify := c.Query("verify")
 	var result []PdexV3PoolDetail
 	if pair == "all" {
-		if verify == "false" {
+		if verify == "true" {
 			result = getPoolList(true)
 		} else {
 			result = getPoolList(false)
 		}
-		respond := APIRespond{
-			Result: result,
-			Error:  nil,
+	} else {
+		if verify == "true" {
+			getPoolListByPairID(pair, true)
+		} else {
+			getPoolListByPairID(pair, false)
 		}
-		c.JSON(http.StatusOK, respond)
-		return
-	}
-	list, err := database.DBGetPoolPairsByPairID(pair)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	defaultPools, err := database.DBGetDefaultPool(true)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	priorityTokens, err := database.DBGetTokenPriority()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(len(list))
-	resultCh := make(chan PdexV3PoolDetail, len(list))
-	for _, v := range list {
-		go func(d shared.PoolInfoData) {
-			var data *PdexV3PoolDetail
-			defer func() {
-				wg.Done()
-				if data != nil {
-					resultCh <- *data
-				}
-			}()
-			isVerify := false
-			if _, found := defaultPools[d.PoolID]; found {
-				isVerify = true
-			}
-			if verify != "" {
-				if verify == "true" && !isVerify {
-					return
-				}
-				if verify == "false" && isVerify {
-					return
-				}
-			}
-
-			tk1Amount, _ := strconv.ParseUint(d.Token1Amount, 10, 64)
-			tk2Amount, _ := strconv.ParseUint(d.Token2Amount, 10, 64)
-			if tk1Amount == 0 || tk2Amount == 0 {
-				return
-			}
-			dcrate, _, _, err := getPdecimalRate(d.TokenID1, d.TokenID2)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			token1ID := d.TokenID1
-			token2ID := d.TokenID2
-			tk1VA, _ := strconv.ParseUint(d.Virtual1Amount, 10, 64)
-			tk2VA, _ := strconv.ParseUint(d.Virtual2Amount, 10, 64)
-			totalShare, _ := strconv.ParseUint(d.TotalShare, 10, 64)
-
-			willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
-			if willSwap {
-				token1ID = d.TokenID2
-				token2ID = d.TokenID1
-				tk1VA, _ = strconv.ParseUint(d.Virtual2Amount, 10, 64)
-				tk2VA, _ = strconv.ParseUint(d.Virtual1Amount, 10, 64)
-				tk1Amount, _ = strconv.ParseUint(d.Token2Amount, 10, 64)
-				tk2Amount, _ = strconv.ParseUint(d.Token1Amount, 10, 64)
-				dcrate, _, _, err = getPdecimalRate(d.TokenID2, d.TokenID1)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-			}
-
-			data = &PdexV3PoolDetail{
-				PoolID:         d.PoolID,
-				Token1ID:       token1ID,
-				Token2ID:       token2ID,
-				Token1Value:    tk1Amount,
-				Token2Value:    tk2Amount,
-				Virtual1Value:  tk1VA,
-				Virtual2Value:  tk2VA,
-				Volume:         0,
-				PriceChange24h: 0,
-				AMP:            d.AMP,
-				Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
-				TotalShare:     totalShare,
-				IsVerify:       isVerify,
-			}
-
-			poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h([]string{d.PoolID})
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-
-			if poolChange, found := poolLiquidityChanges[d.PoolID]; found {
-				data.PriceChange24h = poolChange.RateChangePercentage
-				data.Volume = poolChange.TradingVolume24h
-			}
-
-			apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			if apy != nil {
-				data.APY = uint64(apy.APY2)
-			}
-		}(v)
-	}
-	wg.Wait()
-	close(resultCh)
-	for v := range resultCh {
-		result = append(result, v)
 	}
 	respond := APIRespond{
 		Result: result,
@@ -828,110 +713,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	list, err := database.DBGetPoolPairsByPoolID(req.PoolIDs)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	var defaultPools map[string]struct{}
-	var priorityTokens []string
-	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
-		defaultPools, err = database.DBGetDefaultPool(true)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		err = cacheStore(defaultPoolsKey, defaultPools)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-	}
-	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
-		priorityTokens, err = database.DBGetTokenPriority()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		err = cacheStore(tokenPriorityKey, priorityTokens)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-	}
-
-	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(req.PoolIDs)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-
-	var result []PdexV3PoolDetail
-	for _, v := range list {
-		tk1Amount, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
-		tk2Amount, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
-		if tk1Amount == 0 || tk2Amount == 0 {
-			continue
-		}
-		dcrate, _, _, err := getPdecimalRate(v.TokenID1, v.TokenID2)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		token1ID := v.TokenID1
-		token2ID := v.TokenID2
-		tk1VA, _ := strconv.ParseUint(v.Virtual1Amount, 10, 64)
-		tk2VA, _ := strconv.ParseUint(v.Virtual2Amount, 10, 64)
-		totalShare, _ := strconv.ParseUint(v.TotalShare, 10, 64)
-
-		willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
-		if willSwap {
-			token1ID = v.TokenID2
-			token2ID = v.TokenID1
-			tk1VA, _ = strconv.ParseUint(v.Virtual2Amount, 10, 64)
-			tk2VA, _ = strconv.ParseUint(v.Virtual1Amount, 10, 64)
-			tk1Amount, _ = strconv.ParseUint(v.Token2Amount, 10, 64)
-			tk2Amount, _ = strconv.ParseUint(v.Token1Amount, 10, 64)
-			dcrate, _, _, err = getPdecimalRate(v.TokenID2, v.TokenID1)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}
-
-		data := PdexV3PoolDetail{
-			PoolID:         v.PoolID,
-			Token1ID:       token1ID,
-			Token2ID:       token2ID,
-			Token1Value:    tk1Amount,
-			Token2Value:    tk2Amount,
-			Virtual1Value:  tk1VA,
-			Virtual2Value:  tk2VA,
-			PriceChange24h: 0,
-			Volume:         0,
-			AMP:            v.AMP,
-			Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
-			TotalShare:     totalShare,
-		}
-
-		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
-			data.PriceChange24h = poolChange.RateChangePercentage
-			data.Volume = poolChange.TradingVolume24h
-		}
-
-		apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		if apy != nil {
-			data.APY = uint64(apy.APY2)
-		}
-		if _, found := defaultPools[v.PoolID]; found {
-			data.IsVerify = true
-		}
-		result = append(result, data)
-	}
+	result := getCustomPoolList(req.PoolIDs)
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
