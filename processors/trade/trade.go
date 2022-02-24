@@ -37,7 +37,7 @@ func StartProcessor() {
 	for {
 		time.Sleep(5 * time.Second)
 		startTime := time.Now()
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 5000)
+		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 10000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -98,8 +98,9 @@ func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 		}
 	}
 	filter := bson.M{
-		"_id":      bson.M{operator.Gt: obID},
-		"metatype": bson.M{operator.In: metas},
+		"_id":       bson.M{operator.Gt: obID},
+		"metatype":  bson.M{operator.In: metas},
+		"txversion": bson.M{operator.Eq: 2},
 	}
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(context.Background(), &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"_id", 1}},
