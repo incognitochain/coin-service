@@ -18,53 +18,11 @@ func StartAssistant() {
 	if err != nil {
 		panic(err)
 	}
+	go calcInternalTokenPrice()
+	go getExternalTokenInfo()
 	for {
-		tokensPrice, err := getBridgeTokenExternalPrice()
-		if err != nil {
-			panic(err)
-		}
-
-		tokensMkCap, err := getExternalTokenMarketCap()
-		if err != nil {
-			panic(err)
-		}
-
-		pairRanks, err := getPairRanking()
-		if err != nil {
-			panic(err)
-		}
-
+		startTime := time.Now()
 		extraTokenInfo, err := getExtraTokenInfo()
-		if err != nil {
-			panic(err)
-		}
-
-		customTokenInfo, err := getCustomTokenInfo()
-		if err != nil {
-			panic(err)
-		}
-
-		tokenInfoUpdate, err := getInternalTokenPrice()
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBSavePairRanking(pairRanks)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBSaveTokenMkCap(tokensMkCap)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBSaveTokenPrice(tokensPrice)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBSaveCustomTokenInfo(customTokenInfo)
 		if err != nil {
 			panic(err)
 		}
@@ -74,10 +32,16 @@ func StartAssistant() {
 			panic(err)
 		}
 
-		err = database.DBUpdateTokenInfoPrice(tokenInfoUpdate)
+		customTokenInfo, err := getCustomTokenInfo()
 		if err != nil {
 			panic(err)
 		}
+
+		err = database.DBSaveCustomTokenInfo(customTokenInfo)
+		if err != nil {
+			panic(err)
+		}
+
 		if time.Since(scanQualifyPools) >= scanQualifyPoolsInterval {
 			log.Println("checkPoolQualify")
 			qualifyPools, err := checkPoolQualify(extraTokenInfo, customTokenInfo)
@@ -91,7 +55,54 @@ func StartAssistant() {
 			scanQualifyPools = time.Now()
 			log.Println("done checkPoolQualify")
 		}
+		log.Println("finish update info", time.Since(startTime))
+		time.Sleep(updateInterval)
+	}
+}
 
+func calcInternalTokenPrice() {
+	for {
+		tokenInfoUpdate, err := getInternalTokenPrice()
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBUpdateTokenInfoPrice(tokenInfoUpdate)
+		if err != nil {
+			panic(err)
+		}
+		time.Sleep(updateInterval)
+	}
+}
+
+func getExternalTokenInfo() {
+	for {
+		tokensExternalPrice, err := getBridgeTokenExternalPrice()
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBSaveTokenPrice(tokensExternalPrice)
+		if err != nil {
+			panic(err)
+		}
+
+		tokensMkCap, err := getExternalTokenMarketCap()
+		if err != nil {
+			panic(err)
+		}
+		err = database.DBSaveTokenMkCap(tokensMkCap)
+		if err != nil {
+			panic(err)
+		}
+		pairRanks, err := getPairRanking()
+		if err != nil {
+			panic(err)
+		}
+		err = database.DBSavePairRanking(pairRanks)
+		if err != nil {
+			panic(err)
+		}
 		time.Sleep(updateInterval)
 	}
 }
