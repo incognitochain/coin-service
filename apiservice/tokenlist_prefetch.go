@@ -54,6 +54,7 @@ func getCustomTokenList(tokenList []string) []TokenInfo {
 
 	return newList
 }
+
 func tokenListWatcher() {
 	tokenMap = make(map[string]int)
 	for {
@@ -318,7 +319,6 @@ func retrieveTokenList() {
 
 	estokenList = []TokenInfo{}
 	for _, v := range datalist {
-
 		if v.Verified {
 			estokenList = append(estokenList, v)
 		} else {

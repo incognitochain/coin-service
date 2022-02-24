@@ -3,6 +3,7 @@ package apiservice
 import (
 	"log"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,23 +14,53 @@ import (
 
 var allPoolList []PdexV3PoolDetail
 var verifyPoolList []PdexV3PoolDetail
+var poolMap map[string]int
 var poolListLock sync.RWMutex
 
-func getPoolList(isAll bool) []PdexV3PoolDetail {
+func getPoolList(verifyOnly bool) []PdexV3PoolDetail {
 	poolListLock.RLock()
 	defer poolListLock.RUnlock()
 	newList := []PdexV3PoolDetail{}
-	if isAll {
-		newList = append(newList, allPoolList...)
-	} else {
+	if verifyOnly {
 		newList = append(newList, verifyPoolList...)
+	} else {
+		newList = append(newList, allPoolList...)
+	}
+	return newList
+}
+
+func getPoolListByPairID(pairID string, verifyOnly bool) []PdexV3PoolDetail {
+	poolListLock.RLock()
+	defer poolListLock.RUnlock()
+	newList := []PdexV3PoolDetail{}
+	for _, v := range allPoolList {
+		if strings.Contains(pairID, v.Token1ID) && strings.Contains(pairID, v.Token2ID) {
+			if verifyOnly && !v.IsVerify {
+				continue
+			}
+			newList = append(newList, v)
+		}
+	}
+	return newList
+}
+
+func getCustomPoolList(poolList []string) []PdexV3PoolDetail {
+	poolListLock.RLock()
+	defer poolListLock.RUnlock()
+	newList := []PdexV3PoolDetail{}
+	for _, v := range poolList {
+		pIdx, ok := poolMap[v]
+		if ok {
+			newList = append(newList, allPoolList[pIdx])
+		}
 	}
 	return newList
 }
 
 func poolListWatcher() {
+	poolMap = make(map[string]int)
 	for {
-		go retrievePoolList()
+		retrievePoolList()
 		time.Sleep(15 * time.Second)
 	}
 }
@@ -116,17 +147,6 @@ func retrievePoolList() {
 				IsVerify:       isVerify,
 			}
 
-			poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h([]string{d.PoolID})
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			if poolChange, found := poolLiquidityChanges[d.PoolID]; found {
-				data.PriceChange24h = poolChange.RateChangePercentage
-				data.Volume = poolChange.TradingVolume24h
-			}
-
 			apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
 			if err != nil {
 				log.Println(err)
@@ -139,16 +159,37 @@ func retrievePoolList() {
 	}
 	wg.Wait()
 	close(resultCh)
+	poolVolumeToCheck := []string{}
+	mapPool := make(map[string]PdexV3PoolDetail)
 	for v := range resultCh {
-		result = append(result, v)
+		mapPool[v.PoolID] = v
+		poolVolumeToCheck = append(poolVolumeToCheck, v.PoolID)
 	}
+
+	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(poolVolumeToCheck)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	for poolID, pool := range mapPool {
+		if d, ok := poolLiquidityChanges[poolID]; ok {
+			pool.PriceChange24h = d.RateChangePercentage
+			pool.Volume = d.TradingVolume24h
+		}
+		result = append(result, pool)
+	}
+
 	poolListLock.Lock()
 	defer poolListLock.Unlock()
+	poolMap = make(map[string]int)
 	allPoolList = result
 	verifyPoolList = []PdexV3PoolDetail{}
 	for _, v := range result {
 		if v.IsVerify {
 			verifyPoolList = append(verifyPoolList, v)
 		}
+	}
+	for idx, v := range allPoolList {
+		poolMap[v.PoolID] = idx
 	}
 }
