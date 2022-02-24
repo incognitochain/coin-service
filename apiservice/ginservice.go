@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -117,6 +118,7 @@ func StartGinService() {
 		pdexv3Group.POST("/rate", pdexv3{}.GetRate)
 		pdexv3Group.GET("/getpdestate", pdexv3{}.PDEState)
 		pdexv3Group.POST("/pendinglimit", pdexv3{}.PendingLimit)
+		pdexv3Group.POST("/listmarkets", pdexv3{}.ListMarkets)
 
 		//external dependency
 		pdexv3Group.GET("/estimatetrade", pdexv3{}.EstimateTrade)
@@ -152,11 +154,6 @@ func APIHealthCheck(c *gin.Context) {
 	mongoStatus := shared.MONGO_STATUS_OK
 	shardsHeight := make(map[int]string)
 	if shared.ServiceCfg.Mode == shared.CHAINSYNCMODE {
-		now := time.Now().Unix()
-		blockTime := chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetProposeTime()
-		if (now - blockTime) >= (5 * time.Minute).Nanoseconds() {
-			status = shared.HEALTH_STATUS_NOK
-		}
 		statePrefix := chainsynker.BeaconData
 		v, err := chainsynker.Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 		if err != nil {
@@ -166,10 +163,17 @@ func APIHealthCheck(c *gin.Context) {
 		if err != nil {
 			beaconHeight = 0
 		}
-		shardsHeight[-1] = fmt.Sprintf("%v|%v", beaconHeight, chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
+		chainHeight := chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestViewHeight()
+		if chainHeight-uint64(beaconHeight) > 5 {
+			status = shared.HEALTH_STATUS_NOK
+		}
+		shardsHeight[-1] = fmt.Sprintf("%v|%v|%v|%v", beaconHeight, chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight(), chainHeight-uint64(beaconHeight), shared.ServiceCfg.FullnodeData)
 		for i := 0; i < chainsynker.Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 			chainheight := chainsynker.Localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
 			height, _ := chainsynker.Localnode.GetShardState(i)
+			if shared.ServiceCfg.FullnodeData {
+				height = chainsynker.Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetHeight()
+			}
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
 			v, err := chainsynker.Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 			if err != nil {
@@ -179,10 +183,10 @@ func APIHealthCheck(c *gin.Context) {
 			if err != nil {
 				coinHeight = 0
 			}
-			if chainheight-height > 5 || height-uint64(coinHeight) > 5 {
+			if math.Abs(float64(height-chainheight)) > 5 || math.Abs(float64(height-uint64(coinHeight))) > 5 {
 				status = shared.HEALTH_STATUS_NOK
 			}
-			shardsHeight[i] = fmt.Sprintf("%v|%v|%v", coinHeight, height, chainheight)
+			shardsHeight[i] = fmt.Sprintf("%v|%v|%v|%v", coinHeight, height, chainheight, math.Abs(float64(height-chainheight)))
 		}
 	}
 	_, cd, _, _ := mgm.DefaultConfigs()
