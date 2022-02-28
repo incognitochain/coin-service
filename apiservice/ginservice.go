@@ -33,6 +33,8 @@ func StartGinService() {
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
+		go tokenListWatcher()
+		go poolListWatcher()
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
@@ -61,6 +63,7 @@ func StartGinService() {
 		// New API format
 		//coins
 		coinsGroup := r.Group("/coins")
+		coinsGroup.GET("/defaulttokens", APIGetDefaultTokens)
 		coinsGroup.GET("/tokenlist", APIGetTokenList)
 		coinsGroup.POST("/tokeninfo", APIGetTokenInfo)
 		coinsGroup.GET("/getcoinspending", APIGetCoinsPending)
@@ -97,11 +100,11 @@ func StartGinService() {
 		pdexv1Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
 		pdexv3Group := pdex.Group("/v3")
+		pdexv3Group.GET("/markettokens", pdexv3{}.ListMarkets)
 		pdexv3Group.GET("/listpairs", pdexv3{}.ListPairs)
 		pdexv3Group.GET("/tradestatus", pdexv3{}.TradeStatus)
 		pdexv3Group.GET("/listpools", pdexv3{}.ListPools)
 		pdexv3Group.GET("/poolshare", pdexv3{}.PoolShare)
-
 		pdexv3Group.POST("/poolsdetail", pdexv3{}.PoolsDetail)
 		pdexv3Group.POST("/pairsdetail", pdexv3{}.PairsDetail)
 		pdexv3Group.GET("/tradehistory", pdexv3{}.TradeHistory)
@@ -118,7 +121,6 @@ func StartGinService() {
 		pdexv3Group.POST("/rate", pdexv3{}.GetRate)
 		pdexv3Group.GET("/getpdestate", pdexv3{}.PDEState)
 		pdexv3Group.POST("/pendinglimit", pdexv3{}.PendingLimit)
-		pdexv3Group.POST("/listmarkets", pdexv3{}.ListMarkets)
 
 		//external dependency
 		pdexv3Group.GET("/estimatetrade", pdexv3{}.EstimateTrade)

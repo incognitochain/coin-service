@@ -244,3 +244,21 @@ func DBGetBasePriceToken() (string, error) {
 	}
 	return datas[0].Data, nil
 }
+
+func DBGetDefaultTokens() ([]string, error) {
+	var datas []shared.ClientAssistantData
+	var list []string
+	filter := bson.M{"dataname": bson.M{operator.Eq: "defaulttokens"}}
+	err := mgm.Coll(&shared.ClientAssistantData{}).SimpleFind(&datas, filter)
+	if err != nil {
+		return nil, err
+	}
+	if len(datas) == 0 {
+		return nil, nil
+	}
+	err = json.Unmarshal([]byte(datas[0].Data), &list)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}

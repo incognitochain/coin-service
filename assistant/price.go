@@ -77,6 +77,12 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 		if err != nil {
 			return nil, err
 		}
+		if d == nil {
+			continue
+		}
+		if !d.Verified {
+			continue
+		}
 		price := float64(0)
 		tkname := v.Name
 		tkSymbol := v.Symbol
@@ -87,12 +93,13 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 			}
 			tkname = d.Name
 			tkSymbol = d.Symbol
-		} else {
-			price, err = getExternalPrice(v.Symbol)
-			if err != nil {
-				return nil, err
-			}
 		}
+		//  else {
+		// 	price, err = getExternalPrice(v.Symbol)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// }
 		if price == 0 {
 			fmt.Printf("price for token %v is 0\n", v.TokenID)
 			continue
@@ -208,38 +215,38 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 		return nil, err
 	}
 	prvPrice := getPRVPrice(defaultPools, baseToken)
+	data, err := database.DBGetPDEState(2)
+	if err != nil {
+		return nil, err
+	}
+	pdeState := jsonresult.Pdexv3State{}
+	err = json.UnmarshalFromString(data, &pdeState)
+	if err != nil {
+		return nil, err
+	}
+	poolPairStates := *pdeState.PoolPairs
+	var pools []*shared.Pdexv3PoolPairWithId
+	for poolId, element := range poolPairStates {
+
+		var poolPair rawdbv2.Pdexv3PoolPair
+		var poolPairWithId shared.Pdexv3PoolPairWithId
+
+		poolPair = element.State()
+		poolPairWithId = shared.Pdexv3PoolPairWithId{
+			poolPair,
+			shared.Pdexv3PoolPairChild{
+				PoolID: poolId},
+		}
+
+		pools = append(pools, &poolPairWithId)
+	}
 	for _, v := range tokenList {
 		if v.TokenID != baseToken {
-			data, err := database.DBGetPDEState(2)
-			if err != nil {
-				return nil, err
-			}
-			pdeState := jsonresult.Pdexv3State{}
-			err = json.UnmarshalFromString(data, &pdeState)
-			if err != nil {
-				return nil, err
-			}
-			poolPairStates := *pdeState.PoolPairs
-			var pools []*shared.Pdexv3PoolPairWithId
-			for poolId, element := range poolPairStates {
-
-				var poolPair rawdbv2.Pdexv3PoolPair
-				var poolPairWithId shared.Pdexv3PoolPairWithId
-
-				poolPair = element.State()
-				poolPairWithId = shared.Pdexv3PoolPairWithId{
-					poolPair,
-					shared.Pdexv3PoolPairChild{
-						PoolID: poolId},
-				}
-
-				pools = append(pools, &poolPairWithId)
-			}
 			var rate float64
 			dcrate, _, _, err := getPdecimalRate(v.TokenID, baseToken)
 			if err != nil {
 				log.Println("getPdecimalRate", err)
-				// continue
+				continue
 			}
 			poolAmountTk := uint64(0)
 			poolAmountTkBase := uint64(0)
@@ -293,11 +300,10 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						tokenPools = append(tokenPools, p)
 					}
 				}
-
 				dcrate, _, _, err := getPdecimalRate(v.TokenID, common.PRVCoinID.String())
 				if err != nil {
 					log.Println("getPdecimalRate", err)
-					// continue
+					continue
 				}
 
 				for _, poolID := range tokenPools {
@@ -342,27 +348,6 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						break
 					}
 				}
-
-				//all pools
-				if rate == 0 {
-					// for _, tk := range extraTokenInfo {
-					// 	if tk.TokenID == v.TokenID {
-					// 		rate = tk.PriceUsd
-					// 	}
-					// }
-					// if rate == 0 {
-					// 	_, re1 := pathfinder.FindGoodTradePath(
-					// 		pdexv3Meta.MaxTradePathLength,
-					// 		pools,
-					// 		poolPairStates,
-					// 		baseToken,
-					// 		v.TokenID,
-					// 		uint64(math.Pow10(tkbDecimal+1)))
-					// 	if re1 > 0 {
-					// 		rate, _, _ = getRateMinimum(v.TokenID, baseToken, re1, pools, poolPairStates)
-					// 	}
-					// }
-				}
 			}
 			v.CurrentPrice = strconv.FormatFloat(rate, 'f', -1, 64)
 		} else {
@@ -381,7 +366,6 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 			v.UpdatedAt = time.Now().UTC()
 		}
 		result = append(result, v)
-
 	}
 	return result, nil
 }
@@ -495,7 +479,6 @@ func getPdecimalRate(tokenID1, tokenID2 string) (float64, int, int, error) {
 		tk2Decimal = int(tk2.PDecimals)
 	}
 	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
-	fmt.Println("getPdecimalRate", result)
 	return result, tk1Decimal, tk2Decimal, nil
 }
 

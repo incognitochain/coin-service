@@ -329,4 +329,5 @@ type ContributionDataV1 struct {
 }
 type APITokenInfoRequest struct {
 	TokenIDs []string
+	Nocache  bool
 }
