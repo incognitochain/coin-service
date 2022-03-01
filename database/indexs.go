@@ -301,6 +301,9 @@ func DBCreateLiquidityIndex() error {
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
 		},
 		{
+			Keys: bsonx.Doc{{Key: "currentaccess", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
+		},
+		{
 			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetExpireAfterSeconds(60 * 10),
 		},
@@ -459,6 +462,9 @@ func DBCreateTradeIndex() error {
 		},
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "currentaccess", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},

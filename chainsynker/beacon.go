@@ -358,7 +358,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	blockProcessedLock.Lock()
 	blockProcessed[-1] = blk.Header.Height
 	blockProcessedLock.Unlock()
-	delete(preloadedBeaconState, h.String())
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
@@ -450,16 +449,15 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 
 			for _, order := range state.Orderbook.Orders {
 				newOrder := shared.LimitOrderStatus{
-					RequestTx:     order.Id(),
-					Token1Balance: fmt.Sprintf("%v", order.Token0Balance()),
-					Token2Balance: fmt.Sprintf("%v", order.Token1Balance()),
-					Direction:     order.TradeDirection(),
-					PoolID:        poolID,
-					PairID:        poolData.PairID,
+					RequestTx:       order.Id(),
+					Token1Balance:   fmt.Sprintf("%v", order.Token0Balance()),
+					Token2Balance:   fmt.Sprintf("%v", order.Token1Balance()),
+					Direction:       order.TradeDirection(),
+					PoolID:          poolID,
+					PairID:          poolData.PairID,
+					CurrentAccessID: hex.EncodeToString(order.AccessOTA()),
 				}
-				if order.NftID().IsZeroValue() {
-					newOrder.NftID = hex.EncodeToString(order.AccessOTA())
-				} else {
+				if !order.NftID().IsZeroValue() {
 					newOrder.NftID = order.NftID().String()
 				}
 				orderStatus = append(orderStatus, newOrder)
