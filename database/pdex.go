@@ -1607,3 +1607,48 @@ func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, er
 	}
 	return list, nil
 }
+
+func DBGetPendingLimitOrderByAccessOTA(accessOTAs []string) (map[string]shared.TradeOrderData, error) {
+	var orders []shared.LimitOrderStatus
+	filter := bson.M{"currentaccess": bson.M{operator.In: accessOTAs}}
+	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&orders, filter)
+	if err != nil {
+		return nil, err
+	}
+	var requestTxs []string
+	if len(orders) == 0 {
+		return nil, nil
+	}
+	accessOTAMap := make(map[string]string)
+	for _, v := range orders {
+		requestTxs = append(requestTxs, v.RequestTx)
+		accessOTAMap[v.RequestTx] = v.CurrentAccessID
+	}
+
+	result := make(map[string]shared.TradeOrderData)
+	list := []shared.TradeOrderData{}
+	filter = bson.M{"requesttx": bson.M{operator.In: requestTxs}}
+	err = mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&list, filter)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range list {
+		if accessOTA, ok := accessOTAMap[v.RequestTx]; ok {
+			result[accessOTA] = v
+		}
+	}
+	return result, nil
+}
+func DBGetSharByAccessOTA(accessOTAs []string) (map[string]shared.PoolShareData, error) {
+	var list []shared.PoolShareData
+	result := make(map[string]shared.PoolShareData)
+	filter := bson.M{"currentaccess": bson.M{operator.In: accessOTAs}}
+	err := mgm.Coll(&shared.PoolShareData{}).SimpleFind(&list, filter)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range list {
+		result[v.CurrentAccessID] = v
+	}
+	return result, nil
+}

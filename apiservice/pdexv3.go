@@ -2103,3 +2103,37 @@ func (pdexv3) ListMarkets(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, respond)
 }
+
+func (pdexv3) GetAccessOTAData(c *gin.Context) {
+	var req struct {
+		ID   []string
+		Only string
+	}
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	orders, err := database.DBGetPendingLimitOrderByAccessOTA(req.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	shares, err := database.DBGetSharByAccessOTA(req.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	result := InUseAccessOTAData{
+		Orders: orders,
+		Shares: shares,
+	}
+	respond := APIRespond{
+		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}

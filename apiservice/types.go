@@ -330,3 +330,8 @@ type ContributionDataV1 struct {
 type APITokenInfoRequest struct {
 	TokenIDs []string
 }
+
+type InUseAccessOTAData struct {
+	Orders map[string]shared.TradeOrderData
+	Shares map[string]shared.PoolShareData
+}

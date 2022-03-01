@@ -103,6 +103,7 @@ func StartGinService() {
 		pdexv3Group.GET("/tradestatus", pdexv3{}.TradeStatus)
 		pdexv3Group.GET("/listpools", pdexv3{}.ListPools)
 		pdexv3Group.GET("/poolshare", pdexv3{}.PoolShare)
+		pdexv3Group.POST("/accessotadata", pdexv3{}.GetAccessOTAData)
 
 		pdexv3Group.POST("/poolsdetail", pdexv3{}.PoolsDetail)
 		pdexv3Group.POST("/pairsdetail", pdexv3{}.PairsDetail)
