@@ -65,88 +65,90 @@ func main() {
        random()*100 AS temperature,
        random() AS cpu
        `
-	//Execute query to generate samples for sensor_data hypertable
-	rows, err := dbpool.Query(ctx, queryDataGeneration)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to generate sensor data: %v\n", err)
-		os.Exit(1)
-	}
-	defer rows.Close()
-	fmt.Println("Successfully generated sensor data")
-
-	//Store data generated in slice results
-	type result struct {
-		Time        time.Time
-		SensorId    int
-		Temperature float64
-		CPU         float64
-	}
-	var results []result
-	for rows.Next() {
-		var r result
-		err = rows.Scan(&r.Time, &r.SensorId, &r.Temperature, &r.CPU)
+	for i := 0; i < 10000; i++ {
+		//Execute query to generate samples for sensor_data hypertable
+		rows, err := dbpool.Query(ctx, queryDataGeneration)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to scan %v\n", err)
+			fmt.Fprintf(os.Stderr, "Unable to generate sensor data: %v\n", err)
 			os.Exit(1)
 		}
-		results = append(results, r)
-	}
-	// Any errors encountered by rows.Next or rows.Scan are returned here
-	if rows.Err() != nil {
-		fmt.Fprintf(os.Stderr, "rows Error: %v\n", rows.Err())
-		os.Exit(1)
-	}
+		defer rows.Close()
+		fmt.Println("Successfully generated sensor data")
 
-	// Check contents of results slice
-	fmt.Println("Contents of RESULTS slice")
-	for i := range results {
-		r := results[i]
-		fmt.Printf("Time: %s | ID: %d | Temperature: %f | CPU: %f |\n", &r.Time, r.SensorId, r.Temperature, r.CPU)
-	}
-	//Insert contents of results slice into TimescaleDB
-	//SQL query to generate sample data
-	queryInsertTimeseriesData := `
+		//Store data generated in slice results
+		type result struct {
+			Time        time.Time
+			SensorId    int
+			Temperature float64
+			CPU         float64
+		}
+		var results []result
+		for rows.Next() {
+			var r result
+			err = rows.Scan(&r.Time, &r.SensorId, &r.Temperature, &r.CPU)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to scan %v\n", err)
+				os.Exit(1)
+			}
+			results = append(results, r)
+		}
+		// Any errors encountered by rows.Next or rows.Scan are returned here
+		if rows.Err() != nil {
+			fmt.Fprintf(os.Stderr, "rows Error: %v\n", rows.Err())
+			os.Exit(1)
+		}
+
+		// Check contents of results slice
+		fmt.Println("Contents of RESULTS slice")
+		for i := range results {
+			r := results[i]
+			fmt.Printf("Time: %s | ID: %d | Temperature: %f | CPU: %f |\n", &r.Time, r.SensorId, r.Temperature, r.CPU)
+		}
+		//Insert contents of results slice into TimescaleDB
+		//SQL query to generate sample data
+		queryInsertTimeseriesData := `
    INSERT INTO sensor_data (time, sensor_id, temperature, cpu) VALUES ($1, $2, $3, $4);
    `
-	/********************************************/
-	/* Batch Insert into TimescaleDB            */
-	/********************************************/
-	//create batch
-	batch := &pgx.Batch{}
-	numInserts := len(results)
-	//load insert statements into batch queue
-	for i := range results {
-		r := results[i]
-		batch.Queue(queryInsertTimeseriesData, r.Time, r.SensorId, r.Temperature, r.CPU)
-	}
-	batch.Queue("select count(*) from sensor_data")
+		/********************************************/
+		/* Batch Insert into TimescaleDB            */
+		/********************************************/
+		//create batch
+		batch := &pgx.Batch{}
+		numInserts := len(results)
+		//load insert statements into batch queue
+		for i := range results {
+			r := results[i]
+			batch.Queue(queryInsertTimeseriesData, r.Time, r.SensorId, r.Temperature, r.CPU)
+		}
+		batch.Queue("select count(*) from sensor_data")
 
-	//send batch to connection pool
-	br := dbpool.SendBatch(ctx, batch)
-	//execute statements in batch queue
-	_, err = br.Exec()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to execute statement in batch queue %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Println("Successfully batch inserted data", numInserts)
+		//send batch to connection pool
+		br := dbpool.SendBatch(ctx, batch)
+		//execute statements in batch queue
+		_, err = br.Exec()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to execute statement in batch queue %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Successfully batch inserted data", numInserts)
 
-	//Compare length of results slice to size of table
-	fmt.Printf("size of results: %d\n", len(results))
-	//check size of table for number of rows inserted
-	// result of last SELECT statement
-	// var rowsInserted int
-	// err = br.QueryRow().Scan(&rowsInserted)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Unable to closer batch %v\n", err)
-	// 	os.Exit(1)
-	// }
-	// fmt.Printf("size of table: %d\n", rowsInserted)
+		//Compare length of results slice to size of table
+		fmt.Printf("size of results: %d\n", len(results))
+		//check size of table for number of rows inserted
+		// result of last SELECT statement
+		// var rowsInserted int
+		// err = br.QueryRow().Scan(&rowsInserted)
+		// if err != nil {
+		// 	fmt.Fprintf(os.Stderr, "Unable to closer batch %v\n", err)
+		// 	os.Exit(1)
+		// }
+		// fmt.Printf("size of table: %d\n", rowsInserted)
 
-	err = br.Close()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to closer batch %v\n", err)
-		os.Exit(1)
+		err = br.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to closer batch %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	/********************************************/
@@ -165,7 +167,7 @@ func main() {
        `
 
 	//Execute query on TimescaleDB
-	rows, err = dbpool.Query(ctx, queryTimebucketFiveMin, "ceiling", "a")
+	rows, err := dbpool.Query(ctx, queryTimebucketFiveMin, "ceiling", "a")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to execute query %v\n", err)
 		os.Exit(1)
@@ -199,3 +201,5 @@ func main() {
 	}
 
 }
+
+// select time_bucket('1h', time) AS oneHour, first(temperature,time) starttemp, last(temperature,time) lasttemp,avg(temperature) as Average,max(temperature) as maxtemp,min(temperature) as mintemp from sensor_data GROUP BY time_bucket('1h', time)
