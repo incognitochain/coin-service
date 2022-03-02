@@ -3,6 +3,7 @@ package trade
 import (
 	"context"
 
+	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
@@ -36,4 +37,24 @@ func getTxToProcess(metas []string, lastID string, limit int64) ([]shared.TxData
 		return nil, err
 	}
 	return result, nil
+}
+
+func updateState(state *State, statename string) error {
+	result, err := json.Marshal(state)
+	if err != nil {
+		panic(err)
+	}
+	return database.DBUpdateProcessorState(statename, string(result))
+}
+
+func loadState(state *State, statename string) error {
+	result, err := database.DBGetProcessorState(statename)
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		state = &State{}
+		return nil
+	}
+	return json.UnmarshalFromString(result.State, state)
 }

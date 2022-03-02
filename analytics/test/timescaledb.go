@@ -25,45 +25,32 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	//run a simple query to check our connection
-	var greeting string
-	err = dbpool.QueryRow(ctx, "select 'Hello, Timescale!'").Scan(&greeting)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "QueryRow failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println(greeting)
-
-	queryCreateHypertable := `CREATE TABLE IF NOT EXISTS sensor_data (
+	queryCreateHypertable := `CREATE TABLE IF NOT EXISTS trade_data (
 		time TIMESTAMPTZ NOT NULL,
-		sensor_id INTEGER,
-		temperature DOUBLE PRECISION,
-		cpu DOUBLE PRECISION,
-		FOREIGN KEY (sensor_id) REFERENCES sensors (id)
+		trade_id INTEGER,
+		price DOUBLE PRECISION
 		);
-		SELECT create_hypertable('sensor_data', 'time');
+		SELECT create_hypertable('trade_data', 'time');
 		`
 
 	//execute statement
 	_, err = dbpool.Exec(ctx, queryCreateHypertable)
 	if err != nil {
 		if !strings.Contains(err.Error(), "is already a hypertable") {
-			fmt.Fprintf(os.Stderr, "Unable to create SENSOR_DATA hypertable: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Unable to create trade_data hypertable: %v\n", err)
 			os.Exit(1)
 		}
 	}
 
-	fmt.Println("Successfully created hypertable SENSOR_DATA")
+	fmt.Println("Successfully created hypertable trade_data")
 
 	// Generate data to insert
 
 	//SQL query to generate sample data
 	queryDataGeneration := `
        SELECT generate_series(now() - interval '24 hour', now(), interval '7 minute') AS time,
-       floor(random() * (3) + 1)::int as sensor_id,
-       random()*100 AS temperature,
-       random() AS cpu
+       floor(random() * (3) + 1)::int as trade_id,
+       random()*100 AS price
        `
 	for i := 0; i < 10000; i++ {
 		//Execute query to generate samples for sensor_data hypertable
@@ -73,19 +60,18 @@ func main() {
 			os.Exit(1)
 		}
 		defer rows.Close()
-		fmt.Println("Successfully generated sensor data")
+		fmt.Println("Successfully generated trade data")
 
 		//Store data generated in slice results
 		type result struct {
-			Time        time.Time
-			SensorId    int
-			Temperature float64
-			CPU         float64
+			Time    time.Time
+			TradeId int
+			Price   float64
 		}
 		var results []result
 		for rows.Next() {
 			var r result
-			err = rows.Scan(&r.Time, &r.SensorId, &r.Temperature, &r.CPU)
+			err = rows.Scan(&r.Time, &r.TradeId, &r.Price)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Unable to scan %v\n", err)
 				os.Exit(1)
@@ -102,12 +88,12 @@ func main() {
 		fmt.Println("Contents of RESULTS slice")
 		for i := range results {
 			r := results[i]
-			fmt.Printf("Time: %s | ID: %d | Temperature: %f | CPU: %f |\n", &r.Time, r.SensorId, r.Temperature, r.CPU)
+			fmt.Printf("Time: %s | ID: %d | Price: %f |\n", &r.Time, r.TradeId, r.Price)
 		}
 		//Insert contents of results slice into TimescaleDB
 		//SQL query to generate sample data
 		queryInsertTimeseriesData := `
-   INSERT INTO sensor_data (time, sensor_id, temperature, cpu) VALUES ($1, $2, $3, $4);
+   INSERT INTO trade_data (time, trade_id, price) VALUES ($1, $2, $3);
    `
 		/********************************************/
 		/* Batch Insert into TimescaleDB            */
@@ -118,9 +104,9 @@ func main() {
 		//load insert statements into batch queue
 		for i := range results {
 			r := results[i]
-			batch.Queue(queryInsertTimeseriesData, r.Time, r.SensorId, r.Temperature, r.CPU)
+			batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Price)
 		}
-		batch.Queue("select count(*) from sensor_data")
+		batch.Queue("select count(*) from trade_data")
 
 		//send batch to connection pool
 		br := dbpool.SendBatch(ctx, batch)
@@ -150,56 +136,101 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	queryCreateView15m := `CREATE MATERIALIZED VIEW trade_view_15m WITH (timescaledb.continuous) AS select time_bucket('15 minutes', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set" from trade_data GROUP BY period WITH NO DATA`
 
-	/********************************************/
-	/* Execute a query                          */
-	/********************************************/
+	queryCreateView30m := `CREATE MATERIALIZED VIEW trade_view_30m WITH (timescaledb.continuous) AS select time_bucket('30 minutes', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set" from trade_data GROUP BY period WITH NO DATA`
 
-	// Formulate query in SQL
-	// Note the use of prepared statement placeholders $1 and $2
-	queryTimebucketFiveMin := `
-       SELECT time_bucket('10 minutes', time) AS five_min, avg(cpu)
-       FROM sensor_data
-       JOIN sensors ON sensors.id = sensor_data.sensor_id
-       WHERE sensors.location = $1 AND sensors.type = $2
-       GROUP BY five_min
-       ORDER BY five_min DESC;
-       `
+	queryCreateView1H := `CREATE MATERIALIZED VIEW trade_view_1H WITH (timescaledb.continuous) AS select time_bucket('1h', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set" from trade_data GROUP BY period WITH NO DATA`
 
-	//Execute query on TimescaleDB
-	rows, err := dbpool.Query(ctx, queryTimebucketFiveMin, "ceiling", "a")
+	queryCreateView4H := `CREATE MATERIALIZED VIEW trade_view_4H WITH (timescaledb.continuous) AS select time_bucket('4h', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set" from trade_data GROUP BY period WITH NO DATA`
+
+	queryCreateView1D := `CREATE MATERIALIZED VIEW trade_view_1D WITH (timescaledb.continuous) AS select time_bucket('1 days', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set" from trade_data GROUP BY period WITH NO DATA`
+
+	queryCreateView1W := `CREATE MATERIALIZED VIEW trade_view_1W WITH (timescaledb.continuous) AS select time_bucket('1 weeks', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set" from trade_data GROUP BY period WITH NO DATA`
+
+	queryContinuousAgg15m := `SELECT add_continuous_aggregate_policy('trade_view_15m',
+	 start_offset => INTERVAL '3 week',
+	 end_offset   => INTERVAL '1 minute',
+	 schedule_interval => INTERVAL '5 minutes');`
+
+	queryContinuousAgg30m := `SELECT add_continuous_aggregate_policy('trade_view_30m',
+	 start_offset => INTERVAL '3 week',
+	 end_offset   => INTERVAL '1 minute',
+	 schedule_interval => INTERVAL '5 minutes');`
+
+	queryContinuousAgg1h := `SELECT add_continuous_aggregate_policy('trade_view_1H',
+	 start_offset => INTERVAL '3 week',
+	 end_offset   => INTERVAL '1 minute',
+	 schedule_interval => INTERVAL '5 minutes');`
+
+	queryContinuousAgg4h := `SELECT add_continuous_aggregate_policy('trade_view_4H',
+	 start_offset => INTERVAL '3 week',
+	 end_offset   => INTERVAL '1 minute',
+	 schedule_interval => INTERVAL '5 minutes');`
+
+	queryContinuousAgg1d := `SELECT add_continuous_aggregate_policy('trade_view_1D',
+	 start_offset => INTERVAL '3 week',
+	 end_offset   => INTERVAL '1 minute',
+	 schedule_interval => INTERVAL '5 minutes');`
+
+	queryContinuousAgg1w := `SELECT add_continuous_aggregate_policy('trade_view_1W',
+	 start_offset => INTERVAL '3 week',
+	 end_offset   => INTERVAL '1 minute',
+	 schedule_interval => INTERVAL '5 minutes');`
+
+	_, err = dbpool.Exec(context.Background(), queryCreateView15m)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to execute query %v\n", err)
-		os.Exit(1)
+		fmt.Println(err)
 	}
-	defer rows.Close()
-	fmt.Println("Successfully executed query")
-
-	//Do something with the results of query
-	// Struct for results
-	type result2 struct {
-		Bucket time.Time
-		Avg    float64
+	_, err = dbpool.Exec(context.Background(), queryCreateView30m)
+	if err != nil {
+		fmt.Println(err)
 	}
-
-	// Print rows returned and fill up results slice for later use
-	var results2 []result2
-	for rows.Next() {
-		var r result2
-		err = rows.Scan(&r.Bucket, &r.Avg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to scan %v\n", err)
-			os.Exit(1)
-		}
-		results2 = append(results2, r)
-		fmt.Printf("Time bucket: %s | Avg: %f\n", &r.Bucket, r.Avg)
+	_, err = dbpool.Exec(context.Background(), queryCreateView1H)
+	if err != nil {
+		fmt.Println(err)
 	}
-	// Any errors encountered by rows.Next or rows.Scan are returned here
-	if rows.Err() != nil {
-		fmt.Fprintf(os.Stderr, "rows Error: %v\n", rows.Err())
-		os.Exit(1)
+	_, err = dbpool.Exec(context.Background(), queryCreateView4H)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = dbpool.Exec(context.Background(), queryCreateView1D)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = dbpool.Exec(context.Background(), queryCreateView1W)
+	if err != nil {
+		fmt.Println(err)
 	}
 
+	_, err = dbpool.Exec(context.Background(), queryContinuousAgg15m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = dbpool.Exec(context.Background(), queryContinuousAgg30m)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = dbpool.Exec(context.Background(), queryContinuousAgg1h)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = dbpool.Exec(context.Background(), queryContinuousAgg4h)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = dbpool.Exec(context.Background(), queryContinuousAgg1d)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = dbpool.Exec(context.Background(), queryContinuousAgg1w)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 // select time_bucket('1h', time) AS oneHour, first(temperature,time) starttemp, last(temperature,time) lasttemp,avg(temperature) as Average,max(temperature) as maxtemp,min(temperature) as mintemp from sensor_data GROUP BY time_bucket('1h', time)
+// SELECT add_continuous_aggregate_policy('temp_view',
+//   start_offset => INTERVAL '1 week',
+//   end_offset   => INTERVAL '1 hour',
+//   schedule_interval => INTERVAL '30 minutes');

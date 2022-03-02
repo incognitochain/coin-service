@@ -17,12 +17,14 @@ import (
 	metadataPdexv3 "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 )
 
+var historyState State
+
 func startProcessHistory() {
 	err := database.DBCreateTradeIndex()
 	if err != nil {
 		panic(err)
 	}
-	err = loadHistoryState()
+	err = loadState(&historyState, "trade")
 	if err != nil {
 		panic(err)
 	}
@@ -32,7 +34,7 @@ func startProcessHistory() {
 
 		metas := []string{strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta), strconv.Itoa(metadata.PDETradeRequestMeta), strconv.Itoa(metadata.Pdexv3TradeRequestMeta), strconv.Itoa(metadata.Pdexv3AddOrderRequestMeta), strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta), strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderRequestMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
 
-		txList, err := getTxToProcess(metas, currentState.LastProcessedObjectID, 10000)
+		txList, err := getTxToProcess(metas, historyState.LastProcessedObjectID, 10000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -63,8 +65,8 @@ func startProcessHistory() {
 
 		fmt.Println("mongo time", time.Since(startTime))
 		if len(txList) != 0 {
-			currentState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
-			err = updateHistoryState()
+			historyState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
+			err = updateState(&historyState, "trade")
 			if err != nil {
 				panic(err)
 			}
@@ -77,26 +79,6 @@ func startProcessHistory() {
 
 		fmt.Println("process time", time.Since(startTime))
 	}
-}
-
-func updateHistoryState() error {
-	result, err := json.Marshal(currentState)
-	if err != nil {
-		panic(err)
-	}
-	return database.DBUpdateProcessorState("trade", string(result))
-}
-
-func loadHistoryState() error {
-	result, err := database.DBGetProcessorState("trade")
-	if err != nil {
-		return err
-	}
-	if result == nil {
-		currentState = State{}
-		return nil
-	}
-	return json.UnmarshalFromString(result.State, &currentState)
 }
 
 func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []shared.TradeOrderData, []shared.TradeOrderData, []shared.TradeOrderData, error) {
