@@ -478,7 +478,6 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 func (pdexv3) ContributeHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
 	otakey := c.Query("otakey")
 	if nftID == "" && otakey == "" {
@@ -493,26 +492,22 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 
 	var err error
 	var list []shared.ContributionData
-	if poolID != "" {
-		//todo
+	if otakey == "" {
+		list, err = database.DBGetPDEV3ContributeRespond([]string{nftID}, int64(limit), int64(offset))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
 	} else {
-		if otakey == "" {
-			list, err = database.DBGetPDEV3ContributeRespond([]string{nftID}, int64(limit), int64(offset))
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-		} else {
-			accessOTAList, err := retrieveAccessOTAList(otakey)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			list, err = database.DBGetPDEV3ContributeRespond(accessOTAList, int64(limit), int64(offset))
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
+		accessIDList, err := retrieveAccessOTAList(otakey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		list, err = database.DBGetPDEV3ContributeRespond(accessIDList, int64(limit), int64(offset))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
 		}
 	}
 	result, err := produceContributeData(list)
@@ -549,9 +544,9 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
-	accessID := c.Query("accessid")
-	if nftID == "" && accessID == "" {
-		errStr := "accessID/nftID can't be empty"
+	otakey := c.Query("otakey")
+	if nftID == "" && otakey == "" {
+		errStr := "otakey/nftid can't be empty"
 		respond := APIRespond{
 			Result: nil,
 			Error:  &errStr,
@@ -559,20 +554,28 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	if accessID == "" {
-		accessID = nftID
-	}
-	var err error
-	var list []shared.WithdrawContributionData
-
-	if poolID != "" {
-		list, err = database.DBGetPDEV3WithdrawRespond(accessID, poolID, int64(limit), int64(offset))
+	accessIDList := []string{}
+	if otakey != "" {
+		var err error
+		accessIDList, err = retrieveAccessOTAList(otakey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
 	} else {
-		list, err = database.DBGetPDEV3WithdrawRespond(accessID, "", int64(limit), int64(offset))
+		accessIDList = append(accessIDList, nftID)
+	}
+	var err error
+	var list []shared.WithdrawContributionData
+
+	if poolID != "" {
+		list, err = database.DBGetPDEV3WithdrawRespond(accessIDList, poolID, int64(limit), int64(offset))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	} else {
+		list, err = database.DBGetPDEV3WithdrawRespond(accessIDList, "", int64(limit), int64(offset))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -594,9 +597,9 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
-	accessID := c.Query("accessid")
-	if nftID == "" && accessID == "" {
-		errStr := "accessID/nftID can't be empty"
+	otakey := c.Query("otakey")
+	if nftID == "" && otakey == "" {
+		errStr := "otakey/nftid can't be empty"
 		respond := APIRespond{
 			Result: nil,
 			Error:  &errStr,
@@ -604,21 +607,29 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	if accessID == "" {
-		accessID = nftID
+	accessIDList := []string{}
+	if otakey != "" {
+		var err error
+		accessIDList, err = retrieveAccessOTAList(otakey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+	} else {
+		accessIDList = append(accessIDList, nftID)
 	}
 	var result []PdexV3WithdrawFeeRespond
 	var err error
 	var list []shared.WithdrawContributionFeeData
 
 	if poolID != "" {
-		list, err = database.DBGetPDEV3WithdrawFeeRespond(accessID, poolID, int64(limit), int64(offset))
+		list, err = database.DBGetPDEV3WithdrawFeeRespond(accessIDList, poolID, int64(limit), int64(offset))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
 	} else {
-		list, err = database.DBGetPDEV3WithdrawFeeRespond(accessID, "", int64(limit), int64(offset))
+		list, err = database.DBGetPDEV3WithdrawFeeRespond(accessIDList, "", int64(limit), int64(offset))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return

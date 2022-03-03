@@ -352,16 +352,16 @@ func DBGetPDETXWithdrawFeeRespond(pubkey []string, limit int64, offset int64) ([
 	return result, nil
 }
 
-func DBGetPDEV3WithdrawRespond(nftID, poolID string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
+func DBGetPDEV3WithdrawRespond(nftID []string, poolID string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.WithdrawContributionData
 	filter := bson.M{}
 	if poolID != "" {
-		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+		filter = bson.M{"nftid": bson.M{operator.In: nftID}, "poolid": bson.M{operator.Eq: poolID}}
 	} else {
-		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}}
+		filter = bson.M{"nftid": bson.M{operator.In: nftID}}
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
@@ -437,16 +437,16 @@ func DBGetPDEWithdrawFeeRespond(address []string, limit int64, offset int64) ([]
 	return result, nil
 }
 
-func DBGetPDEV3WithdrawFeeRespond(nftID, poolID string, limit int64, offset int64) ([]shared.WithdrawContributionFeeData, error) {
+func DBGetPDEV3WithdrawFeeRespond(nftID []string, poolID string, limit int64, offset int64) ([]shared.WithdrawContributionFeeData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.WithdrawContributionFeeData
 	filter := bson.M{}
 	if poolID != "" {
-		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+		filter = bson.M{"nftid": bson.M{operator.In: nftID}, "poolid": bson.M{operator.Eq: poolID}}
 	} else {
-		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}}
+		filter = bson.M{"nftid": bson.M{operator.In: nftID}}
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.WithdrawContributionFeeData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
