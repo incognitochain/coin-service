@@ -338,22 +338,22 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 	var result []TradeDataRespond
 	if otakey != "" {
 		if getOrder {
-			if poolid == "" {
-				errStr := "poolid can't be empty"
-				respond := APIRespond{
-					Result: nil,
-					Error:  &errStr,
-				}
-				c.JSON(http.StatusOK, respond)
-				return
-			}
+			// if poolid == "" {
+			// 	errStr := "poolid can't be empty"
+			// 	respond := APIRespond{
+			// 		Result: nil,
+			// 		Error:  &errStr,
+			// 	}
+			// 	c.JSON(http.StatusOK, respond)
+			// 	return
+			// }
 			accessOTAList, err := retrieveAccessOTAList(otakey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
 			//limit order
-			tradeList, err := database.DBGetTxTradeFromPoolAndAccessID(poolid, accessOTAList, int64(limit), int64(offset))
+			tradeList, err := database.DBGetTxTradeFromAccessID(accessOTAList, int64(limit), int64(offset))
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return

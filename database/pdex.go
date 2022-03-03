@@ -780,7 +780,7 @@ func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
 
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction, "nftid": order.NftID},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction, "nftid": order.NftID, "currentaccess": order.CurrentAccessID},
 		}
 		_, err := mgm.Coll(&shared.LimitOrderStatus{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -816,7 +816,7 @@ func DBUpdatePDEPoolStakerData(list []shared.PoolStakerData) error {
 	for _, stake := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
 		update := bson.M{
-			"$set": bson.M{"updated_at": time.Now().UTC(), "nftid": stake.NFTID, "tokenid": stake.TokenID, "amount": stake.Amount, "reward": stake.Reward},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "nftid": stake.NFTID, "tokenid": stake.TokenID, "amount": stake.Amount, "reward": stake.Reward, "currentaccess": stake.CurrentAccessID},
 		}
 		_, err := mgm.Coll(&shared.PoolStakerData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -871,6 +871,20 @@ func DBGetShare(nftID []string) ([]shared.PoolShareData, error) {
 func DBGetTxTradeFromPoolAndNFT(poolid, nftid string, limit, offset int64) ([]shared.TradeOrderData, error) {
 	var result []shared.TradeOrderData
 	filter := bson.M{"nftid": bson.M{operator.Eq: nftid}, "poolid": bson.M{operator.Eq: poolid}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"requesttime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetTxTradeFromAccessID(accessIDs []string, limit, offset int64) ([]shared.TradeOrderData, error) {
+	var result []shared.TradeOrderData
+	filter := bson.M{"nftid": bson.M{operator.In: accessIDs}}
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},
 		Skip:  &offset,

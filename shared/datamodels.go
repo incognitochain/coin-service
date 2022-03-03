@@ -719,6 +719,7 @@ type PoolStakerData struct {
 	NFTID            string            `json:"nftid" bson:"nftid"`
 	Amount           uint64            `json:"amount" bson:"amount"`
 	Reward           map[string]uint64 `json:"reward" bson:"reward"`
+	CurrentAccessID  string            `json:"currentaccess" bson:"currentaccess"`
 }
 
 func (model *PoolStakerData) Creating() error {
