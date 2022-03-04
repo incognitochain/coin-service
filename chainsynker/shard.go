@@ -85,6 +85,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 	}
 
 	crossShardCoinMap := make(map[string]string)
+	crossShardHeightMap := make(map[int]uint64)
 	for sID, txlist := range blk.Body.CrossTransactions {
 		for _, tx := range txlist {
 			crsblk := &types.ShardBlock{}
@@ -109,10 +110,6 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 				if err := json.Unmarshal(blkBytes, &crsblk); err != nil {
 					panic(err)
 				}
-				err = getCrossShardData(crossShardCoinMap, crsblk.Body.Transactions, byte(shardID))
-				if err != nil {
-					panic(err)
-				}
 			} else {
 				i := 0
 			retryGetBlock2:
@@ -127,13 +124,32 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 					goto retryGetBlock2
 				}
 				crsblk = blkInterface.(*types.ShardBlock)
-				err = getCrossShardData(crossShardCoinMap, crsblk.Body.Transactions, byte(shardID))
-				if err != nil {
-					panic(err)
-				}
 			}
-
+			err = getCrossShardData(crossShardCoinMap, crsblk.Body.Transactions, byte(shardID))
+			if err != nil {
+				panic(err)
+			}
+			if h, ok := crossShardHeightMap[shardID]; ok {
+				if h < crsblk.GetHeight() {
+					crossShardHeightMap[shardID] = crsblk.GetHeight()
+				}
+			} else {
+				crossShardHeightMap[shardID] = crsblk.GetHeight()
+			}
 		}
+	}
+reCheckCrossShardHeight:
+	blockProcessedLock.RLock()
+	pass := true
+	for shardID, v := range crossShardHeightMap {
+		if v > blockProcessed[shardID] {
+			pass = false
+		}
+	}
+	blockProcessedLock.RUnlock()
+	if !pass {
+		time.Sleep(5 * time.Second)
+		goto reCheckCrossShardHeight
 	}
 
 	//store output-coin and keyimage on db
