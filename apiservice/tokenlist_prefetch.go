@@ -248,6 +248,7 @@ func retrieveTokenList() {
 			if etki.Verified {
 				data.Verified = etki.Verified
 			}
+			data.ExternalPriceUSD = etki.PriceUsd
 			data.UserID = etki.UserID
 			data.PercentChange1h = etki.PercentChange1h
 			data.PercentChangePrv1h = etki.PercentChangePrv1h
