@@ -116,7 +116,7 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 				if i == 50 {
 					panic("OnNewShardBlock err " + blkHash.String())
 				}
-				blkInterface, err := bc.GetBlockByHash(proto.BlkType_BlkShard, blkHash, byte(sID), byte(sID))
+				blkInterface, err := bc.GetBlockByHash(proto.BlkType_BlkShard, blkHash, sID, sID)
 				if err != nil {
 					fmt.Println(err)
 					i++
@@ -129,20 +129,20 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 			if err != nil {
 				panic(err)
 			}
-			if h, ok := crossShardHeightMap[shardID]; ok {
+			if h, ok := crossShardHeightMap[int(sID)]; ok {
 				if h < crsblk.GetHeight() {
-					crossShardHeightMap[shardID] = crsblk.GetHeight()
+					crossShardHeightMap[int(sID)] = crsblk.GetHeight()
 				}
 			} else {
-				crossShardHeightMap[shardID] = crsblk.GetHeight()
+				crossShardHeightMap[int(sID)] = crsblk.GetHeight()
 			}
 		}
 	}
 reCheckCrossShardHeight:
 	blockProcessedLock.RLock()
 	pass := true
-	for shardID, v := range crossShardHeightMap {
-		if v > blockProcessed[shardID] {
+	for csID, v := range crossShardHeightMap {
+		if v > blockProcessed[csID] {
 			pass = false
 		}
 	}
