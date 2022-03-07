@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -60,4 +62,17 @@ func DropTable(table string, force bool) error {
 	}
 	_, err := db.Exec(context.Background(), queryStr)
 	return err
+}
+
+func Exec(ctx context.Context, queryStr string, arguments ...interface{}) (pgconn.CommandTag, error) {
+	db := getDBConn()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r, err := db.Exec(ctx, queryStr)
+	return r, err
+}
+
+func IsAlreadyExistError(errStr string) bool {
+	return strings.Contains(errStr, "already exists")
 }

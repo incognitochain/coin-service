@@ -52,7 +52,7 @@ func main() {
        floor(random() * (3) + 1)::int as trade_id,
        random()*100 AS price
        `
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 10; i++ {
 		//Execute query to generate samples for sensor_data hypertable
 		rows, err := dbpool.Query(ctx, queryDataGeneration)
 		if err != nil {

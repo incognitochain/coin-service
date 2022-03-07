@@ -13,14 +13,9 @@ import (
 	"github.com/incognitochain/incognito-chain/metadata"
 	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	"github.com/incognitochain/incognito-chain/transaction"
-	"github.com/kamva/mgm/v3"
-	"github.com/kamva/mgm/v3/operator"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var currentState State
+var historyState State
 
 func StartProcessor() {
 
@@ -28,14 +23,15 @@ func StartProcessor() {
 	if err != nil {
 		panic(err)
 	}
-	err = loadState()
+	err = loadState(&historyState, "shield")
 	if err != nil {
 		panic(err)
 	}
 	for {
 		time.Sleep(5 * time.Second)
+		metas := []string{strconv.Itoa(metadata.IssuingRequestMeta), strconv.Itoa(metadata.IssuingBSCRequestMeta), strconv.Itoa(metadata.IssuingETHRequestMeta), strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta), strconv.Itoa(metadata.IssuingBSCResponseMeta), strconv.Itoa(metadataCommon.IssuingPRVERC20RequestMeta), strconv.Itoa(metadataCommon.IssuingPRVBEP20RequestMeta), strconv.Itoa(metadataCommon.IssuingPRVERC20ResponseMeta), strconv.Itoa(metadataCommon.IssuingPRVBEP20ResponseMeta), strconv.Itoa(metadataCommon.IssuingPLGRequestMeta), strconv.Itoa(metadataCommon.IssuingPLGResponseMeta)}
 
-		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 10000)
+		txList, err := getTxToProcess(metas, historyState.LastProcessedObjectID, 10000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
@@ -55,65 +51,14 @@ func StartProcessor() {
 			panic(err)
 		}
 		if len(txList) != 0 {
-			currentState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
-			err = updateState()
+			historyState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
+			err = updateState(&historyState, "shield")
 			if err != nil {
 				panic(err)
 			}
 		}
 
 	}
-}
-
-func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
-	var result []shared.TxData
-	metas := []string{strconv.Itoa(metadata.IssuingRequestMeta), strconv.Itoa(metadata.IssuingBSCRequestMeta), strconv.Itoa(metadata.IssuingETHRequestMeta), strconv.Itoa(metadata.IssuingResponseMeta), strconv.Itoa(metadata.IssuingETHResponseMeta), strconv.Itoa(metadata.IssuingBSCResponseMeta), strconv.Itoa(metadataCommon.IssuingPRVERC20RequestMeta), strconv.Itoa(metadataCommon.IssuingPRVBEP20RequestMeta), strconv.Itoa(metadataCommon.IssuingPRVERC20ResponseMeta), strconv.Itoa(metadataCommon.IssuingPRVBEP20ResponseMeta), strconv.Itoa(metadataCommon.IssuingPLGRequestMeta), strconv.Itoa(metadataCommon.IssuingPLGResponseMeta)}
-	var obID primitive.ObjectID
-	if lastID == "" {
-		obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	} else {
-		var err error
-		obID, err = primitive.ObjectIDFromHex(lastID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	filter := bson.M{
-		"_id":      bson.M{operator.Gt: obID},
-		"metatype": bson.M{operator.In: metas},
-	}
-	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
-		Sort:  bson.D{{"locktime", 1}},
-		Limit: &limit,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func updateState() error {
-	result, err := json.Marshal(currentState)
-	if err != nil {
-		panic(err)
-	}
-	if result == nil {
-		currentState = State{}
-		return nil
-	}
-	return database.DBUpdateProcessorState("shield", string(result))
-}
-
-func loadState() error {
-	result, err := database.DBGetProcessorState("shield")
-	if err != nil {
-		return err
-	}
-	if result == nil {
-		currentState = State{}
-		return nil
-	}
-	return json.UnmarshalFromString(result.State, &currentState)
 }
 
 func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.ShieldData, error) {

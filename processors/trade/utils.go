@@ -9,7 +9,7 @@ func genCAViewQuery(view, table, period string) string {
 
 func genAutoCAViewQuery(view string) string {
 	return fmt.Sprintf(`SELECT add_continuous_aggregate_policy('%v',
-	start_offset => INTERVAL '3 week',
+	start_offset => INTERVAL '1 week',
 	end_offset   => INTERVAL '1 minute',
-	schedule_interval => INTERVAL '5 minutes');`, view)
+	schedule_interval => INTERVAL '1 minutes');`, view)
 }
