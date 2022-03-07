@@ -166,7 +166,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 
 		}
 		if pdexV3State == nil {
-			pdeStates, err := pdex.InitStatesFromDB(beaconFeatureStateDB, blk.GetHeight()-1)
+			pdeStates, err := pdex.InitStatesFromDB(beaconFeatureStateDB, blk.GetHeight())
 			if err != nil {
 				panic(err)
 			}
@@ -183,12 +183,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 			Build()
 		err = pdexV3State.Process(pdeStateEnv)
 		if err != nil {
-			log.Println("Get pdexv3 state err", err)
-			pdeStates, err := pdex.InitStatesFromDB(beaconFeatureStateDB, blk.GetHeight())
-			if err != nil {
-				panic(err)
-			}
-			pdexV3State = pdeStates[2]
+			panic(err)
 		}
 		pdexV3State.ClearCache()
 		params := pdexV3State.Reader().Params()
