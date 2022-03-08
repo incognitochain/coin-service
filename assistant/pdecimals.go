@@ -51,7 +51,7 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 		resp, err := http.Get(shared.ServiceCfg.ExternalDecimals)
 		if err != nil {
 			log.Println(err)
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 			goto retry
 		}
 		body, err := ioutil.ReadAll(resp.Body)
@@ -133,7 +133,7 @@ func getCustomTokenInfo() ([]shared.CustomTokenInfo, error) {
 		resp, err := http.Get(urls[0] + "//" + urls[2] + "/pcustomtoken/list")
 		if err != nil {
 			log.Println(err)
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 			goto retry
 		}
 		body, err := ioutil.ReadAll(resp.Body)
