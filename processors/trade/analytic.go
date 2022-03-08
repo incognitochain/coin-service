@@ -61,7 +61,7 @@ func createAnalyticTable() error {
 		);
 		SELECT create_hypertable('trade_data', 'time');
 		`
-
+	_ = queryCreateHypertable
 	return nil
 }
 
@@ -88,17 +88,17 @@ func createContinuousView() error {
 
 	//create auto-agg interval
 	//15m view
-	queryContinuousAgg15m := genAutoCAViewQuery(view15m)
+	queryContinuousAgg15m := genConAggPolicyQuery(view15m)
 	//30m view
-	queryContinuousAgg30m := genAutoCAViewQuery(view30m)
+	queryContinuousAgg30m := genConAggPolicyQuery(view30m)
 	//1h view
-	queryContinuousAgg1h := genAutoCAViewQuery(view1h)
+	queryContinuousAgg1h := genConAggPolicyQuery(view1h)
 	//4h view
-	queryContinuousAgg4h := genAutoCAViewQuery(view4h)
+	queryContinuousAgg4h := genConAggPolicyQuery(view4h)
 	//1d view
-	queryContinuousAgg1d := genAutoCAViewQuery(view1d)
+	queryContinuousAgg1d := genConAggPolicyQuery(view1d)
 	//1w view
-	queryContinuousAgg1w := genAutoCAViewQuery(view1w)
+	queryContinuousAgg1w := genConAggPolicyQuery(view1w)
 
 	_, err = analyticdb.Exec(context.Background(), queryCreateView15m)
 	if err != nil {

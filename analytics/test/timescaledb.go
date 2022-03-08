@@ -28,7 +28,10 @@ func main() {
 	queryCreateHypertable := `CREATE TABLE IF NOT EXISTS trade_data (
 		time TIMESTAMPTZ NOT NULL,
 		trade_id INTEGER,
-		price DOUBLE PRECISION
+		price DOUBLE PRECISION,
+		pool_id TEXT,
+		actual_token1_amount INTEGER,
+		actual_token2_amount INTEGER
 		);
 		SELECT create_hypertable('trade_data', 'time');
 		`
@@ -50,7 +53,10 @@ func main() {
 	queryDataGeneration := `
        SELECT generate_series(now() - interval '24 hour', now(), interval '7 minute') AS time,
        floor(random() * (3) + 1)::int as trade_id,
-       random()*100 AS price
+       random()*100 AS price,
+	   md5(floor(random() * (3) + 1)::text) as pool_id,
+       floor(random()*100) AS actual_token1_amount,
+       floor(random()*100) AS actual_token2_amount
        `
 	for i := 0; i < 10; i++ {
 		//Execute query to generate samples for sensor_data hypertable
@@ -64,14 +70,17 @@ func main() {
 
 		//Store data generated in slice results
 		type result struct {
-			Time    time.Time
-			TradeId int
-			Price   float64
+			Time         time.Time
+			TradeId      int
+			Price        float64
+			PoolID       string
+			Token1Amount int
+			Token2Amount int
 		}
 		var results []result
 		for rows.Next() {
 			var r result
-			err = rows.Scan(&r.Time, &r.TradeId, &r.Price)
+			err = rows.Scan(&r.Time, &r.TradeId, &r.Price, &r.PoolID, &r.Token1Amount, &r.Token2Amount)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Unable to scan %v\n", err)
 				os.Exit(1)
@@ -88,12 +97,12 @@ func main() {
 		fmt.Println("Contents of RESULTS slice")
 		for i := range results {
 			r := results[i]
-			fmt.Printf("Time: %s | ID: %d | Price: %f |\n", &r.Time, r.TradeId, r.Price)
+			fmt.Printf("Time: %s | ID: %d | Price: %f | PoolID: %v |\n", &r.Time, r.TradeId, r.Price, r.PoolID)
 		}
 		//Insert contents of results slice into TimescaleDB
 		//SQL query to generate sample data
 		queryInsertTimeseriesData := `
-   INSERT INTO trade_data (time, trade_id, price) VALUES ($1, $2, $3);
+   INSERT INTO trade_data (time, trade_id, price, pool_id, actual_token1_amount, actual_token2_amount) VALUES ($1, $2, $3, $4, $5, $6);
    `
 		/********************************************/
 		/* Batch Insert into TimescaleDB            */
@@ -104,7 +113,7 @@ func main() {
 		//load insert statements into batch queue
 		for i := range results {
 			r := results[i]
-			batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Price)
+			batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Price, r.PoolID, r.Token1Amount, r.Token2Amount)
 		}
 		batch.Queue("select count(*) from trade_data")
 
@@ -136,7 +145,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	queryCreateView15m := `CREATE MATERIALIZED VIEW trade_view_15m WITH (timescaledb.continuous) AS select time_bucket('15 minutes', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set" from trade_data GROUP BY period WITH NO DATA`
+	queryCreateView15m := `CREATE MATERIALIZED VIEW trade_view_15m WITH (timescaledb.continuous) AS select time_bucket('15 minutes', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set", sum(actual_token1_amount) as volume_tk1, sum(actual_token2_amount) as volume_tk2, pool_id from trade_data GROUP BY period,pool_id WITH NO DATA`
 
 	queryCreateView30m := `CREATE MATERIALIZED VIEW trade_view_30m WITH (timescaledb.continuous) AS select time_bucket('30 minutes', time) AS period, first(price,time) open, last(price,time) "close",avg(price) as Average,max(price) as high,min(price) as low, count(*) as "set" from trade_data GROUP BY period WITH NO DATA`
 

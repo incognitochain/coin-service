@@ -358,7 +358,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	blockProcessedLock.Lock()
 	blockProcessed[-1] = blk.Header.Height
 	blockProcessedLock.Unlock()
-	delete(preloadedBeaconState, h.String())
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
