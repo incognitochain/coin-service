@@ -33,6 +33,7 @@ type Config struct {
 	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
 	ExternalDecimals     string `json:"externaldecimals"`
 	FullnodeData         bool   `json:"fullnodedata"`
+	AnalyticAddress      string `json:"analytic"`
 }
 
 type ConfigJSON struct {
@@ -51,6 +52,7 @@ type ConfigJSON struct {
 	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
 	ExternalDecimals     string `json:"externaldecimals"`
 	FullnodeData         bool   `json:"fullnodedata"`
+	AnalyticAddress      string `json:"analytic"`
 }
 
 func ReadConfigAndArg() {
@@ -137,6 +139,7 @@ func ReadConfigAndArg() {
 	ServiceCfg.AnalyticsAPIEndpoint = tempCfg.AnalyticsAPIEndpoint
 	ServiceCfg.ExternalDecimals = tempCfg.ExternalDecimals
 	ServiceCfg.FullnodeData = tempCfg.FullnodeData
+	ServiceCfg.AnalyticAddress = tempCfg.AnalyticAddress
 
 	common.MaxShardNumber = param.ActiveShards
 }

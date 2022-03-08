@@ -80,6 +80,7 @@ services:
     depends_on:
       - chainsync
       - mongo
+      - timescaledb
 
   shield-processor:
     image: coinservice
@@ -146,3 +147,12 @@ services:
       - service.env
     ports:
       - 4000:8081
+  timescaledb:
+      image: timescale/timescaledb:latest-pg12
+      environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: lam123
+      volumes:
+          - ./data/timescaledb:/var/lib/postgresql/data
+      ports:
+          - "5432:5432"

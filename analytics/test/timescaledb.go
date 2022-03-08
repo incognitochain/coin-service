@@ -29,6 +29,7 @@ func main() {
 		time TIMESTAMPTZ NOT NULL,
 		trade_id INTEGER,
 		price DOUBLE PRECISION,
+		pair_id TEXT,
 		pool_id TEXT,
 		actual_token1_amount INTEGER,
 		actual_token2_amount INTEGER
@@ -54,6 +55,7 @@ func main() {
        SELECT generate_series(now() - interval '24 hour', now(), interval '7 minute') AS time,
        floor(random() * (3) + 1)::int as trade_id,
        random()*100 AS price,
+	   md5(floor(random() * (3) + 1)::text) as pair_id,
 	   md5(floor(random() * (3) + 1)::text) as pool_id,
        floor(random()*100) AS actual_token1_amount,
        floor(random()*100) AS actual_token2_amount
@@ -73,6 +75,7 @@ func main() {
 			Time         time.Time
 			TradeId      int
 			Price        float64
+			PairID       string
 			PoolID       string
 			Token1Amount int
 			Token2Amount int
@@ -80,7 +83,7 @@ func main() {
 		var results []result
 		for rows.Next() {
 			var r result
-			err = rows.Scan(&r.Time, &r.TradeId, &r.Price, &r.PoolID, &r.Token1Amount, &r.Token2Amount)
+			err = rows.Scan(&r.Time, &r.TradeId, &r.Price, &r.PairID, &r.PoolID, &r.Token1Amount, &r.Token2Amount)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Unable to scan %v\n", err)
 				os.Exit(1)
@@ -102,7 +105,7 @@ func main() {
 		//Insert contents of results slice into TimescaleDB
 		//SQL query to generate sample data
 		queryInsertTimeseriesData := `
-   INSERT INTO trade_data (time, trade_id, price, pool_id, actual_token1_amount, actual_token2_amount) VALUES ($1, $2, $3, $4, $5, $6);
+   INSERT INTO trade_data (time, trade_id, price, pair_id, pool_id, actual_token1_amount, actual_token2_amount) VALUES ($1, $2, $3, $4, $5, $6, $7);
    `
 		/********************************************/
 		/* Batch Insert into TimescaleDB            */
@@ -113,7 +116,7 @@ func main() {
 		//load insert statements into batch queue
 		for i := range results {
 			r := results[i]
-			batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Price, r.PoolID, r.Token1Amount, r.Token2Amount)
+			batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Price, r.PairID, r.PoolID, r.Token1Amount, r.Token2Amount)
 		}
 		batch.Queue("select count(*) from trade_data")
 

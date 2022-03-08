@@ -5,6 +5,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	"github.com/incognitochain/coin-service/analyticdb"
 	"github.com/incognitochain/coin-service/apiservice"
 	"github.com/incognitochain/coin-service/assistant"
 	"github.com/incognitochain/coin-service/chainsynker"
@@ -48,6 +49,10 @@ func main() {
 	case shared.SHIELDMODE:
 		go shield.StartProcessor()
 	case shared.TRADEMODE:
+		err = analyticdb.ConnectDB(shared.ServiceCfg.AnalyticAddress)
+		if err != nil {
+			panic(err)
+		}
 		go trade.StartProcessor()
 	case shared.ASTMODE:
 		go assistant.StartAssistant()
