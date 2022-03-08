@@ -151,12 +151,9 @@ func DBSaveCustomTokenInfo(list []shared.CustomTokenInfo) error {
 	return nil
 }
 
-func DBGetAllCustomTokenInfo(verifyOnly bool) ([]shared.CustomTokenInfo, error) {
+func DBGetAllCustomTokenInfo() ([]shared.CustomTokenInfo, error) {
 	list := []shared.CustomTokenInfo{}
 	filter := bson.M{}
-	if verifyOnly {
-		filter = bson.M{"verified": bson.M{operator.Eq: true}}
-	}
 	err := mgm.Coll(&shared.CustomTokenInfo{}).SimpleFind(&list, filter, nil)
 	if err != nil {
 		return nil, err

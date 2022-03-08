@@ -131,14 +131,16 @@ func DBGetTxByHash(txHashes []string) ([]shared.TxData, error) {
 }
 
 func DBIsTokenNFT(tokenid string) bool {
+retry:
 	filter := bson.M{"tokenid": bson.M{operator.Eq: tokenid}, "isnft": bson.M{operator.Eq: true}}
-	ctx, _ := context.WithTimeout(context.Background(), 2*shared.DB_OPERATION_TIMEOUT)
-	result := mgm.Coll(&shared.TxData{}).FindOne(ctx, filter)
+	result := mgm.Coll(&shared.TxData{}).FindOne(context.Background(), filter)
 	if result.Err() != nil {
 		if result.Err() == mongo.ErrNoDocuments {
 			return false
 		} else {
-			panic(result.Err())
+			log.Println(result.Err())
+			time.Sleep(1 * time.Second)
+			goto retry
 		}
 	}
 	return true
