@@ -16,6 +16,7 @@ import (
 	"github.com/incognitochain/incognito-chain/metadata"
 	metadataPdexv3 "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/transaction"
+	"github.com/jackc/pgx/v4"
 )
 
 var analyticState State
@@ -215,7 +216,19 @@ func createAnalyticTable() error {
 }
 
 func ingestToTimescale(data []AnalyticTradeData) error {
-	//TODO
+	queryInsertTimeseriesData := `
+	INSERT INTO trade_data (time, trade_id, price, pair_id, pool_id, actual_token1_amount, actual_token2_amount) VALUES ($1, $2, $3, $4, $5, $6, $7);`
+
+	batch := &pgx.Batch{}
+	for _, r := range data {
+		batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Rate, r.PairID, r.PoolID, r.Token1Amount, r.Token2Amount)
+	}
+	_, err := analyticdb.ExecBatch(context.Background(), batch)
+	if err != nil {
+		if !analyticdb.IsAlreadyExistError(err.Error()) {
+			return err
+		}
+	}
 	return nil
 }
 

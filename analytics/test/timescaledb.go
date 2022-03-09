@@ -118,7 +118,7 @@ func main() {
 			r := results[i]
 			batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Price, r.PairID, r.PoolID, r.Token1Amount, r.Token2Amount)
 		}
-		batch.Queue("select count(*) from trade_data")
+		// batch.Queue("select count(*) from trade_data")
 
 		//send batch to connection pool
 		br := dbpool.SendBatch(ctx, batch)

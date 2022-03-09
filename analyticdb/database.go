@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -75,4 +76,15 @@ func Exec(ctx context.Context, queryStr string, arguments ...interface{}) (pgcon
 
 func IsAlreadyExistError(errStr string) bool {
 	return strings.Contains(errStr, "already exists")
+}
+
+func ExecBatch(ctx context.Context, batch *pgx.Batch) (pgconn.CommandTag, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	br := dbpool.SendBatch(ctx, batch)
+	defer br.Close()
+	//execute statements in batch queue
+	r, err := br.Exec()
+	return r, err
 }
