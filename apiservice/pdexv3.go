@@ -1664,7 +1664,7 @@ func (pdexv3) GetAccessOTAData(c *gin.Context) {
 		return
 	}
 
-	shares, err := database.DBGetSharByAccessOTA(req.ID)
+	shares, err := database.DBGetShareByAccessOTA(req.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

@@ -1653,7 +1653,7 @@ func DBGetPendingLimitOrderByAccessOTA(accessOTAs []string) (map[string]shared.T
 	}
 	return result, nil
 }
-func DBGetSharByAccessOTA(accessOTAs []string) (map[string]shared.PoolShareData, error) {
+func DBGetShareByAccessOTA(accessOTAs []string) (map[string]shared.PoolShareData, error) {
 	var list []shared.PoolShareData
 	result := make(map[string]shared.PoolShareData)
 	filter := bson.M{"currentaccess": bson.M{operator.In: accessOTAs}}
