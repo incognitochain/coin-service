@@ -252,7 +252,11 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				if item.UseNft() {
 					nftID = item.NftID.String()
 				} else {
-					nftID = item.AccessID.String()
+					if item.AccessOption.AccessID == nil {
+						nftID = metadataPdexv3.GenAccessID(item.Receiver[common.PdexAccessCoinID]).String()
+					} else {
+						nftID = item.AccessID.String()
+					}
 				}
 				version = 2
 

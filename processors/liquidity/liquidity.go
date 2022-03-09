@@ -231,7 +231,11 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			if md.UseNft() {
 				data.NFTID = md.NftID.String()
 			} else {
-				data.NFTID = md.AccessID.String()
+				if md.AccessOption.AccessID == nil {
+					data.NFTID = metadataPdexv3.GenAccessID(md.OtaReceivers()[common.PdexAccessCoinID]).String()
+				} else {
+					data.NFTID = md.AccessID.String()
+				}
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadataCommon.Pdexv3AddLiquidityResponseMeta:
@@ -368,7 +372,11 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			if md.UseNft() {
 				data.NFTID = md.NftID.String()
 			} else {
-				data.NFTID = md.AccessID.String()
+				if md.AccessOption.AccessID == nil {
+					data.NFTID = metadataPdexv3.GenAccessID(md.OtaReceivers()[common.PdexAccessCoinID]).String()
+				} else {
+					data.NFTID = md.AccessID.String()
+				}
 			}
 			stakingRequestDatas = append(stakingRequestDatas, data)
 		case metadataCommon.Pdexv3StakingResponseMeta:
