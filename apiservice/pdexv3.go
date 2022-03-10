@@ -375,8 +375,9 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		}
 	}
 
+	var contributeList []PdexV3ContributionData
 	var result []PdexV3ContributionData
-
+	completedTxs := make(map[string]struct{})
 	for _, v := range list {
 		ctrbAmount := []uint64{}
 		ctrbToken := []string{}
@@ -424,11 +425,29 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 				data.Status = "refunding"
 			}
 		}
+		if len(v.RequestTxs) == 2 {
+			for _, tx := range v.RequestTxs {
+				completedTxs[tx] = struct{}{}
+			}
+		}
 		if len(v.RespondTxs) > 0 {
 			data.Status = "refunded"
 		}
-		result = append(result, data)
+		contributeList = append(contributeList, data)
 	}
+
+	//remove unneeded data
+	for _, v := range contributeList {
+		if len(v.RequestTxs) == 1 {
+			if _, ok := completedTxs[v.RequestTxs[0]]; !ok {
+				result = append(result, v)
+			}
+		}
+		if len(v.RequestTxs) == 2 {
+			result = append(result, v)
+		}
+	}
+
 	respond := APIRespond{
 		Result: result,
 	}
