@@ -361,18 +361,13 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 func (pdexv3) ContributeHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
 	var err error
 	var list []shared.ContributionData
-	if poolID != "" {
-
-	} else {
-		list, err = database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
+	list, err = database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
 	}
 
 	var contributeList []PdexV3ContributionData
