@@ -1107,7 +1107,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
-		ia := (1 - (rt1 / rt)) * 100
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
