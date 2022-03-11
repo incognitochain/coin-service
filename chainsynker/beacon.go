@@ -476,7 +476,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				tk2Amount += a2
 			}
 			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
-			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
+			data.Token2Amount = fmt.Sprintf("%v", tk2Amount)
 			pairList = append(pairList, data)
 		}
 		wg.Done()
