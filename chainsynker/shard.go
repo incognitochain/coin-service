@@ -346,7 +346,7 @@ reCheckCrossShardHeight:
 			txToken := tx.(transaction.TransactionToken)
 			txTokenData := txToken.GetTxTokenData()
 
-			if tx.GetMetadataType() == metadataCommon.Pdexv3MintNftResponseMeta || tx.GetMetadataType() == metadataCommon.Pdexv3UserMintNftResponseMeta || tx.GetMetadataType() == metadataCommon.Pdexv3MintAccessTokenMeta {
+			if tx.GetMetadataType() == metadataCommon.Pdexv3MintNftResponseMeta || tx.GetMetadataType() == metadataCommon.Pdexv3UserMintNftResponseMeta {
 				isNFT = true
 			}
 

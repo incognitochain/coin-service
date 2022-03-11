@@ -148,12 +148,10 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		list, err = database.DBGetShare(accessOTAList)
+		list, err = database.DBGetShareByCurrentAccessID(accessOTAList)
 		if err != nil {
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
 		}
 	} else {
 		list, err = database.DBGetShare([]string{nftID})
@@ -368,12 +366,13 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		list, err = database.DBGetPDEV3ContributeRespond(accessIDList, int64(limit), int64(offset))
+		list, err = database.DBGetPDEV3ContributeRespondByAccessID(accessIDList, int64(limit), int64(offset))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
 	}
+
 	result, err := produceContributeData(list)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -1649,8 +1648,9 @@ func (pdexv3) ListMarkets(c *gin.Context) {
 
 func (pdexv3) GetAccessOTAData(c *gin.Context) {
 	var req struct {
-		ID   []string
-		Only string
+		ID       []string
+		GetOrder bool
+		GetShare bool
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {

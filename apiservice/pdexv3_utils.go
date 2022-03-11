@@ -1,13 +1,13 @@
 package apiservice
 
 import (
-	"encoding/hex"
 	"errors"
 	"strconv"
 	"strings"
 
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/wallet"
 )
@@ -94,7 +94,8 @@ func produceWithdrawContributeData(list []shared.WithdrawContributionData) ([]Pd
 
 func produceContributeData(list []shared.ContributionData) ([]PdexV3ContributionData, error) {
 	var result []PdexV3ContributionData
-
+	var contributeList []PdexV3ContributionData
+	completedTxs := make(map[string]struct{})
 	for _, v := range list {
 		ctrbAmount := []uint64{}
 		ctrbToken := []string{}
@@ -133,6 +134,7 @@ func produceContributeData(list []shared.ContributionData) ([]PdexV3Contribution
 			NFTID:            v.NFTID,
 			RequestTime:      v.RequestTime,
 			PoolID:           v.PoolID,
+			AccessIDs:        v.AccessIDs,
 			Status:           "waiting",
 		}
 		if len(v.RequestTxs) == 2 && len(v.RespondTxs) == 0 {
@@ -142,10 +144,35 @@ func produceContributeData(list []shared.ContributionData) ([]PdexV3Contribution
 				data.Status = "refunding"
 			}
 		}
+		if len(v.RequestTxs) == 2 {
+			for _, tx := range v.RequestTxs {
+				completedTxs[tx] = struct{}{}
+			}
+		}
 		if len(v.RespondTxs) > 0 {
 			data.Status = "refunded"
 		}
-		result = append(result, data)
+		contributeList = append(contributeList, data)
+	}
+
+	//remove unneeded data
+
+	alreadyAdded := make(map[string]struct{})
+	for _, v := range contributeList {
+		if len(v.RequestTxs) == 1 {
+			if _, ok := completedTxs[v.RequestTxs[0]]; !ok {
+				result = append(result, v)
+			}
+		}
+		if len(v.RequestTxs) == 2 {
+			_, ok1 := alreadyAdded[v.RequestTxs[0]]
+			_, ok2 := alreadyAdded[v.RequestTxs[1]]
+			if !ok1 && !ok2 {
+				result = append(result, v)
+				alreadyAdded[v.RequestTxs[0]] = struct{}{}
+				alreadyAdded[v.RequestTxs[1]] = struct{}{}
+			}
+		}
 	}
 	return result, nil
 }
@@ -182,16 +209,18 @@ func producePoolShareRespond(list []shared.PoolShareData) ([]PdexV3PoolShareResp
 		}
 
 		result = append(result, PdexV3PoolShareRespond{
-			PoolID:       v.PoolID,
-			Share:        v.Amount,
-			Rewards:      v.TradingFee,
-			AMP:          l[0].AMP,
-			TokenID1:     token1ID,
-			TokenID2:     token2ID,
-			Token1Amount: tk1Amount,
-			Token2Amount: tk2Amount,
-			TotalShare:   totalShare,
-			OrderRewards: v.OrderReward,
+			PoolID:          v.PoolID,
+			Share:           v.Amount,
+			Rewards:         v.TradingFee,
+			AMP:             l[0].AMP,
+			TokenID1:        token1ID,
+			TokenID2:        token2ID,
+			Token1Amount:    tk1Amount,
+			Token2Amount:    tk2Amount,
+			TotalShare:      totalShare,
+			OrderRewards:    v.OrderReward,
+			CurrentAccessID: v.CurrentAccessID,
+			NFTID:           v.NFTID,
 		})
 	}
 	return result, nil
@@ -222,7 +251,8 @@ func retrieveAccessOTAList(otakey string) ([]string, error) {
 		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		// 	return
 		// }
-		result = append(result, hex.EncodeToString(coinBytes))
+		currentAccess := common.HashH(coinBytes[:]).String()
+		result = append(result, currentAccess)
 	}
 	return result, nil
 }

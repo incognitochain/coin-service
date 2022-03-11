@@ -357,7 +357,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			if meta.UseNft() {
 				order.NFTID = meta.NftID.String()
 			} else {
-				order.NFTID = meta.AccessID.String()
+				order.NFTID = common.HashH(meta.BurntOTA.ToBytesS()[:]).String()
 			}
 			order.WithdrawInfos[tx.TxHash] = wdData
 			cancelTrades = append(cancelTrades, order)

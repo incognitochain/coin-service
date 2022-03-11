@@ -238,7 +238,13 @@ func DBCreateLiquidityIndex() error {
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "pairhash", Value: bsonx.Int32(1)}, {Key: "requesttxs", Value: bsonx.Int32(-1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
 		},
 		{
+			Keys: bsonx.Doc{{Key: "pairhash", Value: bsonx.Int32(1)}, {Key: "requesttxs", Value: bsonx.Int32(-1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
+		},
+		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "accessids", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
 		},
 	}
 	_, err := mgm.Coll(&shared.ContributionData{}).Indexes().CreateMany(context.Background(), ctrbModel)

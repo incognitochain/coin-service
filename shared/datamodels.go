@@ -360,6 +360,7 @@ type ContributionData struct {
 	ReturnAmount     []string `json:"returnamount" bson:"returnamount"`
 	Contributor      string   `json:"contributor" bson:"contributor"`
 	NFTID            string   `json:"nftid" bson:"nftid"`
+	AccessIDs        []string `json:"accessids" bson:"accessids"`
 	RequestTime      int64    `json:"requesttime" bson:"requesttime"`
 	Status           string   `json:"status" bson:"status"`
 	Version          int      `json:"version" bson:"version"`
