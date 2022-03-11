@@ -248,6 +248,7 @@ func retrieveTokenList() {
 			if etki.Verified {
 				data.Verified = etki.Verified
 			}
+			data.ExternalPriceUSD = etki.PriceUsd
 			data.UserID = etki.UserID
 			data.PercentChange1h = etki.PercentChange1h
 			data.PercentChangePrv1h = etki.PercentChangePrv1h
@@ -275,20 +276,20 @@ func retrieveTokenList() {
 	for _, tkInfo := range extraTokenInfo {
 		if _, ok := chainTkListMap[tkInfo.TokenID]; !ok {
 			tkdata := TokenInfo{
-				TokenID:      tkInfo.TokenID,
-				Name:         tkInfo.Name,
-				Symbol:       tkInfo.Symbol,
-				PSymbol:      tkInfo.PSymbol,
-				PDecimals:    int(tkInfo.PDecimals),
-				Decimals:     tkInfo.Decimals,
-				ContractID:   tkInfo.ContractID,
-				Status:       tkInfo.Status,
-				Type:         tkInfo.Type,
-				CurrencyType: tkInfo.CurrencyType,
-				Default:      tkInfo.Default,
-				Verified:     tkInfo.Verified,
-				UserID:       tkInfo.UserID,
-
+				TokenID:            tkInfo.TokenID,
+				Name:               tkInfo.Name,
+				Symbol:             tkInfo.Symbol,
+				PSymbol:            tkInfo.PSymbol,
+				PDecimals:          int(tkInfo.PDecimals),
+				Decimals:           tkInfo.Decimals,
+				ContractID:         tkInfo.ContractID,
+				Status:             tkInfo.Status,
+				Type:               tkInfo.Type,
+				CurrencyType:       tkInfo.CurrencyType,
+				Default:            tkInfo.Default,
+				Verified:           tkInfo.Verified,
+				UserID:             tkInfo.UserID,
+				ExternalPriceUSD:   tkInfo.PriceUsd,
 				PriceUsd:           tkInfo.PriceUsd,
 				PercentChange1h:    tkInfo.PercentChange1h,
 				PercentChangePrv1h: tkInfo.PercentChangePrv1h,
