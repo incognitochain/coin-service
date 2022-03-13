@@ -18,6 +18,12 @@ func StartAssistant() {
 	if err != nil {
 		panic(err)
 	}
+
+	err = database.DBCreatePNodeDeviceIndex()
+	if err != nil {
+		panic(err)
+	}
+
 	go calcInternalTokenPrice()
 	go getExternalTokenInfo()
 	for {
