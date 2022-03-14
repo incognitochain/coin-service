@@ -360,6 +360,7 @@ type ContributionData struct {
 	ReturnAmount     []string `json:"returnamount" bson:"returnamount"`
 	Contributor      string   `json:"contributor" bson:"contributor"`
 	NFTID            string   `json:"nftid" bson:"nftid"`
+	AccessIDs        []string `json:"accessids" bson:"accessids"`
 	RequestTime      int64    `json:"requesttime" bson:"requesttime"`
 	Status           string   `json:"status" bson:"status"`
 	Version          int      `json:"version" bson:"version"`
@@ -719,6 +720,7 @@ type PoolStakerData struct {
 	NFTID            string            `json:"nftid" bson:"nftid"`
 	Amount           uint64            `json:"amount" bson:"amount"`
 	Reward           map[string]uint64 `json:"reward" bson:"reward"`
+	CurrentAccessID  string            `json:"currentaccess" bson:"currentaccess"`
 }
 
 func (model *PoolStakerData) Creating() error {
@@ -770,6 +772,7 @@ type LimitOrderStatus struct {
 	Token2Balance    string `json:"token2balance" bson:"token2balance"`
 	Direction        byte   `json:"direction" bson:"direction"`
 	NftID            string `json:"nftid" bson:"nftid"`
+	CurrentAccessID  string `json:"currentaccess" bson:"currentaccess"`
 }
 
 func (model *LimitOrderStatus) Creating() error {

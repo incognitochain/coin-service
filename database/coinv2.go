@@ -402,7 +402,7 @@ func DBGetCoinsV2ByShardID(shardID int, tokenID string, limit, offset int64) ([]
 func DBGetAllAccessCoin(otakey string) ([]shared.CoinData, error) {
 	var coinList []shared.CoinData
 	// limit := int64(10000)
-	filter := bson.M{"tokenid": bson.M{operator.Eq: common.PdexAccessCoinID.String()}, "otasecret": bson.M{operator.Eq: otakey}}
+	filter := bson.M{"realtokenid": bson.M{operator.Eq: common.PdexAccessCoinID.String()}, "otasecret": bson.M{operator.Eq: otakey}}
 	err := mgm.Coll(&shared.CoinData{}).SimpleFind(&coinList, filter, &options.FindOptions{
 		Sort: bson.D{{"coinidx", 1}},
 		// Limit: &limit,

@@ -231,7 +231,12 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			if md.UseNft() {
 				data.NFTID = md.NftID.String()
 			} else {
-				data.NFTID = md.AccessID.String()
+				if md.AccessOption.AccessID == nil {
+					data.AccessIDs = append(data.AccessIDs, metadataPdexv3.GenAccessID(md.OtaReceivers()[common.PdexAccessCoinID]).String())
+				} else {
+					data.AccessIDs = append(data.AccessIDs, md.AccessID.String())
+				}
+				data.Version = 4
 			}
 			contributeRequestDatas = append(contributeRequestDatas, data)
 		case metadataCommon.Pdexv3AddLiquidityResponseMeta:
@@ -276,7 +281,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			if md.UseNft() {
 				data.NFTID = md.NftID.String()
 			} else {
-				data.NFTID = md.AccessID.String()
+				data.NFTID = common.HashH(md.BurntOTA.ToBytesS()[:]).String()
 			}
 			withdrawRequestDatas = append(withdrawRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
@@ -326,7 +331,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			if md.UseNft() {
 				data.NFTID = md.NftID.String()
 			} else {
-				data.NFTID = md.AccessID.String()
+				data.NFTID = common.HashH(md.BurntOTA.ToBytesS()[:]).String()
 			}
 			withdrawFeeRequestDatas = append(withdrawFeeRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawLPFeeResponseMeta:
@@ -368,7 +373,11 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			if md.UseNft() {
 				data.NFTID = md.NftID.String()
 			} else {
-				data.NFTID = md.AccessID.String()
+				if md.AccessOption.AccessID == nil {
+					data.NFTID = metadataPdexv3.GenAccessID(md.OtaReceivers()[common.PdexAccessCoinID]).String()
+				} else {
+					data.NFTID = md.AccessID.String()
+				}
 			}
 			stakingRequestDatas = append(stakingRequestDatas, data)
 		case metadataCommon.Pdexv3StakingResponseMeta:
@@ -398,7 +407,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			if md.UseNft() {
 				data.NFTID = md.NftID.String()
 			} else {
-				data.NFTID = md.AccessID.String()
+				data.NFTID = common.HashH(md.BurntOTA.ToBytesS()[:]).String()
 			}
 			stakingRequestDatas = append(stakingRequestDatas, data)
 		case metadataCommon.Pdexv3UnstakingResponseMeta:
@@ -429,7 +438,7 @@ func processLiquidity(txList []shared.TxData) ([]shared.ContributionData, []shar
 			if md.UseNft() {
 				data.NFTID = md.NftID.String()
 			} else {
-				data.NFTID = md.AccessID.String()
+				data.NFTID = common.HashH(md.BurntOTA.ToBytesS()[:]).String()
 			}
 			stakingRewardRequestDatas = append(stakingRewardRequestDatas, data)
 		case metadataCommon.Pdexv3WithdrawStakingRewardResponseMeta:

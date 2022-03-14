@@ -206,16 +206,18 @@ type PdexV3WithdrawFeeRespond struct {
 }
 
 type PdexV3PoolShareRespond struct {
-	PoolID       string
-	TokenID1     string
-	TokenID2     string
-	Token1Amount uint64
-	Token2Amount uint64
-	Rewards      map[string]uint64
-	OrderRewards map[string]uint64
-	Share        uint64
-	AMP          uint
-	TotalShare   uint64
+	PoolID          string
+	TokenID1        string
+	TokenID2        string
+	Token1Amount    uint64
+	Token2Amount    uint64
+	Rewards         map[string]uint64
+	OrderRewards    map[string]uint64
+	Share           uint64
+	AMP             uint
+	TotalShare      uint64
+	CurrentAccessID string
+	NFTID           string
 }
 
 type PdexV3ContributionData struct {
@@ -230,6 +232,7 @@ type PdexV3ContributionData struct {
 	ReturnAmount     []uint64
 	// Contributor      string
 	NFTID       string
+	AccessIDs   []string
 	RequestTime int64
 	Status      string
 }
@@ -331,4 +334,9 @@ type ContributionDataV1 struct {
 type APITokenInfoRequest struct {
 	TokenIDs []string
 	Nocache  bool
+}
+
+type InUseAccessOTAData struct {
+	Orders map[string]shared.TradeOrderData
+	Shares map[string]shared.PoolShareData
 }

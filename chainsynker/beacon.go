@@ -2,7 +2,6 @@ package chainsynker
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math"
@@ -419,6 +418,10 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				for k, v := range rewards {
 					tradingFee[k.String()] = v
 				}
+				currentAccess := ""
+				if len(share.AccessOTA()) > 0 {
+					currentAccess = common.HashH(share.AccessOTA()[:]).String()
+				}
 				shareData := shared.PoolShareData{
 					Version:         2,
 					PoolID:          poolID,
@@ -426,7 +429,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					TradingFee:      tradingFee,
 					OrderReward:     orderReward,
 					NFTID:           shareID,
-					CurrentAccessID: hex.EncodeToString(share.AccessOTA()),
+					CurrentAccessID: currentAccess,
 				}
 				poolShare = append(poolShare, shareData)
 			}
@@ -448,17 +451,21 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 
 			for _, order := range state.Orderbook.Orders {
-				newOrder := shared.LimitOrderStatus{
-					RequestTx:     order.Id(),
-					Token1Balance: fmt.Sprintf("%v", order.Token0Balance()),
-					Token2Balance: fmt.Sprintf("%v", order.Token1Balance()),
-					Direction:     order.TradeDirection(),
-					PoolID:        poolID,
-					PairID:        poolData.PairID,
+				currentAccess := ""
+				if len(order.AccessOTA()) > 0 {
+					currentAccess = common.HashH(order.AccessOTA()[:]).String()
 				}
-				if order.NftID().IsZeroValue() {
-					newOrder.NftID = hex.EncodeToString(order.AccessOTA())
-				} else {
+
+				newOrder := shared.LimitOrderStatus{
+					RequestTx:       order.Id(),
+					Token1Balance:   fmt.Sprintf("%v", order.Token0Balance()),
+					Token2Balance:   fmt.Sprintf("%v", order.Token1Balance()),
+					Direction:       order.TradeDirection(),
+					PoolID:          poolID,
+					PairID:          poolData.PairID,
+					CurrentAccessID: currentAccess,
+				}
+				if !order.NftID().IsZeroValue() {
 					newOrder.NftID = order.NftID().String()
 				}
 				orderStatus = append(orderStatus, newOrder)
@@ -507,11 +514,16 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				for k, v := range reward {
 					rewardMap[k.String()] = v
 				}
+				currentAccess := ""
+				if len(staker.AccessOTA()) > 0 {
+					currentAccess = common.HashH(staker.AccessOTA()[:]).String()
+				}
 				stake := shared.PoolStakerData{
-					TokenID: tokenID,
-					NFTID:   shareID,
-					Amount:  staker.Liquidity(),
-					Reward:  rewardMap,
+					TokenID:         tokenID,
+					NFTID:           shareID,
+					Amount:          staker.Liquidity(),
+					Reward:          rewardMap,
+					CurrentAccessID: currentAccess,
 				}
 				poolStaking = append(poolStaking, stake)
 			}
