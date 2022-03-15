@@ -44,19 +44,19 @@ func startAnalytic() {
 		// strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta),
 		metas := []string{strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
 
-		txList, err := getTxToProcess(metas, historyState.LastProcessedObjectID, 10000)
+		txList, err := getTxToProcess(metas, analyticState.LastProcessedObjectID, 10000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
 			continue
 		}
 		data, err := extractDataForAnalytic(txList)
 		if err != nil {
-			log.Println("getTxToProcess", err)
+			log.Println("extractDataForAnalytic", err)
 			continue
 		}
 		err = ingestToTimescale(data)
 		if err != nil {
-			log.Println("getTxToProcess", err)
+			log.Println("ingestToTimescale", err)
 			continue
 		}
 
@@ -105,13 +105,13 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 			// requestTx = txDetail.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
 			case metadata.Pdexv3TradeResponseMeta:
 				md := txDetail.GetMetadata().(*metadataPdexv3.TradeResponse)
-				if md.Status != 0 {
+				if md.Status != metadataPdexv3.TradeAcceptedStatus {
 					continue
 				}
 				requestTx = md.RequestTxID.String()
 			case metadata.Pdexv3AddOrderResponseMeta:
 				md := txDetail.GetMetadata().(*metadataPdexv3.AddOrderResponse)
-				if md.Status != 0 {
+				if md.Status != metadataPdexv3.OrderAcceptedStatus {
 					continue
 				}
 				requestTx = md.RequestTxID.String()
@@ -123,17 +123,25 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 				if txToken.GetTxTokenData().TxNormal.GetProof() != nil {
 					outs := txToken.GetTxTokenData().TxNormal.GetProof().GetOutputCoins()
 					if len(outs) > 0 {
-						amount = outs[0].GetValue()
-						if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
-							// txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
-							// tokenIDStr = txTokenData.PropertyID.String()
+						for _, v := range outs {
+							if !v.IsEncrypted() {
+								amount += v.GetValue()
+							}
 						}
+						// if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
+						// txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
+						// tokenIDStr = txTokenData.PropertyID.String()
+						// }
 					}
 				}
 			} else {
 				outs := txDetail.GetProof().GetOutputCoins()
 				if len(outs) > 0 {
-					amount = outs[0].GetValue()
+					for _, v := range outs {
+						if !v.IsEncrypted() {
+							amount += v.GetValue()
+						}
+					}
 				}
 			}
 			tradeInfo, err := getPoolAndRate(requestTx)
@@ -149,21 +157,24 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 				Rate:       tradeInfo.Rate,
 			}
 			if tradeInfo.IsSwap {
-				trade.Token1Amount = int(amount)
-				trade.Token2Amount = int(float64(amount) * tradeInfo.Rate)
+				trade.Token1Amount = tradeInfo.SellAmount
+				trade.Token2Amount = amount
 			} else {
 				if tradeInfo.IsBuy {
-					trade.Token1Amount = int(amount)
-					trade.Token2Amount = int(float64(amount) * tradeInfo.Rate)
+					trade.Token1Amount = tradeInfo.BuyAmount
+					trade.Token2Amount = tradeInfo.SellAmount
 				} else {
-					trade.Token1Amount = int(float64(amount) / tradeInfo.Rate)
-					trade.Token2Amount = int(amount)
+					trade.Token1Amount = tradeInfo.SellAmount
+					trade.Token2Amount = tradeInfo.BuyAmount
 				}
 			}
 
 			result = append(result, trade)
 		case metadata.Pdexv3WithdrawOrderResponseMeta:
-			// meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderResponse)
+			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderResponse)
+			if md.Status != metadataPdexv3.WithdrawOrderAcceptedStatus {
+				continue
+			}
 			// order := shared.TradeOrderData{
 			// 	WithdrawTxs:      []string{meta.RequestTxID.String()},
 			// 	WithdrawPendings: []string{meta.RequestTxID.String()},
@@ -209,8 +220,8 @@ func createAnalyticTable() error {
 		pair_id TEXT,
 		sell_pool_id TEXT,
 		buy_pool_id TEXT,
-		actual_token1_amount INTEGER,
-		actual_token2_amount INTEGER
+		actual_token1_amount bigint,
+		actual_token2_amount bigint
 		);
 		SELECT create_hypertable('trade_data', 'time');
 		`
@@ -225,7 +236,7 @@ func createAnalyticTable() error {
 
 func ingestToTimescale(data []AnalyticTradeData) error {
 	queryInsertTimeseriesData := `
-	INSERT INTO trade_data (time, trade_id, price, pair_id, sell_pool_id, buy_pool_id, actual_token1_amount, actual_token2_amount) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
+	INSERT INTO trade_data (time, trade_id, rate, pair_id, sell_pool_id, buy_pool_id, actual_token1_amount, actual_token2_amount) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
 
 	batch := &pgx.Batch{}
 	for _, r := range data {
@@ -435,7 +446,7 @@ func getPoolAndRate(requestTx string) (*tradeInfo, error) {
 				result.BuyAmount = item.MinAcceptableAmount
 				result.SellAmount = item.SellAmount
 				result.PairID = shared.GenPairID(result.TokenSell, result.TokenBuy)
-
+				result.Rate = float64(item.MinAcceptableAmount) / float64(item.SellAmount)
 			case metadata.Pdexv3AddOrderRequestMeta:
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.AddOrderRequest)
 				if !ok {

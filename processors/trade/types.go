@@ -19,8 +19,8 @@ type AnalyticTradeData struct {
 	PairID       string
 	SellPoolID   string
 	BuyPoolID    string
-	Token1Amount int
-	Token2Amount int
+	Token1Amount uint64
+	Token2Amount uint64
 }
 
 type tradeInfo struct {
