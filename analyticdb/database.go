@@ -75,7 +75,7 @@ func Exec(ctx context.Context, queryStr string, arguments ...interface{}) (pgcon
 }
 
 func IsAlreadyExistError(errStr string) bool {
-	return strings.Contains(errStr, "already exists")
+	return (strings.Contains(errStr, "already exists") || strings.Contains(errStr, " already a hypertable"))
 }
 
 func ExecBatch(ctx context.Context, batch *pgx.Batch) (pgconn.CommandTag, error) {

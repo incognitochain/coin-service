@@ -242,7 +242,7 @@ func ingestToTimescale(data []AnalyticTradeData) error {
 
 func createContinuousView() error {
 	var err error
-	table := "trade_result_table"
+	table := "trade_data"
 	//create view
 	//15m view
 	queryCreateView15m := genCAViewQuery(view15m, table, period15m)
