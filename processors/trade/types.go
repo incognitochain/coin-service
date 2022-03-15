@@ -17,7 +17,20 @@ type AnalyticTradeData struct {
 	TradeId      string
 	Rate         float64
 	PairID       string
-	PoolID       string
+	SellPoolID   string
+	BuyPoolID    string
 	Token1Amount int
 	Token2Amount int
+}
+
+type tradeInfo struct {
+	TokenSell  string
+	TokenBuy   string
+	SellAmount uint64
+	BuyAmount  uint64
+	Rate       float64
+	TradePath  []string
+	PairID     string
+	IsSwap     bool
+	IsBuy      bool
 }

@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/incognitochain/incognito-chain/common"
@@ -329,4 +331,10 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 		}
 	}
 	return result, nil
+}
+
+func GenPairID(token1, token2 string) string {
+	tokens := []string{token1, token2}
+	sort.Strings(tokens)
+	return strings.Join(tokens, "-")
 }

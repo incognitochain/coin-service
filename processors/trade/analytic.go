@@ -41,7 +41,8 @@ func startAnalytic() {
 		time.Sleep(5 * time.Second)
 		startTime := time.Now()
 
-		metas := []string{strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta), strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
+		// strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta),
+		metas := []string{strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
 
 		txList, err := getTxToProcess(metas, historyState.LastProcessedObjectID, 10000)
 		if err != nil {
@@ -88,22 +89,21 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta, metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
 			requestTx := ""
 			switch metaDataType {
-			case metadata.PDECrossPoolTradeResponseMeta:
-				continue
-				statusStr := txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).TradeStatus
-				if statusStr != "xPoolTradeAccepted" {
-					continue
-				}
-				requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
-			case metadata.PDETradeResponseMeta:
-				continue
-				statusStr := txDetail.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
-				if statusStr != "accepted" {
-					continue
-				}
-				requestTx = txDetail.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
+			// case metadata.PDECrossPoolTradeResponseMeta:
+			// 	continue
+			// statusStr := txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).TradeStatus
+			// if statusStr != "xPoolTradeAccepted" {
+			// 	continue
+			// }
+			// requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
+			// case metadata.PDETradeResponseMeta:
+			// 	continue
+			// statusStr := txDetail.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
+			// if statusStr != "accepted" {
+			// 	continue
+			// }
+			// requestTx = txDetail.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
 			case metadata.Pdexv3TradeResponseMeta:
-				continue
 				md := txDetail.GetMetadata().(*metadataPdexv3.TradeResponse)
 				if md.Status != 0 {
 					continue
@@ -136,24 +136,31 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 					amount = outs[0].GetValue()
 				}
 			}
-			poolID, rate, isbuy, err := getPoolAndRate(requestTx)
+			tradeInfo, err := getPoolAndRate(requestTx)
 			if err != nil {
 				return nil, err
 			}
 			trade := AnalyticTradeData{
-				Time:    time.Unix(txDetail.GetLockTime(), 0),
-				TradeId: requestTx,
-				PairID:  poolID,
-				PoolID:  poolID,
-				Rate:    rate,
+				Time:       time.Unix(txDetail.GetLockTime(), 0),
+				TradeId:    requestTx,
+				PairID:     tradeInfo.PairID,
+				SellPoolID: tradeInfo.TradePath[0],
+				BuyPoolID:  tradeInfo.TradePath[len(tradeInfo.TradePath)-1],
+				Rate:       tradeInfo.Rate,
 			}
-			if isbuy {
+			if tradeInfo.IsSwap {
 				trade.Token1Amount = int(amount)
-				trade.Token2Amount = int(float64(amount) * rate)
+				trade.Token2Amount = int(float64(amount) * tradeInfo.Rate)
 			} else {
-				trade.Token1Amount = int(float64(amount) / rate)
-				trade.Token2Amount = int(amount)
+				if tradeInfo.IsBuy {
+					trade.Token1Amount = int(amount)
+					trade.Token2Amount = int(float64(amount) * tradeInfo.Rate)
+				} else {
+					trade.Token1Amount = int(float64(amount) / tradeInfo.Rate)
+					trade.Token2Amount = int(amount)
+				}
 			}
+
 			result = append(result, trade)
 		case metadata.Pdexv3WithdrawOrderResponseMeta:
 			// meta := txDetail.GetMetadata().(*metadataPdexv3.WithdrawOrderResponse)
@@ -200,7 +207,8 @@ func createAnalyticTable() error {
 		trade_id TEXT,
 		rate DOUBLE PRECISION,
 		pair_id TEXT,
-		pool_id TEXT,
+		sell_pool_id TEXT,
+		buy_pool_id TEXT,
 		actual_token1_amount INTEGER,
 		actual_token2_amount INTEGER
 		);
@@ -217,11 +225,11 @@ func createAnalyticTable() error {
 
 func ingestToTimescale(data []AnalyticTradeData) error {
 	queryInsertTimeseriesData := `
-	INSERT INTO trade_data (time, trade_id, price, pair_id, pool_id, actual_token1_amount, actual_token2_amount) VALUES ($1, $2, $3, $4, $5, $6, $7);`
+	INSERT INTO trade_data (time, trade_id, price, pair_id, sell_pool_id, buy_pool_id, actual_token1_amount, actual_token2_amount) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
 
 	batch := &pgx.Batch{}
 	for _, r := range data {
-		batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Rate, r.PairID, r.PoolID, r.Token1Amount, r.Token2Amount)
+		batch.Queue(queryInsertTimeseriesData, r.Time, r.TradeId, r.Rate, r.PairID, r.SellPoolID, r.BuyPoolID, r.Token1Amount, r.Token2Amount)
 	}
 	_, err := analyticdb.ExecBatch(context.Background(), batch)
 	if err != nil {
@@ -342,10 +350,11 @@ func createContinuousView() error {
 	return nil
 }
 
-func getPoolAndRate(requestTx string) (string, float64, bool, error) {
+func getPoolAndRate(requestTx string) (*tradeInfo, error) {
+	var result tradeInfo
 	txs, err := database.DBGetTxByHash([]string{requestTx})
 	if err != nil {
-		return "", 0, false, err
+		return nil, err
 	}
 	for _, tx := range txs {
 		metaDataType, _ := strconv.Atoi(tx.Metatype)
@@ -359,22 +368,6 @@ func getPoolAndRate(requestTx string) (string, float64, bool, error) {
 		}
 		switch metaDataType {
 		case metadata.PDECrossPoolTradeRequestMeta, metadata.PDETradeRequestMeta, metadata.Pdexv3TradeRequestMeta, metadata.Pdexv3AddOrderRequestMeta:
-			// requestTx := txDetail.Hash().String()
-			// lockTime := txDetail.GetLockTime()
-			// buyToken := ""
-			sellToken := ""
-			poolID := ""
-			// pairID := ""
-			minaccept := uint64(0)
-			amount := uint64(0)
-			// nftID := ""
-			// isSwap := true
-			// version := 1
-			// feeToken := ""
-			// fee := uint64(0)
-			rate := float64(0)
-			isBuy := false
-			// tradingPath := []string{}
 			switch metaDataType {
 			case metadata.PDETradeRequestMeta:
 				// meta := txDetail.GetMetadata().(*metadata.PDETradeRequest)
@@ -391,43 +384,43 @@ func getPoolAndRate(requestTx string) (string, float64, bool, error) {
 				// minaccept = meta.MinAcceptableAmount
 				// amount = meta.SellAmount
 			case metadata.Pdexv3TradeRequestMeta:
-				// item, ok := txDetail.GetMetadata().(*metadataPdexv3.TradeRequest)
-				// if !ok {
-				// 	panic("invalid metadataPdexv3.TradeRequest")
-				// }
-				// sellToken = item.TokenToSell.String()
-				// pairID = strings.Join(item.TradePath, "-")
-				// if len(item.TradePath) == 1 {
-				// 	tks := strings.Split(item.TradePath[0], "-")
-				// 	if tks[0] == sellToken {
-				// 		buyToken = tks[1]
-				// 	} else {
-				// 		buyToken = tks[0]
-				// 	}
-				// } else {
-				// 	tksMap := make(map[string]bool)
-				// 	for _, path := range item.TradePath {
-				// 		tks := strings.Split(path, "-")
-				// 		for idx, v := range tks {
-				// 			if idx+1 == len(tks) {
-				// 				continue
-				// 			}
-				// 			if _, ok := tksMap[v]; ok {
-				// 				tksMap[v] = false
-				// 			} else {
-				// 				tksMap[v] = true
-				// 			}
-				// 		}
+				item, ok := txDetail.GetMetadata().(*metadataPdexv3.TradeRequest)
+				if !ok {
+					panic("invalid metadataPdexv3.TradeRequest")
+				}
+				result.TokenSell = item.TokenToSell.String()
+				result.TradePath = item.TradePath
+				if len(item.TradePath) == 1 {
+					tks := strings.Split(item.TradePath[0], "-")
+					if tks[0] == result.TokenSell {
+						result.TokenBuy = tks[1]
+					} else {
+						result.TokenBuy = tks[0]
+					}
+				} else {
+					tksMap := make(map[string]bool)
+					for _, path := range item.TradePath {
+						tks := strings.Split(path, "-")
+						for idx, v := range tks {
+							if idx+1 == len(tks) {
+								continue
+							}
+							if _, ok := tksMap[v]; ok {
+								tksMap[v] = false
+							} else {
+								tksMap[v] = true
+							}
+						}
 
-				// 	}
-				// 	for k, v := range tksMap {
-				// 		if v && k != sellToken {
-				// 			buyToken = k
-				// 		}
-				// 	}
-				// }
+					}
+					for k, v := range tksMap {
+						if v && k != result.TokenSell {
+							result.TokenBuy = k
+						}
+					}
+				}
 
-				// if sellToken == common.PRVCoinID.String() {
+				// if result.TokenSell == common.PRVCoinID.String() {
 				// 	feeToken = common.PRVCoinID.String()
 				// } else {
 				// 	// error was handled by tx validation
@@ -439,33 +432,33 @@ func getPoolAndRate(requestTx string) (string, float64, bool, error) {
 				// 	}
 				// }
 
-				// minaccept = item.MinAcceptableAmount
-				// amount = item.SellAmount
-				// version = 2
-				// tradingPath = item.TradePath
-				// fee = item.TradingFee
+				result.BuyAmount = item.MinAcceptableAmount
+				result.SellAmount = item.SellAmount
+				result.PairID = shared.GenPairID(result.TokenSell, result.TokenBuy)
+
 			case metadata.Pdexv3AddOrderRequestMeta:
-				// isSwap = false
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.AddOrderRequest)
 				if !ok {
 					panic("invalid metadataPdexv3.AddOrderRequest")
 				}
-				sellToken = item.TokenToSell.String()
-				poolID = item.PoolPairID
-				minaccept = item.MinAcceptableAmount
-				amount = item.SellAmount
-				tokenStrs := strings.Split(poolID, "-")
-				if sellToken != tokenStrs[0] {
-					// buyToken = tokenStrs[0]
-					rate = float64(minaccept / amount)
-					isBuy = true
+				minaccept := item.MinAcceptableAmount
+				amount := item.SellAmount
+				result.IsSwap = false
+				result.TokenSell = item.TokenToSell.String()
+				result.TradePath = []string{item.PoolPairID}
+				result.BuyAmount = minaccept
+				result.SellAmount = amount
+				tokenStrs := strings.Split(item.PoolPairID, "-")
+				if result.TokenSell != tokenStrs[0] {
+					result.Rate = float64(minaccept / amount)
+					result.IsBuy = true
 				} else {
-					// buyToken = tokenStrs[1]
-					rate = float64(amount / minaccept)
+					result.Rate = float64(amount / minaccept)
 				}
+				result.PairID = shared.GenPairID(result.TokenSell, result.TokenBuy)
 			}
-			return poolID, rate, isBuy, nil
+			return &result, nil
 		}
 	}
-	return "", 0, false, nil
+	return nil, errors.New("???")
 }
