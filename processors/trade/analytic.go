@@ -42,7 +42,7 @@ func startAnalytic() {
 		startTime := time.Now()
 
 		// strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta),
-		metas := []string{strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
+		metas := []string{strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3AddOrderResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
 
 		txList, err := getTxToProcess(metas, analyticState.LastProcessedObjectID, 10000)
 		if err != nil {
