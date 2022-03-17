@@ -159,6 +159,7 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 			if tradeInfo.IsSwap {
 				trade.Token1Amount = tradeInfo.SellAmount
 				trade.Token2Amount = amount
+				trade.Rate = float64(amount) / float64(tradeInfo.SellAmount)
 			} else {
 				if tradeInfo.IsBuy {
 					trade.Token1Amount = tradeInfo.BuyAmount
@@ -258,29 +259,29 @@ func createContinuousView() error {
 	//15m view
 	queryCreateView15m := genCAViewQuery(view15m, table, period15m)
 	//30m view
-	queryCreateView30m := genCAViewQuery(view30m, table, period30m)
+	// queryCreateView30m := genCAViewQuery(view30m, table, period30m)
 	//1h view
 	queryCreateView1h := genCAViewQuery(view1h, table, period1h)
 	//4h view
-	queryCreateView4h := genCAViewQuery(view4h, table, period4h)
+	// queryCreateView4h := genCAViewQuery(view4h, table, period4h)
 	//1d view
 	queryCreateView1d := genCAViewQuery(view1d, table, period1d)
 	//1w view
-	queryCreateView1w := genCAViewQuery(view1w, table, period1w)
+	// queryCreateView1w := genCAViewQuery(view1w, table, period1w)
 
 	//create agg-policy
 	//15m view
 	queryContinuousAgg15m := genConAggPolicyQuery(view15m)
 	//30m view
-	queryContinuousAgg30m := genConAggPolicyQuery(view30m)
+	// queryContinuousAgg30m := genConAggPolicyQuery(view30m)
 	//1h view
 	queryContinuousAgg1h := genConAggPolicyQuery(view1h)
 	//4h view
-	queryContinuousAgg4h := genConAggPolicyQuery(view4h)
+	// queryContinuousAgg4h := genConAggPolicyQuery(view4h)
 	//1d view
 	queryContinuousAgg1d := genConAggPolicyQuery(view1d)
 	//1w view
-	queryContinuousAgg1w := genConAggPolicyQuery(view1w)
+	// queryContinuousAgg1w := genConAggPolicyQuery(view1w)
 
 	//create retention-policy
 	//TODO
@@ -291,36 +292,36 @@ func createContinuousView() error {
 			return err
 		}
 	}
-	_, err = analyticdb.Exec(context.Background(), queryCreateView30m)
-	if err != nil {
-		if !analyticdb.IsAlreadyExistError(err.Error()) {
-			return err
-		}
-	}
+	// _, err = analyticdb.Exec(context.Background(), queryCreateView30m)
+	// if err != nil {
+	// 	if !analyticdb.IsAlreadyExistError(err.Error()) {
+	// 		return err
+	// 	}
+	// }
 	_, err = analyticdb.Exec(context.Background(), queryCreateView1h)
 	if err != nil {
 		if !analyticdb.IsAlreadyExistError(err.Error()) {
 			return err
 		}
 	}
-	_, err = analyticdb.Exec(context.Background(), queryCreateView4h)
-	if err != nil {
-		if !analyticdb.IsAlreadyExistError(err.Error()) {
-			return err
-		}
-	}
+	// _, err = analyticdb.Exec(context.Background(), queryCreateView4h)
+	// if err != nil {
+	// 	if !analyticdb.IsAlreadyExistError(err.Error()) {
+	// 		return err
+	// 	}
+	// }
 	_, err = analyticdb.Exec(context.Background(), queryCreateView1d)
 	if err != nil {
 		if !analyticdb.IsAlreadyExistError(err.Error()) {
 			return err
 		}
 	}
-	_, err = analyticdb.Exec(context.Background(), queryCreateView1w)
-	if err != nil {
-		if !analyticdb.IsAlreadyExistError(err.Error()) {
-			return err
-		}
-	}
+	// _, err = analyticdb.Exec(context.Background(), queryCreateView1w)
+	// if err != nil {
+	// 	if !analyticdb.IsAlreadyExistError(err.Error()) {
+	// 		return err
+	// 	}
+	// }
 
 	_, err = analyticdb.Exec(context.Background(), queryContinuousAgg15m)
 	if err != nil {
@@ -328,36 +329,36 @@ func createContinuousView() error {
 			return err
 		}
 	}
-	_, err = analyticdb.Exec(context.Background(), queryContinuousAgg30m)
-	if err != nil {
-		if !analyticdb.IsAlreadyExistError(err.Error()) {
-			return err
-		}
-	}
+	// _, err = analyticdb.Exec(context.Background(), queryContinuousAgg30m)
+	// if err != nil {
+	// 	if !analyticdb.IsAlreadyExistError(err.Error()) {
+	// 		return err
+	// 	}
+	// }
 	_, err = analyticdb.Exec(context.Background(), queryContinuousAgg1h)
 	if err != nil {
 		if !analyticdb.IsAlreadyExistError(err.Error()) {
 			return err
 		}
 	}
-	_, err = analyticdb.Exec(context.Background(), queryContinuousAgg4h)
-	if err != nil {
-		if !analyticdb.IsAlreadyExistError(err.Error()) {
-			return err
-		}
-	}
+	// _, err = analyticdb.Exec(context.Background(), queryContinuousAgg4h)
+	// if err != nil {
+	// 	if !analyticdb.IsAlreadyExistError(err.Error()) {
+	// 		return err
+	// 	}
+	// }
 	_, err = analyticdb.Exec(context.Background(), queryContinuousAgg1d)
 	if err != nil {
 		if !analyticdb.IsAlreadyExistError(err.Error()) {
 			return err
 		}
 	}
-	_, err = analyticdb.Exec(context.Background(), queryContinuousAgg1w)
-	if err != nil {
-		if !analyticdb.IsAlreadyExistError(err.Error()) {
-			return err
-		}
-	}
+	// _, err = analyticdb.Exec(context.Background(), queryContinuousAgg1w)
+	// if err != nil {
+	// 	if !analyticdb.IsAlreadyExistError(err.Error()) {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
@@ -429,6 +430,9 @@ func getPoolAndRate(requestTx string) (*tradeInfo, error) {
 							result.TokenBuy = k
 						}
 					}
+					if result.TokenBuy == "" {
+						result.TokenBuy = result.TokenSell
+					}
 				}
 
 				// if result.TokenSell == common.PRVCoinID.String() {
@@ -447,6 +451,7 @@ func getPoolAndRate(requestTx string) (*tradeInfo, error) {
 				result.SellAmount = item.SellAmount
 				result.PairID = shared.GenPairID(result.TokenSell, result.TokenBuy)
 				result.Rate = float64(item.MinAcceptableAmount) / float64(item.SellAmount)
+				result.IsSwap = true
 			case metadata.Pdexv3AddOrderRequestMeta:
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.AddOrderRequest)
 				if !ok {
@@ -454,7 +459,6 @@ func getPoolAndRate(requestTx string) (*tradeInfo, error) {
 				}
 				minaccept := item.MinAcceptableAmount
 				amount := item.SellAmount
-				result.IsSwap = false
 				result.TokenSell = item.TokenToSell.String()
 				result.TradePath = []string{item.PoolPairID}
 				result.BuyAmount = minaccept

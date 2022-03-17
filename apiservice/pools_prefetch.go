@@ -193,3 +193,7 @@ func retrievePoolList() {
 		poolMap[v.PoolID] = idx
 	}
 }
+
+func getTradingVolume24hAllPool() float64 {
+	return 0
+}

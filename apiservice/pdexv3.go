@@ -1132,8 +1132,16 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 	poolid := c.Query("poolid")
 	period := c.Query("period")
 	intervals := c.Query("intervals")
+	from := c.Query("from")
+	to := c.Query("to")
 
-	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolid, period, intervals)
+	var analyticsData *analyticsquery.PDexPairRateHistoriesAPIResponse
+	var err error
+	if intervals == "" {
+		analyticsData, err = analyticsquery.APIGetPDexV3PairRateHistoriesV2(poolid, period, from, to)
+	} else {
+		analyticsData, err = analyticsquery.APIGetPDexV3PairRateHistories(poolid, period, intervals)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return

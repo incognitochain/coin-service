@@ -4,14 +4,14 @@ import "fmt"
 
 // generate ContinuousAggregationQuery
 func genCAViewQuery(view, table, period string) string {
-	return fmt.Sprintf(`CREATE MATERIALIZED VIEW %v WITH (timescaledb.continuous) AS select time_bucket('%v', time) AS period, first(rate,time) open, last(rate,time) "close",avg(rate) as Average,max(rate) as high,min(rate) as low, sum(rate) as volume, count(*) as "set", sum(actual_token1_amount) as volume_tk1, sum(actual_token2_amount) as volume_tk2, sell_pool_id from %v GROUP BY period, sell_pool_id WITH NO DATA; ALTER MATERIALIZED VIEW %v set (timescaledb.materialized_only = false);`, view, period, table, view)
+	return fmt.Sprintf(`CREATE MATERIALIZED VIEW %v WITH (timescaledb.continuous, timescaledb.materialized_only = true) AS select time_bucket('%v', time) AS period, first(rate,time) open, last(rate,time) "close",avg(rate) as Average,max(rate) as high,min(rate) as low, count(*) as "set", sum(actual_token1_amount) as volume_tk1, sum(actual_token2_amount) as volume_tk2, sell_pool_id from %v GROUP BY period, sell_pool_id WITH NO DATA`, view, period, table)
 }
 
 func genConAggPolicyQuery(view string) string {
 	return fmt.Sprintf(`SELECT add_continuous_aggregate_policy('%v',
 	start_offset => INTERVAL '1 month',
-	end_offset => INTERVAL '1 day',
-	schedule_interval => INTERVAL '1 hour');`, view)
+	end_offset => INTERVAL '1 minute',
+	schedule_interval => INTERVAL '1 minute');`, view)
 }
 
 func genRetentionPolicyQuery(view, days string) string {
@@ -21,3 +21,15 @@ func genRetentionPolicyQuery(view, days string) string {
 func genCompressPolicyQuery(view, days string) string {
 	return fmt.Sprintf(`SELECT add_compression_policy('%v', compress_after=>'%v days'::interval);`, view, days)
 }
+
+// SELECT time_bucket_gapfill('15 minute', period) as bucket,
+// avg(open) as open,avg(close) as close, avg(high) as high, avg(low) as low,
+// count(*) as datas,
+// sell_pool_id
+// FROM trade_price_15m
+// WHERE period >= '2022-03-01' AND period < '2022-03-14'
+// GROUP BY bucket,sell_pool_id ORDER BY sell_pool_id DESC,bucket DESC,datas DESC;
+// SELECT *
+// FROM trade_price_15m
+// WHERE period >= '2022-01-01' AND period < '2022-03-14' ORDER BY sell_pool_id DESC,period DESC;
+// CALL refresh_continuous_aggregate('trade_price_1d', NULL, localtimestamp - INTERVAL '2 month');

@@ -123,7 +123,9 @@ type PdexV3PoolDetail struct {
 	TotalShare     uint64
 	AMP            uint
 	Price          float64
-	Volume         float64
+	Volume         float64 //In usd
+	volumeToken1   uint64  //In raw volume
+	volumeTokne2   uint64  //In raw volume
 	PriceChange24h float64
 	APY            uint64
 	IsVerify       bool

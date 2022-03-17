@@ -88,3 +88,12 @@ func ExecBatch(ctx context.Context, batch *pgx.Batch) (pgconn.CommandTag, error)
 	r, err := br.Exec()
 	return r, err
 }
+
+func ExecQuery(ctx context.Context, queryStr string, arguments ...interface{}) (pgx.Rows, error) {
+	db := getDBConn()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r, err := db.Query(ctx, queryStr)
+	return r, err
+}
