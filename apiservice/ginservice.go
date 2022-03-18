@@ -134,6 +134,9 @@ func StartGinService() {
 		astGroup.GET("/checkrate", APICheckRate)
 		astGroup.GET("/plist", APIGetPdecimal)
 
+		deviceGroup := r.Group("/device")
+		deviceGroup.GET("/getdevicebyqrcode", APIGetDeviceByQRCode)
+
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {

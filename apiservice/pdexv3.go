@@ -361,22 +361,18 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 func (pdexv3) ContributeHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
 	var err error
 	var list []shared.ContributionData
-	if poolID != "" {
-
-	} else {
-		list, err = database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
+	list, err = database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
 	}
 
+	var contributeList []PdexV3ContributionData
 	var result []PdexV3ContributionData
-
+	completedTxs := make(map[string]struct{})
 	for _, v := range list {
 		ctrbAmount := []uint64{}
 		ctrbToken := []string{}
@@ -424,11 +420,29 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 				data.Status = "refunding"
 			}
 		}
+		if len(v.RequestTxs) == 2 {
+			for _, tx := range v.RequestTxs {
+				completedTxs[tx] = struct{}{}
+			}
+		}
 		if len(v.RespondTxs) > 0 {
 			data.Status = "refunded"
 		}
-		result = append(result, data)
+		contributeList = append(contributeList, data)
 	}
+
+	//remove unneeded data
+	for _, v := range contributeList {
+		if len(v.RequestTxs) == 1 {
+			if _, ok := completedTxs[v.RequestTxs[0]]; !ok {
+				result = append(result, v)
+			}
+		}
+		if len(v.RequestTxs) == 2 {
+			result = append(result, v)
+		}
+	}
+
 	respond := APIRespond{
 		Result: result,
 	}
@@ -1093,7 +1107,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
-		ia := ((rt1 / rt) - 1) * 100
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
@@ -1108,7 +1122,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
-		ia := ((rt1 / rt) - 1) * 100
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feeToken.IsSignificant = true
 		}
