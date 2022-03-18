@@ -1,55 +1,22 @@
 package trade
 
+import (
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/metadata"
+	metadataPdexv3 "github.com/incognitochain/incognito-chain/metadata/pdexv3"
+	"github.com/incognitochain/incognito-chain/transaction"
+)
+
 func StartProcessor() {
 	go startProcessHistory()
 	startAnalytic()
-}
-
-func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
-	var result []shared.TxData
-	metas := []string{strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta), strconv.Itoa(metadata.PDETradeRequestMeta), strconv.Itoa(metadata.Pdexv3TradeRequestMeta), strconv.Itoa(metadata.Pdexv3AddOrderRequestMeta), strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta), strconv.Itoa(metadata.Pdexv3AddOrderResponseMeta), strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderRequestMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
-	var obID primitive.ObjectID
-	if lastID == "" {
-		obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	} else {
-		var err error
-		obID, err = primitive.ObjectIDFromHex(lastID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	filter := bson.M{
-		"_id":      bson.M{operator.Gt: obID},
-		"metatype": bson.M{operator.In: metas},
-	}
-	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(context.Background(), &result, filter, &options.FindOptions{
-		Sort:  bson.D{{"_id", 1}},
-		Limit: &limit,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func updateState() error {
-	result, err := json.Marshal(currentState)
-	if err != nil {
-		panic(err)
-	}
-	return database.DBUpdateProcessorState("trade", string(result))
-}
-
-func loadState() error {
-	result, err := database.DBGetProcessorState("trade")
-	if err != nil {
-		return err
-	}
-	if result == nil {
-		currentState = State{}
-		return nil
-	}
-	return json.UnmarshalFromString(result.State, &currentState)
 }
 
 func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []shared.TradeOrderData, []shared.TradeOrderData, []shared.TradeOrderData, error) {
@@ -173,11 +140,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				if item.UseNft() {
 					nftID = item.NftID.String()
 				} else {
-					if item.AccessOption.AccessID == nil {
-						nftID = metadataPdexv3.GenAccessID(item.Receiver[common.PdexAccessCoinID]).String()
-					} else {
-						nftID = item.AccessID.String()
-					}
+					nftID = item.AccessID.String()
 				}
 				version = 2
 
@@ -278,7 +241,7 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 			if meta.UseNft() {
 				order.NFTID = meta.NftID.String()
 			} else {
-				order.NFTID = common.HashH(meta.BurntOTA.ToBytesS()[:]).String()
+				order.NFTID = meta.AccessID.String()
 			}
 			order.WithdrawInfos[tx.TxHash] = wdData
 			cancelTrades = append(cancelTrades, order)
