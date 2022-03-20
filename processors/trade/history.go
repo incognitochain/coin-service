@@ -38,14 +38,17 @@ func startProcessHistory() {
 		}
 
 		fmt.Println("len(request)", len(request), len(respond), len(withdrawReq), len(withdrawRes), len(txList), time.Since(startTime))
+
 		err = database.DBSaveTradeOrder(request)
 		if err != nil {
 			panic(err)
 		}
+
 		err = database.DBUpdateTradeOrder(respond)
 		if err != nil {
 			panic(err)
 		}
+
 		err = database.DBUpdateWithdrawTradeOrderReq(withdrawReq)
 		if err != nil {
 			panic(err)
