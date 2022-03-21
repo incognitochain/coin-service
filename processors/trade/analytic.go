@@ -26,7 +26,7 @@ func startAnalytic() {
 	if err != nil {
 		panic(err)
 	}
-	//create trade-result-table
+
 	err = createAnalyticTable()
 	if err != nil {
 		panic(err)
