@@ -1,6 +1,10 @@
 package liquidity
 
-import jsoniter "github.com/json-iterator/go"
+import (
+	"time"
+
+	jsoniter "github.com/json-iterator/go"
+)
 
 type State struct {
 	LastProcessedObjectID     string
@@ -14,4 +18,12 @@ type RewardInfo struct {
 	TokenAmount        map[string]uint64
 	RewardReceiveInPRV uint64
 	TotalAmountInPRV   uint64
+}
+
+type AnalyticLiquidityData struct {
+	Time         time.Time
+	ID           string
+	PoolID       string
+	Token1Amount uint64
+	Token2Amount uint64
 }
