@@ -378,6 +378,19 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+
+	//remove unneeded data
+	for _, v := range contributeList {
+		if len(v.RequestTxs) == 1 {
+			if _, ok := completedTxs[v.RequestTxs[0]]; !ok {
+				result = append(result, v)
+			}
+		}
+		if len(v.RequestTxs) == 2 {
+			result = append(result, v)
+		}
+	}
+
 	respond := APIRespond{
 		Result: result,
 	}
@@ -1093,7 +1106,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
-		ia := ((rt1 / rt) - 1) * 100
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
@@ -1108,7 +1121,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
-		ia := ((rt1 / rt) - 1) * 100
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feeToken.IsSignificant = true
 		}

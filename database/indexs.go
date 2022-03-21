@@ -529,3 +529,23 @@ func DBCreateClientAssistantIndex() error {
 
 	return nil
 }
+
+func DBCreatePNodeDeviceIndex() error {
+	log.Println("DBCreatePNodeDeviceIndex")
+	modal := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "qr_code", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "bls", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err := mgm.Coll(&shared.PNodeDevice{}).Indexes().CreateMany(context.Background(), modal)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
