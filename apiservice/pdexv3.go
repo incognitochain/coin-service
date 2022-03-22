@@ -142,8 +142,10 @@ func (pdexv3) PoolShare(c *gin.Context) {
 	}
 	var list []shared.PoolShareData
 	var err error
+	isNextOTA := false
+	rawOTA64 := make(map[string]string)
 	if otakey != "" {
-		accessOTAList, err := retrieveAccessOTAList(otakey)
+		accessOTAList, raw64, err := retrieveAccessOTAList(otakey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -153,6 +155,8 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
+		rawOTA64 = raw64
+		isNextOTA = true
 	} else {
 		list, err = database.DBGetShare([]string{nftID})
 		if err != nil {
@@ -163,7 +167,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		}
 	}
 
-	result, err := producePoolShareRespond(list)
+	result, err := producePoolShareRespond(list, isNextOTA, rawOTA64)
 	if err != nil {
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -200,16 +204,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 	var result []TradeDataRespond
 	if otakey != "" {
 		if getOrder {
-			// if poolid == "" {
-			// 	errStr := "poolid can't be empty"
-			// 	respond := APIRespond{
-			// 		Result: nil,
-			// 		Error:  &errStr,
-			// 	}
-			// 	c.JSON(http.StatusOK, respond)
-			// 	return
-			// }
-			accessOTAList, err := retrieveAccessOTAList(otakey)
+			accessOTAList, rawOTA64, err := retrieveAccessOTAList(otakey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -229,7 +224,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
-			result, err = produceTradeDataRespond(tradeList, tradeStatusList)
+			result, err = produceTradeDataRespond(tradeList, tradeStatusList, rawOTA64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -322,7 +317,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
-		result, err = produceTradeDataRespond(tradeList, tradeStatusList)
+		result, err = produceTradeDataRespond(tradeList, tradeStatusList, nil)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -361,7 +356,7 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 			return
 		}
 	} else {
-		accessIDList, err := retrieveAccessOTAList(otakey)
+		accessIDList, _, err := retrieveAccessOTAList(otakey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -378,6 +373,7 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+
 	respond := APIRespond{
 		Result: result,
 	}
@@ -420,7 +416,7 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 	accessIDList := []string{}
 	if otakey != "" {
 		var err error
-		accessIDList, err = retrieveAccessOTAList(otakey)
+		accessIDList, _, err = retrieveAccessOTAList(otakey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -473,7 +469,7 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 	accessIDList := []string{}
 	if otakey != "" {
 		var err error
-		accessIDList, err = retrieveAccessOTAList(otakey)
+		accessIDList, _, err = retrieveAccessOTAList(otakey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -1093,7 +1089,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
-		ia := ((rt1 / rt) - 1) * 100
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
@@ -1108,7 +1104,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			}
 		}
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
-		ia := ((rt1 / rt) - 1) * 100
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feeToken.IsSignificant = true
 		}
@@ -1566,15 +1562,27 @@ func (pdexv3) PDEState(c *gin.Context) {
 
 func (pdexv3) PendingLimit(c *gin.Context) {
 	var req struct {
-		ID []string
+		Otakey string
+		ID     []string
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	nftIDs := req.ID
+	rawOTA64 := make(map[string]string)
+	if req.Otakey != "" {
+		accessOTAList, raw64, err := retrieveAccessOTAList(req.Otakey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		rawOTA64 = raw64
+		nftIDs = accessOTAList
+	}
 
-	tradeList, err := database.DBGetPendingLimitOrderByNftID(req.ID)
+	tradeList, tradeStatus, err := database.DBGetPendingLimitOrderByNftID(nftIDs)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
@@ -1587,21 +1595,20 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	txRequest := []string{}
-	for _, tx := range tradeList {
-		txRequest = append(txRequest, tx.RequestTx)
+
+	tradeStatusList := make(map[string]shared.LimitOrderStatus)
+	for _, v := range tradeStatus {
+		tradeStatusList[v.RequestTx] = v
 	}
-	tradeStatusList, err := database.DBGetTradeStatus(txRequest)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
+
 	var result []TradeDataRespond
 	for _, tradeInfo := range tradeList {
 		matchedAmount := uint64(0)
 		var tradeStatus *shared.LimitOrderStatus
+		nextota := ""
 		if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
 			tradeStatus = &t
+			nextota = rawOTA64[tradeStatus.CurrentAccessID]
 		}
 		matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
 		if err != nil {
@@ -1610,6 +1617,7 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 		}
 		amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
 		minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
+
 		trade := TradeDataRespond{
 			RequestTx:           tradeInfo.RequestTx,
 			RespondTxs:          tradeInfo.RespondTxs,
@@ -1635,6 +1643,7 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 			BuyTokenBalance:     buyTokenBl,
 			SellTokenWithdrawed: sellTokenWD,
 			BuyTokenWithdrawed:  buyTokenWD,
+			CurrentAccessOTA:    nextota,
 		}
 		result = append(result, trade)
 	}

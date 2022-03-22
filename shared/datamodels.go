@@ -1045,3 +1045,27 @@ func (model *CustomTokenInfo) Saving() error {
 
 	return nil
 }
+
+type PNodeDevice struct {
+	mgm.DefaultModel `bson:",inline"`
+	QRCode           string `json:"QRCode" bson:"qr_code"`
+	BLS              string `json:"BLS" bson:"bls"`
+}
+
+func (model *PNodeDevice) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (model *PNodeDevice) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
