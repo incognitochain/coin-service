@@ -1,6 +1,7 @@
 package apiservice
 
 import (
+	"encoding/base64"
 	"errors"
 	"strconv"
 	"strings"
@@ -12,13 +13,17 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
-func produceTradeDataRespond(tradeList []shared.TradeOrderData, tradeStatusList map[string]shared.LimitOrderStatus) ([]TradeDataRespond, error) {
+func produceTradeDataRespond(tradeList []shared.TradeOrderData, tradeStatusList map[string]shared.LimitOrderStatus, rawOTA64 map[string]string) ([]TradeDataRespond, error) {
 	var result []TradeDataRespond
 	for _, tradeInfo := range tradeList {
 		matchedAmount := uint64(0)
 		var tradeStatus *shared.LimitOrderStatus
+		nextota := ""
 		if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
 			tradeStatus = &t
+			if tradeStatus.CurrentAccessID != "" {
+				nextota = rawOTA64[tradeStatus.CurrentAccessID]
+			}
 		}
 		matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
 		if err != nil {
@@ -51,6 +56,7 @@ func produceTradeDataRespond(tradeList []shared.TradeOrderData, tradeStatusList 
 			BuyTokenBalance:     buyTokenBl,
 			SellTokenWithdrawed: sellTokenWD,
 			BuyTokenWithdrawed:  buyTokenWD,
+			CurrentAccessOTA:    nextota,
 		}
 		result = append(result, trade)
 	}
@@ -177,7 +183,7 @@ func produceContributeData(list []shared.ContributionData) ([]PdexV3Contribution
 	return result, nil
 }
 
-func producePoolShareRespond(list []shared.PoolShareData) ([]PdexV3PoolShareRespond, error) {
+func producePoolShareRespond(list []shared.PoolShareData, isNextOTA bool, rawOTA64 map[string]string) ([]PdexV3PoolShareRespond, error) {
 	var result []PdexV3PoolShareRespond
 	priorityTokens, err := database.DBGetTokenPriority()
 	if err != nil {
@@ -207,43 +213,47 @@ func producePoolShareRespond(list []shared.PoolShareData) ([]PdexV3PoolShareResp
 			tk1Amount, _ = strconv.ParseUint(l[0].Token2Amount, 10, 64)
 			tk2Amount, _ = strconv.ParseUint(l[0].Token1Amount, 10, 64)
 		}
-
+		nextota := ""
+		if v.CurrentAccessID != "" {
+			nextota = rawOTA64[v.CurrentAccessID]
+		}
 		result = append(result, PdexV3PoolShareRespond{
-			PoolID:          v.PoolID,
-			Share:           v.Amount,
-			Rewards:         v.TradingFee,
-			AMP:             l[0].AMP,
-			TokenID1:        token1ID,
-			TokenID2:        token2ID,
-			Token1Amount:    tk1Amount,
-			Token2Amount:    tk2Amount,
-			TotalShare:      totalShare,
-			OrderRewards:    v.OrderReward,
-			CurrentAccessID: v.CurrentAccessID,
-			NFTID:           v.NFTID,
+			PoolID:           v.PoolID,
+			Share:            v.Amount,
+			Rewards:          v.TradingFee,
+			AMP:              l[0].AMP,
+			TokenID1:         token1ID,
+			TokenID2:         token2ID,
+			Token1Amount:     tk1Amount,
+			Token2Amount:     tk2Amount,
+			TotalShare:       totalShare,
+			OrderRewards:     v.OrderReward,
+			CurrentAccessOTA: nextota,
+			NFTID:            v.NFTID,
 		})
 	}
 	return result, nil
 }
 
-func retrieveAccessOTAList(otakey string) ([]string, error) {
+func retrieveAccessOTAList(otakey string) ([]string, map[string]string, error) {
 	var result []string
 	wl, err := wallet.Base58CheckDeserialize(otakey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if wl.KeySet.OTAKey.GetOTASecretKey() == nil {
-		return nil, errors.New("invalid otakey")
+		return nil, nil, errors.New("invalid otakey")
 	}
 	coinList, err := database.DBGetAllAccessCoin(base58.EncodeCheck(wl.KeySet.OTAKey.GetOTASecretKey().ToBytesS()))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	rawBase64 := make(map[string]string)
 	for _, v := range coinList {
 		coinBytes, _, err := base58.Base58Check{}.Decode(v.CoinPubkey)
 		if err != nil {
 
-			return nil, err
+			return nil, nil, err
 		}
 		// accessID := common.Hash{}
 		// err = accessID.SetBytes(coinBytes)
@@ -252,7 +262,8 @@ func retrieveAccessOTAList(otakey string) ([]string, error) {
 		// 	return
 		// }
 		currentAccess := common.HashH(coinBytes[:]).String()
+		rawBase64[currentAccess] = base64.StdEncoding.EncodeToString(coinBytes[:])
 		result = append(result, currentAccess)
 	}
-	return result, nil
+	return result, rawBase64, nil
 }

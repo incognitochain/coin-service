@@ -1637,16 +1637,16 @@ func DBGetLimitOrderStatusByPairID(pairid string) ([]shared.LimitOrderStatus, er
 	}
 	return tradeStatus, nil
 }
-func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, error) {
+func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, []shared.LimitOrderStatus, error) {
 	var orders []shared.LimitOrderStatus
 	filter := bson.M{"nftid": bson.M{operator.In: nftIDs}}
 	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&orders, filter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var requestTxs []string
 	if len(orders) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	for _, v := range orders {
 		requestTxs = append(requestTxs, v.RequestTx)
@@ -1656,9 +1656,9 @@ func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, er
 	filter = bson.M{"requesttx": bson.M{operator.In: requestTxs}}
 	err = mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&list, filter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return list, nil
+	return list, orders, nil
 }
 
 func DBGetPendingLimitOrderByAccessOTA(accessOTAs []string) (map[string]shared.TradeOrderData, error) {

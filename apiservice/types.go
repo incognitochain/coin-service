@@ -171,6 +171,7 @@ type TradeDataRespond struct {
 	SellTokenWithdrawed uint64
 	BuyTokenWithdrawed  uint64
 	TradingPath         []string
+	CurrentAccessOTA    string
 }
 
 type TradeWithdrawInfo struct {
@@ -206,18 +207,18 @@ type PdexV3WithdrawFeeRespond struct {
 }
 
 type PdexV3PoolShareRespond struct {
-	PoolID          string
-	TokenID1        string
-	TokenID2        string
-	Token1Amount    uint64
-	Token2Amount    uint64
-	Rewards         map[string]uint64
-	OrderRewards    map[string]uint64
-	Share           uint64
-	AMP             uint
-	TotalShare      uint64
-	CurrentAccessID string
-	NFTID           string
+	PoolID           string
+	TokenID1         string
+	TokenID2         string
+	Token1Amount     uint64
+	Token2Amount     uint64
+	Rewards          map[string]uint64
+	OrderRewards     map[string]uint64
+	Share            uint64
+	AMP              uint
+	TotalShare       uint64
+	CurrentAccessOTA string
+	NFTID            string
 }
 
 type PdexV3ContributionData struct {
