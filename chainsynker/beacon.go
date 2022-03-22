@@ -170,21 +170,22 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 				panic(err)
 			}
 			pdexV3State = pdeStates[2]
+		} else {
+			pdeStateEnv := pdex.
+				NewStateEnvBuilder().
+				BuildBeaconInstructions(blk.Body.Instructions).
+				BuildStateDB(beaconFeatureStateDB).
+				BuildPrevBeaconHeight(blk.Header.Height - 1).
+				BuildBCHeightBreakPointPrivacyV2(config.Param().BCHeightBreakPointPrivacyV2).
+				BuildPdexv3BreakPoint(config.Param().PDexParams.Pdexv3BreakPointHeight).
+				Build()
+			err = pdexV3State.Process(pdeStateEnv)
+			if err != nil {
+				panic(err)
+			}
+			pdexV3State.ClearCache()
 		}
 
-		pdeStateEnv := pdex.
-			NewStateEnvBuilder().
-			BuildBeaconInstructions(blk.Body.Instructions).
-			BuildStateDB(beaconFeatureStateDB).
-			BuildPrevBeaconHeight(blk.Header.Height - 1).
-			BuildBCHeightBreakPointPrivacyV2(config.Param().BCHeightBreakPointPrivacyV2).
-			BuildPdexv3BreakPoint(config.Param().PDexParams.Pdexv3BreakPointHeight).
-			Build()
-		err = pdexV3State.Process(pdeStateEnv)
-		if err != nil {
-			panic(err)
-		}
-		pdexV3State.ClearCache()
 		params := pdexV3State.Reader().Params()
 		stateV2.StakingPoolsState = pdexV3State.Reader().StakingPools()
 		pools := make(map[string]*shared.PoolPairState)
