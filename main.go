@@ -35,6 +35,10 @@ func main() {
 	// 	go otaindexer.StartOTAIndexingFull()
 	// 	go apiservice.StartGinService()
 	case shared.QUERYMODE:
+		err = analyticdb.ConnectDB(shared.ServiceCfg.AnalyticAddress)
+		if err != nil {
+			panic(err)
+		}
 		go apiservice.StartGinService()
 	case shared.CHAINSYNCMODE:
 		chainsynker.InitChainSynker(shared.ServiceCfg)
@@ -45,8 +49,16 @@ func main() {
 	case shared.WORKERMODE:
 		go otaindexer.StartOTAIndexing()
 	case shared.LIQUIDITYMODE:
+		err = analyticdb.ConnectDB(shared.ServiceCfg.AnalyticAddress)
+		if err != nil {
+			panic(err)
+		}
 		go liquidity.StartProcessor()
 	case shared.SHIELDMODE:
+		err = analyticdb.ConnectDB(shared.ServiceCfg.AnalyticAddress)
+		if err != nil {
+			panic(err)
+		}
 		go shield.StartProcessor()
 	case shared.TRADEMODE:
 		err = analyticdb.ConnectDB(shared.ServiceCfg.AnalyticAddress)

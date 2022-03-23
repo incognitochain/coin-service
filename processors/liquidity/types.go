@@ -24,6 +24,6 @@ type AnalyticLiquidityData struct {
 	Time         time.Time
 	ID           string
 	PoolID       string
-	Token1Amount uint64
-	Token2Amount uint64
+	Token1Amount int64
+	Token2Amount int64
 }
