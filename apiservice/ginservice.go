@@ -193,7 +193,7 @@ func APIHealthCheck(c *gin.Context) {
 			if math.Abs(float64(height-chainheight)) > 5 || math.Abs(float64(height-uint64(coinHeight))) > 5 {
 				status = shared.HEALTH_STATUS_NOK
 			}
-			shardsHeight[i] = fmt.Sprintf("%v|%v|%v|%v", coinHeight, height, chainheight, math.Abs(float64(height-chainheight)))
+			shardsHeight[i] = fmt.Sprintf("%v|%v|%v|%v", coinHeight, height, chainheight, chainheight-uint64(coinHeight))
 		}
 	}
 	_, cd, _, _ := mgm.DefaultConfigs()
