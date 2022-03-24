@@ -164,7 +164,7 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 				return err
 			}
 		case 4:
-			fitler := bson.M{"pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
+			fitler := bson.M{"pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}, "accessids": bson.M{operator.Eq: order.AccessIDs}}
 			update := bson.M{
 				"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}, "accessids": bson.M{operator.Each: order.AccessIDs}},
 				"$set":  bson.M{"pairhash": order.PairHash, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor, "pairid": order.PairID},

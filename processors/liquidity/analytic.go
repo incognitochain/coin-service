@@ -111,8 +111,12 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticLiquidityData, er
 		case metadataCommon.Pdexv3AddLiquidityRequestMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.AddLiquidityRequest)
 			data.PoolID = md.PoolPairID()
+			if data.PoolID == "" {
+				continue
+			} else {
+
+			}
 			tokens := strings.Split(data.PoolID, "-")
-			fmt.Println(data.PoolID)
 			if md.TokenID() == tokens[0] {
 				data.Token1Amount = int64(md.TokenAmount())
 			}

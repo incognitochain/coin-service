@@ -89,20 +89,6 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 		case metadata.PDECrossPoolTradeResponseMeta, metadata.PDETradeResponseMeta, metadata.Pdexv3TradeResponseMeta, metadata.Pdexv3AddOrderResponseMeta:
 			requestTx := ""
 			switch metaDataType {
-			// case metadata.PDECrossPoolTradeResponseMeta:
-			// 	continue
-			// statusStr := txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).TradeStatus
-			// if statusStr != "xPoolTradeAccepted" {
-			// 	continue
-			// }
-			// requestTx = txDetail.GetMetadata().(*metadata.PDECrossPoolTradeResponse).RequestedTxID.String()
-			// case metadata.PDETradeResponseMeta:
-			// 	continue
-			// statusStr := txDetail.GetMetadata().(*metadata.PDETradeResponse).TradeStatus
-			// if statusStr != "accepted" {
-			// 	continue
-			// }
-			// requestTx = txDetail.GetMetadata().(*metadata.PDETradeResponse).RequestedTxID.String()
 			case metadata.Pdexv3TradeResponseMeta:
 				md := txDetail.GetMetadata().(*metadataPdexv3.TradeResponse)
 				if md.Status != metadataPdexv3.TradeAcceptedStatus {
@@ -116,7 +102,6 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 				}
 				requestTx = md.RequestTxID.String()
 			}
-			// tokenIDStr := txDetail.GetTokenID().String()
 			amount := uint64(0)
 			if txDetail.GetType() == common.TxCustomTokenPrivacyType || txDetail.GetType() == common.TxTokenConversionType {
 				txToken := txDetail.(transaction.TransactionToken)
@@ -128,10 +113,6 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 								amount += v.GetValue()
 							}
 						}
-						// if outs[0].GetVersion() == 2 && !txDetail.IsPrivacy() {
-						// txTokenData := transaction.GetTxTokenDataFromTransaction(txDetail)
-						// tokenIDStr = txTokenData.PropertyID.String()
-						// }
 					}
 				}
 			} else {
