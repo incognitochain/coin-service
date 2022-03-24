@@ -155,6 +155,12 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
+		list2, err := database.DBGetShare(accessOTAList)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		list = append(list, list2...)
 		rawOTA64 = raw64
 		isNextOTA = true
 	} else {
