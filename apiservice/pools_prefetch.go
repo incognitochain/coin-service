@@ -90,10 +90,10 @@ func retrievePoolList() {
 		go func(d shared.PoolInfoData) {
 			var data *PdexV3PoolDetail
 			defer func() {
-				wg.Done()
 				if data != nil {
 					resultCh <- *data
 				}
+				wg.Done()
 			}()
 			isVerify := false
 			if _, found := defaultPools[d.PoolID]; found {

@@ -245,6 +245,19 @@ func DBGetPDEV3ContributeRespondByAccessID(accessID []string, limit int64, offse
 	return result, nil
 }
 
+func DBGetPDEV3ContributeByRespondTx(respondTxs []string) ([]shared.ContributionData, error) {
+	var result []shared.ContributionData
+	filter := bson.M{"respondtxs": bson.M{operator.In: respondTxs}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondTxs))*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort: bson.D{{"requesttime", -1}},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func DBGetPDEV3ContributeWaiting(nftID string, limit int64, offset int64) ([]shared.ContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)

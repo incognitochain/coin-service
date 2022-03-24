@@ -349,6 +349,8 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 
 	var err error
 	var list []shared.ContributionData
+	isNextOTA := false
+	rawOTA64 := map[string]string{}
 	if otakey == "" {
 		list, err = database.DBGetPDEV3ContributeRespond([]string{nftID}, int64(limit), int64(offset))
 		if err != nil {
@@ -356,7 +358,8 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 			return
 		}
 	} else {
-		accessIDList, _, err := retrieveAccessOTAList(otakey)
+		isNextOTA = true
+		accessIDList, raw64, err := retrieveAccessOTAList(otakey)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
@@ -366,9 +369,29 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
 		}
+		respondTxs := []string{}
+		for _, v := range list {
+			respondTxs = append(respondTxs, v.RespondTxs...)
+		}
+		rList, err := getRefundContribution(otakey, respondTxs)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		wList, err := getNextOTAWaitingContribution(otakey)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		list = append(list, rList...)
+		list = append(list, wList...)
+		sort.SliceStable(list, func(i, j int) bool {
+			return list[i].RequestTime > list[j].RequestTime
+		})
+		rawOTA64 = raw64
 	}
 
-	result, err := produceContributeData(list)
+	result, err := produceContributeData(list, isNextOTA, rawOTA64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

@@ -1,6 +1,11 @@
 package apiservice
 
-import "github.com/incognitochain/coin-service/shared"
+import (
+	"sync"
+
+	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/privacy"
+)
 
 type APICheckKeyImagesRequest struct {
 	Keyimages []string
@@ -233,7 +238,7 @@ type PdexV3ContributionData struct {
 	ReturnAmount     []uint64
 	// Contributor      string
 	NFTID       string
-	AccessIDs   []string
+	AccessIDs   []string `json:"AccessOTAs"`
 	RequestTime int64
 	Status      string
 }
@@ -340,4 +345,15 @@ type APITokenInfoRequest struct {
 type InUseAccessOTAData struct {
 	Orders map[string]shared.TradeOrderData
 	Shares map[string]shared.PoolShareData
+}
+
+type PreLoadPdexStatev3 struct {
+	PdexRaw              string
+	BeaconTimestamp      int64
+	WaitingContributions struct {
+		sync.RWMutex
+		List         map[string]shared.ContributionData //map[txHash]...
+		AccessOTAs   map[string]*privacy.OTAReceiver    //map[txHash]...
+		cacheOTAList map[string][]string                //map[otakey][]txHash
+	}
 }

@@ -205,11 +205,17 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		wg.Add(2)
 		go func() {
 			paramJSON := pdexV3State.Reader().Params().Clone()
+			waitingContributions := map[string]*rawdbv2.Pdexv3Contribution{}
+			err = json.Unmarshal(pdexV3State.Reader().WaitingContributions(), &waitingContributions)
+			if err != nil {
+				panic(err)
+			}
 			pdeStateJSON = jsonresult.Pdexv3State{
-				BeaconTimeStamp: blk.Header.Timestamp,
-				PoolPairs:       &poolPairsJSON,
-				StakingPools:    &stateV2.StakingPoolsState,
-				Params:          paramJSON,
+				BeaconTimeStamp:      blk.Header.Timestamp,
+				PoolPairs:            &poolPairsJSON,
+				StakingPools:         &stateV2.StakingPoolsState,
+				Params:               paramJSON,
+				WaitingContributions: &waitingContributions,
 			}
 			pdeStr, err = json.MarshalToString(pdeStateJSON)
 			if err != nil {

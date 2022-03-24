@@ -35,6 +35,8 @@ func StartGinService() {
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
 		go tokenListWatcher()
 		go poolListWatcher()
+		go prefetchPdexV3State()
+
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
