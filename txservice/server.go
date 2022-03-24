@@ -244,6 +244,7 @@ func statusMode() {
 					inBlock, err := getTxStatusFullNode(txhash)
 					if err != nil {
 						log.Println(err)
+						continue
 					}
 					if inBlock {
 						err = updateTxStatus(txhash, txStatusSuccess, "")
