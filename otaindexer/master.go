@@ -578,6 +578,23 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
 	}
 
+	tkcount, err := database.DBGetCoinV2OfShardCount(int(shardID), common.ConfidentialAssetID.String())
+	if err != nil {
+		return err
+	}
+	prvcount, err := database.DBGetCoinV2OfShardCount(int(shardID), common.PRVCoinID.String())
+	if err != nil {
+		return err
+	}
+
+	tkLs := data.CoinIndex[common.ConfidentialAssetID.String()]
+	tkLs.LastScanned = uint64(tkcount) - 500
+	data.CoinIndex[common.ConfidentialAssetID.String()] = tkLs
+
+	prvLs := data.CoinIndex[common.PRVCoinID.String()]
+	prvLs.LastScanned = uint64(prvcount) - 500
+	data.CoinIndex[common.PRVCoinID.String()] = prvLs
+
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
 	err = data.Saving()
 	if err != nil {
