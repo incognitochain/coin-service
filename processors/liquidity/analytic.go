@@ -62,7 +62,7 @@ func startAnalytic() {
 		fmt.Println("mongo time", time.Since(startTime))
 		if len(txList) != 0 {
 			analyticState.LastProcessedObjectID = txList[len(txList)-1].ID.Hex()
-			err = updateState(&analyticState, "trade-analytic")
+			err = updateState(&analyticState, "liquidity-analytic")
 			if err != nil {
 				panic(err)
 			}
@@ -219,7 +219,24 @@ func ingestToTimescale(data []AnalyticLiquidityData) error {
 }
 
 func createContinuousView() error {
+	var err error
+	queryCAView := genCAViewQuery("contribute_total", "liquidity_data", "1 days")
 
+	queryCAPolicy := genConAggPolicyQuery("contribute_total")
+
+	_, err = analyticdb.Exec(context.Background(), queryCAView)
+	if err != nil {
+		if !analyticdb.IsAlreadyExistError(err.Error()) {
+			return err
+		}
+	}
+
+	_, err = analyticdb.Exec(context.Background(), queryCAPolicy)
+	if err != nil {
+		if !analyticdb.IsAlreadyExistError(err.Error()) {
+			return err
+		}
+	}
 	return nil
 }
 
