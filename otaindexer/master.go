@@ -174,9 +174,11 @@ func StartWorkerAssigner() {
 		wg.Add(1)
 		d++
 		go func(key *OTAkeyInfo) {
+		retryFix:
 			err := tempFixOTAKey(key.OTAKey, key.Pubkey)
 			if err != nil {
 				log.Println("tempFixOTAKey err", key.Pubkey, err)
+				goto retryFix
 			}
 			wg.Done()
 		}(v)
