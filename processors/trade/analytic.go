@@ -129,6 +129,9 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 			if err != nil {
 				return nil, err
 			}
+			if tradeInfo == nil {
+				continue
+			}
 			trade := AnalyticTradeData{
 				Time:       time.Unix(txDetail.GetLockTime(), 0),
 				TradeId:    requestTx,
@@ -140,7 +143,11 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticTradeData, error)
 			if tradeInfo.IsSwap {
 				trade.Token1Amount = tradeInfo.SellAmount
 				trade.Token2Amount = amount
-				trade.Rate = float64(amount) / float64(tradeInfo.SellAmount)
+				if tradeInfo.IsBuy {
+					trade.Rate = float64(amount) / float64(tradeInfo.SellAmount)
+				} else {
+					trade.Rate = float64(tradeInfo.SellAmount) / float64(amount)
+				}
 			} else {
 				if tradeInfo.IsBuy {
 					trade.Token1Amount = tradeInfo.BuyAmount
@@ -387,33 +394,35 @@ func getPoolAndRate(requestTx string) (*tradeInfo, error) {
 					tks := strings.Split(item.TradePath[0], "-")
 					if tks[0] == result.TokenSell {
 						result.TokenBuy = tks[1]
+						result.IsBuy = true
 					} else {
 						result.TokenBuy = tks[0]
 					}
 				} else {
-					tksMap := make(map[string]bool)
-					for _, path := range item.TradePath {
-						tks := strings.Split(path, "-")
-						for idx, v := range tks {
-							if idx+1 == len(tks) {
-								continue
-							}
-							if _, ok := tksMap[v]; ok {
-								tksMap[v] = false
-							} else {
-								tksMap[v] = true
-							}
-						}
+					return nil, nil
+					// tksMap := make(map[string]bool)
+					// for _, path := range item.TradePath {
+					// 	tks := strings.Split(path, "-")
+					// 	for idx, v := range tks {
+					// 		if idx+1 == len(tks) {
+					// 			continue
+					// 		}
+					// 		if _, ok := tksMap[v]; ok {
+					// 			tksMap[v] = false
+					// 		} else {
+					// 			tksMap[v] = true
+					// 		}
+					// 	}
 
-					}
-					for k, v := range tksMap {
-						if v && k != result.TokenSell {
-							result.TokenBuy = k
-						}
-					}
-					if result.TokenBuy == "" {
-						result.TokenBuy = result.TokenSell
-					}
+					// }
+					// for k, v := range tksMap {
+					// 	if v && k != result.TokenSell {
+					// 		result.TokenBuy = k
+					// 	}
+					// }
+					// if result.TokenBuy == "" {
+					// 	result.TokenBuy = result.TokenSell
+					// }
 				}
 
 				// if result.TokenSell == common.PRVCoinID.String() {
@@ -431,7 +440,6 @@ func getPoolAndRate(requestTx string) (*tradeInfo, error) {
 				result.BuyAmount = item.MinAcceptableAmount
 				result.SellAmount = item.SellAmount
 				result.PairID = shared.GenPairID(result.TokenSell, result.TokenBuy)
-				result.Rate = float64(item.MinAcceptableAmount) / float64(item.SellAmount)
 				result.IsSwap = true
 			case metadata.Pdexv3AddOrderRequestMeta:
 				item, ok := txDetail.GetMetadata().(*metadataPdexv3.AddOrderRequest)
