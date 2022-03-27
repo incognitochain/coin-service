@@ -238,7 +238,7 @@ func DBGetCoinV2HeightestCount(shardID int, tokenID string) (uint64, error) {
 	limit := int64(1)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	doc := shared.CoinData{}
-	err := mgm.Coll(&doc).SimpleFind(coinList, filter, &options.FindOptions{
+	err := mgm.Coll(&doc).SimpleFind(&coinList, filter, &options.FindOptions{
 		Sort:  bson.D{{"coinidx", -1}},
 		Limit: &limit,
 	})
