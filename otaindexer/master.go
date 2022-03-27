@@ -164,24 +164,24 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
-	// var wg sync.WaitGroup
-	// d := 0
-	// for _, v := range Submitted_OTAKey.Keys {
-	// 	if d == 100 {
-	// 		wg.Wait()
-	// 		d = 0
-	// 	}
-	// 	wg.Add(1)
-	// 	d++
-	// 	go func(key *OTAkeyInfo) {
-	// 		err := ReCheckOTAKey(key.OTAKey, key.Pubkey, false)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		wg.Done()
-	// 	}(v)
-	// }
-	// wg.Wait()
+	var wg sync.WaitGroup
+	d := 0
+	for _, v := range Submitted_OTAKey.Keys {
+		if d == 100 {
+			wg.Wait()
+			d = 0
+		}
+		wg.Add(1)
+		d++
+		go func(key *OTAkeyInfo) {
+			err := tempFixOTAKey(key.OTAKey, key.Pubkey)
+			if err != nil {
+				panic(err)
+			}
+			wg.Done()
+		}(v)
+	}
+	wg.Wait()
 	go func() {
 		for {
 			request := <-OTAAssignChn
@@ -405,6 +405,69 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 		}(key)
 	}
 	wg.Wait()
+	return nil
+}
+
+func tempFixOTAKey(otaKey, pubKey string) error {
+
+	Submitted_OTAKey.RLock()
+	defer Submitted_OTAKey.RUnlock()
+	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
+		return errors.New("wrong indexer")
+	}
+	pubkey, _, err := base58.Base58Check{}.Decode(pubKey)
+	if err != nil {
+		return err
+	}
+	keyBytes, _, err := base58.Base58Check{}.Decode(otaKey)
+	if err != nil {
+		return err
+	}
+	keyBytes = append(keyBytes, pubkey...)
+	if len(keyBytes) != 64 {
+		return errors.New("keyBytes length isn't 64")
+	}
+	fullOTAKey := shared.OTAKeyFromRaw(keyBytes)
+	ks := &incognitokey.KeySet{}
+	ks.OTAKey = fullOTAKey
+	shardID := common.GetShardIDFromLastByte(pubkey[len(pubkey)-1])
+	data, err := database.DBGetCoinV2PubkeyInfo(pubKey)
+	if err != nil {
+		return err
+	}
+	data.OTAKey = otaKey
+
+	tkcount, err := database.DBGetCoinV2HeightestCount(int(shardID), common.ConfidentialAssetID.String())
+	if err != nil {
+		return err
+	}
+	prvcount, err := database.DBGetCoinV2HeightestCount(int(shardID), common.PRVCoinID.String())
+	if err != nil {
+		return err
+	}
+
+	tkLs := data.CoinIndex[common.ConfidentialAssetID.String()]
+	tkLs.LastScanned = uint64(tkcount) - 500
+	data.CoinIndex[common.ConfidentialAssetID.String()] = tkLs
+
+	prvLs := data.CoinIndex[common.PRVCoinID.String()]
+	prvLs.LastScanned = uint64(prvcount) - 500
+	data.CoinIndex[common.PRVCoinID.String()] = prvLs
+
+	err = data.Saving()
+	if err != nil {
+		return err
+	}
+	doc := bson.M{
+		"$set": *data,
+	}
+retryStore:
+	err = database.DBUpdateKeyInfoV2(doc, data, context.Background())
+	if err != nil {
+		fmt.Println(err)
+		goto retryStore
+	}
+
 	return nil
 }
 
