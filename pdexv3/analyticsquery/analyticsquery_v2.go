@@ -29,20 +29,21 @@ func APIGetPDexV3PairRateHistoriesV2(poolid, period, from, to string) (*PDexPair
 	queryStr := genPriceQuery(poolid, period, from, to)
 	rows, err := analyticdb.ExecQuery(context.Background(), queryStr)
 	if err != nil {
-		if !analyticdb.IsAlreadyExistError(err.Error()) {
-			return nil, err
-		}
+		return nil, err
 	}
 	var ratev2 []PairRateV2
 	for rows.Next() {
 		var r PairRateV2
-		err = rows.Scan(&r.Time, &r.Open, &r.Close, &r.Average, &r.High, &r.Low, &r.Trades, &r.VolumeToken1, &r.VolumeToken2)
+		err = rows.Scan(&r.Time, &r.Open, &r.Close, &r.Average, &r.High, &r.Low, &r.Trades, &r.VolumeToken1, &r.VolumeToken2, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to scan %v\n", err)
 			os.Exit(1)
 		}
 		ratev2 = append(ratev2, r)
 	}
+	fmt.Println()
+	fmt.Println("APIGetPDexV3PairRateHistoriesV2", queryStr, len(ratev2))
+	fmt.Println()
 	var responseBodyData PDexPairRateHistoriesAPIResponse
 
 	result, err := tranformsDataPairRateV2toV1(ratev2)

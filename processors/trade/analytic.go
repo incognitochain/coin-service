@@ -454,11 +454,9 @@ func getPoolAndRate(requestTx string) (*tradeInfo, error) {
 				result.SellAmount = amount
 				tokenStrs := strings.Split(item.PoolPairID, "-")
 				if result.TokenSell != tokenStrs[0] {
-					result.Rate = float64(minaccept / amount)
 					result.IsBuy = true
-				} else {
-					result.Rate = float64(amount / minaccept)
 				}
+				result.Rate = float64(amount / minaccept)
 				result.PairID = shared.GenPairID(result.TokenSell, result.TokenBuy)
 			}
 			return &result, nil

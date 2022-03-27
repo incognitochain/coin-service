@@ -117,12 +117,15 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticLiquidityData, er
 
 			}
 			tokens := strings.Split(data.PoolID, "-")
-			if md.TokenID() == tokens[0] {
-				data.Token1Amount = int64(md.TokenAmount())
+			if len(tokens) > 2 {
+				if md.TokenID() == tokens[0] {
+					data.Token1Amount = int64(md.TokenAmount())
+				}
+				if md.TokenID() == tokens[1] {
+					data.Token2Amount = int64(md.TokenAmount())
+				}
 			}
-			if md.TokenID() == tokens[1] {
-				data.Token2Amount = int64(md.TokenAmount())
-			}
+
 		case metadataCommon.Pdexv3AddLiquidityResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.AddLiquidityResponse)
 			requestTx := md.TxReqID()
@@ -137,11 +140,13 @@ func extractDataForAnalytic(txlist []shared.TxData) ([]AnalyticLiquidityData, er
 			}
 			data.PoolID = poolID
 			tokens := strings.Split(data.PoolID, "-")
-			if tokenIDStr == tokens[0] {
-				data.Token1Amount = -int64(amount)
-			}
-			if tokenIDStr == tokens[1] {
-				data.Token2Amount = -int64(amount)
+			if len(tokens) > 2 {
+				if tokenIDStr == tokens[0] {
+					data.Token1Amount = -int64(amount)
+				}
+				if tokenIDStr == tokens[1] {
+					data.Token2Amount = -int64(amount)
+				}
 			}
 		case metadataCommon.Pdexv3WithdrawLiquidityResponseMeta:
 			md := txDetail.GetMetadata().(*metadataPdexv3.WithdrawLiquidityResponse)
