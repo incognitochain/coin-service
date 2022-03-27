@@ -588,11 +588,11 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	}
 
 	tkLs := data.CoinIndex[common.ConfidentialAssetID.String()]
-	tkLs.LastScanned = uint64(tkcount) - 200
+	tkLs.LastScanned = uint64(tkcount) - 500
 	data.CoinIndex[common.ConfidentialAssetID.String()] = tkLs
 
 	prvLs := data.CoinIndex[common.PRVCoinID.String()]
-	prvLs.LastScanned = uint64(prvcount) - 200
+	prvLs.LastScanned = uint64(prvcount) - 500
 	data.CoinIndex[common.PRVCoinID.String()] = prvLs
 
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
