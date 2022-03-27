@@ -164,24 +164,24 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
-	var wg sync.WaitGroup
-	d := 0
-	for _, v := range Submitted_OTAKey.Keys {
-		if d == 100 {
-			wg.Wait()
-			d = 0
-		}
-		wg.Add(1)
-		d++
-		go func(key *OTAkeyInfo) {
-			err := ReCheckOTAKey(key.OTAKey, key.Pubkey, false)
-			if err != nil {
-				panic(err)
-			}
-			wg.Done()
-		}(v)
-	}
-	wg.Wait()
+	// var wg sync.WaitGroup
+	// d := 0
+	// for _, v := range Submitted_OTAKey.Keys {
+	// 	if d == 100 {
+	// 		wg.Wait()
+	// 		d = 0
+	// 	}
+	// 	wg.Add(1)
+	// 	d++
+	// 	go func(key *OTAkeyInfo) {
+	// 		err := ReCheckOTAKey(key.OTAKey, key.Pubkey, false)
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 		wg.Done()
+	// 	}(v)
+	// }
+	// wg.Wait()
 	go func() {
 		for {
 			request := <-OTAAssignChn
