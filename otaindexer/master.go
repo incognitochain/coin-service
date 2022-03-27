@@ -165,6 +165,24 @@ var OTAAssignChn chan OTAAssignRequest
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
 	var wg sync.WaitGroup
+	tkCounts := make(map[int]uint64)
+	prvCounts := make(map[int]uint64)
+	for shardID := 0; shardID < common.MaxShardNumber; shardID++ {
+	retryGetCoin:
+		tkcount, err := database.DBGetCoinV2HeightestCount(int(shardID), common.ConfidentialAssetID.String())
+		if err != nil {
+			log.Println("DBGetCoinV2HeightestCount err", err)
+			goto retryGetCoin
+		}
+		prvcount, err := database.DBGetCoinV2HeightestCount(int(shardID), common.PRVCoinID.String())
+		if err != nil {
+			log.Println("DBGetCoinV2HeightestCount err", err)
+			goto retryGetCoin
+		}
+		tkCounts[shardID] = tkcount
+		prvCounts[shardID] = prvcount
+	}
+
 	d := 0
 	for _, v := range Submitted_OTAKey.Keys {
 		if d == 100 {
@@ -175,7 +193,7 @@ func StartWorkerAssigner() {
 		d++
 		go func(key *OTAkeyInfo) {
 		retryFix:
-			err := tempFixOTAKey(key.OTAKey, key.Pubkey)
+			err := tempFixOTAKey(key.OTAKey, key.Pubkey, tkCounts, prvCounts)
 			if err != nil {
 				log.Println("tempFixOTAKey err", key.Pubkey, err)
 				goto retryFix
@@ -410,7 +428,7 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 	return nil
 }
 
-func tempFixOTAKey(otaKey, pubKey string) error {
+func tempFixOTAKey(otaKey, pubKey string, tkCounts, prvCountsmap map[int]uint64) error {
 
 	Submitted_OTAKey.RLock()
 	defer Submitted_OTAKey.RUnlock()
@@ -439,21 +457,12 @@ func tempFixOTAKey(otaKey, pubKey string) error {
 	}
 	data.OTAKey = otaKey
 
-	tkcount, err := database.DBGetCoinV2HeightestCount(int(shardID), common.ConfidentialAssetID.String())
-	if err != nil {
-		return err
-	}
-	prvcount, err := database.DBGetCoinV2HeightestCount(int(shardID), common.PRVCoinID.String())
-	if err != nil {
-		return err
-	}
-
 	tkLs := data.CoinIndex[common.ConfidentialAssetID.String()]
-	tkLs.LastScanned = uint64(tkcount) - 500
+	tkLs.LastScanned = tkCounts[int(shardID)] - 500
 	data.CoinIndex[common.ConfidentialAssetID.String()] = tkLs
 
 	prvLs := data.CoinIndex[common.PRVCoinID.String()]
-	prvLs.LastScanned = uint64(prvcount) - 500
+	prvLs.LastScanned = prvCountsmap[int(shardID)] - 500
 	data.CoinIndex[common.PRVCoinID.String()] = prvLs
 
 	err = data.Saving()
