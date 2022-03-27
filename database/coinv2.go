@@ -234,10 +234,9 @@ func DBGetCoinV2PubkeyInfoByOTAsecret(key string) (*shared.KeyInfoData, error) {
 }
 
 func DBGetCoinV2OfShardCount(shardID int, tokenID string) (int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	doc := shared.CoinData{}
-	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
+	count, err := mgm.Coll(&doc).CountDocuments(context.Background(), filter)
 	if err != nil {
 		return -1, err
 	}
