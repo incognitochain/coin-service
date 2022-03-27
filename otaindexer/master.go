@@ -164,24 +164,24 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
-	var wg sync.WaitGroup
-	d := 0
-	for _, v := range Submitted_OTAKey.Keys {
-		if d == 100 {
-			wg.Wait()
-			d = 0
-		}
-		wg.Add(1)
-		d++
-		go func(key *OTAkeyInfo) {
-			err := ReCheckOTAKey(key.OTAKey, key.Pubkey, false)
-			if err != nil {
-				panic(err)
-			}
-			wg.Done()
-		}(v)
-	}
-	wg.Wait()
+	// var wg sync.WaitGroup
+	// d := 0
+	// for _, v := range Submitted_OTAKey.Keys {
+	// 	if d == 100 {
+	// 		wg.Wait()
+	// 		d = 0
+	// 	}
+	// 	wg.Add(1)
+	// 	d++
+	// 	go func(key *OTAkeyInfo) {
+	// 		err := ReCheckOTAKey(key.OTAKey, key.Pubkey, false)
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 		wg.Done()
+	// 	}(v)
+	// }
+	// wg.Wait()
 	go func() {
 		for {
 			request := <-OTAAssignChn
@@ -577,23 +577,6 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		}
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
 	}
-
-	tkcount, err := database.DBGetCoinV2OfShardCount(int(shardID), common.ConfidentialAssetID.String())
-	if err != nil {
-		return err
-	}
-	prvcount, err := database.DBGetCoinV2OfShardCount(int(shardID), common.PRVCoinID.String())
-	if err != nil {
-		return err
-	}
-
-	tkLs := data.CoinIndex[common.ConfidentialAssetID.String()]
-	tkLs.LastScanned = uint64(tkcount) - 500
-	data.CoinIndex[common.ConfidentialAssetID.String()] = tkLs
-
-	prvLs := data.CoinIndex[common.PRVCoinID.String()]
-	prvLs.LastScanned = uint64(prvcount) - 500
-	data.CoinIndex[common.PRVCoinID.String()] = prvLs
 
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
 	err = data.Saving()
