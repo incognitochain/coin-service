@@ -300,6 +300,7 @@ type TokenInfo struct {
 	PSymbol            string
 	OriginalSymbol     string
 	LiquidityReward    float64
+	ExternalPriceUSD   float64 `json:"ExternalPriceUSD"`
 	PriceUsd           float64 `json:"PriceUsd"`
 	PercentChange1h    string  `json:"PercentChange1h"`
 	PercentChangePrv1h string  `json:"PercentChangePrv1h"`
