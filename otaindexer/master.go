@@ -410,10 +410,12 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 
 func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	Submitted_OTAKey.RLock()
-	defer Submitted_OTAKey.RUnlock()
 	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
+		Submitted_OTAKey.RUnlock()
 		return errors.New("wrong indexer")
 	}
+	Submitted_OTAKey.RUnlock()
+
 	pubkey, _, err := base58.Base58Check{}.Decode(pubKey)
 	if err != nil {
 		return err
@@ -578,7 +580,9 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
 	}
 
+	Submitted_OTAKey.Lock()
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
+	Submitted_OTAKey.Unlock()
 	err = data.Saving()
 	if err != nil {
 		return err
@@ -594,6 +598,7 @@ retryStore:
 	}
 
 	if reIndex {
+		Submitted_OTAKey.RLock()
 		if w, ok := Submitted_OTAKey.AssignedKey[pubKey]; ok {
 			if w.Heartbeat != 0 {
 				keyAction := WorkerOTACmd{
@@ -607,6 +612,7 @@ retryStore:
 				w.writeCh <- keyBytes
 			}
 		}
+		Submitted_OTAKey.RUnlock()
 	}
 
 	return nil
