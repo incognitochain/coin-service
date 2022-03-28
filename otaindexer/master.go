@@ -458,11 +458,11 @@ func tempFixOTAKey(otaKey, pubKey string, tkCounts, prvCountsmap map[int]uint64)
 	data.OTAKey = otaKey
 
 	tkLs := data.CoinIndex[common.ConfidentialAssetID.String()]
-	tkLs.LastScanned = tkCounts[int(shardID)] - 500
+	tkLs.LastScanned = tkCounts[int(shardID)] - 5000
 	data.CoinIndex[common.ConfidentialAssetID.String()] = tkLs
 
 	prvLs := data.CoinIndex[common.PRVCoinID.String()]
-	prvLs.LastScanned = prvCountsmap[int(shardID)] - 500
+	prvLs.LastScanned = prvCountsmap[int(shardID)] - 5000
 	data.CoinIndex[common.PRVCoinID.String()] = prvLs
 
 	err = data.Saving()
