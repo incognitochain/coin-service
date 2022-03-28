@@ -186,7 +186,7 @@ func InitChainSynker(cfg shared.Config) {
 	cacheOTAMap = make(map[string]string)
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		blockProcessed[i] = ShardProcessedState[byte(i)]
-		go checkMissingCrossShardTx(i, ShardProcessedState[byte(i)])
+		// go checkMissingCrossShardTx(i, ShardProcessedState[byte(i)])
 		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
 	}
 	Localnode.OnNewBlockFromParticularHeight(-1, int64(ProcessedBeaconBestState), true, processBeacon)

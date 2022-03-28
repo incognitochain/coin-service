@@ -198,6 +198,7 @@ func StartWorkerAssigner() {
 				log.Println("tempFixOTAKey err", key.Pubkey, err)
 				goto retryFix
 			}
+			log.Println("success tempFixOTAKey", key.Pubkey)
 			wg.Done()
 		}(v)
 	}
@@ -429,12 +430,12 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 }
 
 func tempFixOTAKey(otaKey, pubKey string, tkCounts, prvCountsmap map[int]uint64) error {
-
 	Submitted_OTAKey.RLock()
-	defer Submitted_OTAKey.RUnlock()
 	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
+		Submitted_OTAKey.RUnlock()
 		return errors.New("wrong indexer")
 	}
+	Submitted_OTAKey.RUnlock()
 	pubkey, _, err := base58.Base58Check{}.Decode(pubKey)
 	if err != nil {
 		return err
@@ -465,6 +466,9 @@ func tempFixOTAKey(otaKey, pubKey string, tkCounts, prvCountsmap map[int]uint64)
 	prvLs.LastScanned = prvCountsmap[int(shardID)] - 5000
 	data.CoinIndex[common.PRVCoinID.String()] = prvLs
 
+	Submitted_OTAKey.Lock()
+	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
+	Submitted_OTAKey.Unlock()
 	err = data.Saving()
 	if err != nil {
 		return err
@@ -484,10 +488,11 @@ retryStore:
 
 func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	Submitted_OTAKey.RLock()
-	defer Submitted_OTAKey.RUnlock()
 	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
+		Submitted_OTAKey.RUnlock()
 		return errors.New("wrong indexer")
 	}
+	Submitted_OTAKey.RUnlock()
 	pubkey, _, err := base58.Base58Check{}.Decode(pubKey)
 	if err != nil {
 		return err
@@ -651,8 +656,9 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		}
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
 	}
-
+	Submitted_OTAKey.Lock()
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
+	Submitted_OTAKey.Unlock()
 	err = data.Saving()
 	if err != nil {
 		return err
