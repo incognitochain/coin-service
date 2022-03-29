@@ -975,8 +975,27 @@ func APIGetKeyInfo(c *gin.Context) {
 				return
 			}
 			delete(result.CoinIndex, common.ConfidentialAssetID.String())
-			for id, _ := range result.NFTIndex {
-				delete(result.CoinIndex, id)
+
+			for id, nft := range result.NFTIndex {
+				if d, ok := result.CoinIndex[id]; ok {
+					if nft.Start > d.Start {
+						nft.Start = d.Start
+					}
+					if nft.End < d.End {
+						nft.End = d.End
+					}
+					nft.Total += d.Total
+					result.NFTIndex[id] = nft
+					delete(result.CoinIndex, id)
+				}
+			}
+			for id, v := range result.CoinIndex {
+				if v.Total == 1 {
+					if database.DBIsTokenNFT(id) {
+						result.NFTIndex[id] = v
+						delete(result.CoinIndex, id)
+					}
+				}
 			}
 			respond := APIRespond{
 				Result: result,
