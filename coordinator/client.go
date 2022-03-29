@@ -1,6 +1,7 @@
 package coordinator
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -67,4 +68,16 @@ retry:
 		}
 
 	}
+}
+
+func registerService(sv *ServiceConn) error {
+	workerLock.Lock()
+	if _, ok := workers[w.ID]; ok {
+		workerLock.Unlock()
+		return errors.New("workerID already exist")
+	}
+	workers[w.ID] = w
+	workerLock.Unlock()
+	log.Printf("register worker %v success\n", w.ID)
+	return nil
 }
