@@ -1,0 +1,3 @@
+package coordinator
+
+func StartCoordinator()

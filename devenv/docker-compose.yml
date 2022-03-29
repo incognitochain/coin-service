@@ -16,6 +16,7 @@ services:
       - service.env
     depends_on:
       - mongo
+      - coordinator
 
   query:
     image: coinservice
@@ -27,7 +28,7 @@ services:
     env_file:
       - service.env
     depends_on:
-      - chainsync
+      - mongo
 
   indexer:
     image: coinservice
@@ -41,6 +42,7 @@ services:
     depends_on:
       - chainsync
       - mongo
+      - coordinator
 
   worker:
     image: coinservice
@@ -54,6 +56,7 @@ services:
       - service.env
     depends_on:
       - indexer
+      - coordinator
 
   liquidity-processor:
     image: coinservice
@@ -67,6 +70,7 @@ services:
     depends_on:
       - chainsync
       - mongo
+      - coordinator
 
   trade-processor:
     image: coinservice
@@ -80,6 +84,7 @@ services:
     depends_on:
       - chainsync
       - mongo
+      - coordinator
 
   shield-processor:
     image: coinservice
@@ -93,6 +98,7 @@ services:
     depends_on:
       - chainsync
       - mongo
+      - coordinator
 
   assistant:
     image: coinservice
@@ -105,6 +111,18 @@ services:
       - service.env
     depends_on:
       - chainsync
+      - mongo
+      - coordinator
+  coordinator:
+    image: coinservice
+    working_dir: /home
+    entrypoint: [./run.sh]
+    environment:
+      INDEXERID: 0
+      MODE: "coordinator"
+    env_file:
+      - service.env
+    depends_on:
       - mongo
 
   nginx-server:
@@ -140,6 +158,7 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+      
   mongo-express:
     image: mongo-express
     restart: always
@@ -149,3 +168,5 @@ services:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
       ME_CONFIG_MONGODB_SERVER: mongo
+    depends_on:
+      - mongo

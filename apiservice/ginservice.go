@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/chainsynker"
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
@@ -144,6 +145,12 @@ func StartGinService() {
 		r.POST("/rescanotakey", APIRescanOTA)
 		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
 		r.GET("/workerstat", otaindexer.GetWorkerStat)
+	}
+
+	if shared.ServiceCfg.Mode == shared.COORDINATORMODE {
+		r.GET("/connectservice", coordinator.ServiceRegisterHandler)
+		r.GET("/backup", coordinator.BackupHandler)
+		r.GET("/backupstatus", coordinator.BackupStatusHandler)
 	}
 
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
