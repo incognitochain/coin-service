@@ -343,8 +343,9 @@ type APITokenInfoRequest struct {
 }
 
 type InUseAccessOTAData struct {
-	Orders map[string]shared.TradeOrderData
-	Shares map[string]shared.PoolShareData
+	Orders       map[string]shared.TradeOrderData
+	Shares       map[string]PdexV3PoolShareRespond
+	OrderRewards map[string]PdexV3PoolShareRespond
 }
 
 type PreLoadPdexStatev3 struct {

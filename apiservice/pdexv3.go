@@ -1,6 +1,7 @@
 package apiservice
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -210,13 +211,22 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 	var result []TradeDataRespond
 	if otakey != "" {
 		if getOrder {
+			if poolid == "" {
+				errStr := "poolid can't be empty"
+				respond := APIRespond{
+					Result: nil,
+					Error:  &errStr,
+				}
+				c.JSON(http.StatusOK, respond)
+				return
+			}
 			accessOTAList, rawOTA64, err := retrieveAccessOTAList(otakey)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
 			}
 			//limit order
-			tradeList, err := database.DBGetTxTradeFromAccessID(accessOTAList, int64(limit), int64(offset))
+			tradeList, err := database.DBGetTxTradeFromPoolAndAccessID(poolid, accessOTAList, int64(limit), int64(offset))
 			if err != nil {
 				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 				return
@@ -1686,9 +1696,10 @@ func (pdexv3) ListMarkets(c *gin.Context) {
 
 func (pdexv3) GetAccessOTAData(c *gin.Context) {
 	var req struct {
-		ID       []string
-		GetOrder bool
-		GetShare bool
+		ID             []string
+		GetOrder       bool
+		GetShare       bool
+		GetOrderReward bool
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
@@ -1696,21 +1707,75 @@ func (pdexv3) GetAccessOTAData(c *gin.Context) {
 		return
 	}
 
-	orders, err := database.DBGetPendingLimitOrderByAccessOTA(req.ID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+	var otas []string
+	rawOTA64 := make(map[string]string)
+	orders := make(map[string]shared.TradeOrderData)
+	shares := make(map[string]PdexV3PoolShareRespond)
+	orderRewards := make(map[string]PdexV3PoolShareRespond)
+
+	for _, v := range req.ID {
+		otaBytes, err := base64.StdEncoding.DecodeString(v)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		ota := common.HashH(otaBytes[:]).String()
+		otas = append(otas, ota)
+		rawOTA64[ota] = v
+	}
+	if req.GetOrder {
+		ordersList, err := database.DBGetPendingLimitOrderByAccessOTA(otas)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		for k, v := range ordersList {
+			accessB64 := rawOTA64[k]
+			orders[accessB64] = v
+		}
+	}
+	if req.GetShare {
+		list, err := database.DBGetShareByCurrentAccessID(otas)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+
+		sharesList, err := producePoolShareRespond(list, true, rawOTA64)
+		if err != nil {
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+		}
+		for _, v := range sharesList {
+			shares[v.CurrentAccessOTA] = v
+		}
 	}
 
-	shares, err := database.DBGetShareByAccessOTA(req.ID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
+	if req.GetOrderReward {
+		list, err := database.DBGetShare(otas)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+
+		ordersList, err := producePoolShareRespond(list, true, rawOTA64)
+		if err != nil {
+			if err != nil {
+				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				return
+			}
+		}
+		for _, v := range ordersList {
+			shares[v.CurrentAccessOTA] = v
+		}
 	}
 
 	result := InUseAccessOTAData{
-		Orders: orders,
-		Shares: shares,
+		Orders:       orders,
+		Shares:       shares,
+		OrderRewards: orderRewards,
 	}
 	respond := APIRespond{
 		Result: result,
