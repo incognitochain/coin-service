@@ -209,6 +209,7 @@ func producePoolShareRespond(list []shared.PoolShareData, isNextOTA bool, rawOTA
 	if err != nil {
 		return nil, err
 	}
+	processedNextOTA := make(map[string]struct{})
 	for _, v := range list {
 		l, err := database.DBGetPoolPairsByPoolID([]string{v.PoolID})
 		if err != nil {
@@ -217,8 +218,18 @@ func producePoolShareRespond(list []shared.PoolShareData, isNextOTA bool, rawOTA
 		if len(l) == 0 {
 			continue
 		}
-		if (v.Amount == 0) && len(v.TradingFee) == 0 && len(v.OrderReward) == 0 {
-			continue
+		if v.Amount == 0 {
+			totalFee := uint64(0)
+			totalReward := uint64(0)
+			for _, v := range v.TradingFee {
+				totalFee += v
+			}
+			for _, v := range v.OrderReward {
+				totalReward += v
+			}
+			if totalFee == 0 && totalReward == 0 {
+				continue
+			}
 		}
 		token1ID := l[0].TokenID1
 		token2ID := l[0].TokenID2
@@ -235,7 +246,12 @@ func producePoolShareRespond(list []shared.PoolShareData, isNextOTA bool, rawOTA
 		}
 		nextota := ""
 		if v.CurrentAccessID != "" {
-			nextota = rawOTA64[v.CurrentAccessID]
+			if _, ok := processedNextOTA[v.CurrentAccessID]; !ok {
+				nextota = rawOTA64[v.CurrentAccessID]
+				processedNextOTA[v.CurrentAccessID] = struct{}{}
+			} else {
+				continue
+			}
 		}
 		result = append(result, PdexV3PoolShareRespond{
 			PoolID:           v.PoolID,
