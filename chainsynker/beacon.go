@@ -45,11 +45,12 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		sort.Slice(blks, func(i, j int) bool { return blks[i].Height > blks[j].Height })
 	retry:
 		pass := true
-		blockProcessedLock.RLock()
-		if blockProcessed[int(shardID)] < blks[0].Height {
+
+		currentState.blockProcessedLock.RLock()
+		if currentState.BlockProcessed[int(shardID)] < blks[0].Height {
 			pass = false
 		}
-		blockProcessedLock.RUnlock()
+		currentState.blockProcessedLock.RUnlock()
 		if !pass {
 			time.Sleep(500 * time.Millisecond)
 			goto retry
@@ -357,9 +358,13 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		panic(err)
 	}
 	log.Printf("lvdb stored coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(t10))
-	blockProcessedLock.Lock()
-	blockProcessed[-1] = blk.Header.Height
-	blockProcessedLock.Unlock()
+	currentState.blockProcessedLock.Lock()
+	currentState.BlockProcessed[-1] = blk.Header.Height
+	currentState.blockProcessedLock.Unlock()
+	err = updateState()
+	if err != nil {
+		panic(err)
+	}
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 

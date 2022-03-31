@@ -3,10 +3,19 @@ package coordinator
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
+
+var upGrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 func ServiceRegisterHandler(c *gin.Context) {
 	if state.backupContext != nil {
@@ -14,6 +23,67 @@ func ServiceRegisterHandler(c *gin.Context) {
 			"status": "backup is running",
 		})
 		return
+	}
+	ws, err := upGrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Println("error get connection")
+		log.Fatal(err)
+	}
+	defer ws.Close()
+	readCh := make(chan []byte)
+	writeCh := make(chan []byte)
+	workerID := c.Request.Header.Values("id")[0]
+
+	newService := new(ServiceConn)
+	newService.ID = workerID
+	newService.readCh = readCh
+	newService.writeCh = writeCh
+	newService.Heartbeat = time.Now().Unix()
+	done := make(chan struct{})
+	newService.closeCh = done
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				newService.Heartbeat = 0
+				removeService(newService)
+				close(writeCh)
+				ws.Close()
+				return
+			default:
+				_, msg, err := ws.ReadMessage()
+				if err != nil {
+					log.Println(err)
+					close(done)
+					return
+				}
+				if len(msg) == 1 && msg[0] == 1 {
+					newService.Heartbeat = time.Now().Unix()
+					continue
+				}
+			}
+		}
+	}()
+
+	err = registerService(newService)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	for {
+		select {
+		case <-done:
+			newService.Heartbeat = 0
+			removeService(newService)
+			return
+		case msg := <-writeCh:
+			err := ws.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				log.Println("write:", err)
+				continue
+			}
+		}
 	}
 }
 
@@ -57,4 +127,8 @@ func CancelBackupHandler(c *gin.Context) {
 		"status": "backup canceled",
 	})
 	return
+}
+
+func GetServiceStatusHandler(c *gin.Context) {
+
 }

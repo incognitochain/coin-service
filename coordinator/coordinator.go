@@ -25,10 +25,19 @@ func startBackup(ctx context.Context) {
 		state.backupCancelFn = nil
 		state.backupContext = nil
 	}()
-	if err := pauseService(); err != nil {
-		state.lastFailBackupErr = err
-		state.lastFailBackupTime = time.Now()
+
+	for {
+		if !checkIfAllServicePaused() {
+			if err := pauseService(); err != nil {
+				state.lastFailBackupErr = err
+				state.lastFailBackupTime = time.Now()
+			}
+		} else {
+			log.Println("successfully pause all services")
+			break
+		}
 	}
+
 	backupSuccessCtx, backSuccessFn := context.WithCancel(ctx)
 	var backupErr error
 	go func() {
@@ -49,6 +58,19 @@ func startBackup(ctx context.Context) {
 	}
 }
 
+func checkIfAllServicePaused() bool {
+	state.ConnectedServicesLock.Lock()
+	defer state.ConnectedServicesLock.Unlock()
+	for _, v := range state.ConnectedServices {
+		for _, sv := range v {
+			if !sv.IsPause {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func pauseService() error {
 	state.ConnectedServicesLock.Lock()
 	defer state.ConnectedServicesLock.Unlock()
@@ -57,10 +79,9 @@ func pauseService() error {
 			if err := sendPauseRequest(sv); err != nil {
 				return fmt.Errorf("pause service %v with ID %v failed: %v\n", sv.ServiceName, sv.ID, err)
 			}
-			sv.IsPause = true
 		}
 	}
-
+	return nil
 }
 
 func sendPauseRequest(sv *ServiceConn) error {
