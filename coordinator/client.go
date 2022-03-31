@@ -1,7 +1,6 @@
 package coordinator
 
 import (
-	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -12,7 +11,7 @@ import (
 
 func ConnectToCoordinator(addr string, servicename string, id string, readCh chan []byte, writeCh chan []byte, lostConnFn func()) {
 retry:
-	u := url.URL{Scheme: "ws", Host: addr, Path: "/connectservice"}
+	u := url.URL{Scheme: "ws", Host: addr, Path: "/coordinator/connectservice"}
 	log.Printf("connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), http.Header{
@@ -68,16 +67,4 @@ retry:
 		}
 
 	}
-}
-
-func registerService(sv *ServiceConn) error {
-	workerLock.Lock()
-	if _, ok := workers[w.ID]; ok {
-		workerLock.Unlock()
-		return errors.New("workerID already exist")
-	}
-	workers[w.ID] = w
-	workerLock.Unlock()
-	log.Printf("register worker %v success\n", w.ID)
-	return nil
 }

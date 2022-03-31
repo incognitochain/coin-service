@@ -148,9 +148,10 @@ func StartGinService() {
 	}
 
 	if shared.ServiceCfg.Mode == shared.COORDINATORMODE {
-		r.GET("/connectservice", coordinator.ServiceRegisterHandler)
-		r.GET("/backup", coordinator.BackupHandler)
-		r.GET("/backupstatus", coordinator.BackupStatusHandler)
+		coordinatorGroup := r.Group("/coordinator")
+		coordinatorGroup.GET("/connectservice", coordinator.ServiceRegisterHandler)
+		coordinatorGroup.GET("/backup", coordinator.BackupHandler)
+		coordinatorGroup.GET("/backupstatus", coordinator.BackupStatusHandler)
 	}
 
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
