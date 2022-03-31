@@ -245,27 +245,33 @@ func producePoolShareRespond(list []shared.PoolShareData, isNextOTA bool, rawOTA
 			tk2Amount, _ = strconv.ParseUint(l[0].Token1Amount, 10, 64)
 		}
 		nextota := ""
+		isMinitngNextOTA := false
 		if v.CurrentAccessID != "" {
 			if _, ok := processedNextOTA[v.CurrentAccessID]; !ok {
-				nextota = rawOTA64[v.CurrentAccessID]
-				processedNextOTA[v.CurrentAccessID] = struct{}{}
+				if _, ok1 := rawOTA64[v.CurrentAccessID]; ok1 {
+					nextota = rawOTA64[v.CurrentAccessID]
+					processedNextOTA[v.CurrentAccessID] = struct{}{}
+				} else {
+					isMinitngNextOTA = true
+				}
 			} else {
 				continue
 			}
 		}
 		result = append(result, PdexV3PoolShareRespond{
-			PoolID:           v.PoolID,
-			Share:            v.Amount,
-			Rewards:          v.TradingFee,
-			AMP:              l[0].AMP,
-			TokenID1:         token1ID,
-			TokenID2:         token2ID,
-			Token1Amount:     tk1Amount,
-			Token2Amount:     tk2Amount,
-			TotalShare:       totalShare,
-			OrderRewards:     v.OrderReward,
-			CurrentAccessOTA: nextota,
-			NFTID:            v.NFTID,
+			PoolID:                v.PoolID,
+			Share:                 v.Amount,
+			Rewards:               v.TradingFee,
+			AMP:                   l[0].AMP,
+			TokenID1:              token1ID,
+			TokenID2:              token2ID,
+			Token1Amount:          tk1Amount,
+			Token2Amount:          tk2Amount,
+			TotalShare:            totalShare,
+			OrderRewards:          v.OrderReward,
+			CurrentAccessOTA:      nextota,
+			IsMintingNewAccessOTA: isMinitngNextOTA,
+			NFTID:                 v.NFTID,
 		})
 	}
 	return result, nil

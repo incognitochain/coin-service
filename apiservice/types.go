@@ -151,32 +151,33 @@ type PdexV3PriceHistoryRespond struct {
 	Open      float64
 }
 type TradeDataRespond struct {
-	RequestTx           string
-	RespondTxs          []string
-	RespondTokens       []string
-	RespondAmounts      []uint64
-	WithdrawTxs         map[string]TradeWithdrawInfo
-	SellTokenID         string
-	BuyTokenID          string
-	Status              string
-	StatusCode          int
-	PairID              string
-	PoolID              string
-	MinAccept           uint64
-	Amount              uint64
-	Matched             uint64
-	Requestime          int64
-	NFTID               string
-	Receiver            string
-	Fee                 uint64
-	FeeToken            string
-	IsCompleted         bool
-	SellTokenBalance    uint64
-	BuyTokenBalance     uint64
-	SellTokenWithdrawed uint64
-	BuyTokenWithdrawed  uint64
-	TradingPath         []string
-	CurrentAccessOTA    string
+	RequestTx             string
+	RespondTxs            []string
+	RespondTokens         []string
+	RespondAmounts        []uint64
+	WithdrawTxs           map[string]TradeWithdrawInfo
+	SellTokenID           string
+	BuyTokenID            string
+	Status                string
+	StatusCode            int
+	PairID                string
+	PoolID                string
+	MinAccept             uint64
+	Amount                uint64
+	Matched               uint64
+	Requestime            int64
+	NFTID                 string
+	Receiver              string
+	Fee                   uint64
+	FeeToken              string
+	IsCompleted           bool
+	SellTokenBalance      uint64
+	BuyTokenBalance       uint64
+	SellTokenWithdrawed   uint64
+	BuyTokenWithdrawed    uint64
+	TradingPath           []string
+	CurrentAccessOTA      string
+	IsMintingNewAccessOTA bool
 }
 
 type TradeWithdrawInfo struct {
@@ -212,18 +213,19 @@ type PdexV3WithdrawFeeRespond struct {
 }
 
 type PdexV3PoolShareRespond struct {
-	PoolID           string
-	TokenID1         string
-	TokenID2         string
-	Token1Amount     uint64
-	Token2Amount     uint64
-	Rewards          map[string]uint64
-	OrderRewards     map[string]uint64
-	Share            uint64
-	AMP              uint
-	TotalShare       uint64
-	CurrentAccessOTA string
-	NFTID            string
+	PoolID                string
+	TokenID1              string
+	TokenID2              string
+	Token1Amount          uint64
+	Token2Amount          uint64
+	Rewards               map[string]uint64
+	OrderRewards          map[string]uint64
+	Share                 uint64
+	AMP                   uint
+	TotalShare            uint64
+	CurrentAccessOTA      string
+	IsMintingNewAccessOTA bool
+	NFTID                 string
 }
 
 type PdexV3ContributionData struct {
