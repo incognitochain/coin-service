@@ -615,9 +615,7 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 			// ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 			fitler := bson.M{"requesttx": bson.M{operator.Eq: order.WithdrawTxs[0]}}
 			update := bson.M{
-				"$set": bson.M{
-					"withdrawinfos": order.WithdrawInfos,
-				},
+				"$set": bson.M{"withdrawinfos." + order.WithdrawTxs[0]: order.WithdrawInfos[order.WithdrawTxs[0]]},
 			}
 			_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(context.Background(), fitler, update)
 			if err != nil {
@@ -1530,7 +1528,7 @@ func DBUpdatePDETradeWithdrawStatus(list []shared.TradeOrderData) error {
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set":  bson.M{"withdrawinfos": order.WithdrawInfos},
+			"$set":  bson.M{"withdrawinfos." + order.WithdrawTxs[0]: order.WithdrawInfos[order.WithdrawTxs[0]]},
 			"$pull": bson.M{"withdrawpendings": bson.M{operator.In: order.WithdrawPendings}},
 		}
 		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)

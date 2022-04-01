@@ -28,10 +28,15 @@ func produceTradeDataRespond(tradeList []shared.TradeOrderData, tradeStatusList 
 		matchedAmount := uint64(0)
 		var tradeStatus *shared.LimitOrderStatus
 		nextota := ""
+		isMinitngNextOTA := false
 		if t, ok := tradeStatusList[tradeInfo.RequestTx]; ok {
 			tradeStatus = &t
 			if tradeStatus.CurrentAccessID != "" {
-				nextota = rawOTA64[tradeStatus.CurrentAccessID]
+				if _, ok := rawOTA64[tradeStatus.CurrentAccessID]; ok {
+					nextota = rawOTA64[tradeStatus.CurrentAccessID]
+				} else {
+					isMinitngNextOTA = true
+				}
 			}
 		}
 		matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
@@ -41,31 +46,32 @@ func produceTradeDataRespond(tradeList []shared.TradeOrderData, tradeStatusList 
 		amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
 		minAccept, _ := strconv.ParseUint(tradeInfo.MinAccept, 10, 64)
 		trade := TradeDataRespond{
-			RequestTx:           tradeInfo.RequestTx,
-			RespondTxs:          tradeInfo.RespondTxs,
-			RespondTokens:       tradeInfo.RespondTokens,
-			RespondAmounts:      tradeInfo.RespondAmount,
-			WithdrawTxs:         withdrawTxs,
-			PoolID:              tradeInfo.PoolID,
-			PairID:              tradeInfo.PairID,
-			SellTokenID:         tradeInfo.SellTokenID,
-			BuyTokenID:          tradeInfo.BuyTokenID,
-			Amount:              amount,
-			MinAccept:           minAccept,
-			Matched:             matchedAmount,
-			Status:              status,
-			StatusCode:          statusCode,
-			Requestime:          tradeInfo.Requesttime,
-			NFTID:               tradeInfo.NFTID,
-			Fee:                 tradeInfo.Fee,
-			FeeToken:            tradeInfo.FeeToken,
-			Receiver:            tradeInfo.Receiver,
-			IsCompleted:         isCompleted,
-			SellTokenBalance:    sellTokenBl,
-			BuyTokenBalance:     buyTokenBl,
-			SellTokenWithdrawed: sellTokenWD,
-			BuyTokenWithdrawed:  buyTokenWD,
-			CurrentAccessOTA:    nextota,
+			RequestTx:             tradeInfo.RequestTx,
+			RespondTxs:            tradeInfo.RespondTxs,
+			RespondTokens:         tradeInfo.RespondTokens,
+			RespondAmounts:        tradeInfo.RespondAmount,
+			WithdrawTxs:           withdrawTxs,
+			PoolID:                tradeInfo.PoolID,
+			PairID:                tradeInfo.PairID,
+			SellTokenID:           tradeInfo.SellTokenID,
+			BuyTokenID:            tradeInfo.BuyTokenID,
+			Amount:                amount,
+			MinAccept:             minAccept,
+			Matched:               matchedAmount,
+			Status:                status,
+			StatusCode:            statusCode,
+			Requestime:            tradeInfo.Requesttime,
+			NFTID:                 tradeInfo.NFTID,
+			Fee:                   tradeInfo.Fee,
+			FeeToken:              tradeInfo.FeeToken,
+			Receiver:              tradeInfo.Receiver,
+			IsCompleted:           isCompleted,
+			SellTokenBalance:      sellTokenBl,
+			BuyTokenBalance:       buyTokenBl,
+			SellTokenWithdrawed:   sellTokenWD,
+			BuyTokenWithdrawed:    buyTokenWD,
+			CurrentAccessOTA:      nextota,
+			IsMintingNewAccessOTA: isMinitngNextOTA,
 		}
 		result = append(result, trade)
 	}

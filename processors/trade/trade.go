@@ -345,8 +345,11 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				RespondAmount: []uint64{},
 			}
 			for tokenID, _ := range meta.Receiver {
-				wdData.TokenIDs = append(wdData.TokenIDs, tokenID.String())
+				if tokenID != common.PdexAccessCoinID {
+					wdData.TokenIDs = append(wdData.TokenIDs, tokenID.String())
+				}
 			}
+
 			wdData.Amount = meta.Amount
 			order := shared.TradeOrderData{
 				RequestTx:        meta.OrderID,
@@ -434,6 +437,7 @@ func updateTradeStatus() error {
 				}
 				if i.Status == "0" {
 					a.IsRejected = true
+					data.WithdrawTxs = append(data.WithdrawTxs, wdtx)
 					data.WithdrawInfos[wdtx] = a
 					data.WithdrawPendings = append(data.WithdrawPendings, wdtx) //add to pull from DB
 					listToUpdate = append(listToUpdate, data)
