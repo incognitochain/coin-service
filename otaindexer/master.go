@@ -164,24 +164,24 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
-	// var wg sync.WaitGroup
-	// d := 0
-	// for _, v := range Submitted_OTAKey.Keys {
-	// 	if d == 100 {
-	// 		wg.Wait()
-	// 		d = 0
-	// 	}
-	// 	wg.Add(1)
-	// 	d++
-	// 	go func(key *OTAkeyInfo) {
-	// 		err := ReCheckOTAKey(key.OTAKey, key.Pubkey, false)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		wg.Done()
-	// 	}(v)
-	// }
-	// wg.Wait()
+	var wg sync.WaitGroup
+	d := 0
+	for _, v := range Submitted_OTAKey.Keys {
+		if d == 100 {
+			wg.Wait()
+			d = 0
+		}
+		wg.Add(1)
+		d++
+		go func(key *OTAkeyInfo) {
+			err := ReCheckOTAKey(key.OTAKey, key.Pubkey, false)
+			if err != nil {
+				panic(err)
+			}
+			wg.Done()
+		}(v)
+	}
+	wg.Wait()
 	go func() {
 		for {
 			request := <-OTAAssignChn
@@ -437,7 +437,7 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		return err
 	}
 	data.OTAKey = otaKey
-	highestTkIndex := uint64(0)
+	// highestTkIndex := uint64(0)
 	totalCoinList := []shared.CoinData{}
 	offset := int64(0)
 	limit := 10000
@@ -499,11 +499,11 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 				if cidx.Start > coin.CoinIndex {
 					cidx.Start = coin.CoinIndex
 				}
-				if highestTkIndex < cidx.End {
-					if coin.RealTokenID != common.PRVCoinID.String() {
-						highestTkIndex = cidx.End
-					}
-				}
+				// if highestTkIndex < cidx.End {
+				// 	if coin.RealTokenID != common.PRVCoinID.String() {
+				// 		highestTkIndex = cidx.End
+				// 	}
+				// }
 				data.NFTIndex[coin.RealTokenID] = cidx
 			}
 		} else {
@@ -526,11 +526,11 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 				if cidx.Start > coin.CoinIndex {
 					cidx.Start = coin.CoinIndex
 				}
-				if highestTkIndex < cidx.End {
-					if coin.RealTokenID != common.PRVCoinID.String() {
-						highestTkIndex = cidx.End
-					}
-				}
+				// if highestTkIndex < cidx.End {
+				// 	if coin.RealTokenID != common.PRVCoinID.String() {
+				// 		highestTkIndex = cidx.End
+				// 	}
+				// }
 				data.CoinIndex[coin.RealTokenID] = cidx
 			}
 		}
@@ -566,17 +566,12 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		data.TotalReceiveTxs[tokenID] = uint64(txs)
 	}
 
-	if len(data.CoinIndex) != 0 {
+	if reIndex {
 		cinf := data.CoinIndex[common.ConfidentialAssetID.String()]
-		if cinf.LastScanned < highestTkIndex {
-			cinf.LastScanned = highestTkIndex
-		}
-		if reIndex {
-			pinf := data.CoinIndex[common.PRVCoinID.String()]
-			cinf.LastScanned = 0
-			pinf.LastScanned = 0
-			data.CoinIndex[common.PRVCoinID.String()] = pinf
-		}
+		pinf := data.CoinIndex[common.PRVCoinID.String()]
+		cinf.LastScanned = 0
+		pinf.LastScanned = 0
+		data.CoinIndex[common.PRVCoinID.String()] = pinf
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
 	}
 
