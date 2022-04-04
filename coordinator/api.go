@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,13 +33,14 @@ func ServiceRegisterHandler(c *gin.Context) {
 	defer ws.Close()
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
-	workerID := c.Request.Header.Values("id")[0]
+	serviceID := c.Request.Header.Values("id")[0]
+	serviceName := c.Request.Header.Values("name")[0]
 
 	newService := new(ServiceConn)
-	newService.ID = workerID
-	newService.readCh = readCh
-	newService.writeCh = writeCh
-	newService.Heartbeat = time.Now().Unix()
+	newService.ID = serviceID
+	newService.ServiceName = serviceName
+	newService.ReadCh = readCh
+	newService.WriteCh = writeCh
 	done := make(chan struct{})
 	newService.closeCh = done
 
@@ -46,7 +48,6 @@ func ServiceRegisterHandler(c *gin.Context) {
 		for {
 			select {
 			case <-done:
-				newService.Heartbeat = 0
 				removeService(newService)
 				close(writeCh)
 				ws.Close()
@@ -58,9 +59,19 @@ func ServiceRegisterHandler(c *gin.Context) {
 					close(done)
 					return
 				}
-				if len(msg) == 1 && msg[0] == 1 {
-					newService.Heartbeat = time.Now().Unix()
+				var cmd CoordinatorCmd
+				err = json.Unmarshal(msg, &cmd)
+				if err != nil {
+					log.Println(err)
 					continue
+				}
+				switch cmd.Action {
+				case ACTION_OPERATION_STATUS:
+					if cmd.Data == "pause" {
+						newService.IsPause = true
+					} else {
+						newService.IsPause = false
+					}
 				}
 			}
 		}
@@ -74,10 +85,10 @@ func ServiceRegisterHandler(c *gin.Context) {
 	for {
 		select {
 		case <-done:
-			newService.Heartbeat = 0
 			removeService(newService)
 			return
 		case msg := <-writeCh:
+			fmt.Println("writeCh", string(msg))
 			err := ws.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
@@ -102,14 +113,26 @@ func BackupHandler(c *gin.Context) {
 		state.backStatusLock.Unlock()
 		return
 	}
+	state.backStatusLock.Unlock()
 	state.backupContext, state.backupCancelFn = context.WithCancel(context.Background())
-	go startBackup(state.backupContext)
+	go startBackup()
 	c.JSON(200, gin.H{
 		"status": "backup started",
 	})
 }
 
 func BackupStatusHandler(c *gin.Context) {
+	if state.backupContext == nil {
+		c.JSON(200, gin.H{
+			"status": "backup is not running",
+		})
+		return
+	}
+	cur, m := state.currentBackupProgress.GetProgressStatus()
+	c.JSON(200, gin.H{
+		"progress": fmt.Sprintf("%v/%v", cur, m),
+	})
+	return
 
 }
 

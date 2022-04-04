@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/mongodb/mongo-tools/common/progress"
 )
 
 type CoordinatorCmd struct {
@@ -18,18 +20,22 @@ type CoordinatorState struct {
 	backStatusLock        sync.RWMutex
 	backupContext         context.Context
 	backupCancelFn        context.CancelFunc
+	currentBackupProgress *ProgressManager
 	lastSuccessBackupTime time.Time
 
 	lastFailBackupTime time.Time
-	lastFailBackupErr  error
+	lastFailBackupErr  string
 }
 
 type ServiceConn struct {
 	ServiceName string
 	ID          string
-	Heartbeat   int64
 	IsPause     bool
-	readCh      chan []byte
-	writeCh     chan []byte
+	ReadCh      chan []byte
+	WriteCh     chan []byte
 	closeCh     chan struct{}
+}
+
+type ProgressManager struct {
+	Progress progress.Progressor
 }

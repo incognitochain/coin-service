@@ -29,10 +29,10 @@ type Config struct {
 	IndexerID             int    `json:"indexerid"`
 	MasterIndexerAddr     string `json:"masterindexer"`
 	AnalyticService       string `json:"analyticservice"`
-	// FullnodeEndpoint      string `json:"fullnodeendpoint"`
-	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
-	ExternalDecimals     string `json:"externaldecimals"`
-	FullnodeData         bool   `json:"fullnodedata"`
+	AnalyticsAPIEndpoint  string `json:"analyticsAPIEndpoint"`
+	ExternalDecimals      string `json:"externaldecimals"`
+	FullnodeData          bool   `json:"fullnodedata"`
+	CoordinatorAddr       string `json:"coordinator"`
 }
 
 type ConfigJSON struct {
@@ -47,10 +47,10 @@ type ConfigJSON struct {
 	IndexerID             int    `json:"indexerid"`
 	MasterIndexerAddr     string `json:"masterindexer"`
 	AnalyticService       string `json:"analyticservice"`
-	// FullnodeEndpoint      string `json:"fullnodeendpoint"`
-	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
-	ExternalDecimals     string `json:"externaldecimals"`
-	FullnodeData         bool   `json:"fullnodedata"`
+	AnalyticsAPIEndpoint  string `json:"analyticsAPIEndpoint"`
+	ExternalDecimals      string `json:"externaldecimals"`
+	FullnodeData          bool   `json:"fullnodedata"`
+	CoordinatorAddr       string `json:"coordinator"`
 }
 
 func ReadConfigAndArg() {
@@ -133,10 +133,10 @@ func ReadConfigAndArg() {
 	ServiceCfg.IndexerID = tempCfg.IndexerID
 	ServiceCfg.MasterIndexerAddr = tempCfg.MasterIndexerAddr
 	ServiceCfg.AnalyticService = tempCfg.AnalyticService
-	// ServiceCfg.FullnodeEndpoint = tempCfg.FullnodeEndpoint
 	ServiceCfg.AnalyticsAPIEndpoint = tempCfg.AnalyticsAPIEndpoint
 	ServiceCfg.ExternalDecimals = tempCfg.ExternalDecimals
 	ServiceCfg.FullnodeData = tempCfg.FullnodeData
+	ServiceCfg.CoordinatorAddr = tempCfg.CoordinatorAddr
 
 	common.MaxShardNumber = param.ActiveShards
 }

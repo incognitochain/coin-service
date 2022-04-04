@@ -65,6 +65,8 @@ func InitChainSynker(cfg shared.Config) {
 		}
 	}
 
+	coordinatorConn = connectCoordinator(cfg.CoordinatorAddr)
+
 	err := database.DBCreateCoinV1Index()
 	if err != nil {
 		panic(err)

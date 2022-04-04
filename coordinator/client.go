@@ -10,7 +10,6 @@ import (
 )
 
 func ConnectToCoordinator(addr string, servicename string, id string, readCh chan []byte, writeCh chan []byte, lostConnFn func()) {
-retry:
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/coordinator/connectservice"}
 	log.Printf("connecting to %s", u.String())
 
@@ -20,8 +19,7 @@ retry:
 	})
 	if err != nil {
 		log.Println(err)
-		time.Sleep(5 * time.Second)
-		goto retry
+		lostConnFn()
 	}
 	defer c.Close()
 
@@ -44,7 +42,6 @@ retry:
 			}
 		}
 	}()
-
 	t := time.NewTicker(5 * time.Second)
 	for {
 		select {
@@ -52,7 +49,6 @@ retry:
 			if lostConnFn != nil {
 				lostConnFn()
 			}
-			goto retry
 		case msg := <-writeCh:
 			err := c.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
@@ -65,6 +61,5 @@ retry:
 				writeCh <- []byte{1}
 			}()
 		}
-
 	}
 }
