@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
@@ -38,9 +39,19 @@ func StartProcessor() {
 	if err != nil {
 		panic(err)
 	}
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: "processor-liquidity",
+		ID:          "1",
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "resume"
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
 	for {
 		time.Sleep(5 * time.Second)
-
+		willPauseOperation()
 		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 5000)
 		if err != nil {
 			log.Println("getTxToProcess", err)

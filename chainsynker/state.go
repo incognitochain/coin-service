@@ -3,12 +3,18 @@ package chainsynker
 import (
 	"sync"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 )
 
 type ChainSyncState struct {
 	BlockProcessed     map[int]uint64
 	blockProcessedLock sync.RWMutex
+
+	coordinatorConn    *coordinator.ServiceConn
+	pauseChainSync     bool
+	chainSyncStatus    map[int]string
+	chainSyncStatusLck sync.RWMutex
 }
 
 func updateState() error {

@@ -153,5 +153,24 @@ func CancelBackupHandler(c *gin.Context) {
 }
 
 func GetServiceStatusHandler(c *gin.Context) {
+	state.ConnectedServicesLock.RLock()
+	defer state.ConnectedServicesLock.RUnlock()
+	type ServiceStatus struct {
+		ID      string
+		IsPause bool
+	}
 
+	serviceStats := make(map[string]ServiceStatus)
+	for k, instances := range state.ConnectedServices {
+		for in, v := range instances {
+			serviceStats[k] = ServiceStatus{
+				ID:      in,
+				IsPause: v.IsPause,
+			}
+		}
+
+	}
+	c.JSON(200, gin.H{
+		"services": serviceStats,
+	})
 }

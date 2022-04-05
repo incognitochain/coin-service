@@ -1,4 +1,4 @@
-package chainsynker
+package trade
 
 import (
 	"log"
@@ -8,6 +8,8 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 )
 
+var coordinatorState CoordinatorState
+
 func connectCoordinator(service *coordinator.ServiceConn, coordinatorAddr string) {
 	go coordinator.ConnectToCoordinator(coordinatorAddr, service.ServiceName, service.ID, service.ReadCh, service.WriteCh, lostCoordinatorConnection)
 	go processMsgFromCoordinator(service.ReadCh)
@@ -16,7 +18,7 @@ func connectCoordinator(service *coordinator.ServiceConn, coordinatorAddr string
 //only called when connection is lost
 func lostCoordinatorConnection() {
 	log.Println("lost connection to coordinator")
-	go coordinator.ConnectToCoordinator(shared.ServiceCfg.CoordinatorAddr, currentState.coordinatorConn.ServiceName, currentState.coordinatorConn.ID, currentState.coordinatorConn.ReadCh, currentState.coordinatorConn.WriteCh, lostCoordinatorConnection)
+	go coordinator.ConnectToCoordinator(shared.ServiceCfg.CoordinatorAddr, coordinatorState.coordinatorConn.ServiceName, coordinatorState.coordinatorConn.ID, coordinatorState.coordinatorConn.ReadCh, coordinatorState.coordinatorConn.WriteCh, lostCoordinatorConnection)
 	log.Println("reconnecting to coordinator")
 }
 
@@ -41,18 +43,9 @@ func processMsgFromCoordinator(readCh chan []byte) {
 }
 
 func pauseOperation() {
-	currentState.pauseChainSync = true
+	coordinatorState.pauseService = true
 	for {
-		isAllPaused := true
-		currentState.chainSyncStatusLck.RLock()
-		for _, status := range currentState.chainSyncStatus {
-			if status != "pause" {
-				isAllPaused = false
-			}
-		}
-		currentState.chainSyncStatusLck.RUnlock()
-		if isAllPaused {
-			currentState.coordinatorConn.IsPause = true
+		if coordinatorState.serviceStatus == "pause" {
 			break
 		}
 		time.Sleep(1 * time.Second)
@@ -66,23 +59,13 @@ func pauseOperation() {
 }
 
 func resumeOperation() {
-	currentState.pauseChainSync = false
+	coordinatorState.pauseService = false
 	for {
-		isAllResume := true
-		currentState.chainSyncStatusLck.RLock()
-		for _, status := range currentState.chainSyncStatus {
-			if status != "resume" {
-				isAllResume = false
-			}
-		}
-		currentState.chainSyncStatusLck.RUnlock()
-		if isAllResume {
-			currentState.coordinatorConn.IsPause = false
+		if coordinatorState.serviceStatus == "resume" {
 			break
 		}
 		time.Sleep(1 * time.Second)
 	}
-
 	action := coordinator.CoordinatorCmd{
 		Action: coordinator.ACTION_OPERATION_MODE,
 		Data:   "resume",
@@ -92,24 +75,16 @@ func resumeOperation() {
 }
 
 func sendMsgToCoordinator(msg []byte) {
-	currentState.coordinatorConn.WriteCh <- msg
+	coordinatorState.coordinatorConn.WriteCh <- msg
 }
 
-func willPauseOperation(chainID int) {
+func willPauseOperation() {
 	for {
-		if currentState.pauseChainSync {
-			currentState.chainSyncStatusLck.Lock()
-			if currentState.chainSyncStatus[chainID] != "pause" {
-				currentState.chainSyncStatus[chainID] = "pause"
-			}
-			currentState.chainSyncStatusLck.Unlock()
+		if coordinatorState.pauseService {
+			coordinatorState.serviceStatus = "pause"
 			time.Sleep(5 * time.Second)
 		} else {
-			currentState.chainSyncStatusLck.Lock()
-			if currentState.chainSyncStatus[chainID] != "resume" {
-				currentState.chainSyncStatus[chainID] = "resume"
-			}
-			currentState.chainSyncStatusLck.Unlock()
+			coordinatorState.serviceStatus = "resume"
 			break
 		}
 	}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
@@ -164,6 +165,17 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
+
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: "indexer",
+		ID:          fmt.Sprint(shared.ServiceCfg.IndexerID),
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "resume"
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
 	var wg sync.WaitGroup
 	d := 0
 	for _, v := range Submitted_OTAKey.Keys {
@@ -218,6 +230,7 @@ func StartWorkerAssigner() {
 
 	for {
 		time.Sleep(10 * time.Second)
+		willPauseOperation()
 		Submitted_OTAKey.Lock()
 		isAllKeyAssigned := true
 		for key, worker := range Submitted_OTAKey.AssignedKey {

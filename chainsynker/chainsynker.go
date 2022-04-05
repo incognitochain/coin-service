@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/privacy"
@@ -52,6 +53,7 @@ var useFullnodeData bool
 func InitChainSynker(cfg shared.Config) {
 	lastTokenIDMap = make(map[string]string)
 	currentState.BlockProcessed = make(map[int]uint64)
+	currentState.chainSyncStatus = make(map[int]string)
 	highwayAddress := cfg.Highway
 	chainDataFolder = cfg.ChainDataFolder
 	useFullnodeData = cfg.FullnodeData
@@ -64,8 +66,6 @@ func InitChainSynker(cfg shared.Config) {
 			panic(err)
 		}
 	}
-
-	coordinatorConn = connectCoordinator(cfg.CoordinatorAddr)
 
 	err := database.DBCreateCoinV1Index()
 	if err != nil {
@@ -151,6 +151,7 @@ func InitChainSynker(cfg shared.Config) {
 	}
 	ShardProcessedState := make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
+
 	ProcessedBeaconBestState := uint64(1)
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		statePrefix := fmt.Sprintf("%v%v", ShardData, i)
@@ -170,8 +171,19 @@ func InitChainSynker(cfg shared.Config) {
 		} else {
 			TransactionStateDB[byte(i)] = Localnode.GetBlockchain().GetBestStateTransactionStateDB(byte(i))
 		}
-
+		currentState.chainSyncStatus[i] = "pause"
 	}
+	currentState.chainSyncStatus[-1] = "pause"
+
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: "chainsynker",
+		ID:          "1",
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+	currentState.coordinatorConn = &newServiceConn
+	connectCoordinator(currentState.coordinatorConn, shared.ServiceCfg.CoordinatorAddr)
+
 	beaconStatePrefix := BeaconData
 	v, err := Localnode.GetUserDatabase().Get([]byte(beaconStatePrefix), nil)
 	if err != nil {

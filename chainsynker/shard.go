@@ -21,6 +21,7 @@ import (
 )
 
 func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
+	willPauseOperation(chainID)
 	var ShardTransactionStateDB *statedb.StateDB
 	var blk *types.ShardBlock
 	blockHeight := height
