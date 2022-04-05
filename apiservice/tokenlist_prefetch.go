@@ -263,6 +263,10 @@ func retrieveTokenList() {
 			if err != nil {
 				panic(err)
 			}
+			err = json.UnmarshalFromString(etki.ListUnifiedToken, &data.ListUnifiedToken)
+			if err != nil {
+				panic(err)
+			}
 			if data.PriceUsd == 0 {
 				data.PriceUsd = etki.PriceUsd
 			}
@@ -303,6 +307,10 @@ func retrieveTokenList() {
 				Network: tkInfo.Network,
 			}
 			err = json.UnmarshalFromString(tkInfo.ListChildToken, &tkdata.ListChildToken)
+			if err != nil {
+				panic(err)
+			}
+			err = json.UnmarshalFromString(tkInfo.ListUnifiedToken, &tkdata.ListUnifiedToken)
 			if err != nil {
 				panic(err)
 			}

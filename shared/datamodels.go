@@ -988,8 +988,9 @@ type ExtraTokenInfo struct {
 	OriginalSymbol     string  `json:"OriginalSymbol" bson:"originalsymbol"`
 	LiquidityReward    float64 `json:"LiquidityReward" bson:"liquidityreward"`
 
-	Network        string `json:"Network" bson:"Network"`
-	ListChildToken string `json:"ListChildToken" bson:"listchildtoken"`
+	Network          string `json:"Network" bson:"Network"`
+	ListChildToken   string `json:"ListChildToken" bson:"listchildtoken"`
+	ListUnifiedToken string `json:"ListUnifiedToken"`
 }
 
 func (model *ExtraTokenInfo) Creating() error {
