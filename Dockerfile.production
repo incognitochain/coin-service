@@ -18,7 +18,7 @@ WORKDIR /app
 COPY --from=build /app/coinservice /app/coinservice
 
 COPY ./etc/docker/run.sh /app/run.sh
+COPY ./deploy/csv/config /app/config
 
-# ADD ./devenv/csv/config /app/config
 
 CMD [ "./coinservice" ]
