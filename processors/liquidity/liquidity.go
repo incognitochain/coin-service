@@ -785,9 +785,12 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		}
 		data.TotalAmount = int64(totalAmount)
 		data.TotalReceive = int64(totalReceive)
-		apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
-		data.APY2 = apy2
-		fmt.Println("poolid", poolid, apy2, totalReceive, totalAmount)
+		if totalAmount != 0 {
+			apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+			data.APY2 = apy2
+			fmt.Println("poolid", poolid, apy2, totalReceive, totalAmount)
+		}
+
 		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
 			p := (percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
@@ -830,8 +833,11 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		}
 		data.TotalAmount = int64(totalAmount)
 		data.TotalReceive = int64(totalReceive)
-		apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
-		data.APY2 = apy2
+
+		if totalAmount != 0 {
+			apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+			data.APY2 = apy2
+		}
 		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
 			p := (percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
