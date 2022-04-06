@@ -33,8 +33,20 @@ func ServiceRegisterHandler(c *gin.Context) {
 	defer ws.Close()
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
-	serviceID := c.Request.Header.Values("id")[0]
-	serviceName := c.Request.Header.Values("name")[0]
+	serviceID := ""
+	serviceName := ""
+	if len(c.Request.Header.Values("id")) > 0 {
+		serviceID = c.Request.Header.Values("id")[0]
+	}
+	if len(c.Request.Header.Values("service")) > 0 {
+		serviceName = c.Request.Header.Values("service")[0]
+	}
+	if serviceID == "" || serviceName == "" {
+		c.JSON(200, gin.H{
+			"status": "service id or service name is empty",
+		})
+		return
+	}
 
 	newService := new(ServiceConn)
 	newService.ID = serviceID
@@ -58,6 +70,9 @@ func ServiceRegisterHandler(c *gin.Context) {
 					log.Println(err)
 					close(done)
 					return
+				}
+				if len(msg) == 1 {
+					continue
 				}
 				var cmd CoordinatorCmd
 				err = json.Unmarshal(msg, &cmd)
@@ -128,6 +143,13 @@ func BackupStatusHandler(c *gin.Context) {
 		})
 		return
 	}
+	if state.currentBackupProgress == nil {
+		c.JSON(200, gin.H{
+			"status": "backup is initailizing",
+		})
+		return
+	}
+
 	cur, m := state.currentBackupProgress.GetProgressStatus()
 	c.JSON(200, gin.H{
 		"progress": fmt.Sprintf("%v/%v", cur, m),

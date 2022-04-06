@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -45,7 +47,9 @@ func startBackup() {
 	backupResult := make(chan string, 1)
 	mongoDumpProgress := &ProgressManager{}
 	state.currentBackupProgress = mongoDumpProgress
-	go mongodump.DumpMongo(state.backupContext, backupResult, shared.ServiceCfg.MongoAddress, mongoDumpProgress)
+	pwd, _ := os.Getwd()
+
+	go mongodump.DumpMongo(state.backupContext, backupResult, shared.ServiceCfg.MongoAddress, path.Join(pwd, "mongodump"), mongoDumpProgress)
 	defer close(backupResult)
 
 	for {

@@ -34,7 +34,8 @@ func loadState() error {
 	}
 	if result == nil {
 		currentState = ChainSyncState{
-			BlockProcessed: make(map[int]uint64),
+			BlockProcessed:  make(map[int]uint64),
+			chainSyncStatus: make(map[int]string),
 		}
 		return nil
 	}

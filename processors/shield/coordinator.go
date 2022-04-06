@@ -18,6 +18,7 @@ func connectCoordinator(service *coordinator.ServiceConn, coordinatorAddr string
 //only called when connection is lost
 func lostCoordinatorConnection() {
 	log.Println("lost connection to coordinator")
+	// time.Sleep(2*time.Second)
 	go coordinator.ConnectToCoordinator(shared.ServiceCfg.CoordinatorAddr, coordinatorState.coordinatorConn.ServiceName, coordinatorState.coordinatorConn.ID, coordinatorState.coordinatorConn.ReadCh, coordinatorState.coordinatorConn.WriteCh, lostCoordinatorConnection)
 	log.Println("reconnecting to coordinator")
 }
@@ -51,7 +52,7 @@ func pauseOperation() {
 		time.Sleep(1 * time.Second)
 	}
 	action := coordinator.CoordinatorCmd{
-		Action: coordinator.ACTION_OPERATION_MODE,
+		Action: coordinator.ACTION_OPERATION_STATUS,
 		Data:   "pause",
 	}
 	actionBytes, _ := json.Marshal(action)
@@ -67,7 +68,7 @@ func resumeOperation() {
 		time.Sleep(1 * time.Second)
 	}
 	action := coordinator.CoordinatorCmd{
-		Action: coordinator.ACTION_OPERATION_MODE,
+		Action: coordinator.ACTION_OPERATION_STATUS,
 		Data:   "resume",
 	}
 	actionBytes, _ := json.Marshal(action)

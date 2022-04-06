@@ -182,6 +182,7 @@ func InitChainSynker(cfg shared.Config) {
 		WriteCh:     make(chan []byte),
 	}
 	currentState.coordinatorConn = &newServiceConn
+	currentState.pauseChainSync = true
 	connectCoordinator(currentState.coordinatorConn, shared.ServiceCfg.CoordinatorAddr)
 
 	beaconStatePrefix := BeaconData

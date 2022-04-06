@@ -58,7 +58,7 @@ func pauseOperation() {
 		time.Sleep(1 * time.Second)
 	}
 	action := coordinator.CoordinatorCmd{
-		Action: coordinator.ACTION_OPERATION_MODE,
+		Action: coordinator.ACTION_OPERATION_STATUS,
 		Data:   "pause",
 	}
 	actionBytes, _ := json.Marshal(action)
@@ -84,7 +84,7 @@ func resumeOperation() {
 	}
 
 	action := coordinator.CoordinatorCmd{
-		Action: coordinator.ACTION_OPERATION_MODE,
+		Action: coordinator.ACTION_OPERATION_STATUS,
 		Data:   "resume",
 	}
 	actionBytes, _ := json.Marshal(action)

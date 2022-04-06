@@ -11,7 +11,7 @@ import (
 
 func ConnectToCoordinator(addr string, servicename string, id string, readCh chan []byte, writeCh chan []byte, lostConnFn func()) {
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/coordinator/connectservice"}
-	log.Printf("connecting to %s", u.String())
+	log.Printf("connecting to coordinator at %s\n", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), http.Header{
 		"id":      []string{id},
@@ -20,11 +20,16 @@ func ConnectToCoordinator(addr string, servicename string, id string, readCh cha
 	if err != nil {
 		log.Println(err)
 		lostConnFn()
+		return
 	}
-	defer c.Close()
-
+	defer func() {
+		c.Close()
+		if lostConnFn != nil {
+			lostConnFn()
+		}
+	}()
 	done := make(chan struct{})
-
+	log.Println("connected to coordinator")
 	go func() {
 		for {
 			select {
@@ -46,17 +51,15 @@ func ConnectToCoordinator(addr string, servicename string, id string, readCh cha
 	for {
 		select {
 		case <-done:
-			if lostConnFn != nil {
-				lostConnFn()
-			}
+			return
 		case msg := <-writeCh:
 			err := c.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
-				close(done)
 				continue
 			}
 		case <-t.C:
+			//heartbeat
 			go func() {
 				writeCh <- []byte{1}
 			}()
