@@ -29,6 +29,7 @@ services:
       - service.env
     depends_on:
       - mongo
+      - coordinator
 
   indexer:
     image: coinservice
@@ -115,6 +116,8 @@ services:
       - coordinator
   coordinator:
     image: coinservice
+    volumes:
+      - ./data/mongodump:/home/mongodump
     working_dir: /home
     entrypoint: [./run.sh]
     environment:
@@ -136,6 +139,7 @@ services:
     depends_on:
       - query
       - indexer
+      - coordinator
 
   # watcher:
   #   image: alpine
