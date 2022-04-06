@@ -35,7 +35,6 @@ func DumpMongo(ctx context.Context, result chan string, mongoURL, backupDir stri
 		// var du TestDump
 		// du.Pg = progressManager
 		defer close(dumpResult)
-
 		if err := dump.Init(); err != nil {
 			// if err := du.Init(); err != nil {
 			dumpResult <- err.Error()

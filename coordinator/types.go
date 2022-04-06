@@ -37,5 +37,6 @@ type ServiceConn struct {
 }
 
 type ProgressManager struct {
-	Progress progress.Progressor
+	Progress     map[string]progress.Progressor
+	ProgressLock sync.RWMutex
 }

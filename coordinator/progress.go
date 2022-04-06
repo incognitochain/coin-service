@@ -1,15 +1,30 @@
 package coordinator
 
-import "github.com/mongodb/mongo-tools/common/progress"
+import (
+	"fmt"
+
+	"github.com/mongodb/mongo-tools/common/progress"
+)
 
 func (pm *ProgressManager) Attach(name string, progressor progress.Progressor) {
-	pm.Progress = progressor
+	fmt.Println("Attach", name)
+	pm.ProgressLock.Lock()
+	defer pm.ProgressLock.Unlock()
+	pm.Progress[name] = progressor
 }
 
 func (pm *ProgressManager) Detach(name string) {
-	pm.Progress = nil
+	// pm.Progress = nil
 }
 
 func (pm *ProgressManager) GetProgressStatus() (int64, int64) {
-	return pm.Progress.Progress()
+	pm.ProgressLock.RLock()
+	defer pm.ProgressLock.RUnlock()
+	var current, max int64
+	for _, v := range pm.Progress {
+		c, m := v.Progress()
+		current += c
+		max += m
+	}
+	return current, max
 }

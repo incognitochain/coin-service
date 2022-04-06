@@ -12,6 +12,7 @@ import (
 
 	"github.com/incognitochain/coin-service/coordinator/mongodump"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/mongodb/mongo-tools/common/progress"
 )
 
 var state CoordinatorState
@@ -45,7 +46,9 @@ func startBackup() {
 	}
 
 	backupResult := make(chan string, 1)
-	mongoDumpProgress := &ProgressManager{}
+	mongoDumpProgress := &ProgressManager{
+		Progress: make(map[string]progress.Progressor),
+	}
 	state.currentBackupProgress = mongoDumpProgress
 	pwd, _ := os.Getwd()
 
@@ -64,6 +67,7 @@ func startBackup() {
 				state.lastSuccessBackupTime = time.Now()
 				log.Println("dump success")
 			}
+			time.Sleep(15 * time.Second)
 			err := resumeAllServices()
 			if err != nil {
 				log.Println("resume all services failed:", err)
