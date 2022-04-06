@@ -67,7 +67,6 @@ func startBackup() {
 				state.lastSuccessBackupTime = time.Now()
 				log.Println("dump success")
 			}
-			time.Sleep(15 * time.Second)
 			err := resumeAllServices()
 			if err != nil {
 				log.Println("resume all services failed:", err)

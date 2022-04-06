@@ -115,8 +115,10 @@ func ServiceRegisterHandler(c *gin.Context) {
 
 func BackupHandler(c *gin.Context) {
 	if state.backupContext != nil {
+		cur, m := state.currentBackupProgress.GetProgressStatus()
 		c.JSON(200, gin.H{
-			"status": "backup is running",
+			"status":   "backup is running",
+			"progress": fmt.Sprintf("%v/%v", cur, m),
 		})
 		return
 	}
