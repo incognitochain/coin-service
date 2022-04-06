@@ -14,10 +14,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 func ConnectDB(dbName string, mongoAddr string) error {
-	err := mgm.SetDefaultConfig(nil, dbName, options.Client().ApplyURI(mongoAddr))
+	wc := writeconcern.New(writeconcern.W(1), writeconcern.J(true))
+	err := mgm.SetDefaultConfig(nil, dbName, options.Client().ApplyURI(mongoAddr).SetWriteConcern(wc))
 	if err != nil {
 		return err
 	}
