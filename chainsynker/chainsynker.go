@@ -208,15 +208,15 @@ func InitChainSynker(cfg shared.Config) {
 			currentState.BlockProcessed[i] = ShardProcessedState[byte(i)]
 		}
 	}
-
-	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
-		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
-	}
-	Localnode.OnNewBlockFromParticularHeight(-1, int64(ProcessedBeaconBestState), true, processBeacon)
 	err = updateState()
 	if err != nil {
 		panic(err)
 	}
+	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
+		Localnode.OnNewBlockFromParticularHeight(i, int64(ShardProcessedState[byte(i)]), true, OnNewShardBlock)
+	}
+	Localnode.OnNewBlockFromParticularHeight(-1, int64(ProcessedBeaconBestState), true, processBeacon)
+
 }
 
 func ResetMongoAndReSync() error {

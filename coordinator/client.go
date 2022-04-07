@@ -51,6 +51,7 @@ func ConnectToCoordinator(addr string, servicename string, id string, readCh cha
 	for {
 		select {
 		case <-done:
+			t.Stop()
 			return
 		case msg := <-writeCh:
 			err := c.WriteMessage(websocket.TextMessage, msg)

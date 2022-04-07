@@ -78,6 +78,7 @@ retry:
 	for {
 		select {
 		case <-done:
+			t.Stop()
 			cleanAssignedOTA()
 			goto retry
 		case msg := <-writeCh:

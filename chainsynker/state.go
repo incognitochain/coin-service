@@ -24,11 +24,11 @@ func updateState() error {
 	if err != nil {
 		panic(err)
 	}
-	return database.DBUpdateProcessorState("trade", string(result))
+	return database.DBUpdateProcessorState("chainsync", string(result))
 }
 
 func loadState() error {
-	result, err := database.DBGetProcessorState("trade")
+	result, err := database.DBGetProcessorState("chainsync")
 	if err != nil {
 		return err
 	}
