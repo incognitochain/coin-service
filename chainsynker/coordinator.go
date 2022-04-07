@@ -31,10 +31,13 @@ func processMsgFromCoordinator(readCh chan []byte) {
 		}
 		switch action.Action {
 		case coordinator.ACTION_OPERATION_MODE:
-			if action.Data == "pause" {
+			switch action.Data {
+			case "pause":
 				pauseOperation()
-			} else {
+			case "resume":
 				resumeOperation()
+			case "get":
+				getOperationStatus()
 			}
 		}
 	}
@@ -86,6 +89,24 @@ func resumeOperation() {
 	action := coordinator.CoordinatorCmd{
 		Action: coordinator.ACTION_OPERATION_STATUS,
 		Data:   "resume",
+	}
+	actionBytes, _ := json.Marshal(action)
+	sendMsgToCoordinator(actionBytes)
+}
+
+func getOperationStatus() {
+	serviceStatus := "pause"
+	currentState.chainSyncStatusLck.RLock()
+	for _, v := range currentState.chainSyncStatus {
+		if v == "resume" {
+			serviceStatus = "resume"
+			break
+		}
+	}
+	currentState.chainSyncStatusLck.RUnlock()
+	action := coordinator.CoordinatorCmd{
+		Action: coordinator.ACTION_OPERATION_STATUS,
+		Data:   serviceStatus,
 	}
 	actionBytes, _ := json.Marshal(action)
 	sendMsgToCoordinator(actionBytes)

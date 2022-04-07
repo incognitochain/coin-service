@@ -23,6 +23,21 @@ func init() {
 
 func StartCoordinator() {
 	fmt.Println("start coordinator")
+	for {
+		time.Sleep(5 * time.Second)
+		updateAllServiceStatus()
+		state.backStatusLock.RLock()
+		//periodcally resume all services because they are paused by default on connected until a resume request is received
+		if state.backupContext == nil {
+			err := resumeAllServices()
+			if err != nil {
+				log.Println(err)
+			}
+			state.backStatusLock.RUnlock()
+			continue
+		}
+		state.backStatusLock.RUnlock()
+	}
 }
 
 func startBackup() {
@@ -76,6 +91,18 @@ func startBackup() {
 			return
 		case <-state.backupContext.Done():
 			return
+		}
+	}
+}
+
+func updateAllServiceStatus() {
+	state.ConnectedServicesLock.Lock()
+	defer state.ConnectedServicesLock.Unlock()
+	for _, v := range state.ConnectedServices {
+		for _, sv := range v {
+			if err := sendRequestToService(sv, ACTION_OPERATION_MODE, "get"); err != nil {
+				log.Printf("pause service %v with ID %v failed: %v\n", sv.ServiceName, sv.ID, err)
+			}
 		}
 	}
 }

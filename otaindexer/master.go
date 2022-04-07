@@ -173,7 +173,8 @@ func StartWorkerAssigner() {
 		WriteCh:     make(chan []byte),
 	}
 	coordinatorState.coordinatorConn = &newServiceConn
-	coordinatorState.serviceStatus = "resume"
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
 	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
 
 	var wg sync.WaitGroup

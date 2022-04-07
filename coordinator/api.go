@@ -53,6 +53,7 @@ func ServiceRegisterHandler(c *gin.Context) {
 	newService.ServiceName = serviceName
 	newService.ReadCh = readCh
 	newService.WriteCh = writeCh
+	newService.IsPause = true
 	done := make(chan struct{})
 	newService.closeCh = done
 
@@ -130,8 +131,8 @@ func BackupHandler(c *gin.Context) {
 		state.backStatusLock.Unlock()
 		return
 	}
-	state.backStatusLock.Unlock()
 	state.backupContext, state.backupCancelFn = context.WithCancel(context.Background())
+	state.backStatusLock.Unlock()
 	go startBackup()
 	c.JSON(200, gin.H{
 		"status": "backup started",
@@ -184,13 +185,13 @@ func GetServiceStatusHandler(c *gin.Context) {
 		IsPause bool
 	}
 
-	serviceStats := make(map[string]ServiceStatus)
+	serviceStats := make(map[string][]ServiceStatus)
 	for k, instances := range state.ConnectedServices {
 		for in, v := range instances {
-			serviceStats[k] = ServiceStatus{
+			serviceStats[k] = append(serviceStats[k], ServiceStatus{
 				ID:      in,
 				IsPause: v.IsPause,
-			}
+			})
 		}
 
 	}
