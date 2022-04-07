@@ -207,6 +207,11 @@ func InitChainSynker(cfg shared.Config) {
 		for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 			currentState.BlockProcessed[i] = ShardProcessedState[byte(i)]
 		}
+	} else {
+		ProcessedBeaconBestState = currentState.BlockProcessed[-1]
+		for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
+			ShardProcessedState[byte(i)] = currentState.BlockProcessed[i]
+		}
 	}
 	err = updateState()
 	if err != nil {
