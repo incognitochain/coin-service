@@ -87,7 +87,6 @@ func StartGinService() {
 		shieldGroup := r.Group("/shield")
 		shieldGroup.GET("/getshieldhistory", APIGetShieldHistory)
 		shieldGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
-		shieldGroup.GET("/gettxshield", APIGetTxShield)
 
 		//pdex
 		pdex := r.Group("/pdex")
@@ -136,6 +135,12 @@ func StartGinService() {
 
 		deviceGroup := r.Group("/device")
 		deviceGroup.GET("/getdevicebyqrcode", APIGetDeviceByQRCode)
+
+		bridgeGroup := r.Group("/bridge")
+		bridgeGroup.GET("/aggregatestate", APIGetBridgeAggState)
+		bridgeGroup.GET("/getshieldhistory", APIGetShieldHistory)
+		bridgeGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
+		bridgeGroup.GET("/gettxshield", APIGetTxShield)
 
 	}
 

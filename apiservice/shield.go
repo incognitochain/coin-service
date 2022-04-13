@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
 func APIGetUnshieldHistory(c *gin.Context) {
@@ -156,5 +157,24 @@ func APIGetTxShield(c *gin.Context) {
 		Error:  nil,
 	}
 
+	c.JSON(http.StatusOK, respond)
+}
+
+func APIGetBridgeAggState(c *gin.Context) {
+	state, err := database.DBGetBridgeState(1)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	bridgeState := jsonresult.BridgeAggState{}
+	err = json.UnmarshalFromString(state, &bridgeState)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	respond := APIRespond{
+		Result: bridgeState,
+		Error:  nil,
+	}
 	c.JSON(http.StatusOK, respond)
 }

@@ -226,6 +226,17 @@ func DBCreateShieldIndex() error {
 		return err
 	}
 	log.Println("indexName", indexName)
+
+	bridgeStateModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "version", Value: bsonx.Int32(1)}, {Key: "height", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.BridgeStateData{}).Indexes().CreateMany(context.Background(), bridgeStateModel)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
