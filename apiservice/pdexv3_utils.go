@@ -129,7 +129,6 @@ func produceContributeData(list []shared.ContributionData, isNextOTA bool, rawOT
 				a, _ := strconv.ParseUint(v, 10, 64)
 				ctrbAmount = append(ctrbAmount, a)
 			}
-
 		}
 		if len(v.RequestTxs) > len(v.ContributeTokens) {
 			ctrbToken = append(ctrbToken, v.ContributeTokens[0])
@@ -303,12 +302,6 @@ func retrieveAccessOTAList(otakey string) ([]string, map[string]string, error) {
 
 			return nil, nil, err
 		}
-		// accessID := common.Hash{}
-		// err = accessID.SetBytes(coinBytes)
-		// if err != nil {
-		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		// 	return
-		// }
 		currentAccess := common.HashH(coinBytes[:]).String()
 		rawBase64[currentAccess] = base64.StdEncoding.EncodeToString(coinBytes[:])
 		result = append(result, currentAccess)
@@ -404,6 +397,7 @@ func processWaitingContributions(list *map[string]*rawdbv2.Pdexv3Contribution) (
 			contrbData := shared.ContributionData{
 				RequestTxs:       []string{txhash},
 				PairHash:         pairHash,
+				PoolID:           v.PoolPairID(),
 				ContributeAmount: []string{fmt.Sprintf("%v", v.Amount())},
 				ContributeTokens: []string{v.TokenID().String()},
 				RequestTime:      tx[0].Locktime,
