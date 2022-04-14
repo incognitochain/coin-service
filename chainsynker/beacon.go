@@ -64,31 +64,31 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		bridgeState, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
 		if err != nil {
 			panic(err)
-		} else {
-			bridgeState.ClearCache()
-			err = bridgeState.Process(blk.Body.Instructions, beaconFeatureStateDB)
+		}
+	} else {
+		bridgeState.ClearCache()
+		err = bridgeState.Process(blk.Body.Instructions, beaconFeatureStateDB)
+		if err != nil {
+			log.Println("Error when processing bridge state: ", err)
+			bridgeState, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
 			if err != nil {
-				log.Println("Error when processing bridge state: ", err)
-				bridgeState, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
-				if err != nil {
-					panic(err)
-				}
+				panic(err)
 			}
 		}
-		bridgeStateJson := &jsonresult.BridgeAggState{
-			BeaconTimeStamp:   blk.Header.Timestamp,
-			UnifiedTokenInfos: bridgeState.UnifiedTokenInfos(),
-			BaseDecimal:       config.Param().BridgeAggParam.BaseDecimal,
-			MaxLenOfPath:      config.Param().BridgeAggParam.MaxLenOfPath,
-		}
-		bridgeStr, err := json.MarshalToString(bridgeStateJson)
-		if err != nil {
-			log.Println(err)
-		}
-		err = database.DBSaveBridgeState(bridgeStr, height, 1)
-		if err != nil {
-			log.Println(err)
-		}
+	}
+	bridgeStateJson := &jsonresult.BridgeAggState{
+		BeaconTimeStamp:   blk.Header.Timestamp,
+		UnifiedTokenInfos: bridgeState.UnifiedTokenInfos(),
+		BaseDecimal:       config.Param().BridgeAggParam.BaseDecimal,
+		MaxLenOfPath:      config.Param().BridgeAggParam.MaxLenOfPath,
+	}
+	bridgeStr, err := json.MarshalToString(bridgeStateJson)
+	if err != nil {
+		log.Println(err)
+	}
+	err = database.DBSaveBridgeState(bridgeStr, height, 1)
+	if err != nil {
+		log.Println(err)
 	}
 
 	// Process PDEstatev1
