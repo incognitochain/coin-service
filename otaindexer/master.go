@@ -18,6 +18,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	jsoniter "github.com/json-iterator/go"
+	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -165,10 +166,10 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
-
+	id := uuid.NewV4()
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: "indexer",
-		ID:          fmt.Sprint(shared.ServiceCfg.IndexerID),
+		ServiceName: coordinator.SERVICEGROUP_INDEXER,
+		ID:          id.String(),
 		ReadCh:      make(chan []byte),
 		WriteCh:     make(chan []byte),
 	}

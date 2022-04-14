@@ -11,6 +11,7 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/privacy"
 	jsoniter "github.com/json-iterator/go"
+	uuid "github.com/satori/go.uuid"
 
 	"fmt"
 	"io/ioutil"
@@ -175,9 +176,10 @@ func InitChainSynker(cfg shared.Config) {
 	}
 	currentState.chainSyncStatus[-1] = "pause"
 
+	id := uuid.NewV4()
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: "chainsynker",
-		ID:          "1",
+		ServiceName: coordinator.SERVICEGROUP_CHAINSYNKER,
+		ID:          id.String(),
 		ReadCh:      make(chan []byte),
 		WriteCh:     make(chan []byte),
 	}
@@ -286,3 +288,5 @@ func getCrossShardData(result map[string]string, txList []metadata.Transaction, 
 
 	return nil
 }
+
+// mongorestore --uri=mongodb://root:example@0.0.0.0:5011 --gzip --archive=/root/coin-service-tn2fn/csvtn2bk/data/mongodump/dump_1649640416.archive

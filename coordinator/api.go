@@ -199,3 +199,7 @@ func GetServiceStatusHandler(c *gin.Context) {
 		"services": serviceStats,
 	})
 }
+
+func ServiceListHandler(c *gin.Context) {
+
+}

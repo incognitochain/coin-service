@@ -3,7 +3,6 @@ package otaindexer
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -183,8 +182,8 @@ func StartOTAIndexing() {
 	go processMsgFromMaster(readCh, writeCh)
 
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: "indexerworker",
-		ID:          fmt.Sprint(shared.ServiceCfg.IndexerID),
+		ServiceName: coordinator.SERVICEGROUP_INDEXWORKER,
+		ID:          workerID,
 		ReadCh:      make(chan []byte),
 		WriteCh:     make(chan []byte),
 	}

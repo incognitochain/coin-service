@@ -15,6 +15,7 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/patrickmn/go-cache"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -31,9 +32,22 @@ func StartGinService() {
 	cachedb = cache.New(5*time.Minute, 5*time.Minute)
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
+
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
+		id := uuid.NewV4()
+		newServiceConn := coordinator.ServiceConn{
+			ServiceName: coordinator.SERVICEGROUP_QUERY,
+			ID:          id.String(),
+			ReadCh:      make(chan []byte),
+			WriteCh:     make(chan []byte),
+		}
+		coordinatorState.coordinatorConn = &newServiceConn
+		coordinatorState.serviceStatus = "pause"
+		coordinatorState.pauseService = true
+		connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+		go willPauseOperation()
 		go tokenListWatcher()
 		go poolListWatcher()
 		r.GET("/getcoinslength", APIGetCoinInfo)

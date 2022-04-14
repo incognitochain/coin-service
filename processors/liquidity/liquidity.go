@@ -22,6 +22,7 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
+	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -39,9 +40,10 @@ func StartProcessor() {
 	if err != nil {
 		panic(err)
 	}
+	id := uuid.NewV4()
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: "processor-liquidity",
-		ID:          "1",
+		ServiceName: coordinator.SERVICEGROUP_LIQUIDITY_PROCESSOR,
+		ID:          id.String(),
 		ReadCh:      make(chan []byte),
 		WriteCh:     make(chan []byte),
 	}

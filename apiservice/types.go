@@ -1,6 +1,15 @@
 package apiservice
 
-import "github.com/incognitochain/coin-service/shared"
+import (
+	"github.com/incognitochain/coin-service/coordinator"
+	"github.com/incognitochain/coin-service/shared"
+)
+
+type CoordinatorState struct {
+	coordinatorConn *coordinator.ServiceConn
+	pauseService    bool
+	serviceStatus   string
+}
 
 type APICheckKeyImagesRequest struct {
 	Keyimages []string

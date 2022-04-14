@@ -49,7 +49,7 @@ func startBackup() {
 
 	for {
 		if !checkIfAllServicePaused() {
-			if err := pauseAllServices(); err != nil {
+			if err := pauseServices([]string{SERVICEGROUP_CHAINSYNKER, SERVICEGROUP_INDEXER, SERVICEGROUP_INDEXWORKER, SERVICEGROUP_LIQUIDITY_PROCESSOR, SERVICEGROUP_SHIELD_PROCESSOR, SERVICEGROUP_TRADE_PROCESSOR}); err != nil {
 				state.lastFailBackupErr = err.Error()
 				state.lastFailBackupTime = time.Now()
 			}
@@ -120,13 +120,13 @@ func checkIfAllServicePaused() bool {
 	return true
 }
 
-func pauseAllServices() error {
+func pauseServices(serviceGroups []string) error {
 	state.ConnectedServicesLock.Lock()
 	defer state.ConnectedServicesLock.Unlock()
-	for _, v := range state.ConnectedServices {
-		for _, sv := range v {
-			if err := sendRequestToService(sv, ACTION_OPERATION_MODE, "pause"); err != nil {
-				return fmt.Errorf("pause service %v with ID %v failed: %v\n", sv.ServiceName, sv.ID, err)
+	for _, serviceGroup := range serviceGroups {
+		for _, v := range state.ConnectedServices[serviceGroup] {
+			if err := sendRequestToService(v, ACTION_OPERATION_MODE, "pause"); err != nil {
+				return fmt.Errorf("pause service %v with ID %v failed: %v\n", v.ServiceName, v.ID, err)
 			}
 		}
 	}
@@ -174,7 +174,6 @@ func sendRequestToService(sv *ServiceConn, action, data string) error {
 func registerService(sv *ServiceConn) error {
 	state.ConnectedServicesLock.Lock()
 	defer state.ConnectedServicesLock.Unlock()
-
 	if _, ok := state.ConnectedServices[sv.ServiceName]; ok {
 		if _, ok1 := state.ConnectedServices[sv.ServiceName][sv.ID]; ok1 {
 			return errors.New("serviceID already exist")
