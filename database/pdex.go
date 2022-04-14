@@ -1639,6 +1639,16 @@ func DBGetPDEPoolPairRewardAPY(poolid string) (*shared.RewardAPYTracking, error)
 	return &result[0], nil
 }
 
+func DBGetLimitOrderStatusByPoolID(poolid string) ([]shared.LimitOrderStatus, error) {
+	var tradeStatus []shared.LimitOrderStatus
+	filter := bson.M{"poolid": bson.M{operator.Eq: poolid}}
+	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&tradeStatus, filter)
+	if err != nil {
+		return nil, err
+	}
+	return tradeStatus, nil
+}
+
 func DBGetLimitOrderStatusByPairID(pairid string) ([]shared.LimitOrderStatus, error) {
 	var tradeStatus []shared.LimitOrderStatus
 	filter := bson.M{"pairid": bson.M{operator.Eq: pairid}}

@@ -1464,8 +1464,8 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 		}
 	}
 
-	pairID := tks[0] + "-" + tks[1]
-	list, err := database.DBGetLimitOrderStatusByPairID(pairID)
+	// pairID := tks[0] + "-" + tks[1]
+	list, err := database.DBGetLimitOrderStatusByPoolID(poolID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
