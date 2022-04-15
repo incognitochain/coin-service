@@ -53,6 +53,7 @@ func ServiceRegisterHandler(c *gin.Context) {
 	newService.ServiceName = serviceName
 	newService.ReadCh = readCh
 	newService.WriteCh = writeCh
+	newService.ConnectedTime = time.Now().Unix()
 	newService.IsPause = true
 	done := make(chan struct{})
 	newService.closeCh = done
@@ -181,8 +182,9 @@ func GetServiceStatusHandler(c *gin.Context) {
 	state.ConnectedServicesLock.RLock()
 	defer state.ConnectedServicesLock.RUnlock()
 	type ServiceStatus struct {
-		ID      string
-		IsPause bool
+		ID            string
+		IsPause       bool
+		ConnectedTime int64
 	}
 
 	serviceStats := make(map[string][]ServiceStatus)

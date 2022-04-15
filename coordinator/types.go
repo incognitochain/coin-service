@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator/detector"
 	"github.com/mongodb/mongo-tools/common/progress"
 )
 
@@ -14,6 +15,7 @@ type CoordinatorCmd struct {
 }
 
 type CoordinatorState struct {
+	Detector              *detector.Detector
 	ConnectedServicesLock sync.RWMutex
 	ConnectedServices     map[string]map[string]*ServiceConn
 
@@ -28,12 +30,13 @@ type CoordinatorState struct {
 }
 
 type ServiceConn struct {
-	ServiceName string
-	ID          string
-	IsPause     bool
-	ReadCh      chan []byte
-	WriteCh     chan []byte
-	closeCh     chan struct{}
+	ServiceName   string
+	ID            string
+	IsPause       bool
+	ReadCh        chan []byte
+	WriteCh       chan []byte
+	closeCh       chan struct{}
+	ConnectedTime int64
 }
 
 type ProgressManager struct {

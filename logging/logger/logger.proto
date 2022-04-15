@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package logger;
+option go_package="./logger";
+
+service Logger {
+  rpc RecordLog (LogRequest) returns (LogReply) {}
+}
+
+// The request message containing the user's name.
+message LogRequest {
+  string data = 1;
+}
+
+// The response message containing the greetings
+message LogReply {
+  string message = 1;
+}
+
+
+

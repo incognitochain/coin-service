@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator/detector"
 	"github.com/incognitochain/coin-service/coordinator/mongodump"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/mongodb/mongo-tools/common/progress"
@@ -18,11 +19,14 @@ import (
 var state CoordinatorState
 
 func init() {
+	newDetector := detector.Detector{}
+	state.Detector = &newDetector
 	state.ConnectedServices = make(map[string]map[string]*ServiceConn)
 }
 
 func StartCoordinator() {
 	fmt.Println("start coordinator")
+	go state.Detector.StartAPI(shared.ServiceCfg.APIPort - 1)
 	for {
 		time.Sleep(5 * time.Second)
 		updateAllServiceStatus()
@@ -48,7 +52,7 @@ func startBackup() {
 	}()
 
 	for {
-		if !checkIfAllServicePaused() {
+		if !checkIfServicePaused([]string{SERVICEGROUP_CHAINSYNKER, SERVICEGROUP_INDEXER, SERVICEGROUP_INDEXWORKER, SERVICEGROUP_LIQUIDITY_PROCESSOR, SERVICEGROUP_SHIELD_PROCESSOR, SERVICEGROUP_TRADE_PROCESSOR}) {
 			if err := pauseServices([]string{SERVICEGROUP_CHAINSYNKER, SERVICEGROUP_INDEXER, SERVICEGROUP_INDEXWORKER, SERVICEGROUP_LIQUIDITY_PROCESSOR, SERVICEGROUP_SHIELD_PROCESSOR, SERVICEGROUP_TRADE_PROCESSOR}); err != nil {
 				state.lastFailBackupErr = err.Error()
 				state.lastFailBackupTime = time.Now()
@@ -107,11 +111,11 @@ func updateAllServiceStatus() {
 	}
 }
 
-func checkIfAllServicePaused() bool {
+func checkIfServicePaused(serviceGroups []string) bool {
 	state.ConnectedServicesLock.Lock()
 	defer state.ConnectedServicesLock.Unlock()
-	for _, v := range state.ConnectedServices {
-		for _, sv := range v {
+	for _, serviceGroup := range serviceGroups {
+		for _, sv := range state.ConnectedServices[serviceGroup] {
 			if !sv.IsPause {
 				return false
 			}
