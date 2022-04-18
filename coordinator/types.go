@@ -22,6 +22,7 @@ type CoordinatorState struct {
 	backStatusLock        sync.RWMutex
 	backupContext         context.Context
 	backupCancelFn        context.CancelFunc
+	backupState           int
 	currentBackupProgress *ProgressManager
 	lastSuccessBackupTime time.Time
 

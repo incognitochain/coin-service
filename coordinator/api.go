@@ -143,20 +143,27 @@ func BackupHandler(c *gin.Context) {
 func BackupStatusHandler(c *gin.Context) {
 	if state.backupContext == nil {
 		c.JSON(200, gin.H{
-			"status": "backup is not running",
+			"status":            "backup is not running",
+			"statusCode":        state.backupState,
+			"lastSuccessBackup": state.lastSuccessBackupTime.Format(time.RFC1123Z),
 		})
 		return
 	}
 	if state.currentBackupProgress == nil {
 		c.JSON(200, gin.H{
-			"status": "backup is initailizing",
+			"status":            "backup is initailizing",
+			"statusCode":        state.backupState,
+			"lastSuccessBackup": state.lastSuccessBackupTime.Format(time.RFC1123Z),
 		})
 		return
 	}
 
 	cur, m := state.currentBackupProgress.GetProgressStatus()
 	c.JSON(200, gin.H{
-		"progress": fmt.Sprintf("%v/%v", cur, m),
+		"status":            "backup is running",
+		"statusCode":        state.backupState,
+		"progress":          fmt.Sprintf("%v/%v", cur, m),
+		"lastSuccessBackup": state.lastSuccessBackupTime.Format(time.RFC1123Z),
 	})
 	return
 
@@ -204,4 +211,18 @@ func GetServiceStatusHandler(c *gin.Context) {
 
 func ServiceListHandler(c *gin.Context) {
 
+}
+
+func ListBackupsHandler(c *gin.Context) {
+	// backups, err := state.ListBackups()
+	// if err != nil {
+	// 	c.JSON(200, gin.H{
+	// 		"status": "error",
+	// 	})
+	// 	return
+	// }
+	// c.JSON(200, gin.H{
+	// 	"status":  "ok",
+	// 	"backups": backups,
+	// })
 }

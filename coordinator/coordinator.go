@@ -49,16 +49,19 @@ func startBackup() {
 		state.backupCancelFn = nil
 		state.backupContext = nil
 		state.currentBackupProgress = nil
+		state.backupState = 0
 	}()
 
 	for {
 		if !checkIfServicePaused([]string{SERVICEGROUP_CHAINSYNKER, SERVICEGROUP_INDEXER, SERVICEGROUP_INDEXWORKER, SERVICEGROUP_LIQUIDITY_PROCESSOR, SERVICEGROUP_SHIELD_PROCESSOR, SERVICEGROUP_TRADE_PROCESSOR}) {
+			state.backupState = 1
 			if err := pauseServices([]string{SERVICEGROUP_CHAINSYNKER, SERVICEGROUP_INDEXER, SERVICEGROUP_INDEXWORKER, SERVICEGROUP_LIQUIDITY_PROCESSOR, SERVICEGROUP_SHIELD_PROCESSOR, SERVICEGROUP_TRADE_PROCESSOR}); err != nil {
 				state.lastFailBackupErr = err.Error()
 				state.lastFailBackupTime = time.Now()
 			}
 			time.Sleep(4 * time.Second)
 		} else {
+			state.backupState = 2
 			log.Println("successfully pause all services")
 			break
 		}
@@ -86,6 +89,7 @@ func startBackup() {
 				state.lastSuccessBackupTime = time.Now()
 				log.Println("dump success")
 			}
+			state.backupState = 3
 			err := resumeAllServices()
 			if err != nil {
 				log.Println("resume all services failed:", err)
