@@ -2,6 +2,7 @@ package logging
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -25,17 +26,16 @@ func InitLogger(recorderEndpoint string) {
 }
 
 func (l *LogRecorder) Write(p []byte) (n int, err error) {
-	logger.Info().Msgf("%s", p)
-	// if l.Endpoint != "" {
-	// 	logRecorderEndpoint.pushLog(p)
-	// }
+	if l.Endpoint != "" {
+		logRecorderEndpoint.willPushLog(p)
+	}
 	return len(p), nil
 }
 
-func (l *LogRecorder) pushLog(p []byte) {
+func (l *LogRecorder) willPushLog(p []byte) {
 	conn, err := grpc.Dial(l.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		panic(fmt.Sprintf("did not connect: %v", err))
 	}
 	defer conn.Close()
 	c := pblogger.NewLoggerClient(conn)
@@ -45,6 +45,6 @@ func (l *LogRecorder) pushLog(p []byte) {
 	defer cancel()
 	_, err = c.RecordLog(ctx, &pblogger.LogRequest{Data: p})
 	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+		panic(fmt.Sprintf("could not greet: %v", err))
 	}
 }

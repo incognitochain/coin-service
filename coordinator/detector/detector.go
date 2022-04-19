@@ -27,7 +27,7 @@ func (dtc *Detector) StartService(port int) {
 
 func (dtc *Detector) RecordLog(ctx context.Context, in *logger.LogRequest) (*emptypb.Empty, error) {
 	log.Printf("Received: %v", in.Data)
-	return nil, nil
+	return new(emptypb.Empty), nil
 }
 
 func (dtc *Detector) GetCrashReport() map[string]ServiceCrashRecorder {

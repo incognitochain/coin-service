@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"syscall"
 
 	"github.com/incognitochain/coin-service/apiservice"
 	"github.com/incognitochain/coin-service/assistant"
@@ -19,10 +21,10 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
-// func init() {
-// 	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
-// 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-// }
+func init() {
+	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
 
 func main() {
 	shared.ReadConfigAndArg()
