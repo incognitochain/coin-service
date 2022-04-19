@@ -26,7 +26,7 @@ func init() {
 
 func StartCoordinator() {
 	fmt.Println("start coordinator")
-	go state.Detector.StartAPI(shared.ServiceCfg.APIPort - 1)
+	go state.Detector.StartService(shared.ServiceCfg.APIPort - 1)
 	for {
 		time.Sleep(5 * time.Second)
 		updateAllServiceStatus()
@@ -72,8 +72,8 @@ func startBackup() {
 		Progress: make(map[string]progress.Progressor),
 	}
 	state.currentBackupProgress = mongoDumpProgress
-	pwd, _ := os.Getwd()
 
+	pwd, _ := os.Getwd()
 	go mongodump.DumpMongo(state.backupContext, backupResult, shared.ServiceCfg.MongoAddress, path.Join(pwd, "mongodump"), mongoDumpProgress)
 	defer close(backupResult)
 

@@ -1,20 +1,16 @@
 syntax = "proto3";
+import "google/protobuf/empty.proto";
 
 package logger;
 option go_package="./logger";
 
 service Logger {
-  rpc RecordLog (LogRequest) returns (LogReply) {}
+  rpc RecordLog (LogRequest) returns (google.protobuf.Empty) {}
 }
 
 // The request message containing the user's name.
 message LogRequest {
-  string data = 1;
-}
-
-// The response message containing the greetings
-message LogReply {
-  string message = 1;
+  bytes data = 1;
 }
 
 

@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -22,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LoggerClient interface {
-	RecordLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogReply, error)
+	RecordLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type loggerClient struct {
@@ -33,8 +34,8 @@ func NewLoggerClient(cc grpc.ClientConnInterface) LoggerClient {
 	return &loggerClient{cc}
 }
 
-func (c *loggerClient) RecordLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogReply, error) {
-	out := new(LogReply)
+func (c *loggerClient) RecordLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/logger.Logger/RecordLog", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -46,7 +47,7 @@ func (c *loggerClient) RecordLog(ctx context.Context, in *LogRequest, opts ...gr
 // All implementations must embed UnimplementedLoggerServer
 // for forward compatibility
 type LoggerServer interface {
-	RecordLog(context.Context, *LogRequest) (*LogReply, error)
+	RecordLog(context.Context, *LogRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedLoggerServer()
 }
 
@@ -54,7 +55,7 @@ type LoggerServer interface {
 type UnimplementedLoggerServer struct {
 }
 
-func (UnimplementedLoggerServer) RecordLog(context.Context, *LogRequest) (*LogReply, error) {
+func (UnimplementedLoggerServer) RecordLog(context.Context, *LogRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RecordLog not implemented")
 }
 func (UnimplementedLoggerServer) mustEmbedUnimplementedLoggerServer() {}

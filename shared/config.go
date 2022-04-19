@@ -33,6 +33,7 @@ type Config struct {
 	ExternalDecimals      string `json:"externaldecimals"`
 	FullnodeData          bool   `json:"fullnodedata"`
 	CoordinatorAddr       string `json:"coordinator"`
+	LogRecorderAddr       string `json:"logrecorder"`
 }
 
 type ConfigJSON struct {
@@ -51,6 +52,7 @@ type ConfigJSON struct {
 	ExternalDecimals      string `json:"externaldecimals"`
 	FullnodeData          bool   `json:"fullnodedata"`
 	CoordinatorAddr       string `json:"coordinator"`
+	LogRecorderAddr       string `json:"logrecorder"`
 }
 
 func ReadConfigAndArg() {
@@ -137,6 +139,7 @@ func ReadConfigAndArg() {
 	ServiceCfg.ExternalDecimals = tempCfg.ExternalDecimals
 	ServiceCfg.FullnodeData = tempCfg.FullnodeData
 	ServiceCfg.CoordinatorAddr = tempCfg.CoordinatorAddr
+	ServiceCfg.LogRecorderAddr = tempCfg.LogRecorderAddr
 
 	common.MaxShardNumber = param.ActiveShards
 }

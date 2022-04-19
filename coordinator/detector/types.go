@@ -1,10 +1,16 @@
 package detector
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/incognitochain/coin-service/logging/logger"
+)
 
 type Detector struct {
 	Lck      sync.RWMutex
 	Services map[string]ServiceCrashRecorder
+
+	logger.UnimplementedLoggerServer
 }
 
 type ServiceCrashRecorder struct {

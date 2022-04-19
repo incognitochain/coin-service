@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -198,8 +201,9 @@ func GetServiceStatusHandler(c *gin.Context) {
 	for k, instances := range state.ConnectedServices {
 		for in, v := range instances {
 			serviceStats[k] = append(serviceStats[k], ServiceStatus{
-				ID:      in,
-				IsPause: v.IsPause,
+				ID:            in,
+				IsPause:       v.IsPause,
+				ConnectedTime: v.ConnectedTime,
 			})
 		}
 
@@ -214,15 +218,26 @@ func ServiceListHandler(c *gin.Context) {
 }
 
 func ListBackupsHandler(c *gin.Context) {
-	// backups, err := state.ListBackups()
-	// if err != nil {
-	// 	c.JSON(200, gin.H{
-	// 		"status": "error",
-	// 	})
-	// 	return
-	// }
-	// c.JSON(200, gin.H{
-	// 	"status":  "ok",
-	// 	"backups": backups,
-	// })
+	pwd, _ := os.Getwd()
+	files, err := ioutil.ReadDir(path.Join(pwd, "mongodump"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	type FileInfo struct {
+		Name    string
+		Size    int64
+		ModTime time.Time
+	}
+	var fileList []FileInfo
+	for _, file := range files {
+		fileList = append(fileList, FileInfo{
+			Name:    file.Name(),
+			Size:    file.Size(),
+			ModTime: file.ModTime(),
+		})
+	}
+	c.JSON(200, gin.H{
+		"backups": fileList,
+	})
 }

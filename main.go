@@ -1,17 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"syscall"
 
 	"github.com/incognitochain/coin-service/apiservice"
 	"github.com/incognitochain/coin-service/assistant"
 	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/processors/liquidity"
 	"github.com/incognitochain/coin-service/processors/shield"
@@ -20,10 +19,10 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
-func init() {
-	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-}
+// func init() {
+// 	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
+// 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+// }
 
 func main() {
 	shared.ReadConfigAndArg()
@@ -35,6 +34,9 @@ func main() {
 	err = wallet.InitPublicKeyBurningAddressByte()
 	if err != nil {
 		panic(err)
+	}
+	if shared.ServiceCfg.Mode != shared.COORDINATORMODE {
+		logging.InitLogger(shared.ServiceCfg.LogRecorderAddr)
 	}
 	switch shared.ServiceCfg.Mode {
 	case shared.QUERYMODE:
