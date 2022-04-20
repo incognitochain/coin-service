@@ -1,8 +1,11 @@
 package apiservice
 
 import (
+	"sync"
+
 	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/privacy"
 )
 
 type CoordinatorState struct {
