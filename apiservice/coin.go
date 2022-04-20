@@ -194,6 +194,10 @@ func APIGetRandomCommitments(c *gin.Context) {
 				i--
 				continue
 			}
+			if coinData.IsNFT {
+				i--
+				continue
+			}
 			coinV2 := new(coin.CoinV2)
 			err = coinV2.SetBytes(coinData.Coin)
 			if err != nil {
@@ -979,10 +983,10 @@ func APIGetKeyInfo(c *gin.Context) {
 			for id, nft := range result.NFTIndex {
 				if d, ok := result.CoinIndex[id]; ok {
 					if nft.Start > d.Start {
-						d.Start = nft.Start
+						nft.Start = d.Start
 					}
-					if nft.End > d.End {
-						d.End = nft.End
+					if nft.End < d.End {
+						nft.End = d.End
 					}
 					nft.Total += d.Total
 					result.NFTIndex[id] = nft
@@ -997,6 +1001,10 @@ func APIGetKeyInfo(c *gin.Context) {
 					}
 				}
 			}
+			if cinfo, ok := result.NFTIndex[common.PdexAccessCoinID.String()]; ok {
+				result.CoinIndex[common.PdexAccessCoinID.String()] = cinfo
+			}
+			delete(result.NFTIndex, common.PdexAccessCoinID.String())
 			respond := APIRespond{
 				Result: result,
 				Error:  nil,

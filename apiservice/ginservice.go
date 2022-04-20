@@ -50,6 +50,8 @@ func StartGinService() {
 		go willPauseOperation()
 		go tokenListWatcher()
 		go poolListWatcher()
+		go prefetchPdexV3State()
+
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
@@ -120,6 +122,8 @@ func StartGinService() {
 		pdexv3Group.GET("/tradestatus", pdexv3{}.TradeStatus)
 		pdexv3Group.GET("/listpools", pdexv3{}.ListPools)
 		pdexv3Group.GET("/poolshare", pdexv3{}.PoolShare)
+		pdexv3Group.POST("/accessotadata", pdexv3{}.GetAccessOTAData)
+
 		pdexv3Group.POST("/poolsdetail", pdexv3{}.PoolsDetail)
 		pdexv3Group.POST("/pairsdetail", pdexv3{}.PairsDetail)
 		pdexv3Group.GET("/tradehistory", pdexv3{}.TradeHistory)
@@ -215,7 +219,7 @@ func APIHealthCheck(c *gin.Context) {
 			if math.Abs(float64(height-chainheight)) > 5 || math.Abs(float64(height-uint64(coinHeight))) > 5 {
 				status = shared.HEALTH_STATUS_NOK
 			}
-			shardsHeight[i] = fmt.Sprintf("%v|%v|%v|%v", coinHeight, height, chainheight, math.Abs(float64(height-chainheight)))
+			shardsHeight[i] = fmt.Sprintf("%v|%v|%v|%v", coinHeight, height, chainheight, chainheight-uint64(coinHeight))
 		}
 	}
 	_, cd, _, _ := mgm.DefaultConfigs()

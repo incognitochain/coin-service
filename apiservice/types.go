@@ -155,31 +155,33 @@ type PdexV3PriceHistoryRespond struct {
 	Open      float64
 }
 type TradeDataRespond struct {
-	RequestTx           string
-	RespondTxs          []string
-	RespondTokens       []string
-	RespondAmounts      []uint64
-	WithdrawTxs         map[string]TradeWithdrawInfo
-	SellTokenID         string
-	BuyTokenID          string
-	Status              string
-	StatusCode          int
-	PairID              string
-	PoolID              string
-	MinAccept           uint64
-	Amount              uint64
-	Matched             uint64
-	Requestime          int64
-	NFTID               string
-	Receiver            string
-	Fee                 uint64
-	FeeToken            string
-	IsCompleted         bool
-	SellTokenBalance    uint64
-	BuyTokenBalance     uint64
-	SellTokenWithdrawed uint64
-	BuyTokenWithdrawed  uint64
-	TradingPath         []string
+	RequestTx             string
+	RespondTxs            []string
+	RespondTokens         []string
+	RespondAmounts        []uint64
+	WithdrawTxs           map[string]TradeWithdrawInfo
+	SellTokenID           string
+	BuyTokenID            string
+	Status                string
+	StatusCode            int
+	PairID                string
+	PoolID                string
+	MinAccept             uint64
+	Amount                uint64
+	Matched               uint64
+	Requestime            int64
+	NFTID                 string
+	Receiver              string
+	Fee                   uint64
+	FeeToken              string
+	IsCompleted           bool
+	SellTokenBalance      uint64
+	BuyTokenBalance       uint64
+	SellTokenWithdrawed   uint64
+	BuyTokenWithdrawed    uint64
+	TradingPath           []string
+	CurrentAccessOTA      string
+	IsMintingNewAccessOTA bool
 }
 
 type TradeWithdrawInfo struct {
@@ -215,16 +217,19 @@ type PdexV3WithdrawFeeRespond struct {
 }
 
 type PdexV3PoolShareRespond struct {
-	PoolID       string
-	TokenID1     string
-	TokenID2     string
-	Token1Amount uint64
-	Token2Amount uint64
-	Rewards      map[string]uint64
-	OrderRewards map[string]uint64
-	Share        uint64
-	AMP          uint
-	TotalShare   uint64
+	PoolID                string
+	TokenID1              string
+	TokenID2              string
+	Token1Amount          uint64
+	Token2Amount          uint64
+	Rewards               map[string]uint64
+	OrderRewards          map[string]uint64
+	Share                 uint64
+	AMP                   uint
+	TotalShare            uint64
+	CurrentAccessOTA      string
+	IsMintingNewAccessOTA bool
+	NFTID                 string
 }
 
 type PdexV3ContributionData struct {
@@ -239,6 +244,7 @@ type PdexV3ContributionData struct {
 	ReturnAmount     []uint64
 	// Contributor      string
 	NFTID       string
+	AccessIDs   []string `json:"AccessOTAs"`
 	RequestTime int64
 	Status      string
 }
@@ -340,4 +346,21 @@ type ContributionDataV1 struct {
 type APITokenInfoRequest struct {
 	TokenIDs []string
 	Nocache  bool
+}
+
+type InUseAccessOTAData struct {
+	Orders       map[string]shared.TradeOrderData
+	Shares       map[string]PdexV3PoolShareRespond
+	OrderRewards map[string]PdexV3PoolShareRespond
+}
+
+type PreLoadPdexStatev3 struct {
+	PdexRaw              string
+	BeaconTimestamp      int64
+	WaitingContributions struct {
+		sync.RWMutex
+		List         map[string]shared.ContributionData //map[txHash]...
+		AccessOTAs   map[string]*privacy.OTAReceiver    //map[txHash]...
+		cacheOTAList map[string][]string                //map[otakey][]txHash
+	}
 }

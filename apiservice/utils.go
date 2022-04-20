@@ -137,6 +137,7 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 				IsRejected: v.IsRejected,
 			}
 			if !v.IsRejected {
+				var withdrawedTokens []string
 				for idx, d := range v.RespondTokens {
 					rp := data.Responds[d]
 					rp.Amount = v.RespondAmount[idx]
@@ -149,6 +150,10 @@ func getTradeStatus(order *shared.TradeOrderData, limitOrderStatus *shared.Limit
 					if d == order.BuyTokenID {
 						buyTokenWDAmount += rp.Amount
 					}
+					withdrawedTokens = append(withdrawedTokens, d)
+				}
+				if len(data.TokenIDs) == 0 {
+					data.TokenIDs = withdrawedTokens
 				}
 			}
 
