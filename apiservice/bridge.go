@@ -211,12 +211,7 @@ func APIGetSupportedVault(c *gin.Context) {
 		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("BurntAmount and ExpectedAmount cant be both <= 0")))
 		return
 	}
-	var result struct {
-		Burn     map[uint]jsonresult.BridgeAggEstimateFee
-		Expected map[uint]jsonresult.BridgeAggEstimateFee
-	}
-	resultBurn := make(map[uint]jsonresult.BridgeAggEstimateFee)
-	resultExpected := make(map[uint]jsonresult.BridgeAggEstimateFee)
+	result := make(map[uint]jsonresult.BridgeAggEstimateFee)
 
 	unifiedTokenIDHash := common.Hash{}.NewHashFromStr2(unifiedTokenID)
 	if networkIDs, ok := bridgeState.UnifiedTokenInfos()[unifiedTokenIDHash]; ok {
@@ -229,7 +224,7 @@ func APIGetSupportedVault(c *gin.Context) {
 					c.JSON(http.StatusOK, buildGinErrorRespond(err))
 					return
 				}
-				resultBurn[networkID] = jsonresult.BridgeAggEstimateFee{
+				result[networkID] = jsonresult.BridgeAggEstimateFee{
 					ExpectedAmount: exAmount,
 					Fee:            burntAmount - expectedAmount,
 					BurntAmount:    burntAmount,
@@ -249,7 +244,7 @@ func APIGetSupportedVault(c *gin.Context) {
 					c.JSON(http.StatusOK, buildGinErrorRespond(fmt.Errorf("Value is not unit64")))
 					return
 				}
-				resultBurn[networkID] = jsonresult.BridgeAggEstimateFee{
+				result[networkID] = jsonresult.BridgeAggEstimateFee{
 					ExpectedAmount: expectedAmount,
 					Fee:            fee,
 					BurntAmount:    burntAmount.Uint64(),
@@ -260,12 +255,10 @@ func APIGetSupportedVault(c *gin.Context) {
 		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("UnifiedTokenID not found")))
 		return
 	}
-	if len(resultBurn) == 0 && len(resultExpected) == 0 {
+	if len(result) == 0 {
 		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("No supported vault")))
 		return
 	}
-	result.Burn = resultBurn
-	result.Expected = resultExpected
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
