@@ -3,6 +3,7 @@ package apiservice
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -218,36 +219,42 @@ func APIGetSupportedVault(c *gin.Context) {
 		for networkID, vault := range networkIDs {
 			x := vault.Reserve()
 			y := vault.CurrentRewardReserve()
+			resultData := jsonresult.BridgeAggEstimateFee{}
 			if burntAmount != 0 {
 				exAmount, err := bridgeagg.EstimateActualAmountByBurntAmount(x, y, burntAmount, vault.IsPaused())
 				if err != nil {
-					c.JSON(http.StatusOK, buildGinErrorRespond(err))
-					return
-				}
-				result[networkID] = jsonresult.BridgeAggEstimateFee{
-					ExpectedAmount: exAmount,
-					Fee:            burntAmount - expectedAmount,
-					BurntAmount:    burntAmount,
+					log.Println(err)
+					result[networkID] = resultData
+					continue
+				} else {
+					resultData.BurntAmount = burntAmount
+					resultData.ExpectedAmount = exAmount
+					resultData.Fee = burntAmount - expectedAmount
+					result[networkID] = resultData
 				}
 			} else {
 				fee, err := bridgeagg.CalculateDeltaY(x, y, expectedAmount, bridgeagg.SubOperator, vault.IsPaused())
 				if err != nil {
-					c.JSON(http.StatusOK, buildGinErrorRespond(err))
-					return
+					log.Println((err))
+					result[networkID] = resultData
+					continue
 				}
 				if expectedAmount > x {
-					c.JSON(http.StatusOK, buildGinErrorRespond(fmt.Errorf("Unshield amount %v > vault amount %v", expectedAmount, x)))
-					return
+					log.Println(fmt.Errorf("Unshield amount %v > vault amount %v", expectedAmount, x))
+					result[networkID] = resultData
+					continue
 				}
 				burntAmount := big.NewInt(0).Add(big.NewInt(0).SetUint64(fee), big.NewInt(0).SetUint64(expectedAmount))
 				if !burntAmount.IsUint64() {
-					c.JSON(http.StatusOK, buildGinErrorRespond(fmt.Errorf("Value is not unit64")))
-					return
-				}
-				result[networkID] = jsonresult.BridgeAggEstimateFee{
-					ExpectedAmount: expectedAmount,
-					Fee:            fee,
-					BurntAmount:    burntAmount.Uint64(),
+					log.Println(fmt.Errorf("Value is not unit64"))
+					result[networkID] = resultData
+					continue
+				} else {
+					resultData.BurntAmount = burntAmount.Uint64()
+					resultData.ExpectedAmount = expectedAmount
+					resultData.Fee = fee
+					result[networkID] = resultData
+					continue
 				}
 			}
 		}
