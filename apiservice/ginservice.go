@@ -35,6 +35,7 @@ func StartGinService() {
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
 		go tokenListWatcher()
 		go poolListWatcher()
+		go bridgeStateWatcher()
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
@@ -141,6 +142,7 @@ func StartGinService() {
 		bridgeGroup.GET("/getshieldhistory", APIGetShieldHistory)
 		bridgeGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
 		bridgeGroup.GET("/gettxshield", APIGetTxShield)
+		bridgeGroup.GET("/getsupportedvault", APIGetSupportedVault)
 
 	}
 
