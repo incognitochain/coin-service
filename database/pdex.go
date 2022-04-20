@@ -152,7 +152,8 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
 	for _, order := range list {
-		if order.Version == 3 {
+		switch order.Version {
+		case 3:
 			fitler := bson.M{"nftid": bson.M{operator.Eq: order.NFTID}, "pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
 			update := bson.M{
 				"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
@@ -162,7 +163,17 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 			if err != nil {
 				return err
 			}
-		} else {
+		case 4:
+			fitler := bson.M{"pairhash": bson.M{operator.Eq: order.PairHash}, "requesttxs.1": bson.M{operator.Exists: false}}
+			update := bson.M{
+				"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}, "accessids": bson.M{operator.Each: order.AccessIDs}},
+				"$set":  bson.M{"pairhash": order.PairHash, "poolid": order.PoolID, "requesttime": order.RequestTime, "contributor": order.Contributor, "pairid": order.PairID},
+			}
+			_, err := mgm.Coll(&shared.ContributionData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
+			if err != nil {
+				return err
+			}
+		default:
 			fitler := bson.M{"pairid": bson.M{operator.Eq: order.PairID}, "requesttxs.1": bson.M{operator.Exists: false}}
 			update := bson.M{
 				"$push": bson.M{"requesttxs": bson.M{operator.Each: order.RequestTxs}, "contributetokens": bson.M{operator.Each: order.ContributeTokens}, "contributeamount": bson.M{operator.Each: order.ContributeAmount}},
@@ -173,7 +184,6 @@ func DBSavePDEContribute(list []shared.ContributionData) error {
 				return err
 			}
 		}
-
 	}
 	return nil
 }
@@ -197,12 +207,12 @@ func DBGetPDEContributeRespond(address string, limit int64, offset int64) ([]sha
 	return result, nil
 }
 
-func DBGetPDEV3ContributeRespond(nftID string, limit int64, offset int64) ([]shared.ContributionData, error) {
+func DBGetPDEV3ContributeRespond(nftID []string, limit int64, offset int64) ([]shared.ContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.ContributionData
-	filter := bson.M{"nftid": bson.M{operator.Eq: nftID}}
+	filter := bson.M{"nftid": bson.M{operator.In: nftID}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},
@@ -213,6 +223,38 @@ func DBGetPDEV3ContributeRespond(nftID string, limit int64, offset int64) ([]sha
 		return nil, err
 	}
 
+	return result, nil
+}
+
+func DBGetPDEV3ContributeRespondByAccessID(accessID []string, limit int64, offset int64) ([]shared.ContributionData, error) {
+	if limit == 0 {
+		limit = int64(10000)
+	}
+	var result []shared.ContributionData
+	filter := bson.M{"accessids": bson.M{operator.In: accessID}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort:  bson.D{{"requesttime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func DBGetPDEV3ContributeByRespondTx(respondTxs []string) ([]shared.ContributionData, error) {
+	var result []shared.ContributionData
+	filter := bson.M{"respondtxs": bson.M{operator.In: respondTxs}}
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondTxs))*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+		Sort: bson.D{{"requesttime", -1}},
+	})
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -352,16 +394,16 @@ func DBGetPDETXWithdrawFeeRespond(pubkey []string, limit int64, offset int64) ([
 	return result, nil
 }
 
-func DBGetPDEV3WithdrawRespond(nftID, poolID string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
+func DBGetPDEV3WithdrawRespond(nftID []string, poolID string, limit int64, offset int64) ([]shared.WithdrawContributionData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.WithdrawContributionData
 	filter := bson.M{}
 	if poolID != "" {
-		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+		filter = bson.M{"nftid": bson.M{operator.In: nftID}, "poolid": bson.M{operator.Eq: poolID}}
 	} else {
-		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}}
+		filter = bson.M{"nftid": bson.M{operator.In: nftID}}
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.WithdrawContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
@@ -437,16 +479,16 @@ func DBGetPDEWithdrawFeeRespond(address []string, limit int64, offset int64) ([]
 	return result, nil
 }
 
-func DBGetPDEV3WithdrawFeeRespond(nftID, poolID string, limit int64, offset int64) ([]shared.WithdrawContributionFeeData, error) {
+func DBGetPDEV3WithdrawFeeRespond(nftID []string, poolID string, limit int64, offset int64) ([]shared.WithdrawContributionFeeData, error) {
 	if limit == 0 {
 		limit = int64(10000)
 	}
 	var result []shared.WithdrawContributionFeeData
 	filter := bson.M{}
 	if poolID != "" {
-		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}, "poolid": bson.M{operator.Eq: poolID}}
+		filter = bson.M{"nftid": bson.M{operator.In: nftID}, "poolid": bson.M{operator.Eq: poolID}}
 	} else {
-		filter = bson.M{"nftid": bson.M{operator.Eq: nftID}}
+		filter = bson.M{"nftid": bson.M{operator.In: nftID}}
 	}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.WithdrawContributionFeeData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
@@ -573,9 +615,7 @@ func DBUpdateWithdrawTradeOrderRes(orders []shared.TradeOrderData) error {
 			// ctx, _ := context.WithTimeout(context.Background(), time.Duration(1*shared.DB_OPERATION_TIMEOUT))
 			fitler := bson.M{"requesttx": bson.M{operator.Eq: order.WithdrawTxs[0]}}
 			update := bson.M{
-				"$set": bson.M{
-					"withdrawinfos": order.WithdrawInfos,
-				},
+				"$set": bson.M{"withdrawinfos." + order.WithdrawTxs[0]: order.WithdrawInfos[order.WithdrawTxs[0]]},
 			}
 			_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(context.Background(), fitler, update)
 			if err != nil {
@@ -761,7 +801,7 @@ func DBUpdatePDEPoolShareData(list []shared.PoolShareData) error {
 	for _, share := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: share.NFTID}, "poolid": bson.M{operator.Eq: share.PoolID}}
 		update := bson.M{
-			"$set": bson.M{"updated_at": time.Now().UTC(), "poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee, "orderreward": share.OrderReward},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "poolid": share.PoolID, "amount": share.Amount, "tradingfee": share.TradingFee, "version": share.Version, "orderreward": share.OrderReward, "currentaccess": share.CurrentAccessID},
 		}
 		_, err := mgm.Coll(&shared.PoolShareData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -780,7 +820,7 @@ func DBUpdateOrderProgress(list []shared.LimitOrderStatus) error {
 
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction, "nftid": order.NftID},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "pairid": order.PairID, "poolid": order.PoolID, "token1balance": order.Token1Balance, "token2balance": order.Token2Balance, "direction": order.Direction, "nftid": order.NftID, "currentaccess": order.CurrentAccessID},
 		}
 		_, err := mgm.Coll(&shared.LimitOrderStatus{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -816,7 +856,7 @@ func DBUpdatePDEPoolStakerData(list []shared.PoolStakerData) error {
 	for _, stake := range list {
 		fitler := bson.M{"nftid": bson.M{operator.Eq: stake.NFTID}, "tokenid": bson.M{operator.Eq: stake.TokenID}}
 		update := bson.M{
-			"$set": bson.M{"updated_at": time.Now().UTC(), "nftid": stake.NFTID, "tokenid": stake.TokenID, "amount": stake.Amount, "reward": stake.Reward},
+			"$set": bson.M{"updated_at": time.Now().UTC(), "nftid": stake.NFTID, "tokenid": stake.TokenID, "amount": stake.Amount, "reward": stake.Reward, "currentaccess": stake.CurrentAccessID},
 		}
 		_, err := mgm.Coll(&shared.PoolStakerData{}).UpdateOne(ctx, fitler, update, options.Update().SetUpsert(true))
 		if err != nil {
@@ -858,9 +898,19 @@ func DBGetTradeStatus(requestTx []string) (map[string]shared.LimitOrderStatus, e
 	return result, nil
 }
 
-func DBGetShare(nftID string) ([]shared.PoolShareData, error) {
+func DBGetShare(nftID []string) ([]shared.PoolShareData, error) {
 	var result []shared.PoolShareData
-	filter := bson.M{"nftid": bson.M{operator.Eq: nftID}}
+	filter := bson.M{"nftid": bson.M{operator.In: nftID}}
+	err := mgm.Coll(&shared.PoolShareData{}).SimpleFind(&result, filter)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetShareByCurrentAccessID(accessID []string) ([]shared.PoolShareData, error) {
+	var result []shared.PoolShareData
+	filter := bson.M{"currentaccess": bson.M{operator.In: accessID}}
 	err := mgm.Coll(&shared.PoolShareData{}).SimpleFind(&result, filter)
 	if err != nil {
 		return nil, err
@@ -871,6 +921,34 @@ func DBGetShare(nftID string) ([]shared.PoolShareData, error) {
 func DBGetTxTradeFromPoolAndNFT(poolid, nftid string, limit, offset int64) ([]shared.TradeOrderData, error) {
 	var result []shared.TradeOrderData
 	filter := bson.M{"nftid": bson.M{operator.Eq: nftid}, "poolid": bson.M{operator.Eq: poolid}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"requesttime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetTxTradeFromAccessID(accessIDs []string, limit, offset int64) ([]shared.TradeOrderData, error) {
+	var result []shared.TradeOrderData
+	filter := bson.M{"nftid": bson.M{operator.In: accessIDs}}
+	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
+		Sort:  bson.D{{"requesttime", -1}},
+		Skip:  &offset,
+		Limit: &limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func DBGetTxTradeFromPoolAndAccessID(poolid string, accessIDs []string, limit, offset int64) ([]shared.TradeOrderData, error) {
+	var result []shared.TradeOrderData
+	filter := bson.M{"nftid": bson.M{operator.In: accessIDs}, "poolid": bson.M{operator.Eq: poolid}}
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},
 		Skip:  &offset,
@@ -1450,7 +1528,7 @@ func DBUpdatePDETradeWithdrawStatus(list []shared.TradeOrderData) error {
 	for _, order := range list {
 		fitler := bson.M{"requesttx": bson.M{operator.Eq: order.RequestTx}}
 		update := bson.M{
-			"$set":  bson.M{"withdrawinfos": order.WithdrawInfos},
+			"$set":  bson.M{"withdrawinfos." + order.WithdrawTxs[0]: order.WithdrawInfos[order.WithdrawTxs[0]]},
 			"$pull": bson.M{"withdrawpendings": bson.M{operator.In: order.WithdrawPendings}},
 		}
 		_, err := mgm.Coll(&shared.TradeOrderData{}).UpdateOne(ctx, fitler, update)
@@ -1561,6 +1639,16 @@ func DBGetPDEPoolPairRewardAPY(poolid string) (*shared.RewardAPYTracking, error)
 	return &result[0], nil
 }
 
+func DBGetLimitOrderStatusByPoolID(poolid string) ([]shared.LimitOrderStatus, error) {
+	var tradeStatus []shared.LimitOrderStatus
+	filter := bson.M{"poolid": bson.M{operator.Eq: poolid}}
+	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&tradeStatus, filter)
+	if err != nil {
+		return nil, err
+	}
+	return tradeStatus, nil
+}
+
 func DBGetLimitOrderStatusByPairID(pairid string) ([]shared.LimitOrderStatus, error) {
 	var tradeStatus []shared.LimitOrderStatus
 	filter := bson.M{"pairid": bson.M{operator.Eq: pairid}}
@@ -1570,16 +1658,16 @@ func DBGetLimitOrderStatusByPairID(pairid string) ([]shared.LimitOrderStatus, er
 	}
 	return tradeStatus, nil
 }
-func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, error) {
+func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, []shared.LimitOrderStatus, error) {
 	var orders []shared.LimitOrderStatus
 	filter := bson.M{"nftid": bson.M{operator.In: nftIDs}}
 	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&orders, filter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var requestTxs []string
 	if len(orders) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	for _, v := range orders {
 		requestTxs = append(requestTxs, v.RequestTx)
@@ -1589,7 +1677,52 @@ func DBGetPendingLimitOrderByNftID(nftIDs []string) ([]shared.TradeOrderData, er
 	filter = bson.M{"requesttx": bson.M{operator.In: requestTxs}}
 	err = mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&list, filter)
 	if err != nil {
+		return nil, nil, err
+	}
+	return list, orders, nil
+}
+
+func DBGetPendingLimitOrderByAccessOTA(accessOTAs []string) (map[string]shared.TradeOrderData, error) {
+	var orders []shared.LimitOrderStatus
+	filter := bson.M{"currentaccess": bson.M{operator.In: accessOTAs}}
+	err := mgm.Coll(&shared.LimitOrderStatus{}).SimpleFind(&orders, filter)
+	if err != nil {
 		return nil, err
 	}
-	return list, nil
+	var requestTxs []string
+	if len(orders) == 0 {
+		return nil, nil
+	}
+	accessOTAMap := make(map[string]string)
+	for _, v := range orders {
+		requestTxs = append(requestTxs, v.RequestTx)
+		accessOTAMap[v.RequestTx] = v.CurrentAccessID
+	}
+
+	result := make(map[string]shared.TradeOrderData)
+	list := []shared.TradeOrderData{}
+	filter = bson.M{"requesttx": bson.M{operator.In: requestTxs}}
+	err = mgm.Coll(&shared.TradeOrderData{}).SimpleFind(&list, filter)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range list {
+		if accessOTA, ok := accessOTAMap[v.RequestTx]; ok {
+			result[accessOTA] = v
+		}
+	}
+	return result, nil
+}
+func DBGetShareByAccessOTA(accessOTAs []string) (map[string]shared.PoolShareData, error) {
+	var list []shared.PoolShareData
+	result := make(map[string]shared.PoolShareData)
+	filter := bson.M{"currentaccess": bson.M{operator.In: accessOTAs}}
+	err := mgm.Coll(&shared.PoolShareData{}).SimpleFind(&list, filter)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range list {
+		result[v.CurrentAccessID] = v
+	}
+	return result, nil
 }

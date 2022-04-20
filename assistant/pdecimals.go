@@ -56,7 +56,9 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			time.Sleep(2 * time.Second)
+			goto retry
 		}
 		err = json.Unmarshal(body, &decimal)
 		if err != nil {

@@ -378,6 +378,9 @@ reCheckCrossShardHeight:
 							} else {
 								coinIdx = idxBig.Uint64()
 							}
+							if coin.GetAssetTag().String() == shared.AccessTokenAssetTag {
+								isNFT = true
+							}
 							tokenStr = common.ConfidentialAssetID.String()
 						} else {
 							idxBig, err := statedb.GetCommitmentIndex(ShardTransactionStateDB, *txToken.GetTokenID(), coin.GetCommitment().ToBytesS(), byte(blk.GetShardID()))
@@ -410,6 +413,9 @@ reCheckCrossShardHeight:
 						outCoin.IsNFT = isNFT
 						if isNFT {
 							outCoin.RealTokenID = tokenID
+							if coin.GetAssetTag().String() == shared.AccessTokenAssetTag {
+								outCoin.RealTokenID = common.PdexAccessCoinID.String()
+							}
 						}
 						outCoinList = append(outCoinList, *outCoin)
 					}

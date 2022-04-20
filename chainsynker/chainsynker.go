@@ -142,6 +142,7 @@ func InitChainSynker(cfg shared.Config) {
 	ShardProcessedState := make(map[byte]uint64)
 	TransactionStateDB = make(map[byte]*statedb.StateDB)
 	ProcessedBeaconBestState := uint64(1)
+
 	for i := 0; i < Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 		statePrefix := fmt.Sprintf("%v%v", ShardData, i)
 		v, err := Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
@@ -162,6 +163,7 @@ func InitChainSynker(cfg shared.Config) {
 		}
 
 	}
+
 	beaconStatePrefix := BeaconData
 	v, err := Localnode.GetUserDatabase().Get([]byte(beaconStatePrefix), nil)
 	if err != nil {

@@ -238,7 +238,16 @@ func DBCreateLiquidityIndex() error {
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "pairhash", Value: bsonx.Int32(1)}, {Key: "requesttxs", Value: bsonx.Int32(-1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
 		},
 		{
+			Keys: bsonx.Doc{{Key: "pairhash", Value: bsonx.Int32(1)}, {Key: "requesttxs", Value: bsonx.Int32(-1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
+		},
+		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "accessids", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "respondtxs", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
 		},
 	}
 	_, err := mgm.Coll(&shared.ContributionData{}).Indexes().CreateMany(context.Background(), ctrbModel)
@@ -299,6 +308,9 @@ func DBCreateLiquidityIndex() error {
 	poolShareModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "currentaccess", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
@@ -430,6 +442,9 @@ func DBCreateTradeIndex() error {
 			Keys: bsonx.Doc{{Key: "version", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(1)}, {Key: "isswap", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}},
 		},
 		{
+			Keys: bsonx.Doc{{Key: "isswap", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}, {Key: "nftid", Value: bsonx.Int32(1)}},
+		},
+		{
 			Keys: bsonx.Doc{{Key: "withdrawpendings", Value: bsonx.Int32(1)}},
 		},
 		{
@@ -456,6 +471,9 @@ func DBCreateTradeIndex() error {
 		},
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "currentaccess", Value: bsonx.Int32(1)}},
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},

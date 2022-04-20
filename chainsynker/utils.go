@@ -10,6 +10,7 @@ import (
 	"github.com/incognitochain/incognito-chain/blockchain/types"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
+	"github.com/incognitochain/incognito-chain/privacy"
 
 	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 )
@@ -31,7 +32,7 @@ func initStakers(stakingPoolID string, stateDB *statedb.StateDB) (map[string]*pd
 		if err != nil {
 			return res, totalLiquidity, err
 		}
-		res[nftID] = pdex.NewStakerWithValue(stakerState.Liquidity(), rewards, lastRewardsPerShare)
+		res[nftID] = pdex.NewStakerWithValue(stakerState.Liquidity(), stakerState.AccessOTA(), rewards, lastRewardsPerShare)
 	}
 	return res, totalLiquidity, nil
 }
@@ -79,13 +80,35 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 		for nftID, value := range tempOrderReward {
 			if orderReward[nftID] == nil {
 				orderReward[nftID] = &shared.OrderReward{
-					UncollectedRewards: make(map[common.Hash]uint64),
+					UncollectedRewards: make(map[common.Hash]shared.OrderRewardDetail),
 				}
 			}
-			for tokenID, amount := range value {
-				orderReward[nftID].UncollectedRewards[tokenID] = amount
+			if orderReward[nftID] == nil {
+				orderReward[nftID] = &shared.OrderReward{
+					UncollectedRewards: make(map[common.Hash]shared.OrderRewardDetail),
+				}
+			}
+			orderReward[nftID].WithdrawnStatus = value.WithdrawnStatus()
+			rewardDetail, err := statedb.GetPdexv3PoolPairOrderRewardDetail(stateDB, poolPairID, nftID)
+			if err != nil {
+				return nil, err
+			}
+			for tokenID, value := range rewardDetail {
+				receiver := privacy.OTAReceiver{}
+				err := receiver.FromString(value.Receiver())
+				if err != nil {
+					return nil, err
+				}
+				rw := orderReward[nftID].UncollectedRewards[tokenID]
+				rw.Amount = value.Value()
+				rw.Receiver = receiver
+				orderReward[nftID].UncollectedRewards[tokenID] = rw
+				// = *pdex.NewOrderRewardDetailWithValue(
+				// 	receiver, value.Value(),
+				// )
 			}
 		}
+
 		makingVolume2 := make(map[common.Hash]*pdex.MakingVolume)
 		orderReward2 := make(map[string]*pdex.OrderReward)
 		makingVolumeBytes, _ := json.Marshal(makingVolume)
@@ -106,7 +129,7 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 		}
 
 		orderbook := &pdex.Orderbook{}
-		orderMap, err := statedb.GetPdexv3Orders(stateDB, poolPairState.PoolPairID())
+		orderMap, err := statedb.GetPdexv3Orders(stateDB, poolPairID)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +173,7 @@ func initShares(poolPairID string, stateDB *statedb.StateDB) (map[string]*pdex.S
 		if err != nil {
 			return nil, err
 		}
-		res[nftID] = pdex.NewShareWithValue(shareState.Amount(), shareState.LmLockedAmount(), tradingFees, lastLPFeesPerShare, lastLmRewardsPerShare)
+		res[nftID] = pdex.NewShareWithValue(shareState.Amount(), shareState.LmLockedAmount(), shareState.AccessOTA(), tradingFees, lastLPFeesPerShare, lastLmRewardsPerShare)
 	}
 	return res, nil
 }
