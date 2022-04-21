@@ -30,7 +30,7 @@ func (pdexv3) ListPairs(c *gin.Context) {
 	var result []PdexV3PairData
 	list, err := database.DBGetPdexPairs()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	for _, v := range list {
@@ -92,7 +92,7 @@ func (pdexv3) TradeStatus(c *gin.Context) {
 	}
 	matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(tradeInfo, tradeStatus)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
@@ -148,17 +148,17 @@ func (pdexv3) PoolShare(c *gin.Context) {
 	if otakey != "" {
 		accessOTAList, raw64, err := retrieveAccessOTAList(otakey)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		// list, err = database.DBGetShareByCurrentAccessID(accessOTAList)
 		// if err != nil {
-		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		// 	c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		// 	return
 		// }
 		list, err = database.DBGetShare(accessOTAList)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		// list = append(list, list...)
@@ -168,7 +168,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		list, err = database.DBGetShare([]string{nftID})
 		if err != nil {
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 		}
@@ -177,7 +177,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 	result, err := producePoolShareRespond(list, isNextOTA, rawOTA64)
 	if err != nil {
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	}
@@ -222,13 +222,13 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			}
 			accessOTAList, rawOTA64, err := retrieveAccessOTAList(otakey)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 			//limit order
 			tradeList, err := database.DBGetTxTradeFromPoolAndAccessID(poolid, accessOTAList, int64(limit), int64(offset))
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 			txRequest := []string{}
@@ -237,12 +237,12 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			}
 			tradeStatusList, err := database.DBGetTradeStatus(txRequest)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 			result, err = produceTradeDataRespond(tradeList, tradeStatusList, rawOTA64)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 		} else {
@@ -259,7 +259,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			fmt.Println("pubkey, metadata.Pdexv3TradeRequestMeta", pubkey, metadata.Pdexv3TradeRequestMeta)
 			txList, err := database.DBGetTxByMetaAndOTA(pubkey, metadata.Pdexv3TradeRequestMeta, int64(limit), int64(offset))
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 			txRequest := []string{}
@@ -268,7 +268,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 			}
 			list, err := database.DBGetTxTradeFromTxRequest(txRequest)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 			for _, tradeInfo := range list {
@@ -321,7 +321,7 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		//limit order
 		tradeList, err := database.DBGetTxTradeFromPoolAndNFT(poolid, nftID, int64(limit), int64(offset))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		txRequest := []string{}
@@ -330,12 +330,12 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 		}
 		tradeStatusList, err := database.DBGetTradeStatus(txRequest)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		result, err = produceTradeDataRespond(tradeList, tradeStatusList, nil)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	}
@@ -370,19 +370,19 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 	if otakey == "" {
 		list, err = database.DBGetPDEV3ContributeRespond([]string{nftID}, int64(limit), int64(offset))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	} else {
 		isNextOTA = true
 		accessIDList, raw64, err := retrieveAccessOTAList(otakey)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		list, err = database.DBGetPDEV3ContributeRespondByAccessID(accessIDList, int64(limit), int64(offset))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		respondTxs := []string{}
@@ -391,12 +391,12 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		}
 		rList, err := getRefundContribution(otakey, respondTxs)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		wList, err := getNextOTAWaitingContribution(otakey)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		list = append(list, rList...)
@@ -409,7 +409,7 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 
 	result, err := produceContributeData(list, isNextOTA, rawOTA64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
@@ -427,7 +427,7 @@ func (pdexv3) WaitingLiquidity(c *gin.Context) {
 
 	result, err := database.DBGetPDEV3ContributeWaiting(nftid, int64(limit), int64(offset))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
@@ -457,7 +457,7 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 		var err error
 		accessIDList, _, err = retrieveAccessOTAList(otakey)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	} else {
@@ -469,19 +469,19 @@ func (pdexv3) WithdrawHistory(c *gin.Context) {
 	if poolID != "" {
 		list, err = database.DBGetPDEV3WithdrawRespond(accessIDList, poolID, int64(limit), int64(offset))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	} else {
 		list, err = database.DBGetPDEV3WithdrawRespond(accessIDList, "", int64(limit), int64(offset))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	}
 	result, err := produceWithdrawContributeData(list)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	respond := APIRespond{
@@ -510,11 +510,20 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 		var err error
 		accessIDList, _, err = retrieveAccessOTAList(otakey)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	} else {
 		accessIDList = append(accessIDList, nftID)
+	}
+	if len(accessIDList) == 0 {
+		errStr := "no accessID found"
+		respond := APIRespond{
+			Result: nil,
+			Error:  &errStr,
+		}
+		c.JSON(http.StatusOK, respond)
+		return
 	}
 	var result []PdexV3WithdrawFeeRespond
 	var err error
@@ -523,13 +532,13 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 	if poolID != "" {
 		list, err = database.DBGetPDEV3WithdrawFeeRespond(accessIDList, poolID, int64(limit), int64(offset))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	} else {
 		list, err = database.DBGetPDEV3WithdrawFeeRespond(accessIDList, "", int64(limit), int64(offset))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	}
@@ -557,7 +566,7 @@ func (pdexv3) WithdrawFeeHistory(c *gin.Context) {
 func (pdexv3) StakingPool(c *gin.Context) {
 	list, err := database.DBGetStakePools()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
@@ -566,7 +575,7 @@ func (pdexv3) StakingPool(c *gin.Context) {
 
 		apy, err := database.DBGetPDEPoolPairRewardAPY(v.TokenID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		data := PdexV3StakingPoolInfo{
@@ -600,7 +609,7 @@ func (pdexv3) StakeInfo(c *gin.Context) {
 	}
 	list, err := database.DBGetStakingInfo(accessID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	var result []shared.PoolStakerData
@@ -636,7 +645,7 @@ func (pdexv3) StakeHistory(c *gin.Context) {
 	}
 	list, err := database.DBGetStakingPoolHistory(accessID, tokenid, int64(limit), int64(offset))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	var result []PdexV3StakingPoolHistoryData
@@ -679,7 +688,7 @@ func (pdexv3) StakeRewardHistory(c *gin.Context) {
 	}
 	list, err := database.DBGetStakePoolRewardHistory(accessID, tokenid, int64(limit), int64(offset))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	var result []PdexV3StakePoolRewardHistoryData
@@ -711,12 +720,12 @@ func (pdexv3) PairsDetail(c *gin.Context) {
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	list, err := database.DBGetPairsByID(req.PairIDs)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	var result []PdexV3PairData
@@ -745,7 +754,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	result := getCustomPoolList(req.PoolIDs)
@@ -762,19 +771,19 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 
 	decimalFloat, err := strconv.ParseFloat(decimal, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	var priorityTokens []string
 	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
 		priorityTokens, err = database.DBGetTokenPriority()
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		err = cacheStore(tokenPriorityKey, priorityTokens)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	}
@@ -782,7 +791,7 @@ func (pdexv3) GetOrderBook(c *gin.Context) {
 	pairID := tks[0] + "-" + tks[1]
 	list, err := database.DBGetPendingOrderByPairID(pairID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	willSwap := willSwapTokenPlace(tks[0], tks[1], priorityTokens)
@@ -875,7 +884,7 @@ func (pdexv3) GetLatestTradeOrders(c *gin.Context) {
 	}
 	result, err := database.DBGetLatestTradeTx(getSwap)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	respond := APIRespond{
@@ -896,7 +905,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	}
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
@@ -907,11 +916,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	buyAmount := req.BuyAmount
 
 	if sellAmount <= 0 && buyAmount <= 0 {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("sellAmount and buyAmount must be >=0")))
+		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("sellAmount and buyAmount must be >=0")))
 		return
 	}
 	if sellAmount > 0 && buyAmount > 0 {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("only accept sellAmount or buyAmount value individually")))
+		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("only accept sellAmount or buyAmount value individually")))
 		return
 	}
 
@@ -921,7 +930,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 	state, err := database.DBGetPDEState(2)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
@@ -949,7 +958,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	// dcrate := float64(1)
 	dcrate, tk1Decimal, _, err := getPdecimalRate(buyToken, sellToken)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	// _ = tk2Decimal
@@ -961,12 +970,12 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
 		defaultPools, err = database.DBGetDefaultPool(true)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		err = cacheStore(defaultPoolsKey, defaultPools)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	}
@@ -1178,12 +1187,12 @@ func (pdexv3) PriceHistory(c *gin.Context) {
 	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
 		priorityTokens, err = database.DBGetTokenPriority()
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		err = cacheStore(tokenPriorityKey, priorityTokens)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	}
@@ -1284,13 +1293,13 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 
 	tradeList, err := database.DBGetTxTradeFromTxRequest([]string{txhash})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	txRequest := []string{txhash}
 	tradeStatusList, err := database.DBGetTradeStatus(txRequest)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	var result []TradeDataRespond
@@ -1354,7 +1363,7 @@ func (pdexv3) TradeDetail(c *gin.Context) {
 			}
 			matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 			trade := TradeDataRespond{
@@ -1401,7 +1410,7 @@ func (pdexv3) GetRate(c *gin.Context) {
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
@@ -1409,7 +1418,7 @@ func (pdexv3) GetRate(c *gin.Context) {
 
 	state, err := database.DBGetPDEState(2)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
@@ -1454,12 +1463,12 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
 		priorityTokens, err = database.DBGetTokenPriority()
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		err = cacheStore(tokenPriorityKey, priorityTokens)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 	}
@@ -1467,7 +1476,7 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 	// pairID := tks[0] + "-" + tks[1]
 	list, err := database.DBGetLimitOrderStatusByPoolID(poolID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	willSwap := willSwapTokenPlace(tks[0], tks[1], priorityTokens)
@@ -1487,7 +1496,7 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 
 	l, err := database.DBGetTxTradeFromTxRequest(txRequestList)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	for _, v := range l {
@@ -1575,13 +1584,13 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 func (pdexv3) PDEState(c *gin.Context) {
 	state, err := database.DBGetPDEState(2)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	pdeState := jsonresult.Pdexv3State{}
 	err = json.UnmarshalFromString(state, &pdeState)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	respond := APIRespond{
@@ -1598,7 +1607,7 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	nftIDs := req.ID
@@ -1606,7 +1615,7 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 	if req.Otakey != "" {
 		accessOTAList, raw64, err := retrieveAccessOTAList(req.Otakey)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		rawOTA64 = raw64
@@ -1615,7 +1624,7 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 
 	tradeList, tradeStatus, err := database.DBGetPendingLimitOrderByNftID(nftIDs)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 	if len(tradeList) == 0 {
@@ -1648,7 +1657,7 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 		}
 		matchedAmount, sellTokenBl, buyTokenBl, sellTokenWD, buyTokenWD, statusCode, status, withdrawTxs, isCompleted, err := getTradeStatus(&tradeInfo, tradeStatus)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		amount, _ := strconv.ParseUint(tradeInfo.Amount, 10, 64)
@@ -1709,7 +1718,7 @@ func (pdexv3) GetAccessOTAData(c *gin.Context) {
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		c.JSON(http.StatusOK, buildGinErrorRespond(err))
 		return
 	}
 
@@ -1722,7 +1731,7 @@ func (pdexv3) GetAccessOTAData(c *gin.Context) {
 	for _, v := range req.ID {
 		otaBytes, err := base64.StdEncoding.DecodeString(v)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		ota := common.HashH(otaBytes[:]).String()
@@ -1732,7 +1741,7 @@ func (pdexv3) GetAccessOTAData(c *gin.Context) {
 	if req.GetOrder {
 		ordersList, err := database.DBGetPendingLimitOrderByAccessOTA(otas)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 		for k, v := range ordersList {
@@ -1743,14 +1752,14 @@ func (pdexv3) GetAccessOTAData(c *gin.Context) {
 	if req.GetShare {
 		list, err := database.DBGetShareByCurrentAccessID(otas)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 
 		sharesList, err := producePoolShareRespond(list, true, rawOTA64)
 		if err != nil {
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 		}
@@ -1762,14 +1771,14 @@ func (pdexv3) GetAccessOTAData(c *gin.Context) {
 	if req.GetOrderReward {
 		list, err := database.DBGetShare(otas)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
 
 		ordersList, err := producePoolShareRespond(list, true, rawOTA64)
 		if err != nil {
 			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+				c.JSON(http.StatusOK, buildGinErrorRespond(err))
 				return
 			}
 		}
