@@ -982,6 +982,10 @@ func APIGetKeyInfo(c *gin.Context) {
 
 			for id, nft := range result.NFTIndex {
 				if d, ok := result.CoinIndex[id]; ok {
+					if nft.Start == d.Start && nft.End == d.End && nft.Total == d.Total {
+						delete(result.CoinIndex, id)
+						continue
+					}
 					if nft.Start > d.Start {
 						nft.Start = d.Start
 					}
