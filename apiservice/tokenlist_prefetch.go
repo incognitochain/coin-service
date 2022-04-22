@@ -259,6 +259,9 @@ func retrieveTokenList() {
 			data.OriginalSymbol = etki.OriginalSymbol
 			data.LiquidityReward = etki.LiquidityReward
 			data.Network = etki.Network
+			data.MovedUnifiedToken = etki.MovedUnifiedToken
+			data.NetworkID = etki.NetworkID
+			data.ParentUnifiedID = etki.ParentUnifiedID
 			err = json.UnmarshalFromString(etki.ListChildToken, &data.ListChildToken)
 			if err != nil {
 				panic(err)
@@ -305,6 +308,10 @@ func retrieveTokenList() {
 				LiquidityReward:    tkInfo.LiquidityReward,
 
 				Network: tkInfo.Network,
+
+				NetworkID:         tkInfo.NetworkID,
+				ParentUnifiedID:   tkInfo.ParentUnifiedID,
+				MovedUnifiedToken: tkInfo.MovedUnifiedToken,
 			}
 			err = json.UnmarshalFromString(tkInfo.ListChildToken, &tkdata.ListChildToken)
 			if err != nil {
