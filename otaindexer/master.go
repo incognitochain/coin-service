@@ -173,10 +173,6 @@ func StartWorkerAssigner() {
 		ReadCh:      make(chan []byte),
 		WriteCh:     make(chan []byte),
 	}
-	coordinatorState.coordinatorConn = &newServiceConn
-	coordinatorState.serviceStatus = "pause"
-	coordinatorState.pauseService = true
-	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
 
 	var wg sync.WaitGroup
 	d := 0
@@ -196,7 +192,15 @@ func StartWorkerAssigner() {
 		}(v)
 	}
 	wg.Wait()
+
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
+	log.Println("All OTAKey checked")
 	go func() {
+		log.Println("Listen for submit OTAKey request")
 		for {
 			request := <-OTAAssignChn
 			Submitted_OTAKey.RLock()
@@ -231,6 +235,7 @@ func StartWorkerAssigner() {
 	}()
 
 	for {
+		log.Println("Start worker assign")
 		time.Sleep(10 * time.Second)
 		willPauseOperation()
 		Submitted_OTAKey.Lock()
@@ -424,6 +429,7 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 }
 
 func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
+	log.Println("ReCheckOTAKey", otaKey)
 	Submitted_OTAKey.RLock()
 	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
 		Submitted_OTAKey.RUnlock()

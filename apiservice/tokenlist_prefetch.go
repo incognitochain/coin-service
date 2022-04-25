@@ -129,7 +129,7 @@ func retrieveTokenList() {
 	prvUsdtPair24h := float64(0)
 	for v, _ := range defaultPools {
 		if strings.Contains(v, baseToken) && strings.Contains(v, common.PRVCoinID.String()) {
-			prvUsdtPair24h = getPoolPair24hChange(v)
+			prvUsdtPair24h = getPoolPair24hChange(v, false)
 			break
 		}
 	}

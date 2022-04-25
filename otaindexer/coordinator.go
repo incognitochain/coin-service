@@ -109,6 +109,7 @@ func willPauseOperation() {
 			time.Sleep(5 * time.Second)
 		} else {
 			coordinatorState.serviceStatus = "resume"
+			log.Println("service resumed")
 			break
 		}
 	}

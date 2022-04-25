@@ -139,6 +139,7 @@ type PdexV3PoolDetail struct {
 	PriceChange24h float64
 	APY            uint64
 	IsVerify       bool
+	willSwapToken  bool
 }
 
 type PdexV3LiquidityHistoryRespond struct {
