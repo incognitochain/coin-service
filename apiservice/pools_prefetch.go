@@ -145,6 +145,7 @@ func retrievePoolList() {
 				Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
 				TotalShare:     totalShare,
 				IsVerify:       isVerify,
+				willSwapToken:  willSwap,
 			}
 
 			apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
@@ -171,10 +172,16 @@ func retrievePoolList() {
 		log.Println(err)
 		return
 	}
+
 	for poolID, pool := range mapPool {
 		if d, ok := poolLiquidityChanges[poolID]; ok {
-			pool.PriceChange24h = d.RateChangePercentage
-			pool.Volume = d.TradingVolume24h
+			if pool.willSwapToken {
+				pool.PriceChange24h = ((1 / (1 + d.RateChangePercentage/100)) - 1) * 100
+				pool.Volume = d.TradingVolume24h
+			} else {
+				pool.PriceChange24h = d.RateChangePercentage
+				pool.Volume = d.TradingVolume24h
+			}
 		}
 		result = append(result, pool)
 	}
