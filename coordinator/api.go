@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/incognitochain/coin-service/coordinator/detector"
 )
 
 var upGrader = websocket.Upgrader{
@@ -102,6 +103,10 @@ func ServiceRegisterHandler(c *gin.Context) {
 		log.Println(err)
 		return
 	}
+	defer func() {
+		crashRecord := detector.RecordDetail{}
+		state.Detector.AddRecord(crashRecord, serviceName)
+	}()
 	for {
 		select {
 		case <-done:
@@ -240,4 +245,8 @@ func ListBackupsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"backups": fileList,
 	})
+}
+
+func supectCrash(serviceID string) {
+
 }

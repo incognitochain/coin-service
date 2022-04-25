@@ -30,42 +30,62 @@ func (dtc *Detector) RecordLog(ctx context.Context, in *logger.LogRequest) (*emp
 	return new(emptypb.Empty), nil
 }
 
-func (dtc *Detector) GetCrashReport() map[string]ServiceCrashRecorder {
+func (dtc *Detector) GetCrashReport() map[string]ServiceRecorder {
 	dtc.Lck.RLock()
 	defer dtc.Lck.RUnlock()
 	return dtc.Services
 }
 
-func (dtc *Detector) AddKnownCrashRecord(serviceID, reason string) {
-	if dtc.Services == nil {
-		dtc.Services = make(map[string]ServiceCrashRecorder)
+func (dtc *Detector) GetCrashReportByService(serviceName string) map[string][]RecordDetail {
+	dtc.Lck.RLock()
+	defer dtc.Lck.RUnlock()
+	if service, ok := dtc.Services[serviceName]; ok {
+		return service.Records
 	}
-	if _, ok := dtc.Services[serviceID]; !ok {
-		dtc.Services[serviceID] = ServiceCrashRecorder{}
-	}
-	dtc.Lck.Lock()
-	defer dtc.Lck.Unlock()
-	cs := dtc.Services[serviceID]
-	cs.KnownCrash = append(cs.KnownCrash, CrashReason{
-		ServiceID: serviceID,
-		Reason:    reason,
-		Time:      time.Now().Unix(),
-	})
+	return nil
 }
 
-func (dtc *Detector) AddUnknownCrashRecord(serviceID, reason string) {
-	if dtc.Services == nil {
-		dtc.Services = make(map[string]ServiceCrashRecorder)
+func (dtc *Detector) GetCrashReportByServiceAndType(serviceName string, recordType string) []RecordDetail {
+	dtc.Lck.RLock()
+	defer dtc.Lck.RUnlock()
+	if service, ok := dtc.Services[serviceName]; ok {
+		if records, ok := service.Records[recordType]; ok {
+			return records
+		}
 	}
-	if _, ok := dtc.Services[serviceID]; !ok {
-		dtc.Services[serviceID] = ServiceCrashRecorder{}
+	return nil
+}
+
+func (dtc *Detector) GetCrashCountByService(serviceName string) map[string]int {
+	dtc.Lck.RLock()
+	defer dtc.Lck.RUnlock()
+	result := make(map[string]int)
+	if service, ok := dtc.Services[serviceName]; ok {
+		for k, v := range service.Records {
+			result[k] = len(v)
+		}
+	}
+	return result
+}
+
+func (dtc *Detector) AddRecord(record RecordDetail, serviceGroup string) {
+	if dtc.Services == nil {
+		dtc.Services = make(map[string]ServiceRecorder)
+	}
+	if _, ok := dtc.Services[serviceGroup]; !ok {
+		dtc.Services[serviceGroup] = ServiceRecorder{}
 	}
 	dtc.Lck.Lock()
 	defer dtc.Lck.Unlock()
-	cs := dtc.Services[serviceID]
-	cs.UnknownCrash = append(cs.UnknownCrash, CrashReason{
-		ServiceID: serviceID,
-		Reason:    reason,
+	cs := dtc.Services[serviceGroup]
+	if len(cs.Records) == 0 {
+		cs.Records = make(map[string][]RecordDetail)
+	}
+	rlist := cs.Records[record.Type]
+	rlist = append(rlist, RecordDetail{
+		ServiceID: record.ServiceID,
+		Reason:    record.Reason,
 		Time:      time.Now().Unix(),
 	})
+	cs.Records[record.Type] = rlist
 }
