@@ -416,8 +416,8 @@ func getUniqueIdx(list []string) []int {
 	return result
 }
 
-func getToken24hPriceChange(tokenID, pairTokenID, poolPair, baseToken string, prv24hChange float64) float64 {
-	if pairTokenID == baseToken {
+func getToken24hPriceChange(tokenID, pairTokenID, poolPair, stableCoinList string, prv24hChange float64) float64 {
+	if strings.Contains(stableCoinList, pairTokenID) {
 		return getPoolPair24hChange(poolPair, false)
 	}
 	if pairTokenID == common.PRVCoinID.String() {
