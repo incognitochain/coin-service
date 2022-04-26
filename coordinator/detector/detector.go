@@ -106,4 +106,5 @@ func (dtc *Detector) AddRecord(record RecordDetail, serviceGroup string) {
 		Time:      time.Now().Unix(),
 	})
 	cs.Records[record.Type] = rlist
+	dtc.Services[serviceGroup] = cs
 }

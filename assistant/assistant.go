@@ -35,8 +35,8 @@ func StartAssistant() {
 		WriteCh:     make(chan []byte),
 	}
 	coordinatorState.coordinatorConn = &newServiceConn
-	coordinatorState.serviceStatus = "pause"
-	coordinatorState.pauseService = true
+	coordinatorState.serviceStatus = "resume"
+	coordinatorState.pauseService = false
 	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
 
 	go calcInternalTokenPrice()

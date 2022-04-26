@@ -103,19 +103,20 @@ func ServiceRegisterHandler(c *gin.Context) {
 		log.Println(err)
 		return
 	}
-	defer func() {
-		crashRecord := detector.RecordDetail{
-			ServiceID: newService.ID,
-			Time:      time.Now().Unix(),
-			Type:      detector.RECORDTYPE_LOSTCONNECTION,
-			Reason:    "unknown",
-		}
-		state.Detector.AddRecord(crashRecord, serviceName)
-	}()
 	for {
 		select {
 		case <-done:
+			log.Println("AddRecord 123")
+			crashRecord := detector.RecordDetail{
+				ServiceID: newService.ID,
+				Time:      time.Now().Unix(),
+				Type:      detector.RECORDTYPE_LOSTCONNECTION,
+				Reason:    "unknown",
+			}
+			state.Detector.AddRecord(crashRecord, serviceName)
+			log.Println("AddRecord 456")
 			removeService(newService)
+			log.Println("AddRecord 789")
 			return
 		case msg := <-writeCh:
 			fmt.Println("writeCh", string(msg))

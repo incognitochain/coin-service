@@ -178,6 +178,7 @@ func StartOTAIndexing() {
 	workerID = id.String()
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
+	willRun = false
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
 	go processMsgFromMaster(readCh, writeCh)
 
@@ -188,8 +189,8 @@ func StartOTAIndexing() {
 		WriteCh:     make(chan []byte),
 	}
 	coordinatorState.coordinatorConn = &newServiceConn
-	coordinatorState.serviceStatus = "pause"
-	coordinatorState.pauseService = true
+	coordinatorState.serviceStatus = "resume"
+	coordinatorState.pauseService = false
 	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
 
 	for {
