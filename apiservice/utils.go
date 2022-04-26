@@ -416,18 +416,18 @@ func getUniqueIdx(list []string) []int {
 	return result
 }
 
-func getToken24hPriceChange(tokenID, pairTokenID, poolPair, baseToken string, prv24hChange float64) float64 {
-	if pairTokenID == baseToken {
-		return getPoolPair24hChange(poolPair)
+func getToken24hPriceChange(tokenID, pairTokenID, poolPair, stableCoinList string, prv24hChange float64) float64 {
+	if strings.Contains(stableCoinList, pairTokenID) {
+		return getPoolPair24hChange(poolPair, false)
 	}
 	if pairTokenID == common.PRVCoinID.String() {
-		return getPoolPair24hChange(poolPair) + prv24hChange
+		return ((1+getPoolPair24hChange(poolPair, true)/100)*(1+prv24hChange/100) - 1) * 100
 	}
 	return 0
 }
 
-func getPoolPair24hChange(poolID string) float64 {
-	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT15M", "PT24H")
+func getPoolPair24hChange(poolID string, willSwap bool) float64 {
+	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT1H", "P1D")
 	if err != nil {
 		log.Println(err)
 		return 0
@@ -437,7 +437,11 @@ func getPoolPair24hChange(poolID string) float64 {
 	}
 	p1 := analyticsData.Result[0].Close
 	p2 := analyticsData.Result[len(analyticsData.Result)-1].Close
-	r := (p2 - p1) / p1 * 100
+	r := (p2/p1 - 1) * 100
+	if willSwap {
+		r2 := ((1 / (1 + r/100)) - 1) * 100
+		return r2
+	}
 	return r
 }
 func getTokenRoute(sellToken string, route []string) []string {
