@@ -77,7 +77,7 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 			}
 		}
 		orderReward := make(map[string]*shared.OrderReward)
-		for nftID, value := range tempOrderReward {
+		for nftID, reward := range tempOrderReward {
 			if orderReward[nftID] == nil {
 				orderReward[nftID] = &shared.OrderReward{
 					UncollectedRewards: make(map[common.Hash]shared.OrderRewardDetail),
@@ -88,24 +88,18 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 					UncollectedRewards: make(map[common.Hash]shared.OrderRewardDetail),
 				}
 			}
-			orderReward[nftID].WithdrawnStatus = value.WithdrawnStatus()
-			rewardDetail, err := statedb.GetPdexv3PoolPairOrderRewardDetail(stateDB, poolPairID, nftID)
-			if err != nil {
-				return nil, err
-			}
-			for tokenID, value := range rewardDetail {
+			for tokenID, value := range reward {
 				receiver := privacy.OTAReceiver{}
 				err := receiver.FromString(value.Receiver())
 				if err != nil {
 					return nil, err
 				}
+
 				rw := orderReward[nftID].UncollectedRewards[tokenID]
 				rw.Amount = value.Value()
 				rw.Receiver = receiver
+				rw.WithdrawnStatus = value.WithdrawnStatus()
 				orderReward[nftID].UncollectedRewards[tokenID] = rw
-				// = *pdex.NewOrderRewardDetailWithValue(
-				// 	receiver, value.Value(),
-				// )
 			}
 		}
 

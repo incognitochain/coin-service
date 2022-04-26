@@ -48,13 +48,13 @@ type MakingVolume struct {
 }
 
 type OrderRewardDetail struct {
-	Receiver privacy.OTAReceiver
-	Amount   uint64
+	Receiver        privacy.OTAReceiver
+	Amount          uint64
+	WithdrawnStatus byte
 }
 
 type OrderReward struct {
 	UncollectedRewards map[common.Hash]OrderRewardDetail
-	WithdrawnStatus    byte
 }
 
 type Pdexv3GetStateRPCResult struct {
