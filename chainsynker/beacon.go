@@ -35,6 +35,7 @@ type IncPdexState struct {
 var pdexV3State pdex.State
 
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
+	willPauseOperation(-1)
 	log.Printf("start processing coin for block %v beacon\n", height)
 	blk, _, err := Localnode.GetBlockchain().GetBeaconBlockByHash(h)
 	if err != nil {
@@ -45,11 +46,12 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		sort.Slice(blks, func(i, j int) bool { return blks[i].Height > blks[j].Height })
 	retry:
 		pass := true
-		blockProcessedLock.RLock()
-		if blockProcessed[int(shardID)] < blks[0].Height {
+
+		currentState.blockProcessedLock.RLock()
+		if currentState.BlockProcessed[int(shardID)] < blks[0].Height {
 			pass = false
 		}
-		blockProcessedLock.RUnlock()
+		currentState.blockProcessedLock.RUnlock()
 		if !pass {
 			time.Sleep(500 * time.Millisecond)
 			goto retry
@@ -206,11 +208,17 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		wg.Add(2)
 		go func() {
 			paramJSON := pdexV3State.Reader().Params().Clone()
+			waitingContributions := map[string]*rawdbv2.Pdexv3Contribution{}
+			err = json.Unmarshal(pdexV3State.Reader().WaitingContributions(), &waitingContributions)
+			if err != nil {
+				panic(err)
+			}
 			pdeStateJSON = jsonresult.Pdexv3State{
-				BeaconTimeStamp: blk.Header.Timestamp,
-				PoolPairs:       &poolPairsJSON,
-				StakingPools:    &stateV2.StakingPoolsState,
-				Params:          paramJSON,
+				BeaconTimeStamp:      blk.Header.Timestamp,
+				PoolPairs:            &poolPairsJSON,
+				StakingPools:         &stateV2.StakingPoolsState,
+				Params:               paramJSON,
+				WaitingContributions: &waitingContributions,
 			}
 			pdeStr, err = json.MarshalToString(pdeStateJSON)
 			if err != nil {
@@ -357,9 +365,13 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		panic(err)
 	}
 	log.Printf("lvdb stored coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(t10))
-	blockProcessedLock.Lock()
-	blockProcessed[-1] = blk.Header.Height
-	blockProcessedLock.Unlock()
+	currentState.blockProcessedLock.Lock()
+	currentState.BlockProcessed[-1] = blk.Header.Height
+	currentState.blockProcessedLock.Unlock()
+	err = updateState()
+	if err != nil {
+		panic(err)
+	}
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
@@ -477,7 +489,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				tk2Amount += a2
 			}
 			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
-			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
+			data.Token2Amount = fmt.Sprintf("%v", tk2Amount)
 			pairList = append(pairList, data)
 		}
 		wg.Done()
