@@ -4,8 +4,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/shared"
 	"github.com/patrickmn/go-cache"
+	uuid "github.com/satori/go.uuid"
 )
 
 var cachedb *cache.Cache
@@ -23,6 +26,18 @@ func StartAssistant() {
 	if err != nil {
 		panic(err)
 	}
+
+	id := uuid.NewV4()
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: coordinator.SERVICEGROUP_ASSISTANT,
+		ID:          id.String(),
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
 
 	go calcInternalTokenPrice()
 	go getExternalTokenInfo()

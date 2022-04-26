@@ -13,4 +13,5 @@ const (
 	SERVICEGROUP_LIQUIDITY_PROCESSOR = "liquidityprocessor"
 	SERVICEGROUP_SHIELD_PROCESSOR    = "shieldprocessor"
 	SERVICEGROUP_QUERY               = "query"
+	SERVICEGROUP_ASSISTANT           = "assistant"
 )

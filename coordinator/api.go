@@ -104,7 +104,12 @@ func ServiceRegisterHandler(c *gin.Context) {
 		return
 	}
 	defer func() {
-		crashRecord := detector.RecordDetail{}
+		crashRecord := detector.RecordDetail{
+			ServiceID: newService.ID,
+			Time:      time.Now().Unix(),
+			Type:      detector.RECORDTYPE_LOSTCONNECTION,
+			Reason:    "unknown",
+		}
 		state.Detector.AddRecord(crashRecord, serviceName)
 	}()
 	for {
@@ -247,6 +252,26 @@ func ListBackupsHandler(c *gin.Context) {
 	})
 }
 
-func supectCrash(serviceID string) {
+func CrashSummaryHandler(c *gin.Context) {
+	crashCount, total := state.Detector.GetCrashCountAll()
+	var result CrashSummary
+	result.Total = total
+
+	result.ByService = make(map[string]int)
+	result.ByType = make(map[string]int)
+
+	for service, tc := range crashCount {
+		for crashType, v := range tc {
+			result.ByService[service] += v
+			result.ByType[crashType] += v
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"result": result,
+	})
+}
+
+func ServiceCrashDetailHandler(c *gin.Context) {
 
 }

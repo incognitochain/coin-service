@@ -44,3 +44,9 @@ type ProgressManager struct {
 	Progress     map[string]progress.Progressor
 	ProgressLock sync.RWMutex
 }
+
+type CrashSummary struct {
+	Total     int
+	ByType    map[string]int
+	ByService map[string]int
+}

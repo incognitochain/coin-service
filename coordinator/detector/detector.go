@@ -26,14 +26,8 @@ func (dtc *Detector) StartService(port int) {
 }
 
 func (dtc *Detector) RecordLog(ctx context.Context, in *logger.LogRequest) (*emptypb.Empty, error) {
-	log.Printf("Received: %v", in.Data)
+	// log.Printf("Received: %v", in.Data)
 	return new(emptypb.Empty), nil
-}
-
-func (dtc *Detector) GetCrashReport() map[string]ServiceRecorder {
-	dtc.Lck.RLock()
-	defer dtc.Lck.RUnlock()
-	return dtc.Services
 }
 
 func (dtc *Detector) GetCrashReportByService(serviceName string) map[string][]RecordDetail {
@@ -66,6 +60,30 @@ func (dtc *Detector) GetCrashCountByService(serviceName string) map[string]int {
 		}
 	}
 	return result
+}
+
+func (dtc *Detector) GetCrashCountAll() (map[string]map[string]int, int) {
+	dtc.Lck.RLock()
+	defer dtc.Lck.RUnlock()
+	total := 0
+	result := make(map[string]map[string]int)
+	for k, v := range dtc.Services {
+		for k2, v2 := range v.Records {
+			if _, ok := result[k]; !ok {
+				result[k] = make(map[string]int)
+			}
+			result[k][k2] = len(v2)
+			total += len(v2)
+		}
+	}
+	return result, total
+}
+
+func (dtc *Detector) ClearCrashReport() error {
+	dtc.Lck.Lock()
+	defer dtc.Lck.Unlock()
+	dtc.Services = make(map[string]ServiceRecorder)
+	return nil
 }
 
 func (dtc *Detector) AddRecord(record RecordDetail, serviceGroup string) {

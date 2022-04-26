@@ -109,7 +109,7 @@ func updateAllServiceStatus() {
 	for _, v := range state.ConnectedServices {
 		for _, sv := range v {
 			if err := sendRequestToService(sv, ACTION_OPERATION_MODE, "get"); err != nil {
-				log.Printf("pause service %v with ID %v failed: %v\n", sv.ServiceName, sv.ID, err)
+				log.Printf("get service %v with ID %v failed: %v\n", sv.ServiceName, sv.ID, err)
 			}
 		}
 	}
