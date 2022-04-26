@@ -227,6 +227,11 @@ func APIGetSupportedVault(c *gin.Context) {
 					result[networkID] = resultData
 					continue
 				} else {
+					maxReceivedAmount, err := bridgeagg.CalculateMaxReceivedAmount(vault.Reserve(), vault.CurrentRewardReserve())
+					if err != nil {
+						log.Println(err)
+					}
+					resultData.MaxReceivedAmount = maxReceivedAmount
 					resultData.BurntAmount = burntAmount
 					resultData.ExpectedAmount = exAmount
 					resultData.Fee = burntAmount - expectedAmount
@@ -250,6 +255,11 @@ func APIGetSupportedVault(c *gin.Context) {
 					result[networkID] = resultData
 					continue
 				} else {
+					maxReceivedAmount, err := bridgeagg.CalculateMaxReceivedAmount(vault.Reserve(), vault.CurrentRewardReserve())
+					if err != nil {
+						log.Println(err)
+					}
+					resultData.MaxReceivedAmount = maxReceivedAmount
 					resultData.BurntAmount = burntAmount.Uint64()
 					resultData.ExpectedAmount = expectedAmount
 					resultData.Fee = fee
