@@ -38,10 +38,10 @@ func StartProcessor() {
 	}
 	id := uuid.NewV4()
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: coordinator.SERVICEGROUP_TRADE_PROCESSOR,
-		ID:          id.String(),
-		ReadCh:      make(chan []byte),
-		WriteCh:     make(chan []byte),
+		ServiceGroup: coordinator.SERVICEGROUP_TRADE_PROCESSOR,
+		ID:           id.String(),
+		ReadCh:       make(chan []byte),
+		WriteCh:      make(chan []byte),
 	}
 	coordinatorState.coordinatorConn = &newServiceConn
 	coordinatorState.serviceStatus = "pause"

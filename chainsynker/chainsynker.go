@@ -178,10 +178,10 @@ func InitChainSynker(cfg shared.Config) {
 
 	id := uuid.NewV4()
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: coordinator.SERVICEGROUP_CHAINSYNKER,
-		ID:          id.String(),
-		ReadCh:      make(chan []byte),
-		WriteCh:     make(chan []byte),
+		ServiceGroup: coordinator.SERVICEGROUP_CHAINSYNKER,
+		ID:           id.String(),
+		ReadCh:       make(chan []byte),
+		WriteCh:      make(chan []byte),
 	}
 	currentState.coordinatorConn = &newServiceConn
 	currentState.pauseChainSync = true

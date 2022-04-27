@@ -9,14 +9,14 @@ import (
 )
 
 func connectCoordinator(service *coordinator.ServiceConn, coordinatorAddr string) {
-	go coordinator.ConnectToCoordinator(coordinatorAddr, service.ServiceName, service.ID, service.ReadCh, service.WriteCh, lostCoordinatorConnection)
+	go coordinator.ConnectToCoordinator(coordinatorAddr, service.ServiceGroup, service.ID, service.ReadCh, service.WriteCh, lostCoordinatorConnection)
 	go processMsgFromCoordinator(service.ReadCh)
 }
 
 //only called when connection is lost
 func lostCoordinatorConnection() {
 	log.Println("lost connection to coordinator")
-	go coordinator.ConnectToCoordinator(shared.ServiceCfg.CoordinatorAddr, currentState.coordinatorConn.ServiceName, currentState.coordinatorConn.ID, currentState.coordinatorConn.ReadCh, currentState.coordinatorConn.WriteCh, lostCoordinatorConnection)
+	go coordinator.ConnectToCoordinator(shared.ServiceCfg.CoordinatorAddr, currentState.coordinatorConn.ServiceGroup, currentState.coordinatorConn.ID, currentState.coordinatorConn.ReadCh, currentState.coordinatorConn.WriteCh, lostCoordinatorConnection)
 	log.Println("reconnecting to coordinator")
 }
 

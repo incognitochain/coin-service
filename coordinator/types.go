@@ -31,7 +31,7 @@ type CoordinatorState struct {
 }
 
 type ServiceConn struct {
-	ServiceName   string
+	ServiceGroup  string
 	ID            string
 	IsPause       bool
 	ReadCh        chan []byte

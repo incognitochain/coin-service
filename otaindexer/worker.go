@@ -183,10 +183,10 @@ func StartOTAIndexing() {
 	go processMsgFromMaster(readCh, writeCh)
 
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: coordinator.SERVICEGROUP_INDEXWORKER,
-		ID:          workerID,
-		ReadCh:      make(chan []byte),
-		WriteCh:     make(chan []byte),
+		ServiceGroup: coordinator.SERVICEGROUP_INDEXWORKER,
+		ID:           workerID,
+		ReadCh:       make(chan []byte),
+		WriteCh:      make(chan []byte),
 	}
 	coordinatorState.coordinatorConn = &newServiceConn
 	coordinatorState.serviceStatus = "resume"

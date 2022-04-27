@@ -109,7 +109,7 @@ func updateAllServiceStatus() {
 	for _, v := range state.ConnectedServices {
 		for _, sv := range v {
 			if err := sendRequestToService(sv, ACTION_OPERATION_MODE, "get"); err != nil {
-				log.Printf("get service %v with ID %v failed: %v\n", sv.ServiceName, sv.ID, err)
+				log.Printf("get service %v with ID %v failed: %v\n", sv.ServiceGroup, sv.ID, err)
 			}
 		}
 	}
@@ -134,7 +134,7 @@ func pauseServices(serviceGroups []string) error {
 	for _, serviceGroup := range serviceGroups {
 		for _, v := range state.ConnectedServices[serviceGroup] {
 			if err := sendRequestToService(v, ACTION_OPERATION_MODE, "pause"); err != nil {
-				return fmt.Errorf("pause service %v with ID %v failed: %v\n", v.ServiceName, v.ID, err)
+				return fmt.Errorf("pause service %v with ID %v failed: %v\n", v.ServiceGroup, v.ID, err)
 			}
 		}
 	}
@@ -155,7 +155,7 @@ func resumeAllServices() error {
 				}
 				allServiceResume = false
 				if err := sendRequestToService(sv, ACTION_OPERATION_MODE, "resume"); err != nil {
-					return fmt.Errorf("pause service %v with ID %v failed: %v\n", sv.ServiceName, sv.ID, err)
+					return fmt.Errorf("pause service %v with ID %v failed: %v\n", sv.ServiceGroup, sv.ID, err)
 				}
 			}
 		}
@@ -182,15 +182,15 @@ func sendRequestToService(sv *ServiceConn, action, data string) error {
 func registerService(sv *ServiceConn) error {
 	state.ConnectedServicesLock.Lock()
 	defer state.ConnectedServicesLock.Unlock()
-	if _, ok := state.ConnectedServices[sv.ServiceName]; ok {
-		if _, ok1 := state.ConnectedServices[sv.ServiceName][sv.ID]; ok1 {
+	if _, ok := state.ConnectedServices[sv.ServiceGroup]; ok {
+		if _, ok1 := state.ConnectedServices[sv.ServiceGroup][sv.ID]; ok1 {
 			return errors.New("serviceID already exist")
 		}
 	} else {
-		state.ConnectedServices[sv.ServiceName] = make(map[string]*ServiceConn)
+		state.ConnectedServices[sv.ServiceGroup] = make(map[string]*ServiceConn)
 	}
-	state.ConnectedServices[sv.ServiceName][sv.ID] = sv
-	log.Printf("register service %v with ID %v success\n", sv.ServiceName, sv.ID)
+	state.ConnectedServices[sv.ServiceGroup][sv.ID] = sv
+	log.Printf("register service %v with ID %v success\n", sv.ServiceGroup, sv.ID)
 	return nil
 }
 
@@ -198,8 +198,8 @@ func removeService(sv *ServiceConn) error {
 	state.ConnectedServicesLock.Lock()
 	defer state.ConnectedServicesLock.Unlock()
 
-	if _, ok := state.ConnectedServices[sv.ServiceName]; ok {
-		delete(state.ConnectedServices[sv.ServiceName], sv.ID)
+	if _, ok := state.ConnectedServices[sv.ServiceGroup]; ok {
+		delete(state.ConnectedServices[sv.ServiceGroup], sv.ID)
 	} else {
 		return errors.New("service not exist")
 	}

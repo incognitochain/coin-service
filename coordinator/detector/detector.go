@@ -30,19 +30,19 @@ func (dtc *Detector) RecordLog(ctx context.Context, in *logger.LogRequest) (*emp
 	return new(emptypb.Empty), nil
 }
 
-func (dtc *Detector) GetCrashReportByService(serviceName string) map[string][]RecordDetail {
+func (dtc *Detector) GetCrashReportByService(ServiceGroup string) map[string][]RecordDetail {
 	dtc.Lck.RLock()
 	defer dtc.Lck.RUnlock()
-	if service, ok := dtc.Services[serviceName]; ok {
+	if service, ok := dtc.Services[ServiceGroup]; ok {
 		return service.Records
 	}
 	return nil
 }
 
-func (dtc *Detector) GetCrashReportByServiceAndType(serviceName string, recordType string) []RecordDetail {
+func (dtc *Detector) GetCrashReportByServiceAndType(ServiceGroup string, recordType string) []RecordDetail {
 	dtc.Lck.RLock()
 	defer dtc.Lck.RUnlock()
-	if service, ok := dtc.Services[serviceName]; ok {
+	if service, ok := dtc.Services[ServiceGroup]; ok {
 		if records, ok := service.Records[recordType]; ok {
 			return records
 		}
@@ -50,11 +50,11 @@ func (dtc *Detector) GetCrashReportByServiceAndType(serviceName string, recordTy
 	return nil
 }
 
-func (dtc *Detector) GetCrashCountByService(serviceName string) map[string]int {
+func (dtc *Detector) GetCrashCountByService(ServiceGroup string) map[string]int {
 	dtc.Lck.RLock()
 	defer dtc.Lck.RUnlock()
 	result := make(map[string]int)
-	if service, ok := dtc.Services[serviceName]; ok {
+	if service, ok := dtc.Services[ServiceGroup]; ok {
 		for k, v := range service.Records {
 			result[k] = len(v)
 		}

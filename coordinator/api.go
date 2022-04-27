@@ -38,14 +38,14 @@ func ServiceRegisterHandler(c *gin.Context) {
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	serviceID := ""
-	serviceName := ""
+	serviceGroup := ""
 	if len(c.Request.Header.Values("id")) > 0 {
 		serviceID = c.Request.Header.Values("id")[0]
 	}
 	if len(c.Request.Header.Values("service")) > 0 {
-		serviceName = c.Request.Header.Values("service")[0]
+		serviceGroup = c.Request.Header.Values("service")[0]
 	}
-	if serviceID == "" || serviceName == "" {
+	if serviceID == "" || serviceGroup == "" {
 		c.JSON(200, gin.H{
 			"status": "service id or service name is empty",
 		})
@@ -54,7 +54,7 @@ func ServiceRegisterHandler(c *gin.Context) {
 
 	newService := new(ServiceConn)
 	newService.ID = serviceID
-	newService.ServiceName = serviceName
+	newService.ServiceGroup = serviceGroup
 	newService.ReadCh = readCh
 	newService.WriteCh = writeCh
 	newService.ConnectedTime = time.Now().Unix()
@@ -106,17 +106,14 @@ func ServiceRegisterHandler(c *gin.Context) {
 	for {
 		select {
 		case <-done:
-			log.Println("AddRecord 123")
 			crashRecord := detector.RecordDetail{
 				ServiceID: newService.ID,
 				Time:      time.Now().Unix(),
 				Type:      detector.RECORDTYPE_LOSTCONNECTION,
 				Reason:    "unknown",
 			}
-			state.Detector.AddRecord(crashRecord, serviceName)
-			log.Println("AddRecord 456")
+			state.Detector.AddRecord(crashRecord, serviceGroup)
 			removeService(newService)
-			log.Println("AddRecord 789")
 			return
 		case msg := <-writeCh:
 			fmt.Println("writeCh", string(msg))
@@ -274,5 +271,24 @@ func CrashSummaryHandler(c *gin.Context) {
 }
 
 func ServiceCrashDetailHandler(c *gin.Context) {
+	result := state.Detector.GetCrashReportByService(c.Param("service"))
+	c.JSON(200, gin.H{
+		"result": result,
+	})
+}
 
+func suspectCrash(serviceID, serviceGroup string) {
+	for {
+		time.Sleep(60 * time.Second)
+		state.ConnectedServicesLock.RLock()
+		if _, ok := state.ConnectedServices[serviceID]; !ok {
+			crashRecord := detector.RecordDetail{
+				ServiceID: serviceID,
+				Time:      time.Now().Unix(),
+				Type:      detector.RECORDTYPE_SUSPECT_CRASH,
+				Reason:    "unknown",
+			}
+			state.Detector.AddRecord(crashRecord, serviceGroup)
+		}
+	}
 }
