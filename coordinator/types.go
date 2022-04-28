@@ -33,6 +33,7 @@ type CoordinatorState struct {
 type ServiceConn struct {
 	ServiceGroup  string
 	ID            string
+	GitCommit     string
 	IsPause       bool
 	ReadCh        chan []byte
 	WriteCh       chan []byte

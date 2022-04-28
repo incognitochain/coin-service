@@ -41,6 +41,7 @@ func StartGinService() {
 		newServiceConn := coordinator.ServiceConn{
 			ServiceGroup: coordinator.SERVICEGROUP_QUERY,
 			ID:           id.String(),
+			GitCommit:    shared.GITCOMMIT,
 			ReadCh:       make(chan []byte),
 			WriteCh:      make(chan []byte),
 		}

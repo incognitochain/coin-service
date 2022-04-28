@@ -39,11 +39,15 @@ func ServiceRegisterHandler(c *gin.Context) {
 	writeCh := make(chan []byte)
 	serviceID := ""
 	serviceGroup := ""
+	gitCommit := ""
 	if len(c.Request.Header.Values("id")) > 0 {
 		serviceID = c.Request.Header.Values("id")[0]
 	}
 	if len(c.Request.Header.Values("service")) > 0 {
 		serviceGroup = c.Request.Header.Values("service")[0]
+	}
+	if len(c.Request.Header.Values("gitcommit")) > 0 {
+		gitCommit = c.Request.Header.Values("gitcommit")[0]
 	}
 	if serviceID == "" || serviceGroup == "" {
 		c.JSON(200, gin.H{
@@ -55,6 +59,7 @@ func ServiceRegisterHandler(c *gin.Context) {
 	newService := new(ServiceConn)
 	newService.ID = serviceID
 	newService.ServiceGroup = serviceGroup
+	newService.GitCommit = gitCommit
 	newService.ReadCh = readCh
 	newService.WriteCh = writeCh
 	newService.ConnectedTime = time.Now().Unix()
@@ -203,6 +208,7 @@ func GetServiceStatusHandler(c *gin.Context) {
 	type ServiceStatus struct {
 		ID            string
 		IsPause       bool
+		GitCommit     string
 		ConnectedTime int64
 	}
 
@@ -212,6 +218,7 @@ func GetServiceStatusHandler(c *gin.Context) {
 			serviceStats[k] = append(serviceStats[k], ServiceStatus{
 				ID:            in,
 				IsPause:       v.IsPause,
+				GitCommit:     v.GitCommit,
 				ConnectedTime: v.ConnectedTime,
 			})
 		}

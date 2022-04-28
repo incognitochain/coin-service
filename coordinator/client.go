@@ -9,13 +9,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func ConnectToCoordinator(addr string, ServiceGroup string, id string, readCh chan []byte, writeCh chan []byte, lostConnFn func()) {
+func ConnectToCoordinator(addr string, serviceConn *ServiceConn, lostConnFn func()) {
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/coordinator/connectservice"}
 	log.Printf("connecting to coordinator at %s\n", u.String())
-
+	readCh := serviceConn.ReadCh
+	writeCh := serviceConn.WriteCh
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), http.Header{
-		"id":      []string{id},
-		"service": []string{ServiceGroup},
+		"id":        []string{serviceConn.ID},
+		"service":   []string{serviceConn.ServiceGroup},
+		"gitcommit": []string{serviceConn.GitCommit},
 	})
 	if err != nil {
 		log.Println(err)

@@ -25,7 +25,10 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
+var GitCommit string
+
 func main() {
+	shared.GITCOMMIT = GitCommit
 	shared.ReadConfigAndArg()
 	err := database.ConnectDB(shared.ServiceCfg.MongoDB, shared.ServiceCfg.MongoAddress)
 	if err != nil {

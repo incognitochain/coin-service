@@ -43,6 +43,13 @@ func (l *LogRecorder) Write(p []byte) (n int, err error) {
 
 func (l *LogRecorder) willPushLog(p []byte) {
 	logType := bytes.Split(p, separatorBytes)
+	switch string(logType[0]) {
+	case LOG_MARK_CUSTOM:
+	case LOG_MARK_DEBUG:
+	case LOG_MARK_CRITICAL:
+	default:
+		return
+	}
 	data := &pblogger.LogRequest{Data: p, Type: logType[0], ServiceId: []byte(serviceID), ServiceGroup: []byte(serviceGroup), Timestamp: time.Now().Unix()}
 	defer func() {
 		if r := recover(); r != nil {

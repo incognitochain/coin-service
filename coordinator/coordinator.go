@@ -52,10 +52,11 @@ func startBackup() {
 		state.backupState = 0
 	}()
 
+	requiredServices := []string{SERVICEGROUP_CHAINSYNKER, SERVICEGROUP_INDEXER, SERVICEGROUP_INDEXWORKER, SERVICEGROUP_LIQUIDITY_PROCESSOR, SERVICEGROUP_SHIELD_PROCESSOR, SERVICEGROUP_TRADE_PROCESSOR}
 	for {
-		if !checkIfServicePaused([]string{SERVICEGROUP_CHAINSYNKER, SERVICEGROUP_INDEXER, SERVICEGROUP_INDEXWORKER, SERVICEGROUP_LIQUIDITY_PROCESSOR, SERVICEGROUP_SHIELD_PROCESSOR, SERVICEGROUP_TRADE_PROCESSOR}) {
+		if !checkIfServicePaused(requiredServices) {
 			state.backupState = 1
-			if err := pauseServices([]string{SERVICEGROUP_CHAINSYNKER, SERVICEGROUP_INDEXER, SERVICEGROUP_INDEXWORKER, SERVICEGROUP_LIQUIDITY_PROCESSOR, SERVICEGROUP_SHIELD_PROCESSOR, SERVICEGROUP_TRADE_PROCESSOR}); err != nil {
+			if err := pauseServices(requiredServices); err != nil {
 				state.lastFailBackupErr = err.Error()
 				state.lastFailBackupTime = time.Now()
 			}
@@ -104,8 +105,8 @@ func startBackup() {
 }
 
 func updateAllServiceStatus() {
-	state.ConnectedServicesLock.Lock()
-	defer state.ConnectedServicesLock.Unlock()
+	state.ConnectedServicesLock.RLock()
+	defer state.ConnectedServicesLock.RUnlock()
 	for _, v := range state.ConnectedServices {
 		for _, sv := range v {
 			if err := sendRequestToService(sv, ACTION_OPERATION_MODE, "get"); err != nil {
@@ -116,8 +117,8 @@ func updateAllServiceStatus() {
 }
 
 func checkIfServicePaused(serviceGroups []string) bool {
-	state.ConnectedServicesLock.Lock()
-	defer state.ConnectedServicesLock.Unlock()
+	state.ConnectedServicesLock.RLock()
+	defer state.ConnectedServicesLock.RUnlock()
 	for _, serviceGroup := range serviceGroups {
 		for _, sv := range state.ConnectedServices[serviceGroup] {
 			if !sv.IsPause {
@@ -129,8 +130,8 @@ func checkIfServicePaused(serviceGroups []string) bool {
 }
 
 func pauseServices(serviceGroups []string) error {
-	state.ConnectedServicesLock.Lock()
-	defer state.ConnectedServicesLock.Unlock()
+	state.ConnectedServicesLock.RLock()
+	defer state.ConnectedServicesLock.RUnlock()
 	for _, serviceGroup := range serviceGroups {
 		for _, v := range state.ConnectedServices[serviceGroup] {
 			if err := sendRequestToService(v, ACTION_OPERATION_MODE, "pause"); err != nil {
@@ -142,12 +143,11 @@ func pauseServices(serviceGroups []string) error {
 }
 
 func resumeAllServices() error {
-	state.ConnectedServicesLock.Lock()
-	defer state.ConnectedServicesLock.Unlock()
 
 	for {
 		log.Println("trying resume all services...")
 		allServiceResume := true
+		state.ConnectedServicesLock.RLock()
 		for _, v := range state.ConnectedServices {
 			for _, sv := range v {
 				if !sv.IsPause {
@@ -155,10 +155,12 @@ func resumeAllServices() error {
 				}
 				allServiceResume = false
 				if err := sendRequestToService(sv, ACTION_OPERATION_MODE, "resume"); err != nil {
+					state.ConnectedServicesLock.RUnlock()
 					return fmt.Errorf("pause service %v with ID %v failed: %v\n", sv.ServiceGroup, sv.ID, err)
 				}
 			}
 		}
+		state.ConnectedServicesLock.RUnlock()
 		if allServiceResume {
 			return nil
 		}

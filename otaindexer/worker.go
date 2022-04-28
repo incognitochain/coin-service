@@ -186,6 +186,7 @@ func StartOTAIndexing() {
 	newServiceConn := coordinator.ServiceConn{
 		ServiceGroup: coordinator.SERVICEGROUP_INDEXWORKER,
 		ID:           workerID,
+		GitCommit:    shared.GITCOMMIT,
 		ReadCh:       make(chan []byte),
 		WriteCh:      make(chan []byte),
 	}

@@ -45,6 +45,7 @@ func StartProcessor() {
 	newServiceConn := coordinator.ServiceConn{
 		ServiceGroup: coordinator.SERVICEGROUP_LIQUIDITY_PROCESSOR,
 		ID:           id.String(),
+		GitCommit:    shared.GITCOMMIT,
 		ReadCh:       make(chan []byte),
 		WriteCh:      make(chan []byte),
 	}

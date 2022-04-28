@@ -32,6 +32,7 @@ func StartAssistant() {
 	newServiceConn := coordinator.ServiceConn{
 		ServiceGroup: coordinator.SERVICEGROUP_ASSISTANT,
 		ID:           id.String(),
+		GitCommit:    shared.GITCOMMIT,
 		ReadCh:       make(chan []byte),
 		WriteCh:      make(chan []byte),
 	}

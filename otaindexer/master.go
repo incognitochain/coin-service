@@ -171,6 +171,7 @@ func StartWorkerAssigner() {
 	newServiceConn := coordinator.ServiceConn{
 		ServiceGroup: coordinator.SERVICEGROUP_INDEXER,
 		ID:           id.String(),
+		GitCommit:    shared.GITCOMMIT,
 		ReadCh:       make(chan []byte),
 		WriteCh:      make(chan []byte),
 	}

@@ -181,6 +181,7 @@ func InitChainSynker(cfg shared.Config) {
 	newServiceConn := coordinator.ServiceConn{
 		ServiceGroup: coordinator.SERVICEGROUP_CHAINSYNKER,
 		ID:           id.String(),
+		GitCommit:    shared.GITCOMMIT,
 		ReadCh:       make(chan []byte),
 		WriteCh:      make(chan []byte),
 	}
