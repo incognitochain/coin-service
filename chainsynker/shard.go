@@ -14,6 +14,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 	"github.com/incognitochain/incognito-chain/metadata"
+	"github.com/incognitochain/incognito-chain/metadata/bridge"
 	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	"github.com/incognitochain/incognito-chain/peerv2/proto"
 	"github.com/incognitochain/incognito-chain/transaction"
@@ -517,7 +518,7 @@ reCheckCrossShardHeight:
 				}
 			}
 		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2, metadata.BurningPBSCRequestMeta:
-			burningReqAction := tx.GetMetadata().(*metadata.BurningRequest)
+			burningReqAction := tx.GetMetadata().(*bridge.BurningRequest)
 			realTokenID = burningReqAction.TokenID.String()
 			pubkey = base58.EncodeCheck(burningReqAction.BurnerAddress.GetPublicSpend().ToBytesS())
 		case metadata.ContractingRequestMeta:

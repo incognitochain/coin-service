@@ -50,6 +50,7 @@ func StartGinService() {
 		go willPauseOperation()
 		go tokenListWatcher()
 		go poolListWatcher()
+		go bridgeStateWatcher()
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
@@ -102,7 +103,6 @@ func StartGinService() {
 		shieldGroup := r.Group("/shield")
 		shieldGroup.GET("/getshieldhistory", APIGetShieldHistory)
 		shieldGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
-		shieldGroup.GET("/gettxshield", APIGetTxShield)
 
 		//pdex
 		pdex := r.Group("/pdex")
@@ -151,6 +151,13 @@ func StartGinService() {
 
 		deviceGroup := r.Group("/device")
 		deviceGroup.GET("/getdevicebyqrcode", APIGetDeviceByQRCode)
+
+		bridgeGroup := r.Group("/bridge")
+		bridgeGroup.GET("/aggregatestate", APIGetBridgeAggState)
+		bridgeGroup.GET("/getshieldhistory", APIGetShieldHistory)
+		bridgeGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
+		bridgeGroup.GET("/gettxshield", APIGetTxShield)
+		bridgeGroup.GET("/getsupportedvault", APIGetSupportedVault)
 
 	}
 

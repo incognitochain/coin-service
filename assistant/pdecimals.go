@@ -39,6 +39,10 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				Network            string        `json:"Network"`
 				OriginalSymbol     string        `json:"OriginalSymbol"`
 				LiquidityReward    float64       `json:"LiquidityReward"`
+				ListUnifiedToken   []interface{} `json:"ListUnifiedToken"`
+				NetworkID          int           `json:"NetworkID"`
+				MovedUnifiedToken  bool          `json:"MovedUnifiedToken"`
+				ParentUnifiedID    int           `json:"ParentUnifiedID"`
 			}
 			Error string `json:"Error"`
 		}
@@ -70,6 +74,10 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 			if err != nil {
 				return nil, err
 			}
+			listUnifiedTkBytes, err := json.Marshal(v.ListUnifiedToken)
+			if err != nil {
+				return nil, err
+			}
 			result = append(result, shared.ExtraTokenInfo{
 				TokenID:            v.TokenID,
 				Name:               v.Name,
@@ -95,6 +103,10 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				OriginalSymbol:     v.OriginalSymbol,
 				LiquidityReward:    v.LiquidityReward,
 				Network:            v.Network,
+				ListUnifiedToken:   string(listUnifiedTkBytes),
+				MovedUnifiedToken:  v.MovedUnifiedToken,
+				NetworkID:          v.NetworkID,
+				ParentUnifiedID:    v.ParentUnifiedID,
 			})
 		}
 		return result, nil
