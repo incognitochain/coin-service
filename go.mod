@@ -10,7 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20220422092838-10291a2dfb1f
+	github.com/incognitochain/incognito-chain v0.0.0-20220428043133-b7bd3499e2fb
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -183,7 +183,7 @@ require (
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a // indirect
-	golang.org/x/sys v0.0.0-20210330210617-4fbd30eecc44 // indirect
+	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
 	golang.org/x/text v0.3.5 // indirect
 	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 // indirect
 	google.golang.org/grpc v1.27.1 // indirect

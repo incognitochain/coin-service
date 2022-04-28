@@ -303,6 +303,8 @@ github.com/incognitochain/incognito-chain v0.0.0-20220420072139-7ed3d7e9d047 h1:
 github.com/incognitochain/incognito-chain v0.0.0-20220420072139-7ed3d7e9d047/go.mod h1:buTuXZERwWz+W1C3kMr3lJI9lB3iIgQ/Bnf/4xxJzTU=
 github.com/incognitochain/incognito-chain v0.0.0-20220422092838-10291a2dfb1f h1:gKbWn175EdyDuSFS4/TUNsW+jX0T6gPtIeTP3wNCHmY=
 github.com/incognitochain/incognito-chain v0.0.0-20220422092838-10291a2dfb1f/go.mod h1:buTuXZERwWz+W1C3kMr3lJI9lB3iIgQ/Bnf/4xxJzTU=
+github.com/incognitochain/incognito-chain v0.0.0-20220428043133-b7bd3499e2fb h1:Cwpz3lNQkVk2DPQuSr+5uDqb6Q2qib9H3TLr6i9wokI=
+github.com/incognitochain/incognito-chain v0.0.0-20220428043133-b7bd3499e2fb/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
@@ -949,6 +951,8 @@ golang.org/x/sys v0.0.0-20200814200057-3d37ad5750ed/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210330210617-4fbd30eecc44 h1:Bli41pIlzTzf3KEY06n+xnzK/BESIg2ze4Pgfh/aI8c=
 golang.org/x/sys v0.0.0-20210330210617-4fbd30eecc44/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 h1:xHms4gcpe1YE7A3yIllJXP16CMAGuqwO2lX1mTyyRRc=
+golang.org/x/sys v0.0.0-20220422013727-9388b58f7150/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
