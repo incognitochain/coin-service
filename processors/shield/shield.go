@@ -9,6 +9,7 @@ import (
 
 	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
@@ -41,6 +42,7 @@ func StartProcessor() {
 		ReadCh:       make(chan []byte),
 		WriteCh:      make(chan []byte),
 	}
+	logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
 	coordinatorState.coordinatorConn = &newServiceConn
 	coordinatorState.serviceStatus = "pause"
 	coordinatorState.pauseService = true

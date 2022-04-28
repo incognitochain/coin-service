@@ -11,6 +11,7 @@ import (
 
 	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/coin-service/coordinator"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
@@ -43,6 +44,7 @@ func StartGinService() {
 			ReadCh:       make(chan []byte),
 			WriteCh:      make(chan []byte),
 		}
+		logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
 		coordinatorState.coordinatorConn = &newServiceConn
 		coordinatorState.serviceStatus = "pause"
 		coordinatorState.pauseService = true

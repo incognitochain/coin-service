@@ -8,6 +8,7 @@ import (
 
 	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/privacy"
 	jsoniter "github.com/json-iterator/go"
@@ -183,6 +184,7 @@ func InitChainSynker(cfg shared.Config) {
 		ReadCh:       make(chan []byte),
 		WriteCh:      make(chan []byte),
 	}
+	logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
 	currentState.coordinatorConn = &newServiceConn
 	currentState.pauseChainSync = true
 	connectCoordinator(currentState.coordinatorConn, shared.ServiceCfg.CoordinatorAddr)

@@ -114,6 +114,7 @@ func ServiceRegisterHandler(c *gin.Context) {
 			}
 			state.Detector.AddRecord(crashRecord, serviceGroup)
 			removeService(newService)
+			go suspectCrash(serviceID, serviceGroup)
 			return
 		case msg := <-writeCh:
 			fmt.Println("writeCh", string(msg))
@@ -278,17 +279,15 @@ func ServiceCrashDetailHandler(c *gin.Context) {
 }
 
 func suspectCrash(serviceID, serviceGroup string) {
-	for {
-		time.Sleep(60 * time.Second)
-		state.ConnectedServicesLock.RLock()
-		if _, ok := state.ConnectedServices[serviceID]; !ok {
-			crashRecord := detector.RecordDetail{
-				ServiceID: serviceID,
-				Time:      time.Now().Unix(),
-				Type:      detector.RECORDTYPE_SUSPECT_CRASH,
-				Reason:    "unknown",
-			}
-			state.Detector.AddRecord(crashRecord, serviceGroup)
+	time.Sleep(60 * time.Second)
+	state.ConnectedServicesLock.RLock()
+	if _, ok := state.ConnectedServices[serviceID]; !ok {
+		crashRecord := detector.RecordDetail{
+			ServiceID: serviceID,
+			Time:      time.Now().Unix(),
+			Type:      detector.RECORDTYPE_SUSPECT_CRASH,
+			Reason:    "unknown",
 		}
+		state.Detector.AddRecord(crashRecord, serviceGroup)
 	}
 }

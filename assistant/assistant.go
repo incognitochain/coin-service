@@ -6,6 +6,7 @@ import (
 
 	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/patrickmn/go-cache"
 	uuid "github.com/satori/go.uuid"
@@ -34,6 +35,7 @@ func StartAssistant() {
 		ReadCh:       make(chan []byte),
 		WriteCh:      make(chan []byte),
 	}
+	logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
 	coordinatorState.coordinatorConn = &newServiceConn
 	coordinatorState.serviceStatus = "resume"
 	coordinatorState.pauseService = false

@@ -7,6 +7,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/logging/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -26,7 +27,30 @@ func (dtc *Detector) StartService(port int) {
 }
 
 func (dtc *Detector) RecordLog(ctx context.Context, in *logger.LogRequest) (*emptypb.Empty, error) {
-	// log.Printf("Received: %v", in.Data)
+	switch string(in.Type) {
+	case logging.LOG_MARK_CUSTOM:
+		dtc.AddRecord(RecordDetail{
+			ServiceID: string(in.ServiceId),
+			Type:      RECORDTYPE_OTHER,
+			Reason:    string(in.Data),
+			Time:      in.Timestamp,
+		}, string(in.ServiceGroup))
+	case logging.LOG_MARK_DEBUG:
+		dtc.AddRecord(RecordDetail{
+			ServiceID: string(in.ServiceId),
+			Type:      RECORDTYPE_DEBUG,
+			Reason:    string(in.Data),
+			Time:      in.Timestamp,
+		}, string(in.ServiceGroup))
+	case logging.LOG_MARK_CRITICAL:
+		dtc.AddRecord(RecordDetail{
+			ServiceID: string(in.ServiceId),
+			Type:      RECORDTYPE_CRITICAL,
+			Reason:    string(in.Data),
+			Time:      in.Timestamp,
+		}, string(in.ServiceGroup))
+	}
+	log.Printf("Received: %v", in.Data)
 	return new(emptypb.Empty), nil
 }
 
