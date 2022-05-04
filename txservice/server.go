@@ -244,6 +244,13 @@ func statusMode() {
 					inBlock, err := getTxStatusFullNode(txhash)
 					if err != nil {
 						log.Println(err)
+						if time.Since(v.CreatedAt) > 30*time.Minute {
+							err = updateTxStatus(txhash, txStatusFailed, "")
+							if err != nil {
+								log.Println(err)
+							}
+							continue
+						}
 					}
 					if inBlock {
 						err = updateTxStatus(txhash, txStatusSuccess, "")
