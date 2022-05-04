@@ -199,6 +199,16 @@ func statusMode() {
 			inBlock, err := getTxStatusFullNode(txhash)
 			if err != nil {
 				log.Println(err)
+				if time.Since(m.PublishTime) > 30*time.Minute {
+					err = updateTxStatus(txhash, txStatusFailed, "")
+					if err != nil {
+						time.Sleep(4 * time.Second)
+						m.Nack()
+						return
+					}
+					m.Ack()
+					return
+				}
 				time.Sleep(4 * time.Second)
 				m.Nack()
 				return
@@ -206,7 +216,7 @@ func statusMode() {
 			if inBlock {
 				err = updateTxStatus(txhash, txStatusSuccess, "")
 				if err != nil {
-					log.Println(err)
+					time.Sleep(4 * time.Second)
 					m.Nack()
 					return
 				}
@@ -214,9 +224,11 @@ func statusMode() {
 				if time.Since(m.PublishTime) > 30*time.Minute {
 					err = updateTxStatus(txhash, txStatusFailed, "")
 					if err != nil {
-						log.Println(err)
+						time.Sleep(4 * time.Second)
+						m.Nack()
+						return
 					}
-					m.Nack()
+					m.Ack()
 					return
 				}
 				time.Sleep(4 * time.Second)
@@ -245,7 +257,7 @@ func statusMode() {
 					if err != nil {
 						log.Println(err)
 						if time.Since(v.CreatedAt) > 30*time.Minute {
-							err = updateTxStatus(txhash, txStatusFailed, "")
+							err = updateTxStatus(txhash, txStatusFailed, "timeout")
 							if err != nil {
 								log.Println(err)
 							}
@@ -260,7 +272,7 @@ func statusMode() {
 						}
 					} else {
 						if time.Since(v.CreatedAt) > 30*time.Minute {
-							err = updateTxStatus(txhash, txStatusFailed, "")
+							err = updateTxStatus(txhash, txStatusFailed, "timeout")
 							if err != nil {
 								log.Println(err)
 							}
