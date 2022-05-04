@@ -26,7 +26,7 @@ func (dtc *Detector) StartService(port int) {
 }
 
 func (dtc *Detector) RecordLog(ctx context.Context, in *logger.LogRequest) (*emptypb.Empty, error) {
-	log.Printf("Received: %v", in.Data)
+	// log.Printf("Received: %v", in.Data)
 	return new(emptypb.Empty), nil
 }
 
