@@ -325,7 +325,7 @@ func retrieveTokenList() {
 			}
 			err = json.UnmarshalFromString(tkInfo.ListUnifiedToken, &tkdata.ListUnifiedToken)
 			if err != nil {
-				panic(err)
+				log.Println(err)
 			}
 			datalist = append(datalist, tkdata)
 		}
