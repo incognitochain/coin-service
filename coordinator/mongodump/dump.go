@@ -12,9 +12,9 @@ import (
 	"github.com/mongodb/mongo-tools/mongodump"
 )
 
-func DumpMongo(ctx context.Context, result chan string, mongoURL, backupDir string, progressManager progress.Manager) {
+func DumpMongo(ctx context.Context, result chan string, mongoURL, dbName, backupDir string, progressManager progress.Manager) {
 	optStr := []string{}
-	optStr = append(optStr, "--uri", mongoURL, "--gzip", "--archive="+backupDir+"/dump_"+fmt.Sprintf("%v", time.Now().Unix())+".archive", "--quiet")
+	optStr = append(optStr, "--uri", mongoURL, "--forceTableScan", "--db", dbName, "--gzip", "--archive="+backupDir+"/dump_"+fmt.Sprintf("%v", time.Now().Unix())+".archive", "--quiet")
 	fmt.Println(optStr)
 	opts, err := mongodump.ParseOptions(optStr, "", "")
 	if err != nil {

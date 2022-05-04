@@ -74,7 +74,7 @@ func startBackup() {
 	state.currentBackupProgress = mongoDumpProgress
 
 	pwd, _ := os.Getwd()
-	go mongodump.DumpMongo(state.backupContext, backupResult, shared.ServiceCfg.MongoAddress, path.Join(pwd, "mongodump"), mongoDumpProgress)
+	go mongodump.DumpMongo(state.backupContext, backupResult, shared.ServiceCfg.MongoAddress, shared.ServiceCfg.MongoDB, path.Join(pwd, "mongodump"), mongoDumpProgress)
 	defer close(backupResult)
 
 	for {
