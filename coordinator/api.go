@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/incognitochain/coin-service/coordinator/detector"
 )
 
 var upGrader = websocket.Upgrader{
@@ -37,14 +38,18 @@ func ServiceRegisterHandler(c *gin.Context) {
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
 	serviceID := ""
-	serviceName := ""
+	serviceGroup := ""
+	gitCommit := ""
 	if len(c.Request.Header.Values("id")) > 0 {
 		serviceID = c.Request.Header.Values("id")[0]
 	}
 	if len(c.Request.Header.Values("service")) > 0 {
-		serviceName = c.Request.Header.Values("service")[0]
+		serviceGroup = c.Request.Header.Values("service")[0]
 	}
-	if serviceID == "" || serviceName == "" {
+	if len(c.Request.Header.Values("gitcommit")) > 0 {
+		gitCommit = c.Request.Header.Values("gitcommit")[0]
+	}
+	if serviceID == "" || serviceGroup == "" {
 		c.JSON(200, gin.H{
 			"status": "service id or service name is empty",
 		})
@@ -53,7 +58,8 @@ func ServiceRegisterHandler(c *gin.Context) {
 
 	newService := new(ServiceConn)
 	newService.ID = serviceID
-	newService.ServiceName = serviceName
+	newService.ServiceGroup = serviceGroup
+	newService.GitCommit = gitCommit
 	newService.ReadCh = readCh
 	newService.WriteCh = writeCh
 	newService.ConnectedTime = time.Now().Unix()
@@ -105,7 +111,15 @@ func ServiceRegisterHandler(c *gin.Context) {
 	for {
 		select {
 		case <-done:
+			crashRecord := detector.RecordDetail{
+				ServiceID: newService.ID,
+				Time:      time.Now().Unix(),
+				Type:      detector.RECORDTYPE_LOSTCONNECTION,
+				Reason:    "unknown",
+			}
+			state.Detector.AddRecord(crashRecord, serviceGroup)
 			removeService(newService)
+			go suspectCrash(serviceID, serviceGroup)
 			return
 		case msg := <-writeCh:
 			fmt.Println("writeCh", string(msg))
@@ -194,6 +208,7 @@ func GetServiceStatusHandler(c *gin.Context) {
 	type ServiceStatus struct {
 		ID            string
 		IsPause       bool
+		GitCommit     string
 		ConnectedTime int64
 	}
 
@@ -203,6 +218,7 @@ func GetServiceStatusHandler(c *gin.Context) {
 			serviceStats[k] = append(serviceStats[k], ServiceStatus{
 				ID:            in,
 				IsPause:       v.IsPause,
+				GitCommit:     v.GitCommit,
 				ConnectedTime: v.ConnectedTime,
 			})
 		}
@@ -240,4 +256,45 @@ func ListBackupsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"backups": fileList,
 	})
+}
+
+func CrashSummaryHandler(c *gin.Context) {
+	crashCount, total := state.Detector.GetCrashCountAll()
+	var result CrashSummary
+	result.Total = total
+
+	result.ByService = make(map[string]int)
+	result.ByType = make(map[string]int)
+
+	for service, tc := range crashCount {
+		for crashType, v := range tc {
+			result.ByService[service] += v
+			result.ByType[crashType] += v
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"result": result,
+	})
+}
+
+func ServiceCrashDetailHandler(c *gin.Context) {
+	result := state.Detector.GetCrashReportByService(c.Param("service"))
+	c.JSON(200, gin.H{
+		"result": result,
+	})
+}
+
+func suspectCrash(serviceID, serviceGroup string) {
+	time.Sleep(60 * time.Second)
+	state.ConnectedServicesLock.RLock()
+	if _, ok := state.ConnectedServices[serviceID]; !ok {
+		crashRecord := detector.RecordDetail{
+			ServiceID: serviceID,
+			Time:      time.Now().Unix(),
+			Type:      detector.RECORDTYPE_SUSPECT_CRASH,
+			Reason:    "unknown",
+		}
+		state.Detector.AddRecord(crashRecord, serviceGroup)
+	}
 }

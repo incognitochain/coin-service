@@ -11,6 +11,7 @@ import (
 
 	"github.com/incognitochain/coin-service/chainsynker"
 	"github.com/incognitochain/coin-service/coordinator"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
@@ -38,11 +39,13 @@ func StartGinService() {
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
 		id := uuid.NewV4()
 		newServiceConn := coordinator.ServiceConn{
-			ServiceName: coordinator.SERVICEGROUP_QUERY,
-			ID:          id.String(),
-			ReadCh:      make(chan []byte),
-			WriteCh:     make(chan []byte),
+			ServiceGroup: coordinator.SERVICEGROUP_QUERY,
+			ID:           id.String(),
+			GitCommit:    shared.GITCOMMIT,
+			ReadCh:       make(chan []byte),
+			WriteCh:      make(chan []byte),
 		}
+		logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
 		coordinatorState.coordinatorConn = &newServiceConn
 		coordinatorState.serviceStatus = "pause"
 		coordinatorState.pauseService = true
@@ -175,6 +178,8 @@ func StartGinService() {
 		coordinatorGroup.GET("/backupstatus", coordinator.BackupStatusHandler)
 		coordinatorGroup.GET("/servicestat", coordinator.GetServiceStatusHandler)
 		coordinatorGroup.GET("/listbackups", coordinator.ListBackupsHandler)
+		coordinatorGroup.GET("/crashsummary", coordinator.CrashSummaryHandler)
+		coordinatorGroup.GET("/servicecrashdetail", coordinator.ServiceCrashDetailHandler)
 	}
 
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))

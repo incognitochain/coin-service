@@ -1,4 +1,4 @@
-package otaindexer
+package assistant
 
 import (
 	"log"
@@ -7,6 +7,12 @@ import (
 	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/shared"
 )
+
+type CoordinatorState struct {
+	coordinatorConn *coordinator.ServiceConn
+	pauseService    bool
+	serviceStatus   string
+}
 
 var coordinatorState CoordinatorState
 
@@ -46,12 +52,6 @@ func processMsgFromCoordinator(readCh chan []byte) {
 }
 
 func pauseOperation() {
-	Submitted_OTAKey.Lock()
-	workerLock.Lock()
-	defer func() {
-		Submitted_OTAKey.Unlock()
-		workerLock.Unlock()
-	}()
 	coordinatorState.pauseService = true
 	for {
 		if coordinatorState.serviceStatus == "pause" {
@@ -68,12 +68,6 @@ func pauseOperation() {
 }
 
 func resumeOperation() {
-	Submitted_OTAKey.Lock()
-	workerLock.Lock()
-	defer func() {
-		Submitted_OTAKey.Unlock()
-		workerLock.Unlock()
-	}()
 	coordinatorState.pauseService = false
 	for {
 		if coordinatorState.serviceStatus == "resume" {
@@ -106,11 +100,9 @@ func willPauseOperation() {
 	for {
 		if coordinatorState.pauseService {
 			coordinatorState.serviceStatus = "pause"
-			time.Sleep(5 * time.Second)
 		} else {
 			coordinatorState.serviceStatus = "resume"
-			log.Println("service resumed")
-			break
 		}
+		time.Sleep(5 * time.Second)
 	}
 }

@@ -8,19 +8,18 @@ import (
 
 type Detector struct {
 	Lck      sync.RWMutex
-	Services map[string]ServiceCrashRecorder
+	Services map[string]ServiceRecorder
 
 	logger.UnimplementedLoggerServer
 }
 
-type ServiceCrashRecorder struct {
-	LostConnectionCount int
-	KnownCrash          []CrashReason
-	UnknownCrash        []CrashReason
+type ServiceRecorder struct {
+	Records map[string][]RecordDetail // map[RECORD_TYPE][]RecordDetail
 }
 
-type CrashReason struct {
+type RecordDetail struct {
 	ServiceID string
+	Type      string
 	Reason    string
 	Time      int64
 }

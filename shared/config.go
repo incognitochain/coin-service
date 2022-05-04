@@ -14,6 +14,7 @@ import (
 var ENABLE_PROFILER bool
 var RESET_FLAG bool
 var ServiceCfg Config
+var GITCOMMIT string
 
 type Config struct {
 	APIPort               int    `json:"apiport"`
