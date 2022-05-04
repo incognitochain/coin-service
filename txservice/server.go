@@ -177,70 +177,50 @@ func statusMode() {
 			panic(err)
 		}
 	}()
-	var err error
-
-	statusTopic, err = startPubsubTopic(TXSTATUS_TOPIC)
-	if err != nil {
-		panic(err)
-	}
-	var sub *pubsub.Subscription
-	sub, err = psclient.CreateSubscription(context.Background(), TXSTATUS_SUBID,
-		pubsub.SubscriptionConfig{Topic: statusTopic})
-	if err != nil {
-		log.Println(err)
-		sub = psclient.Subscription(TXSTATUS_SUBID)
-	}
-	ctx := context.Background()
-	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		fmt.Println(m.Data)
-		if string(m.Data) == txStatusBroadcasted {
-			txhash := m.Attributes["txhash"]
-			log.Println(txhash, m.Attributes)
-			inBlock, err := getTxStatusFullNode(txhash)
-			if err != nil {
-				log.Println(err)
-				if time.Since(m.PublishTime) > 30*time.Minute {
-					err = updateTxStatus(txhash, txStatusFailed, "")
-					if err != nil {
-						time.Sleep(4 * time.Second)
-						m.Nack()
-						return
-					}
-					m.Ack()
-					return
-				}
-				time.Sleep(4 * time.Second)
-				m.Nack()
-				return
-			}
-			if inBlock {
-				err = updateTxStatus(txhash, txStatusSuccess, "")
-				if err != nil {
-					time.Sleep(4 * time.Second)
-					m.Nack()
-					return
-				}
-			} else {
-				if time.Since(m.PublishTime) > 30*time.Minute {
-					err = updateTxStatus(txhash, txStatusFailed, "")
-					if err != nil {
-						time.Sleep(4 * time.Second)
-						m.Nack()
-						return
-					}
-					m.Ack()
-					return
-				}
-				time.Sleep(4 * time.Second)
-				m.Nack()
-				return
-			}
+	go func() {
+		var err error
+		statusTopic, err = startPubsubTopic(TXSTATUS_TOPIC)
+		if err != nil {
+			panic(err)
 		}
-		m.Ack()
-	})
-	if err != nil {
-		log.Fatalln(err)
-	}
+		var sub *pubsub.Subscription
+		sub, err = psclient.CreateSubscription(context.Background(), TXSTATUS_SUBID,
+			pubsub.SubscriptionConfig{Topic: statusTopic})
+		if err != nil {
+			log.Println(err)
+			sub = psclient.Subscription(TXSTATUS_SUBID)
+		}
+		ctx := context.Background()
+		err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
+			if string(m.Data) == txStatusBroadcasted {
+				txhash := m.Attributes["txhash"]
+				log.Println(txhash, m.Attributes)
+				inBlock, err := getTxStatusFullNode(txhash)
+				if err != nil {
+					log.Println(err)
+					time.Sleep(4 * time.Second)
+					m.Ack()
+					return
+				}
+				if inBlock {
+					err = updateTxStatus(txhash, txStatusSuccess, "")
+					if err != nil {
+						time.Sleep(4 * time.Second)
+						m.Nack()
+						return
+					}
+				} else {
+					time.Sleep(4 * time.Second)
+					m.Ack()
+					return
+				}
+			}
+			m.Ack()
+		})
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}()
 
 	go func() {
 		//re
