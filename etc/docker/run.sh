@@ -14,7 +14,9 @@ CONFIG_JSON=$(cat <<EOF
    "fullnodeendpoint": "$FULLNODE_ENDPOINT",
    "analyticsAPIEndpoint": "$ANALYTICS_API_ENDPOINT",
    "fullnodedata": $FULLNODEDATA,
-   "externaldecimals": "$EXTERNAL_DECIMALS"
+   "externaldecimals": "$EXTERNAL_DECIMALS",
+   "coordinator": "$COORDINATOR_ENDPOINT",
+   "logrecorder": "$LOG_RECORDER_ENDPOINT"
 }
 EOF
 )
