@@ -265,8 +265,8 @@ func ListBackupsHandler(c *gin.Context) {
 	})
 }
 
-func CrashSummaryHandler(c *gin.Context) {
-	crashCount, total := state.Detector.GetCrashCountAll()
+func IncidentSummaryHandler(c *gin.Context) {
+	crashCount, total := state.Detector.GetIncidentCountAll()
 	var result CrashSummary
 	result.Total = total
 
@@ -285,10 +285,23 @@ func CrashSummaryHandler(c *gin.Context) {
 	})
 }
 
-func ServiceCrashDetailHandler(c *gin.Context) {
-	result := state.Detector.GetCrashReportByService(c.Param("service"))
+func IncidentDetailHandler(c *gin.Context) {
+	result := state.Detector.GetIncidentReportByService(c.Query("service"))
 	c.JSON(200, gin.H{
 		"result": result,
+	})
+}
+
+func ResetIncidentLogsHandler(c *gin.Context) {
+	err := state.Detector.ClearIncidentReport()
+	if err != nil {
+		c.JSON(200, gin.H{
+			"Error": err,
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"result": "ok",
 	})
 }
 
