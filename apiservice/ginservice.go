@@ -171,8 +171,9 @@ func StartGinService() {
 		coordinatorGroup.GET("/backupstatus", coordinator.BackupStatusHandler)
 		coordinatorGroup.GET("/servicestat", coordinator.GetServiceStatusHandler)
 		coordinatorGroup.GET("/listbackups", coordinator.ListBackupsHandler)
-		coordinatorGroup.GET("/crashsummary", coordinator.CrashSummaryHandler)
-		coordinatorGroup.GET("/servicecrashdetail", coordinator.ServiceCrashDetailHandler)
+		coordinatorGroup.GET("/incident-summary", coordinator.IncidentSummaryHandler)
+		coordinatorGroup.GET("/incident-detail", coordinator.IncidentDetailHandler)
+		coordinatorGroup.GET("/reset-incidentlogs", coordinator.ResetIncidentLogsHandler)
 	}
 
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))

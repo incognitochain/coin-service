@@ -54,7 +54,7 @@ func (dtc *Detector) RecordLog(ctx context.Context, in *logger.LogRequest) (*emp
 	return new(emptypb.Empty), nil
 }
 
-func (dtc *Detector) GetCrashReportByService(ServiceGroup string) map[string][]RecordDetail {
+func (dtc *Detector) GetIncidentReportByService(ServiceGroup string) map[string][]RecordDetail {
 	dtc.Lck.RLock()
 	defer dtc.Lck.RUnlock()
 	if service, ok := dtc.Services[ServiceGroup]; ok {
@@ -63,7 +63,7 @@ func (dtc *Detector) GetCrashReportByService(ServiceGroup string) map[string][]R
 	return nil
 }
 
-func (dtc *Detector) GetCrashReportByServiceAndType(ServiceGroup string, recordType string) []RecordDetail {
+func (dtc *Detector) GetIncidentReportByServiceAndType(ServiceGroup string, recordType string) []RecordDetail {
 	dtc.Lck.RLock()
 	defer dtc.Lck.RUnlock()
 	if service, ok := dtc.Services[ServiceGroup]; ok {
@@ -74,7 +74,7 @@ func (dtc *Detector) GetCrashReportByServiceAndType(ServiceGroup string, recordT
 	return nil
 }
 
-func (dtc *Detector) GetCrashCountByService(ServiceGroup string) map[string]int {
+func (dtc *Detector) GetIncidentCountByService(ServiceGroup string) map[string]int {
 	dtc.Lck.RLock()
 	defer dtc.Lck.RUnlock()
 	result := make(map[string]int)
@@ -86,7 +86,7 @@ func (dtc *Detector) GetCrashCountByService(ServiceGroup string) map[string]int 
 	return result
 }
 
-func (dtc *Detector) GetCrashCountAll() (map[string]map[string]int, int) {
+func (dtc *Detector) GetIncidentCountAll() (map[string]map[string]int, int) {
 	dtc.Lck.RLock()
 	defer dtc.Lck.RUnlock()
 	total := 0
@@ -103,7 +103,7 @@ func (dtc *Detector) GetCrashCountAll() (map[string]map[string]int, int) {
 	return result, total
 }
 
-func (dtc *Detector) ClearCrashReport() error {
+func (dtc *Detector) ClearIncidentReport() error {
 	dtc.Lck.Lock()
 	defer dtc.Lck.Unlock()
 	dtc.Services = make(map[string]ServiceRecorder)
@@ -125,6 +125,7 @@ func (dtc *Detector) AddRecord(record RecordDetail, serviceGroup string) {
 	}
 	rlist := cs.Records[record.Type]
 	rlist = append(rlist, RecordDetail{
+		Type:      record.Type,
 		ServiceID: record.ServiceID,
 		Reason:    record.Reason,
 		Time:      time.Now().Unix(),

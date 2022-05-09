@@ -57,7 +57,7 @@ func DumpMongo(ctx context.Context, result chan string, mongoURL, dbName, backup
 			return
 		case <-ctx.Done():
 			dump.HandleInterrupt()
-			result <- "cancled"
+			result <- "cancelled"
 			return
 		}
 	}
