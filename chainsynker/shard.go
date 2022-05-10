@@ -18,6 +18,8 @@ import (
 	"github.com/incognitochain/incognito-chain/peerv2/proto"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/incognitochain/incognito-chain/wallet"
+
+	metadataBridge "github.com/incognitochain/incognito-chain/metadata/bridge"
 )
 
 func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
@@ -522,7 +524,7 @@ reCheckCrossShardHeight:
 				}
 			}
 		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2, metadata.BurningPBSCRequestMeta:
-			burningReqAction := tx.GetMetadata().(*metadata.BurningRequest)
+			burningReqAction := tx.GetMetadata().(*metadataBridge.BurningRequest)
 			realTokenID = burningReqAction.TokenID.String()
 			pubkey = base58.EncodeCheck(burningReqAction.BurnerAddress.GetPublicSpend().ToBytesS())
 		case metadata.ContractingRequestMeta:

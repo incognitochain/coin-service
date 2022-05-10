@@ -11,6 +11,7 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
+	metadataBridge "github.com/incognitochain/incognito-chain/metadata/bridge"
 	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/kamva/mgm/v3"
@@ -142,7 +143,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 				bridge = "btc"
 				pubkey = meta.ReceiverAddress.String()
 			case metadata.IssuingBSCRequestMeta, metadata.IssuingETHRequestMeta, metadataCommon.IssuingPLGRequestMeta:
-				meta := metadata.IssuingEVMRequest{}
+				meta := metadataBridge.IssuingEVMRequest{}
 				err := json.Unmarshal([]byte(tx.Metadata), &meta)
 				if err != nil {
 					panic(err)
@@ -167,7 +168,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 				requestTx = meta.RequestedTxID.String()
 				bridge = "btc"
 			case metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta, metadataCommon.IssuingPRVERC20ResponseMeta, metadataCommon.IssuingPRVBEP20ResponseMeta, metadataCommon.IssuingPLGResponseMeta:
-				meta := metadata.IssuingEVMResponse{}
+				meta := metadataBridge.IssuingEVMResponse{}
 				err := json.Unmarshal([]byte(tx.Metadata), &meta)
 				if err != nil {
 					panic(err)
