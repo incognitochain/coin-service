@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
@@ -21,6 +22,7 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
+	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -38,9 +40,21 @@ func StartProcessor() {
 	if err != nil {
 		panic(err)
 	}
+	id := uuid.NewV4()
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: coordinator.SERVICEGROUP_LIQUIDITY_PROCESSOR,
+		ID:          id.String(),
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
 	for {
 		time.Sleep(5 * time.Second)
-
+		willPauseOperation()
 		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 5000)
 		if err != nil {
 			log.Println("getTxToProcess", err)

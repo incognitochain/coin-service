@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/chainsynker"
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/patrickmn/go-cache"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -30,9 +32,22 @@ func StartGinService() {
 	cachedb = cache.New(5*time.Minute, 5*time.Minute)
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
+
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
+		id := uuid.NewV4()
+		newServiceConn := coordinator.ServiceConn{
+			ServiceName: coordinator.SERVICEGROUP_QUERY,
+			ID:          id.String(),
+			ReadCh:      make(chan []byte),
+			WriteCh:     make(chan []byte),
+		}
+		coordinatorState.coordinatorConn = &newServiceConn
+		coordinatorState.serviceStatus = "pause"
+		coordinatorState.pauseService = true
+		connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+		go willPauseOperation()
 		go tokenListWatcher()
 		go poolListWatcher()
 		go prefetchPdexV3State()
@@ -148,6 +163,15 @@ func StartGinService() {
 		r.POST("/rescanotakey", APIRescanOTA)
 		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
 		r.GET("/workerstat", otaindexer.GetWorkerStat)
+	}
+
+	if shared.ServiceCfg.Mode == shared.COORDINATORMODE {
+		coordinatorGroup := r.Group("/coordinator")
+		coordinatorGroup.GET("/connectservice", coordinator.ServiceRegisterHandler)
+		coordinatorGroup.GET("/backup", coordinator.BackupHandler)
+		coordinatorGroup.GET("/backupstatus", coordinator.BackupStatusHandler)
+		coordinatorGroup.GET("/servicestat", coordinator.GetServiceStatusHandler)
+		coordinatorGroup.GET("/listbackups", coordinator.ListBackupsHandler)
 	}
 
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))

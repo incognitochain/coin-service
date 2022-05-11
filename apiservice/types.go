@@ -1,11 +1,15 @@
 package apiservice
 
 import (
-	"sync"
-
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/shared"
-	"github.com/incognitochain/incognito-chain/privacy"
 )
+
+type CoordinatorState struct {
+	coordinatorConn *coordinator.ServiceConn
+	pauseService    bool
+	serviceStatus   string
+}
 
 type APICheckKeyImagesRequest struct {
 	Keyimages []string
@@ -132,6 +136,7 @@ type PdexV3PoolDetail struct {
 	PriceChange24h float64
 	APY            uint64
 	IsVerify       bool
+	willSwapToken  bool
 }
 
 type PdexV3LiquidityHistoryRespond struct {

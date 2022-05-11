@@ -35,10 +35,11 @@ const (
 	QUERYMODE     = "query"
 	WORKERMODE    = "indexworker"
 	// FULLMODE      = "full"
-	LIQUIDITYMODE = "liquidity"
-	SHIELDMODE    = "shield"
-	TRADEMODE     = "trade"
-	ASTMODE       = "assistant"
+	LIQUIDITYMODE   = "liquidity"
+	SHIELDMODE      = "shield"
+	TRADEMODE       = "trade"
+	ASTMODE         = "assistant"
+	COORDINATORMODE = "coordinator"
 )
 
 const (
