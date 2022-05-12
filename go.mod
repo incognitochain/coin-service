@@ -10,7 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20220510072523-7073919878a6
+	github.com/incognitochain/incognito-chain v0.0.0-20220511070206-529823ba950b
 	github.com/json-iterator/go v1.1.12
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -23,6 +23,8 @@ require (
 	github.com/mongodb/mongo-tools v0.0.0-20220222145442-9a0003067b69
 	github.com/rs/zerolog v1.26.1
 	github.com/stretchr/testify v1.7.0
+	google.golang.org/grpc v1.46.0
+	google.golang.org/protobuf v1.27.1
 )
 
 require (
@@ -187,14 +189,13 @@ require (
 	go.uber.org/atomic v1.6.0 // indirect
 	go.uber.org/multierr v1.5.0 // indirect
 	go.uber.org/zap v1.15.0 // indirect
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
-	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a // indirect
+	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e // indirect
+	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
-	golang.org/x/text v0.3.5 // indirect
-	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 // indirect
-	google.golang.org/grpc v1.27.1 // indirect
-	google.golang.org/protobuf v1.23.0 // indirect
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
+	golang.org/x/text v0.3.6 // indirect
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/resty.v1 v1.10.3 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

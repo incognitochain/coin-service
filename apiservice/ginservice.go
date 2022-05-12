@@ -155,7 +155,6 @@ func StartGinService() {
 
 		deviceGroup := r.Group("/device")
 		deviceGroup.GET("/getdevicebyqrcode", APIGetDeviceByQRCode)
-
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
