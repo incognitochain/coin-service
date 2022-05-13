@@ -183,7 +183,7 @@ func DBGetLatestTxByShardID(shardID int, limit int64) ([]shared.TxData, error) {
 func DBGetTxByMetaAndOTA(pubkey string, metatype int, limit int64, offset int64) ([]shared.TxData, error) {
 	var result []shared.TxData
 	filter := bson.M{"pubkeyreceivers": bson.M{operator.Eq: pubkey}, "metatype": bson.M{operator.Eq: strconv.Itoa(metatype)}}
-	err := mgm.Coll(&shared.TxData{}).SimpleFind(&result, filter, &options.FindOptions{
+	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(context.Background(), &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", -1}},
 		Skip:  &offset,
 		Limit: &limit,

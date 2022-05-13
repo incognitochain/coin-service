@@ -232,7 +232,7 @@ func DBGetPDEV3ContributeRespondByAccessID(accessID []string, limit int64, offse
 	}
 	var result []shared.ContributionData
 	filter := bson.M{"accessids": bson.M{operator.In: accessID}}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit*10)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"requesttime", -1}},
 		Skip:  &offset,
@@ -248,8 +248,8 @@ func DBGetPDEV3ContributeRespondByAccessID(accessID []string, limit int64, offse
 func DBGetPDEV3ContributeByRespondTx(respondTxs []string) ([]shared.ContributionData, error) {
 	var result []shared.ContributionData
 	filter := bson.M{"respondtxs": bson.M{operator.In: respondTxs}}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondTxs))*shared.DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+	// ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(respondTxs)*10)*shared.DB_OPERATION_TIMEOUT)
+	err := mgm.Coll(&shared.ContributionData{}).SimpleFindWithCtx(context.Background(), &result, filter, &options.FindOptions{
 		Sort: bson.D{{"requesttime", -1}},
 	})
 	if err != nil {
