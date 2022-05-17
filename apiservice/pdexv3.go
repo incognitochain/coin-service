@@ -391,6 +391,7 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 		}
 		rList, err := getRefundContribution(otakey, respondTxs)
 		if err != nil {
+			log.Println("getRefundContribution", err)
 			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}

@@ -172,7 +172,7 @@ func produceContributeData(list []shared.ContributionData, isNextOTA bool, rawOT
 			if v.ContributeTokens[0] != v.ContributeTokens[1] {
 				data.Status = "completed"
 			} else {
-				data.Status = "refunding"
+				data.Status = "waiting"
 			}
 		}
 		if len(v.RequestTxs) == 2 {
