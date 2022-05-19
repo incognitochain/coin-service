@@ -151,6 +151,14 @@ func (pdexv3) PoolShare(c *gin.Context) {
 			c.JSON(http.StatusOK, buildGinErrorRespond(err))
 			return
 		}
+		if len(accessOTAList) == 0 {
+			respond := APIRespond{
+				Result: nil,
+				Error:  nil,
+			}
+			c.JSON(http.StatusOK, respond)
+			return
+		}
 		// list, err = database.DBGetShareByCurrentAccessID(accessOTAList)
 		// if err != nil {
 		// 	c.JSON(http.StatusOK, buildGinErrorRespond(err))
