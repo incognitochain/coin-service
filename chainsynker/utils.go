@@ -11,6 +11,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 	"github.com/incognitochain/incognito-chain/privacy"
+	"github.com/incognitochain/incognito-chain/utils"
 
 	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 )
@@ -89,10 +90,13 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*pdex.PoolPa
 				}
 			}
 			for tokenID, value := range reward {
-				receiver := privacy.OTAReceiver{}
-				err := receiver.FromString(value.Receiver())
-				if err != nil {
-					return nil, err
+				var receiver *privacy.OTAReceiver
+				if value.Receiver() != utils.EmptyString && value.WithdrawnStatus() != pdex.DefaultWithdrawnOrderReward {
+					receiver = new(privacy.OTAReceiver)
+					err := receiver.FromString(value.Receiver())
+					if err != nil {
+						return nil, err
+					}
 				}
 
 				rw := orderReward[nftID].UncollectedRewards[tokenID]

@@ -48,7 +48,7 @@ type MakingVolume struct {
 }
 
 type OrderRewardDetail struct {
-	Receiver        privacy.OTAReceiver
+	Receiver        *privacy.OTAReceiver
 	Amount          uint64
 	WithdrawnStatus byte
 }
