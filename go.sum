@@ -356,6 +356,8 @@ github.com/incognitochain/incognito-chain v0.0.0-20220519072747-55a5c8d235f9 h1:
 github.com/incognitochain/incognito-chain v0.0.0-20220519072747-55a5c8d235f9/go.mod h1:KEfu/v3ClLnnsl12dNY6TUsbAnTHdy+imzg/1UeQgNQ=
 github.com/incognitochain/incognito-chain v0.0.0-20220519092309-4a5b264621db h1:Hz3eJ3MPOXUqK5xZjvoUhK414yOvbvVU+3Q0hTxhRAk=
 github.com/incognitochain/incognito-chain v0.0.0-20220519092309-4a5b264621db/go.mod h1:KEfu/v3ClLnnsl12dNY6TUsbAnTHdy+imzg/1UeQgNQ=
+github.com/incognitochain/incognito-chain v0.0.0-20220519103032-6cffc5e9be07 h1:18WRhMcFqMXSB8JfHSZ1UdX3ztEhx6SU8aB9nUo4h3s=
+github.com/incognitochain/incognito-chain v0.0.0-20220519103032-6cffc5e9be07/go.mod h1:KEfu/v3ClLnnsl12dNY6TUsbAnTHdy+imzg/1UeQgNQ=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
