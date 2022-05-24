@@ -499,6 +499,7 @@ func APIGetTokenInfo(c *gin.Context) {
 func APIGetTokenList(c *gin.Context) {
 	nftOnly := c.Query("nft")
 	all := c.Query("all")
+
 	var datalist []TokenInfo
 	if nftOnly == "true" {
 		if err := cacheGet(tokenInfoKey+"nft", &datalist); err != nil {

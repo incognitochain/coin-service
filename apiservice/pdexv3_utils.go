@@ -80,35 +80,39 @@ func produceTradeDataRespond(tradeList []shared.TradeOrderData, tradeStatusList 
 
 func produceWithdrawContributeData(list []shared.WithdrawContributionData) ([]PdexV3WithdrawRespond, error) {
 	var result []PdexV3WithdrawRespond
+	txRequests := make(map[string]interface{})
 	for _, v := range list {
-		var token1, token2 string
-		var amount1, amount2 uint64
-		if len(v.RespondTxs) == 2 {
-			amount1, _ = strconv.ParseUint(v.WithdrawAmount[0], 10, 64)
-			amount2, _ = strconv.ParseUint(v.WithdrawAmount[1], 10, 64)
+		if _, ok := txRequests[v.RequestTx]; !ok {
+			var token1, token2 string
+			var amount1, amount2 uint64
+			if len(v.RespondTxs) >= 2 {
+				amount1, _ = strconv.ParseUint(v.WithdrawAmount[0], 10, 64)
+				amount2, _ = strconv.ParseUint(v.WithdrawAmount[1], 10, 64)
+			}
+			if len(v.RespondTxs) == 1 {
+				amount1, _ = strconv.ParseUint(v.WithdrawAmount[0], 10, 64)
+			}
+			tks := strings.Split(v.PoolID, "-")
+			token1 = tks[0]
+			token2 = tks[1]
+			shareAmount, err := strconv.ParseUint(v.ShareAmount, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, PdexV3WithdrawRespond{
+				PoolID:      v.PoolID,
+				RequestTx:   v.RequestTx,
+				RespondTxs:  v.RespondTxs,
+				TokenID1:    token1,
+				Amount1:     amount1,
+				TokenID2:    token2,
+				Amount2:     amount2,
+				Status:      v.Status,
+				ShareAmount: shareAmount,
+				Requestime:  v.RequestTime,
+			})
+			txRequests[v.RequestTx] = 0
 		}
-		if len(v.RespondTxs) == 1 {
-			amount1, _ = strconv.ParseUint(v.WithdrawAmount[0], 10, 64)
-		}
-		tks := strings.Split(v.PoolID, "-")
-		token1 = tks[0]
-		token2 = tks[1]
-		shareAmount, err := strconv.ParseUint(v.ShareAmount, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, PdexV3WithdrawRespond{
-			PoolID:      v.PoolID,
-			RequestTx:   v.RequestTx,
-			RespondTxs:  v.RespondTxs,
-			TokenID1:    token1,
-			Amount1:     amount1,
-			TokenID2:    token2,
-			Amount2:     amount2,
-			Status:      v.Status,
-			ShareAmount: shareAmount,
-			Requestime:  v.RequestTime,
-		})
 	}
 	return result, nil
 }
