@@ -35,6 +35,7 @@ type IncPdexState struct {
 var pdexV3State pdex.State
 
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
+	willPauseOperation(-1)
 	log.Printf("start processing coin for block %v beacon\n", height)
 	blk, _, err := Localnode.GetBlockchain().GetBeaconBlockByHash(h)
 	if err != nil {
@@ -45,11 +46,12 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		sort.Slice(blks, func(i, j int) bool { return blks[i].Height > blks[j].Height })
 	retry:
 		pass := true
-		blockProcessedLock.RLock()
-		if blockProcessed[int(shardID)] < blks[0].Height {
+
+		currentState.blockProcessedLock.RLock()
+		if currentState.BlockProcessed[int(shardID)] < blks[0].Height {
 			pass = false
 		}
-		blockProcessedLock.RUnlock()
+		currentState.blockProcessedLock.RUnlock()
 		if !pass {
 			time.Sleep(500 * time.Millisecond)
 			goto retry
@@ -64,7 +66,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		willProcess = false
 	}
 	if height < config.Param().PDexParams.Pdexv3BreakPointHeight && willProcess {
-		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
 		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
 		tradingFees := state.Reader().TradingFees()
 		shares := state.Reader().Shares()
@@ -83,7 +84,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}
 
 		pdeStateJSON := jsonresult.CurrentPDEState{
-			BeaconTimeStamp:         beaconBestState.BestBlock.Header.Timestamp,
+			BeaconTimeStamp:         blk.Header.Timestamp,
 			PDEPoolPairs:            poolPairs,
 			PDEShares:               shares,
 			WaitingPDEContributions: waitingContributions,
@@ -206,11 +207,17 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		wg.Add(2)
 		go func() {
 			paramJSON := pdexV3State.Reader().Params().Clone()
+			waitingContributions := map[string]*rawdbv2.Pdexv3Contribution{}
+			err = json.Unmarshal(pdexV3State.Reader().WaitingContributions(), &waitingContributions)
+			if err != nil {
+				panic(err)
+			}
 			pdeStateJSON = jsonresult.Pdexv3State{
-				BeaconTimeStamp: blk.Header.Timestamp,
-				PoolPairs:       &poolPairsJSON,
-				StakingPools:    &stateV2.StakingPoolsState,
-				Params:          paramJSON,
+				BeaconTimeStamp:      blk.Header.Timestamp,
+				PoolPairs:            &poolPairsJSON,
+				StakingPools:         &stateV2.StakingPoolsState,
+				Params:               paramJSON,
+				WaitingContributions: &waitingContributions,
 			}
 			pdeStr, err = json.MarshalToString(pdeStateJSON)
 			if err != nil {
@@ -347,7 +354,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}()
 		wg.Wait()
 		log.Printf("save pdex state 11 %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-
 	}
 
 	statePrefix := BeaconData
@@ -357,9 +363,13 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		panic(err)
 	}
 	log.Printf("lvdb stored coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(t10))
-	blockProcessedLock.Lock()
-	blockProcessed[-1] = blk.Header.Height
-	blockProcessedLock.Unlock()
+	currentState.blockProcessedLock.Lock()
+	currentState.BlockProcessed[-1] = blk.Header.Height
+	currentState.blockProcessedLock.Unlock()
+	err = updateState()
+	if err != nil {
+		panic(err)
+	}
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
@@ -414,20 +424,25 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				}
 				if _, ok := state.OrderRewards[shareID]; ok {
 					for tokenID, amount := range state.OrderRewards[shareID].UncollectedRewards {
-						orderReward[tokenID.String()] = amount
+						orderReward[tokenID.String()] = amount.Amount
 					}
 					collectedShared[shareID] = struct{}{}
 				}
 				for k, v := range rewards {
 					tradingFee[k.String()] = v
 				}
+				currentAccess := ""
+				if len(share.AccessOTA()) > 0 {
+					currentAccess = common.HashH(share.AccessOTA()[:]).String()
+				}
 				shareData := shared.PoolShareData{
-					Version:     2,
-					PoolID:      poolID,
-					Amount:      share.Amount(),
-					TradingFee:  tradingFee,
-					OrderReward: orderReward,
-					NFTID:       shareID,
+					Version:         2,
+					PoolID:          poolID,
+					Amount:          share.Amount(),
+					TradingFee:      tradingFee,
+					OrderReward:     orderReward,
+					NFTID:           shareID,
+					CurrentAccessID: currentAccess,
 				}
 				poolShare = append(poolShare, shareData)
 			}
@@ -436,7 +451,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				orderReward := make(map[string]uint64)
 				if _, ok := collectedShared[shareID]; !ok {
 					for tokenID, amount := range share.UncollectedRewards {
-						orderReward[tokenID.String()] = amount
+						orderReward[tokenID.String()] = amount.Amount
 					}
 					shareData := shared.PoolShareData{
 						Version:     2,
@@ -449,14 +464,22 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 
 			for _, order := range state.Orderbook.Orders {
+				currentAccess := ""
+				if len(order.AccessOTA()) > 0 {
+					currentAccess = common.HashH(order.AccessOTA()[:]).String()
+				}
+
 				newOrder := shared.LimitOrderStatus{
-					RequestTx:     order.Id(),
-					Token1Balance: fmt.Sprintf("%v", order.Token0Balance()),
-					Token2Balance: fmt.Sprintf("%v", order.Token1Balance()),
-					Direction:     order.TradeDirection(),
-					PoolID:        poolID,
-					PairID:        poolData.PairID,
-					NftID:         order.NftID().String(),
+					RequestTx:       order.Id(),
+					Token1Balance:   fmt.Sprintf("%v", order.Token0Balance()),
+					Token2Balance:   fmt.Sprintf("%v", order.Token1Balance()),
+					Direction:       order.TradeDirection(),
+					PoolID:          poolID,
+					PairID:          poolData.PairID,
+					CurrentAccessID: currentAccess,
+				}
+				if !order.NftID().IsZeroValue() {
+					newOrder.NftID = order.NftID().String()
 				}
 				orderStatus = append(orderStatus, newOrder)
 			}
@@ -477,7 +500,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				tk2Amount += a2
 			}
 			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
-			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
+			data.Token2Amount = fmt.Sprintf("%v", tk2Amount)
 			pairList = append(pairList, data)
 		}
 		wg.Done()
@@ -504,11 +527,16 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				for k, v := range reward {
 					rewardMap[k.String()] = v
 				}
+				currentAccess := ""
+				if len(staker.AccessOTA()) > 0 {
+					currentAccess = common.HashH(staker.AccessOTA()[:]).String()
+				}
 				stake := shared.PoolStakerData{
-					TokenID: tokenID,
-					NFTID:   shareID,
-					Amount:  staker.Liquidity(),
-					Reward:  rewardMap,
+					TokenID:         tokenID,
+					NFTID:           shareID,
+					Amount:          staker.Liquidity(),
+					Reward:          rewardMap,
+					CurrentAccessID: currentAccess,
 				}
 				poolStaking = append(poolStaking, stake)
 			}
@@ -928,14 +956,14 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			data.Status = inst[1]
 			data.Content = inst[2]
 			switch inst[1] {
-			case common.Pdexv3AcceptUnstakingStatus:
+			case common.Pdexv3AcceptStringStatus:
 				acceptInst := instruction.NewAcceptStaking()
 				err := acceptInst.FromStringSlice(inst)
 				if err != nil {
 					panic(err)
 				}
 				data.TxRequest = acceptInst.TxReqID().String()
-			case common.Pdexv3RejectUnstakingStatus:
+			case common.Pdexv3RejectStringStatus:
 				rejectInst := instruction.NewRejectStaking()
 				err := rejectInst.FromStringSlice(inst)
 				if err != nil {
@@ -947,14 +975,14 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 			data.Status = inst[1]
 			data.Content = inst[2]
 			switch inst[1] {
-			case common.Pdexv3AcceptUnstakingStatus:
+			case common.Pdexv3AcceptStringStatus:
 				acceptInst := instruction.NewAcceptUnstaking()
 				err := acceptInst.FromStringSlice(inst)
 				if err != nil {
 					panic(err)
 				}
 				data.TxRequest = acceptInst.TxReqID().String()
-			case common.Pdexv3RejectUnstakingStatus:
+			case common.Pdexv3RejectStringStatus:
 				rejectInst := instruction.NewRejectUnstaking()
 				err := rejectInst.FromStringSlice(inst)
 				if err != nil {

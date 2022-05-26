@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
@@ -16,6 +17,7 @@ import (
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
+	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -34,8 +36,21 @@ func StartProcessor() {
 	if err != nil {
 		panic(err)
 	}
+	id := uuid.NewV4()
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: coordinator.SERVICEGROUP_TRADE_PROCESSOR,
+		ID:          id.String(),
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
 	for {
 		time.Sleep(5 * time.Second)
+		willPauseOperation()
 		startTime := time.Now()
 		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 5000)
 		if err != nil {
@@ -86,7 +101,7 @@ func StartProcessor() {
 
 func getTxToProcess(lastID string, limit int64) ([]shared.TxData, error) {
 	var result []shared.TxData
-	metas := []string{strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta), strconv.Itoa(metadata.PDETradeRequestMeta), strconv.Itoa(metadata.Pdexv3TradeRequestMeta), strconv.Itoa(metadata.Pdexv3AddOrderRequestMeta), strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta), strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderRequestMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
+	metas := []string{strconv.Itoa(metadata.PDECrossPoolTradeRequestMeta), strconv.Itoa(metadata.PDETradeRequestMeta), strconv.Itoa(metadata.Pdexv3TradeRequestMeta), strconv.Itoa(metadata.Pdexv3AddOrderRequestMeta), strconv.Itoa(metadata.PDECrossPoolTradeResponseMeta), strconv.Itoa(metadata.PDETradeResponseMeta), strconv.Itoa(metadata.Pdexv3AddOrderResponseMeta), strconv.Itoa(metadata.Pdexv3TradeResponseMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderRequestMeta), strconv.Itoa(metadata.Pdexv3WithdrawOrderResponseMeta)}
 	var obID primitive.ObjectID
 	if lastID == "" {
 		obID = primitive.ObjectID{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -249,7 +264,15 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				pairID = tokenStrs[0] + "-" + tokenStrs[1]
 				minaccept = item.MinAcceptableAmount
 				amount = item.SellAmount
-				nftID = item.NftID.String()
+				if item.UseNft() {
+					nftID = item.NftID.String()
+				} else {
+					if item.AccessOption.AccessID == nil {
+						nftID = metadataPdexv3.GenAccessID(item.Receiver[common.PdexAccessCoinID]).String()
+					} else {
+						nftID = item.AccessID.String()
+					}
+				}
 				version = 2
 
 			}
@@ -337,15 +360,22 @@ func processTradeToken(txlist []shared.TxData) ([]shared.TradeOrderData, []share
 				RespondAmount: []uint64{},
 			}
 			for tokenID, _ := range meta.Receiver {
-				wdData.TokenIDs = append(wdData.TokenIDs, tokenID.String())
+				if tokenID != common.PdexAccessCoinID {
+					wdData.TokenIDs = append(wdData.TokenIDs, tokenID.String())
+				}
 			}
+
 			wdData.Amount = meta.Amount
 			order := shared.TradeOrderData{
 				RequestTx:        meta.OrderID,
 				WithdrawTxs:      []string{tx.TxHash},
 				WithdrawPendings: []string{tx.TxHash},
 				WithdrawInfos:    make(map[string]shared.TradeOrderWithdrawInfo),
-				NFTID:            meta.NftID.String(),
+			}
+			if meta.UseNft() {
+				order.NFTID = meta.NftID.String()
+			} else {
+				order.NFTID = common.HashH(meta.BurntOTA.ToBytesS()[:]).String()
 			}
 			order.WithdrawInfos[tx.TxHash] = wdData
 			cancelTrades = append(cancelTrades, order)
@@ -422,6 +452,7 @@ func updateTradeStatus() error {
 				}
 				if i.Status == "0" {
 					a.IsRejected = true
+					data.WithdrawTxs = append(data.WithdrawTxs, wdtx)
 					data.WithdrawInfos[wdtx] = a
 					data.WithdrawPendings = append(data.WithdrawPendings, wdtx) //add to pull from DB
 					listToUpdate = append(listToUpdate, data)

@@ -194,6 +194,10 @@ func APIGetRandomCommitments(c *gin.Context) {
 				i--
 				continue
 			}
+			if coinData.IsNFT {
+				i--
+				continue
+			}
 			coinV2 := new(coin.CoinV2)
 			err = coinV2.SetBytes(coinData.Coin)
 			if err != nil {
@@ -300,11 +304,18 @@ func APIGetTokenInfo(c *gin.Context) {
 		chainTkListMap := make(map[string]struct{})
 
 		baseToken, _ := database.DBGetBasePriceToken()
+		stableCoins, err := database.DBGetStableCoinID()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			return
+		}
+		stableCoins = append(stableCoins, baseToken)
+		stableCoinList := strings.Join(stableCoins, ",")
 
 		prvUsdtPair24h := float64(0)
 		for v, _ := range defaultPools {
 			if strings.Contains(v, baseToken) && strings.Contains(v, common.PRVCoinID.String()) {
-				prvUsdtPair24h = getPoolPair24hChange(v)
+				prvUsdtPair24h = getPoolPair24hChange(v, false)
 				break
 			}
 		}
@@ -378,11 +389,12 @@ func APIGetTokenInfo(c *gin.Context) {
 			}
 			data.DefaultPairToken = defaultPairToken
 			data.DefaultPoolPair = defaultPool
+
 			if data.TokenID == common.PRVCoinID.String() {
 				data.PercentChange24h = fmt.Sprintf("%.2f", prvUsdtPair24h)
 			} else {
 				if data.DefaultPairToken != "" && data.TokenID != baseToken {
-					data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, baseToken, prvUsdtPair24h))
+					data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, stableCoinList, prvUsdtPair24h))
 				}
 			}
 
@@ -487,6 +499,7 @@ func APIGetTokenInfo(c *gin.Context) {
 func APIGetTokenList(c *gin.Context) {
 	nftOnly := c.Query("nft")
 	all := c.Query("all")
+
 	var datalist []TokenInfo
 	if nftOnly == "true" {
 		if err := cacheGet(tokenInfoKey+"nft", &datalist); err != nil {
@@ -979,10 +992,10 @@ func APIGetKeyInfo(c *gin.Context) {
 			for id, nft := range result.NFTIndex {
 				if d, ok := result.CoinIndex[id]; ok {
 					if nft.Start > d.Start {
-						d.Start = nft.Start
+						nft.Start = d.Start
 					}
-					if nft.End > d.End {
-						d.End = nft.End
+					if nft.End < d.End {
+						nft.End = d.End
 					}
 					nft.Total += d.Total
 					result.NFTIndex[id] = nft
@@ -997,6 +1010,10 @@ func APIGetKeyInfo(c *gin.Context) {
 					}
 				}
 			}
+			if cinfo, ok := result.NFTIndex[common.PdexAccessCoinID.String()]; ok {
+				result.CoinIndex[common.PdexAccessCoinID.String()] = cinfo
+			}
+			delete(result.NFTIndex, common.PdexAccessCoinID.String())
 			respond := APIRespond{
 				Result: result,
 				Error:  nil,

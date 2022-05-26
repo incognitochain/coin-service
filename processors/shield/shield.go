@@ -7,14 +7,17 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
+	metadataBridge "github.com/incognitochain/incognito-chain/metadata/bridge"
 	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	"github.com/incognitochain/incognito-chain/transaction"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
+	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -32,9 +35,21 @@ func StartProcessor() {
 	if err != nil {
 		panic(err)
 	}
+	id := uuid.NewV4()
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: coordinator.SERVICEGROUP_SHIELD_PROCESSOR,
+		ID:          id.String(),
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
 	for {
 		time.Sleep(5 * time.Second)
-
+		willPauseOperation()
 		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 5000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
@@ -142,7 +157,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 				bridge = "btc"
 				pubkey = meta.ReceiverAddress.String()
 			case metadata.IssuingBSCRequestMeta, metadata.IssuingETHRequestMeta, metadataCommon.IssuingPLGRequestMeta:
-				meta := metadata.IssuingEVMRequest{}
+				meta := metadataBridge.IssuingEVMRequest{}
 				err := json.Unmarshal([]byte(tx.Metadata), &meta)
 				if err != nil {
 					panic(err)
@@ -167,7 +182,7 @@ func processShieldTxs(shieldTxs []shared.TxData) ([]shared.ShieldData, []shared.
 				requestTx = meta.RequestedTxID.String()
 				bridge = "btc"
 			case metadata.IssuingETHResponseMeta, metadata.IssuingBSCResponseMeta, metadataCommon.IssuingPRVERC20ResponseMeta, metadataCommon.IssuingPRVBEP20ResponseMeta, metadataCommon.IssuingPLGResponseMeta:
-				meta := metadata.IssuingEVMResponse{}
+				meta := metadataBridge.IssuingEVMResponse{}
 				err := json.Unmarshal([]byte(tx.Metadata), &meta)
 				if err != nil {
 					panic(err)

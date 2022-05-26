@@ -3,6 +3,8 @@ package shared
 import (
 	"time"
 
+	"github.com/incognitochain/incognito-chain/common"
+	"github.com/incognitochain/incognito-chain/privacy/operation"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -33,10 +35,11 @@ const (
 	QUERYMODE     = "query"
 	WORKERMODE    = "indexworker"
 	// FULLMODE      = "full"
-	LIQUIDITYMODE = "liquidity"
-	SHIELDMODE    = "shield"
-	TRADEMODE     = "trade"
-	ASTMODE       = "assistant"
+	LIQUIDITYMODE   = "liquidity"
+	SHIELDMODE      = "shield"
+	TRADEMODE       = "trade"
+	ASTMODE         = "assistant"
+	COORDINATORMODE = "coordinator"
 )
 
 const (
@@ -55,3 +58,9 @@ const (
 const (
 	BurnCoinID = "1y4gnYS1Ns2K7BjQTjgfZ5nTR8JZMkMJ3CTGMj2Pk7CQkSTFgA"
 )
+
+var AccessTokenAssetTag string
+
+func init() {
+	AccessTokenAssetTag = operation.HashToPoint(common.PdexAccessCoinID[:]).String()
+}

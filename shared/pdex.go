@@ -7,6 +7,7 @@ import (
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
+	"github.com/incognitochain/incognito-chain/privacy"
 )
 
 type CurrentPDEState struct {
@@ -46,10 +47,14 @@ type MakingVolume struct {
 	Volume map[string]*big.Int // nftID -> amount
 }
 
-type Reward map[common.Hash]uint64 // tokenID -> amount
+type OrderRewardDetail struct {
+	Receiver        *privacy.OTAReceiver
+	Amount          uint64
+	WithdrawnStatus byte
+}
 
 type OrderReward struct {
-	UncollectedRewards Reward
+	UncollectedRewards map[common.Hash]OrderRewardDetail
 }
 
 type Pdexv3GetStateRPCResult struct {
