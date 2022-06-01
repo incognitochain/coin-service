@@ -10,7 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-playground/validator/v10 v10.5.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/incognitochain/incognito-chain v0.0.0-20220412080806-a5246a4918c3
+	github.com/incognitochain/incognito-chain v0.0.0-20220601093223-6da8af71475d
 	github.com/jrick/logrotate v1.0.0
 	github.com/json-iterator/go v1.1.10
 	github.com/kamva/mgm/v3 v3.1.0
@@ -21,7 +21,7 @@ require (
 	go.mongodb.org/mongo-driver v1.5.0
 	golang.org/x/crypto v0.0.0-20210415154028-4f45737414dc // indirect
 	golang.org/x/net v0.0.0-20211029224645-99673261e6eb // indirect
-	golang.org/x/sys v0.0.0-20210423082822-04245dca01da // indirect
+	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
 	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/api v0.10.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
