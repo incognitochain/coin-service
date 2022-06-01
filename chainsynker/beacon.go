@@ -14,7 +14,6 @@ import (
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain"
-	"github.com/incognitochain/incognito-chain/blockchain/bridgeagg"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/config"
@@ -34,7 +33,8 @@ type IncPdexState struct {
 }
 
 var pdexV3State pdex.State
-var bridgeState *bridgeagg.State
+
+// var bridgeManager *bridgeagg.Manager
 
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
 	log.Printf("start processing coin for block %v beacon\n", height)
@@ -60,29 +60,30 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	startTime := time.Now()
 	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
 	beaconFeatureStateDB := beaconBestState.GetBeaconFeatureStateDB()
-	if bridgeState == nil {
-		bridgeState, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		bridgeState.ClearCache()
-		err = bridgeState.Process(blk.Body.Instructions, beaconFeatureStateDB)
-		if err != nil {
-			log.Println("Error when processing bridge state: ", err)
-			bridgeState, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
-			if err != nil {
-				panic(err)
-			}
-		}
+	// if bridgeManager == nil {
+	// 	bridgeManager, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// } else {
+	// 	bridgeManager.ClearCache()
+	// 	err = bridgeManager.Process(blk.Body.Instructions, beaconFeatureStateDB)
+	// 	if err != nil {
+	// 		log.Println("Error when processing bridge state: ", err)
+	// 		bridgeManager, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	}
+	// }
+	bridgeManagerJson := &jsonresult.BridgeAggState{
+		BeaconTimeStamp:     blk.Header.Timestamp,
+		UnifiedTokenInfos:   beaconBestState.BridgeAggManager().State().UnifiedTokenVaults(),
+		WaitingUnshieldReqs: beaconBestState.BridgeAggManager().State().CloneWaitingUnshieldReqs(),
+		BaseDecimal:         config.Param().BridgeAggParam.BaseDecimal,
+		MaxLenOfPath:        config.Param().BridgeAggParam.MaxLenOfPath,
 	}
-	bridgeStateJson := &jsonresult.BridgeAggState{
-		BeaconTimeStamp:   blk.Header.Timestamp,
-		UnifiedTokenInfos: bridgeState.UnifiedTokenInfos(),
-		BaseDecimal:       config.Param().BridgeAggParam.BaseDecimal,
-		MaxLenOfPath:      config.Param().BridgeAggParam.MaxLenOfPath,
-	}
-	bridgeStr, err := json.MarshalToString(bridgeStateJson)
+	bridgeStr, err := json.MarshalToString(bridgeManagerJson)
 	if err != nil {
 		log.Println(err)
 	}
