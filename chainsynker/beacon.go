@@ -60,7 +60,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}
 	}
 	startTime := time.Now()
-	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
+	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 	beaconFeatureStateDB := beaconBestState.GetBeaconFeatureStateDB()
 	if bridgeState == nil {
 		bridgeState, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
