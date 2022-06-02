@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
@@ -21,6 +22,7 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 	"github.com/kamva/mgm/v3"
 	"github.com/kamva/mgm/v3/operator"
+	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -38,9 +40,21 @@ func StartProcessor() {
 	if err != nil {
 		panic(err)
 	}
+	id := uuid.NewV4()
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: coordinator.SERVICEGROUP_LIQUIDITY_PROCESSOR,
+		ID:          id.String(),
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
 	for {
 		time.Sleep(5 * time.Second)
-
+		willPauseOperation()
 		txList, err := getTxToProcess(currentState.LastProcessedObjectID, 5000)
 		if err != nil {
 			log.Println("getTxToProcess", err)
@@ -774,9 +788,12 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		}
 		data.TotalAmount = int64(totalAmount)
 		data.TotalReceive = int64(totalReceive)
-		apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
-		data.APY2 = apy2
-		fmt.Println("poolid", poolid, apy2, totalReceive, totalAmount)
+		if totalAmount != 0 {
+			apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+			data.APY2 = apy2
+			fmt.Println("poolid", poolid, apy2, totalReceive, totalAmount)
+		}
+
 		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
 			p := (percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
@@ -819,8 +836,11 @@ func processPoolRewardAPY(pdex *jsonresult.Pdexv3State, height uint64) ([]shared
 		}
 		data.TotalAmount = int64(totalAmount)
 		data.TotalReceive = int64(totalReceive)
-		apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
-		data.APY2 = apy2
+
+		if totalAmount != 0 {
+			apy2 := ((float64(totalReceive) / float64(totalAmount)) * 100 / float64(len(list))) * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds())
+			data.APY2 = apy2
+		}
 		percent := totalPercent / float64(len(list))
 		if totalPercent != float64(0) {
 			p := (percent * ((365 * 86400) / config.Param().BlockTime.MinBeaconBlockInterval.Seconds()))
