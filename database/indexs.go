@@ -66,6 +66,9 @@ func DBCreateCoinV2Index() error {
 			Keys:    bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "coin", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "shardid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+		},
 	}
 	_, err := mgm.Coll(&shared.CoinData{}).Indexes().CreateMany(context.Background(), coinMdl)
 	if err != nil {

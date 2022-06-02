@@ -2,7 +2,6 @@ package apiservice
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -378,23 +377,33 @@ func APIGetPdecimal(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	resp, err := http.Get(shared.ServiceCfg.ExternalDecimals)
-	if err != nil {
-		errStr := err.Error()
-		respond := APIRespond{
-			Result: nil,
-			Error:  &errStr,
-		}
-		c.JSON(http.StatusOK, respond)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
+	// resp, err := http.Get(shared.ServiceCfg.ExternalDecimals)
+	// if err != nil {
+	// 	errStr := err.Error()
+	// 	respond := APIRespond{
+	// 		Result: nil,
+	// 		Error:  &errStr,
+	// 	}
+	// 	c.JSON(http.StatusOK, respond)
+	// }
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
+
+	body, err := shared.RestyClient.R().
+		EnableTrace().
+		SetHeader("Accept-Encoding", "gzip").
+		Get(shared.ServiceCfg.ExternalDecimals)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	go cacheStoreCustom("pdecimal", body, 5*time.Minute)
+
+	go cacheStoreCustom("pdecimal", body.Body(), 5*time.Minute)
 	respond := APIRespond{
-		Result: body,
+		Result: body.Body(),
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

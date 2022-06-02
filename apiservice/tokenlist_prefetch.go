@@ -125,15 +125,21 @@ func retrieveTokenList() {
 	chainTkListMap := make(map[string]struct{})
 
 	baseToken, _ := database.DBGetBasePriceToken()
+	stableCoins, err := database.DBGetStableCoinID()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	stableCoins = append(stableCoins, baseToken)
+	stableCoinList := strings.Join(stableCoins, ",")
 
 	prvUsdtPair24h := float64(0)
 	for v, _ := range defaultPools {
 		if strings.Contains(v, baseToken) && strings.Contains(v, common.PRVCoinID.String()) {
-			prvUsdtPair24h = getPoolPair24hChange(v)
+			prvUsdtPair24h = getPoolPair24hChange(v, false)
 			break
 		}
 	}
-	var err error
 	var tokenList []shared.TokenInfoData
 	tokenList, err = database.DBGetAllTokenInfo()
 	if err != nil {
@@ -213,7 +219,7 @@ func retrieveTokenList() {
 			data.PercentChange24h = fmt.Sprintf("%.2f", prvUsdtPair24h)
 		} else {
 			if data.DefaultPairToken != "" && data.TokenID != baseToken {
-				data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, baseToken, prvUsdtPair24h))
+				data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, stableCoinList, prvUsdtPair24h))
 			}
 		}
 		if etki, ok := customTokenInfoMap[v.TokenID]; ok {
