@@ -22,6 +22,7 @@ import (
 )
 
 func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
+	willPauseOperation(chainID)
 	var ShardTransactionStateDB *statedb.StateDB
 	var blk *types.ShardBlock
 	blockHeight := height
@@ -140,14 +141,14 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 		}
 	}
 reCheckCrossShardHeight:
-	blockProcessedLock.RLock()
+	currentState.blockProcessedLock.RLock()
 	pass := true
 	for csID, v := range crossShardHeightMap {
-		if v > blockProcessed[csID] {
+		if v > currentState.BlockProcessed[csID] {
 			pass = false
 		}
 	}
-	blockProcessedLock.RUnlock()
+	currentState.blockProcessedLock.RUnlock()
 	if !pass {
 		time.Sleep(5 * time.Second)
 		goto reCheckCrossShardHeight
@@ -596,8 +597,12 @@ reCheckCrossShardHeight:
 		}
 	}
 
-	blockProcessedLock.Lock()
-	blockProcessed[shardID] = blk.Header.Height
-	blockProcessedLock.Unlock()
+	currentState.blockProcessedLock.Lock()
+	currentState.BlockProcessed[shardID] = blk.Header.Height
+	currentState.blockProcessedLock.Unlock()
+	err = updateState()
+	if err != nil {
+		panic(err)
+	}
 	log.Printf("finish processing coin for block %v shard %v in %v\n", blk.GetHeight(), shardID, time.Since(startTime))
 }
