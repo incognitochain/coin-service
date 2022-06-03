@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/pubsub"
@@ -24,6 +25,11 @@ import (
 
 var txTopic *pubsub.Topic
 var statusTopic *pubsub.Topic
+
+func init() {
+	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
 
 func main() {
 	defer func() {
@@ -119,10 +125,10 @@ func broadcastMode() {
 		// err = json.Unmarshal(rawTxBytes, &tx)
 		isToken := false
 		if err != nil {
-			log.Println(err)
+			log.Println("PRV", m.Attributes["txhash"], err)
 			tx, err = transaction.NewTransactionTokenFromJsonBytes(rawTxBytes)
 			if err != nil {
-				log.Println(err)
+				log.Println("Token", m.Attributes["txhash"], err)
 				m.Ack()
 				return
 			}
@@ -143,7 +149,7 @@ func broadcastMode() {
 		txdata := NewTxData(tx.Hash().String(), string(m.Data), txStatus, errBrcStr)
 		err = saveTx(*txdata)
 		if err != nil {
-			log.Println(err)
+			log.Println(tx.Hash().String(), err)
 			return
 		}
 		if txStatus == txStatusBroadcasted {
