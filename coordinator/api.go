@@ -71,16 +71,13 @@ func ServiceRegisterHandler(c *gin.Context) {
 		for {
 			select {
 			case <-done:
-				removeService(newService)
-				close(writeCh)
-				ws.Close()
 				return
 			default:
 				_, msg, err := ws.ReadMessage()
 				if err != nil {
 					log.Println(err)
 					close(done)
-					return
+					continue
 				}
 				if len(msg) == 1 {
 					continue
@@ -111,6 +108,8 @@ func ServiceRegisterHandler(c *gin.Context) {
 	for {
 		select {
 		case <-done:
+			close(writeCh)
+			ws.Close()
 			crashRecord := detector.RecordDetail{
 				ServiceID: newService.ID,
 				Time:      time.Now().Unix(),
@@ -126,6 +125,7 @@ func ServiceRegisterHandler(c *gin.Context) {
 			err := ws.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Println("write:", err)
+				close(done)
 				continue
 			}
 		}
@@ -236,10 +236,6 @@ func GetServiceStatusHandler(c *gin.Context) {
 	})
 }
 
-func ServiceListHandler(c *gin.Context) {
-
-}
-
 func ListBackupsHandler(c *gin.Context) {
 	pwd, _ := os.Getwd()
 	files, err := ioutil.ReadDir(path.Join(pwd, "mongodump"))
@@ -308,6 +304,7 @@ func ResetIncidentLogsHandler(c *gin.Context) {
 func suspectCrash(serviceID, serviceGroup string) {
 	time.Sleep(60 * time.Second)
 	state.ConnectedServicesLock.RLock()
+	defer state.ConnectedServicesLock.RUnlock()
 	if _, ok := state.ConnectedServices[serviceID]; !ok {
 		crashRecord := detector.RecordDetail{
 			ServiceID: serviceID,
