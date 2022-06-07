@@ -588,7 +588,7 @@ reCheckCrossShardHeight:
 
 	if !useFullnodeData {
 		batchData := bc.GetShardChainDatabase(blk.Header.ShardID).NewBatch()
-		err = bc.BackupShardViews(batchData, blk.Header.ShardID)
+		err = bc.BackupShardViews(batchData, blk.Header.ShardID, nil)
 		if err != nil {
 			panic("Backup shard view error")
 		}

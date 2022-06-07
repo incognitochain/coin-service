@@ -80,7 +80,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	// }
 	bridgeManagerJson := &jsonresult.BridgeAggState{
 		BeaconTimeStamp:     blk.Header.Timestamp,
-		UnifiedTokenInfos:   beaconBestState.BridgeAggManager().State().UnifiedTokenVaults(),
+		UnifiedTokenVaults:  beaconBestState.BridgeAggManager().State().UnifiedTokenVaults(),
 		WaitingUnshieldReqs: beaconBestState.BridgeAggManager().State().CloneWaitingUnshieldReqs(),
 		BaseDecimal:         config.Param().BridgeAggParam.BaseDecimal,
 		MaxLenOfPath:        config.Param().BridgeAggParam.MaxLenOfPath,
