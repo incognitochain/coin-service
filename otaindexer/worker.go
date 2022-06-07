@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
@@ -178,18 +179,21 @@ func StartOTAIndexing() {
 	workerID = id.String()
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
+	willRun = false
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
 	go processMsgFromMaster(readCh, writeCh)
 
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: coordinator.SERVICEGROUP_INDEXWORKER,
-		ID:          workerID,
-		ReadCh:      make(chan []byte),
-		WriteCh:     make(chan []byte),
+		ServiceGroup: coordinator.SERVICEGROUP_INDEXWORKER,
+		ID:           workerID,
+		GitCommit:    shared.GITCOMMIT,
+		ReadCh:       make(chan []byte),
+		WriteCh:      make(chan []byte),
 	}
+	logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
 	coordinatorState.coordinatorConn = &newServiceConn
-	coordinatorState.serviceStatus = "pause"
-	coordinatorState.pauseService = true
+	coordinatorState.serviceStatus = "resume"
+	coordinatorState.pauseService = false
 	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
 
 	for {

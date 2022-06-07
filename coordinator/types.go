@@ -31,8 +31,9 @@ type CoordinatorState struct {
 }
 
 type ServiceConn struct {
-	ServiceName   string
+	ServiceGroup  string
 	ID            string
+	GitCommit     string
 	IsPause       bool
 	ReadCh        chan []byte
 	WriteCh       chan []byte
@@ -43,4 +44,10 @@ type ServiceConn struct {
 type ProgressManager struct {
 	Progress     map[string]progress.Progressor
 	ProgressLock sync.RWMutex
+}
+
+type CrashSummary struct {
+	Total     int
+	ByType    map[string]int
+	ByService map[string]int
 }
