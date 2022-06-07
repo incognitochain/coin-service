@@ -10,7 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20220408034504-5586525bc88e
+	github.com/incognitochain/incognito-chain v0.0.0-20220606232446-adc936ef7226
 	github.com/json-iterator/go v1.1.12
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -23,6 +23,8 @@ require (
 	github.com/mongodb/mongo-tools v0.0.0-20220222145442-9a0003067b69
 	github.com/rs/zerolog v1.26.1
 	github.com/stretchr/testify v1.7.0
+	google.golang.org/grpc v1.45.0
+	google.golang.org/protobuf v1.26.0
 )
 
 require (
@@ -194,8 +196,6 @@ require (
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
-	google.golang.org/grpc v1.45.0 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/resty.v1 v1.10.3 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
