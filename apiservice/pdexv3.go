@@ -19,7 +19,6 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
-	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
@@ -966,7 +965,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	if sellAmount > 0 {
 		//feePRV
 		chosenPath, receive := pathfinder.FindGoodTradePath(
-			pdexv3Meta.MaxTradePathLength,
+			// pdexv3Meta.MaxTradePathLength,
+			3,
 			newPools,
 			poolPairStates,
 			sellToken,
@@ -993,7 +993,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			if req.IsMax && sellToken == common.PRVCoinID.String() && feePRV.Fee > 0 {
 				newSellAmount := sellAmount - tradingFeePRV - 100 - (tradingFeePRV / 100)
 				chosenPath, receive := pathfinder.FindGoodTradePath(
-					pdexv3Meta.MaxTradePathLength,
+					// pdexv3Meta.MaxTradePathLength,
+					3,
 					newPools,
 					poolPairStates,
 					sellToken,
@@ -1035,7 +1036,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				if req.IsMax && feeToken.Fee > 0 {
 					newSellAmount := sellAmount - tradingFeeToken
 					chosenPath, receive := pathfinder.FindGoodTradePath(
-						pdexv3Meta.MaxTradePathLength,
+						// pdexv3Meta.MaxTradePathLength,
+						3,
 						newPools,
 						poolPairStates,
 						sellToken,
@@ -1060,7 +1062,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	} else {
 		chosenPath, foundSellAmount := pathfinder.FindSellAmount(
-			pdexv3Meta.MaxTradePathLength,
+			// pdexv3Meta.MaxTradePathLength,
+			3,
 			newPools,
 			poolPairStates,
 			sellToken,
