@@ -420,9 +420,14 @@ func getUniqueIdx(list []string) []int {
 	return result
 }
 
-func getToken24hPriceChange(tokenID, pairTokenID, poolPair, stableCoinList string, prv24hChange float64) float64 {
+func getToken24hPriceChange(tokenID, pairTokenID, poolPair, stableCoinList string, prv24hChange float64, priorityTokens []string) float64 {
 	if strings.Contains(stableCoinList, pairTokenID) {
-		return getPoolPair24hChange(poolPair, false)
+		tks := strings.Split(poolPair, "-")
+		willSwap := false
+		if tks[0] == pairTokenID {
+			willSwap = true
+		}
+		return getPoolPair24hChange(poolPair, willSwap)
 	}
 	if pairTokenID == common.PRVCoinID.String() {
 		return ((1+getPoolPair24hChange(poolPair, true)/100)*(1+prv24hChange/100) - 1) * 100

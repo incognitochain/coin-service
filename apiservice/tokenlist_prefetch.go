@@ -219,7 +219,7 @@ func retrieveTokenList() {
 			data.PercentChange24h = fmt.Sprintf("%.2f", prvUsdtPair24h)
 		} else {
 			if data.DefaultPairToken != "" && data.TokenID != baseToken {
-				data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, stableCoinList, prvUsdtPair24h))
+				data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, stableCoinList, prvUsdtPair24h, priorityTokens))
 			}
 		}
 		if etki, ok := customTokenInfoMap[v.TokenID]; ok {
