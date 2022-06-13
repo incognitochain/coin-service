@@ -925,12 +925,14 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		return
 	}
 	// dcrate := float64(1)
-	dcrate, tk1Decimal, _, err := getPdecimalRate(buyToken, sellToken)
+	dcrate, tk1Decimal, tk2Decimal, err := getPdecimalRate(buyToken, sellToken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	dcrate1 := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
 	_ = tk1Decimal
+	_ = tk2Decimal
 	if !req.Pdecimal {
 		dcrate = 1
 	}
@@ -1104,19 +1106,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	}
 	tksInfo := getCustomTokenList([]string{sellToken, buyToken})
 	if feePRV.Fee != 0 {
-		// rt, mkPoolList := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
-		// if rt == 0 {
-		// 	rt, mkPoolList = getRateMinimum(buyToken, sellToken, 1, newPools, poolPairStates)
-		// 	if rt == 0 {
-		// 		rt = feePRV.MaxGet / feePRV.SellAmount
-		// 	} else {
-		// 		feePRV.Debug.Amount = 1
-		// 	}
-		// } else {
-		// 	feePRV.Debug.Amount = math.Pow10(tk1Decimal)
-		// }
 		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
-		rt1 := feePRV.SellAmount / feePRV.MaxGet
+		rt1 := feePRV.SellAmount / feePRV.MaxGet * dcrate1
 		ia := ((rt1 / rt) - 1) * 100
 		if ia >= 20 {
 			feePRV.IsSignificant = true
@@ -1128,20 +1119,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		feePRV.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	if feeToken.Fee != 0 {
-		// rt, mkPoolList := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
-		// if rt == 0 {
-		// 	rt, mkPoolList = getRateMinimum(buyToken, sellToken, 1, newPools, poolPairStates)
-		// 	if rt == 0 {
-		// 		rt = feeToken.MaxGet / feeToken.SellAmount
-		// 	} else {
-		// 		feeToken.Debug.Amount = 1
-		// 	}
-		// } else {
-		// 	feeToken.Debug.Amount = math.Pow10(tk1Decimal)
-		// }
-
 		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
-		rt1 := feeToken.SellAmount / feeToken.MaxGet
+		rt1 := feeToken.SellAmount / feeToken.MaxGet * dcrate1
 		ia := ((rt1 / rt) - 1) * 100
 		if ia >= 20 {
 			feeToken.IsSignificant = true
