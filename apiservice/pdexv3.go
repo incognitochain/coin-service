@@ -1102,12 +1102,16 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 	if feePRV.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
+		rt, mkPoolList := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
 		if rt == 0 {
-			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
+			rt, mkPoolList = getRateMinimum(buyToken, sellToken, 1, newPools, poolPairStates)
 			if rt == 0 {
 				rt = feePRV.MaxGet / feePRV.SellAmount
+			} else {
+				feePRV.Debug.Amount = 1
 			}
+		} else {
+			feePRV.Debug.Amount = math.Pow10(tk1Decimal)
 		}
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
 		ia := (1 - (rt / rt1)) * 100
@@ -1115,14 +1119,23 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feePRV.IsSignificant = true
 		}
 		feePRV.ImpactAmount = ia
+		feePRV.Debug.RateMk = rt
+		feePRV.Debug.Rate = rt1
+		for _, v := range mkPoolList {
+			feePRV.Debug.RouteMk = append(feePRV.Debug.RouteMk, v.PoolID)
+		}
 	}
 	if feeToken.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
+		rt, mkPoolList := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
 		if rt == 0 {
-			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
+			rt, mkPoolList = getRateMinimum(buyToken, sellToken, 1, newPools, poolPairStates)
 			if rt == 0 {
 				rt = feeToken.MaxGet / feeToken.SellAmount
+			} else {
+				feeToken.Debug.Amount = 1
 			}
+		} else {
+			feeToken.Debug.Amount = math.Pow10(tk1Decimal)
 		}
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
 		ia := (1 - (rt / rt1)) * 100
@@ -1130,6 +1143,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feeToken.IsSignificant = true
 		}
 		feeToken.ImpactAmount = ia
+		feeToken.Debug.RateMk = rt
+		feeToken.Debug.Rate = rt1
+		for _, v := range mkPoolList {
+			feeToken.Debug.RouteMk = append(feeToken.Debug.RouteMk, v.PoolID)
+		}
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken
