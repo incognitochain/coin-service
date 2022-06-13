@@ -13,6 +13,7 @@ import (
 	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
 	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
@@ -139,6 +140,13 @@ func APICheckRate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	if tk1Price == nil && token1 == common.PRVCoinID.String() {
+		prvTk := getCustomTokenList([]string{common.PRVCoinID.String()})
+		tk1Price = &shared.TokenPrice{
+			TokenID: common.PRVCoinID.String(),
+			Price:   fmt.Sprintf("%f", prvTk[0].PriceUsd),
+		}
+	}
 	dcrate, _, _, err := getPdecimalRate(token1, token2)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -149,6 +157,13 @@ func APICheckRate(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
+		}
+		if tk2Price == nil && token2 == common.PRVCoinID.String() {
+			prvTk := getCustomTokenList([]string{common.PRVCoinID.String()})
+			tk2Price = &shared.TokenPrice{
+				TokenID: common.PRVCoinID.String(),
+				Price:   fmt.Sprintf("%f", prvTk[0].PriceUsd),
+			}
 		}
 		if tk2Price != nil {
 			tokenSymbols := []string{tk1Price.TokenSymbol, tk2Price.TokenSymbol}
@@ -216,24 +231,24 @@ func APICheckRate(c *gin.Context) {
 			c.JSON(http.StatusOK, respond)
 			return
 		} else {
-			rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			if rate != 0 {
-				userRate = rate
-			}
+			// rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
+			// if err != nil {
+			// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			// 	return
+			// }
+			// if rate != 0 {
+			// 	userRate = rate
+			// }
 		}
 	} else {
-		rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		if rate != 0 {
-			userRate = rate
-		}
+		// rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
+		// if err != nil {
+		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		// 	return
+		// }
+		// if rate != 0 {
+		// 	userRate = rate
+		// }
 	}
 	result.Rate = fmt.Sprintf("%g", userRate*dcrate)
 	ampH := ampHardCode(token1, token2)
