@@ -1117,7 +1117,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		// }
 		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
-		ia := (1 - (rt / rt1)) * 100
+		ia := ((rt1 / rt) - 1) * 100
 		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
@@ -1142,7 +1142,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 
 		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
-		ia := (1 - (rt / rt1)) * 100
+		ia := ((rt1 / rt) - 1) * 100
 		if ia >= 20 {
 			feeToken.IsSignificant = true
 		}
