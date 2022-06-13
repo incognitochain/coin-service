@@ -181,22 +181,27 @@ func retrieveTokenList() {
 				if tks[0] == data.TokenID {
 					tkPair = tks[1]
 				}
-				for idx, ptk := range priorityTokens {
-					if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
-						if idx > defaultPairTokenIdx {
-							defaultPool = poolID
-							defaultPairToken = tkPair
-							defaultPairTokenIdx = idx
-							currentPoolAmount = pa
-						}
-						if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
-							defaultPool = poolID
-							defaultPairToken = tkPair
-							defaultPairTokenIdx = idx
-							currentPoolAmount = pa
-						}
-					}
+
+				if tkPair != common.PRVCoinID.String() && !strings.Contains(stableCoinList, tkPair) {
+					continue
 				}
+
+				// for idx, ptk := range priorityTokens {
+				// 	if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
+				// 		if idx > defaultPairTokenIdx {
+				// 			defaultPool = poolID
+				// 			defaultPairToken = tkPair
+				// 			defaultPairTokenIdx = idx
+				// 			currentPoolAmount = pa
+				// 		}
+				// 		if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
+				// 			defaultPool = poolID
+				// 			defaultPairToken = tkPair
+				// 			defaultPairTokenIdx = idx
+				// 			currentPoolAmount = pa
+				// 		}
+				// 	}
+				// }
 
 				if defaultPool == "" {
 					if pa > 0 {
