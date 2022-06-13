@@ -930,7 +930,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	// _ = tk2Decimal
+	_ = tk1Decimal
 	if !req.Pdecimal {
 		dcrate = 1
 	}
@@ -1018,6 +1018,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 
 		//feeToken
+
 		if sellToken == common.PRVCoinID.String() {
 			feeToken = feePRV
 		} else {
@@ -1101,18 +1102,20 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feeToken.TokenRoute = getTokenRoute(sellToken, feeToken.Route)
 		}
 	}
+	tksInfo := getCustomTokenList([]string{sellToken, buyToken})
 	if feePRV.Fee != 0 {
-		rt, mkPoolList := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
-		if rt == 0 {
-			rt, mkPoolList = getRateMinimum(buyToken, sellToken, 1, newPools, poolPairStates)
-			if rt == 0 {
-				rt = feePRV.MaxGet / feePRV.SellAmount
-			} else {
-				feePRV.Debug.Amount = 1
-			}
-		} else {
-			feePRV.Debug.Amount = math.Pow10(tk1Decimal)
-		}
+		// rt, mkPoolList := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
+		// if rt == 0 {
+		// 	rt, mkPoolList = getRateMinimum(buyToken, sellToken, 1, newPools, poolPairStates)
+		// 	if rt == 0 {
+		// 		rt = feePRV.MaxGet / feePRV.SellAmount
+		// 	} else {
+		// 		feePRV.Debug.Amount = 1
+		// 	}
+		// } else {
+		// 	feePRV.Debug.Amount = math.Pow10(tk1Decimal)
+		// }
+		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
 		rt1 := feePRV.SellAmount / feePRV.MaxGet
 		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
@@ -1121,22 +1124,23 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		feePRV.ImpactAmount = ia
 		feePRV.Debug.RateMk = rt
 		feePRV.Debug.Rate = rt1
-		for _, v := range mkPoolList {
-			feePRV.Debug.RouteMk = append(feePRV.Debug.RouteMk, v.PoolID)
-		}
+		feePRV.Debug.RateTk1 = tksInfo[0].PriceUsd
+		feePRV.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	if feeToken.Fee != 0 {
-		rt, mkPoolList := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
-		if rt == 0 {
-			rt, mkPoolList = getRateMinimum(buyToken, sellToken, 1, newPools, poolPairStates)
-			if rt == 0 {
-				rt = feeToken.MaxGet / feeToken.SellAmount
-			} else {
-				feeToken.Debug.Amount = 1
-			}
-		} else {
-			feeToken.Debug.Amount = math.Pow10(tk1Decimal)
-		}
+		// rt, mkPoolList := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
+		// if rt == 0 {
+		// 	rt, mkPoolList = getRateMinimum(buyToken, sellToken, 1, newPools, poolPairStates)
+		// 	if rt == 0 {
+		// 		rt = feeToken.MaxGet / feeToken.SellAmount
+		// 	} else {
+		// 		feeToken.Debug.Amount = 1
+		// 	}
+		// } else {
+		// 	feeToken.Debug.Amount = math.Pow10(tk1Decimal)
+		// }
+
+		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
 		rt1 := feeToken.SellAmount / feeToken.MaxGet
 		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
@@ -1145,9 +1149,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		feeToken.ImpactAmount = ia
 		feeToken.Debug.RateMk = rt
 		feeToken.Debug.Rate = rt1
-		for _, v := range mkPoolList {
-			feeToken.Debug.RouteMk = append(feeToken.Debug.RouteMk, v.PoolID)
-		}
+		feeToken.Debug.RateTk1 = tksInfo[0].PriceUsd
+		feeToken.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken

@@ -101,10 +101,10 @@ type PdexV3EstimateTradeRespond struct {
 	IsSignificant bool
 	ImpactAmount  float64
 	Debug         struct {
-		RouteMk []string
 		RateMk  float64
 		Rate    float64
-		Amount  float64
+		RateTk1 float64
+		RateTk2 float64
 	}
 }
 

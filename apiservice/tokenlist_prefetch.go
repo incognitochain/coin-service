@@ -59,7 +59,7 @@ func tokenListWatcher() {
 	tokenMap = make(map[string]int)
 	for {
 		retrieveTokenList()
-		time.Sleep(15 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
