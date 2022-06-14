@@ -100,12 +100,12 @@ type PdexV3EstimateTradeRespond struct {
 	TokenRoute    []string
 	IsSignificant bool
 	ImpactAmount  float64
-	Debug         struct {
-		RateMk  float64
-		Rate    float64
-		RateTk1 float64
-		RateTk2 float64
-	}
+	// Debug         struct {
+	// 	RateMk  float64
+	// 	Rate    float64
+	// 	RateTk1 float64
+	// 	RateTk2 float64
+	// }
 }
 
 type PdexV3EstimateTradeRespondBig struct {

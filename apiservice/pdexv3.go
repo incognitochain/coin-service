@@ -1113,10 +1113,10 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feePRV.IsSignificant = true
 		}
 		feePRV.ImpactAmount = ia
-		feePRV.Debug.RateMk = rt
-		feePRV.Debug.Rate = rt1
-		feePRV.Debug.RateTk1 = tksInfo[0].PriceUsd
-		feePRV.Debug.RateTk2 = tksInfo[1].PriceUsd
+		// feePRV.Debug.RateMk = rt
+		// feePRV.Debug.Rate = rt1
+		// feePRV.Debug.RateTk1 = tksInfo[0].PriceUsd
+		// feePRV.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	if feeToken.Fee != 0 {
 		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
@@ -1126,10 +1126,10 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feeToken.IsSignificant = true
 		}
 		feeToken.ImpactAmount = ia
-		feeToken.Debug.RateMk = rt
-		feeToken.Debug.Rate = rt1
-		feeToken.Debug.RateTk1 = tksInfo[0].PriceUsd
-		feeToken.Debug.RateTk2 = tksInfo[1].PriceUsd
+		// feeToken.Debug.RateMk = rt
+		// feeToken.Debug.Rate = rt1
+		// feeToken.Debug.RateTk1 = tksInfo[0].PriceUsd
+		// feeToken.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken
