@@ -295,11 +295,13 @@ retry:
 	return float64(receive) / float64(a)
 }
 
-func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) float64 {
+func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) (float64, []*shared.Pdexv3PoolPairWithId) {
 	a := uint64(minAmount)
+	a0 := uint64(0)
 	a1 := uint64(0)
+	var tradedPoolIDList []*shared.Pdexv3PoolPairWithId
 retry:
-	_, receive := pathfinder.FindGoodTradePath(
+	poolIDList, receive := pathfinder.FindGoodTradePath(
 		pdexv3Meta.MaxTradePathLength,
 		pools,
 		poolPairStates,
@@ -312,9 +314,11 @@ retry:
 		if a < 1e6 {
 			goto retry
 		}
-		return 0
+		return float64(a1) / float64(a0), tradedPoolIDList
 	} else {
 		if receive > a1*10 {
+			a0 = a
+			tradedPoolIDList = poolIDList
 			a *= 10
 			a1 = receive
 			goto retry
@@ -326,7 +330,7 @@ retry:
 			}
 		}
 	}
-	return float64(receive) / float64(a)
+	return float64(receive) / float64(a), tradedPoolIDList
 }
 
 func ampHardCode(tokenID1, tokenID2 string) float64 {
