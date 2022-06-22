@@ -66,7 +66,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		willProcess = false
 	}
 	if height < config.Param().PDexParams.Pdexv3BreakPointHeight && willProcess {
-		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
+		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
 		tradingFees := state.Reader().TradingFees()
 		shares := state.Reader().Shares()
@@ -105,7 +105,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 
 	//process PDEstateV2
 	if blk.GetHeight() >= config.Param().PDexParams.Pdexv3BreakPointHeight {
-		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
+		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false)
 		beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
 		beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
 		var prevStateV2 *shared.PDEStateV2
