@@ -1,17 +1,12 @@
 package apiservice
 
 import (
-	"errors"
 	"fmt"
-	"log"
-	"math/big"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/incognitochain/coin-service/database"
-	"github.com/incognitochain/incognito-chain/blockchain/bridgeagg"
-	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
@@ -184,96 +179,96 @@ func APIGetBridgeAggState(c *gin.Context) {
 	c.JSON(http.StatusOK, respond)
 }
 
-func APIGetSupportedVault(c *gin.Context) {
-	unifiedTokenID := c.Query("punified")
-	burntAmountStr := c.Query("burntamount")
-	expectedAmountStr := c.Query("expectedamount")
-	if bridgeState == nil {
-		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("Bridge state is nil")))
-		return
-	}
-	var err error
-	burntAmount := uint64(0)
-	expectedAmount := uint64(0)
-	if burntAmountStr != "" {
-		burntAmount, err = strconv.ParseUint(burntAmountStr, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusOK, buildGinErrorRespond(err))
-			return
-		}
-	} else {
-		expectedAmount, err = strconv.ParseUint(expectedAmountStr, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusOK, buildGinErrorRespond(err))
-			return
-		}
-	}
-	if burntAmount <= 0 && expectedAmount <= 0 {
-		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("BurntAmount and ExpectedAmount cant be both <= 0")))
-		return
-	}
-	result := make(map[uint]jsonresult.BridgeAggEstimateFee)
+// func APIGetSupportedVault(c *gin.Context) {
+// 	unifiedTokenID := c.Query("punified")
+// 	burntAmountStr := c.Query("burntamount")
+// 	expectedAmountStr := c.Query("expectedamount")
+// 	if bridgeState == nil {
+// 		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("Bridge state is nil")))
+// 		return
+// 	}
+// 	var err error
+// 	burntAmount := uint64(0)
+// 	expectedAmount := uint64(0)
+// 	if burntAmountStr != "" {
+// 		burntAmount, err = strconv.ParseUint(burntAmountStr, 10, 64)
+// 		if err != nil {
+// 			c.JSON(http.StatusOK, buildGinErrorRespond(err))
+// 			return
+// 		}
+// 	} else {
+// 		expectedAmount, err = strconv.ParseUint(expectedAmountStr, 10, 64)
+// 		if err != nil {
+// 			c.JSON(http.StatusOK, buildGinErrorRespond(err))
+// 			return
+// 		}
+// 	}
+// 	if burntAmount <= 0 && expectedAmount <= 0 {
+// 		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("BurntAmount and ExpectedAmount cant be both <= 0")))
+// 		return
+// 	}
+// 	result := make(map[uint]jsonresult.BridgeAggEstimateFee)
 
-	unifiedTokenIDHash := common.Hash{}.NewHashFromStr2(unifiedTokenID)
-	if networkIDs, ok := bridgeState.UnifiedTokenInfos()[unifiedTokenIDHash]; ok {
-		for networkID, vault := range networkIDs {
-			x := vault.Reserve()
-			y := vault.CurrentRewardReserve()
-			resultData := jsonresult.BridgeAggEstimateFee{}
-			maxReceivedAmount, err := bridgeagg.CalculateMaxReceivedAmount(vault.Reserve(), vault.CurrentRewardReserve())
-			if err != nil {
-				log.Println(err)
-			}
-			resultData.MaxReceivedAmount = maxReceivedAmount
-			if burntAmount != 0 {
-				exAmount, err := bridgeagg.EstimateActualAmountByBurntAmount(x, y, burntAmount, vault.IsPaused())
-				if err != nil {
-					log.Println(err)
-					result[networkID] = resultData
-					continue
-				} else {
-					resultData.BurntAmount = burntAmount
-					resultData.ExpectedAmount = exAmount
-					resultData.Fee = burntAmount - expectedAmount
-					result[networkID] = resultData
-				}
-			} else {
-				fee, err := bridgeagg.CalculateDeltaY(x, y, expectedAmount, bridgeagg.SubOperator, vault.IsPaused())
-				if err != nil {
-					log.Println((err))
-					result[networkID] = resultData
-					continue
-				}
-				if expectedAmount > x {
-					log.Println(fmt.Errorf("Unshield amount %v > vault amount %v", expectedAmount, x))
-					result[networkID] = resultData
-					continue
-				}
-				burntAmount := big.NewInt(0).Add(big.NewInt(0).SetUint64(fee), big.NewInt(0).SetUint64(expectedAmount))
-				if !burntAmount.IsUint64() {
-					log.Println(fmt.Errorf("Value is not unit64"))
-					result[networkID] = resultData
-					continue
-				} else {
-					resultData.BurntAmount = burntAmount.Uint64()
-					resultData.ExpectedAmount = expectedAmount
-					resultData.Fee = fee
-					result[networkID] = resultData
-					continue
-				}
-			}
-		}
-	} else {
-		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("UnifiedTokenID not found")))
-		return
-	}
-	if len(result) == 0 {
-		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("No supported vault")))
-		return
-	}
-	respond := APIRespond{
-		Result: result,
-		Error:  nil,
-	}
-	c.JSON(http.StatusOK, respond)
-}
+// 	unifiedTokenIDHash := common.Hash{}.NewHashFromStr2(unifiedTokenID)
+// 	if networkIDs, ok := bridgeState.CloneUnifiedTokenVaults()[unifiedTokenIDHash]; ok {
+// 		for networkID, vault := range networkIDs {
+// 			x := vault.Reserve()
+// 			y := vault.CurrentRewardReserve()
+// 			resultData := jsonresult.BridgeAggEstimateFee{}
+// 			maxReceivedAmount, err := bridgeagg.CalculateMaxReceivedAmount(vault.Reserve(), vault.CurrentRewardReserve())
+// 			if err != nil {
+// 				log.Println(err)
+// 			}
+// 			resultData.MaxReceivedAmount = maxReceivedAmount
+// 			if burntAmount != 0 {
+// 				exAmount, err := bridgeagg.EstimateActualAmountByBurntAmount(x, y, burntAmount, vault.IsPaused())
+// 				if err != nil {
+// 					log.Println(err)
+// 					result[networkID] = resultData
+// 					continue
+// 				} else {
+// 					resultData.BurntAmount = burntAmount
+// 					resultData.ExpectedAmount = exAmount
+// 					resultData.Fee = burntAmount - expectedAmount
+// 					result[networkID] = resultData
+// 				}
+// 			} else {
+// 				fee, err := bridgeagg.CalculateDeltaY(x, y, expectedAmount, bridgeagg.SubOperator, vault.IsPaused())
+// 				if err != nil {
+// 					log.Println((err))
+// 					result[networkID] = resultData
+// 					continue
+// 				}
+// 				if expectedAmount > x {
+// 					log.Println(fmt.Errorf("Unshield amount %v > vault amount %v", expectedAmount, x))
+// 					result[networkID] = resultData
+// 					continue
+// 				}
+// 				burntAmount := big.NewInt(0).Add(big.NewInt(0).SetUint64(fee), big.NewInt(0).SetUint64(expectedAmount))
+// 				if !burntAmount.IsUint64() {
+// 					log.Println(fmt.Errorf("Value is not unit64"))
+// 					result[networkID] = resultData
+// 					continue
+// 				} else {
+// 					resultData.BurntAmount = burntAmount.Uint64()
+// 					resultData.ExpectedAmount = expectedAmount
+// 					resultData.Fee = fee
+// 					result[networkID] = resultData
+// 					continue
+// 				}
+// 			}
+// 		}
+// 	} else {
+// 		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("UnifiedTokenID not found")))
+// 		return
+// 	}
+// 	if len(result) == 0 {
+// 		c.JSON(http.StatusOK, buildGinErrorRespond(errors.New("No supported vault")))
+// 		return
+// 	}
+// 	respond := APIRespond{
+// 		Result: result,
+// 		Error:  nil,
+// 	}
+// 	c.JSON(http.StatusOK, respond)
+// }

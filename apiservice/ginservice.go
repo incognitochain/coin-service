@@ -160,7 +160,7 @@ func StartGinService() {
 		bridgeGroup.GET("/getshieldhistory", APIGetShieldHistory)
 		bridgeGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
 		bridgeGroup.GET("/gettxshield", APIGetTxShield)
-		bridgeGroup.GET("/getsupportedvault", APIGetSupportedVault)
+		// bridgeGroup.GET("/getsupportedvault", APIGetSupportedVault)
 
 	}
 

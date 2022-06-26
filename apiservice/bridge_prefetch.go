@@ -30,5 +30,5 @@ func retrieveBridgeState() {
 		log.Println(err)
 		return
 	}
-	bridgeState = bridgeagg.NewStateWithValue(bridgeStateJson.UnifiedTokenInfos)
+	bridgeState = bridgeagg.NewStateWithValue(bridgeStateJson.UnifiedTokenVaults, bridgeStateJson.WaitingUnshieldReqs, bridgeStateJson.Param, nil, nil)
 }
