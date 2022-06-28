@@ -31,6 +31,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20220407090503-365abb653f5d h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20220407090503-365abb653f5d/go.mod h1:UEm+LajHqay2evlo1I+YtoADlep5nTM/x91WgrvGCOI=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20220601071308-12ec132f570e h1:wa4HzNj1UhNGDUhFwbZ1zkkWhetOHnNOP8eK7RF8KgM=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20220601071308-12ec132f570e/go.mod h1:OMhAaEUvmes/Zt61FKEJ1ogSTqhvTK6vSl+gPcIHvk0=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20220607022555-63ad13bdfa45 h1:n1MBwty54YtOO/4S9QxRihKz71WyOU6D8M6sbMWvej8=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20220607022555-63ad13bdfa45/go.mod h1:pvXnfYNCAF94z4I5vCT1NIflfJURsNtE0L04WyGA9X4=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/3rf/mongo-lint v0.0.0-20140604191638-3550fdcf1f43 h1:0vMGqPI4f0gagBvQrgsQYXKmb6NL2+2WT+AlWCCmb9Q=
@@ -386,6 +388,7 @@ github.com/incognitochain/incognito-chain v0.0.0-20220531110934-4132b7e8795b h1:
 github.com/incognitochain/incognito-chain v0.0.0-20220531110934-4132b7e8795b/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
 github.com/incognitochain/incognito-chain v0.0.0-20220606041749-43ca54313d1b h1:Au5Mwp/HIpeTwB5SMy5mwtwdtA2I0dGkv74Jyrk9eDk=
 github.com/incognitochain/incognito-chain v0.0.0-20220606041749-43ca54313d1b/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
+github.com/incognitochain/incognito-chain v0.0.0-20220606105532-bcba53a8d48d/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
 github.com/incognitochain/incognito-chain v0.0.0-20220607041228-e10bcb6536dd h1:h+frrNGg2ytNJvwP57cILiZiHmB17486l99Ynox3IAg=
 github.com/incognitochain/incognito-chain v0.0.0-20220607041228-e10bcb6536dd/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
 github.com/incognitochain/incognito-chain v0.0.0-20220623035349-967f47b1dca2 h1:uOG6kw7hP9gDV8juPlsCtAA/ElO45QhZVLepGYOCWxg=
