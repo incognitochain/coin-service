@@ -11,12 +11,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	jsoniter "github.com/json-iterator/go"
+	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -164,6 +166,14 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
+	id := uuid.NewV4()
+	newServiceConn := coordinator.ServiceConn{
+		ServiceName: coordinator.SERVICEGROUP_INDEXER,
+		ID:          id.String(),
+		ReadCh:      make(chan []byte),
+		WriteCh:     make(chan []byte),
+	}
+
 	var wg sync.WaitGroup
 	d := 0
 	for _, v := range Submitted_OTAKey.Keys {
@@ -182,7 +192,15 @@ func StartWorkerAssigner() {
 		}(v)
 	}
 	wg.Wait()
+
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
+	log.Println("All OTAKey checked")
 	go func() {
+		log.Println("Listen for submit OTAKey request")
 		for {
 			request := <-OTAAssignChn
 			Submitted_OTAKey.RLock()
@@ -217,7 +235,9 @@ func StartWorkerAssigner() {
 	}()
 
 	for {
+		log.Println("Start worker assign")
 		time.Sleep(10 * time.Second)
+		willPauseOperation()
 		Submitted_OTAKey.Lock()
 		isAllKeyAssigned := true
 		for key, worker := range Submitted_OTAKey.AssignedKey {
@@ -409,6 +429,7 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 }
 
 func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
+	log.Println("ReCheckOTAKey", otaKey)
 	Submitted_OTAKey.RLock()
 	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
 		Submitted_OTAKey.RUnlock()

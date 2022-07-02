@@ -295,11 +295,13 @@ retry:
 	return float64(receive) / float64(a)
 }
 
-func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) float64 {
+func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) (float64, []*shared.Pdexv3PoolPairWithId) {
 	a := uint64(minAmount)
+	a0 := uint64(0)
 	a1 := uint64(0)
+	var tradedPoolIDList []*shared.Pdexv3PoolPairWithId
 retry:
-	_, receive := pathfinder.FindGoodTradePath(
+	poolIDList, receive := pathfinder.FindGoodTradePath(
 		pdexv3Meta.MaxTradePathLength,
 		pools,
 		poolPairStates,
@@ -312,9 +314,11 @@ retry:
 		if a < 1e6 {
 			goto retry
 		}
-		return 0
+		return float64(a1) / float64(a0), tradedPoolIDList
 	} else {
 		if receive > a1*10 {
+			a0 = a
+			tradedPoolIDList = poolIDList
 			a *= 10
 			a1 = receive
 			goto retry
@@ -326,7 +330,7 @@ retry:
 			}
 		}
 	}
-	return float64(receive) / float64(a)
+	return float64(receive) / float64(a), tradedPoolIDList
 }
 
 func ampHardCode(tokenID1, tokenID2 string) float64 {
@@ -378,6 +382,12 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 	if strings.Contains(pair16, tokenID1) && strings.Contains(pair16, tokenID2) {
 		return 2
 	}
+	if strings.Contains(pair17, tokenID1) && strings.Contains(pair17, tokenID2) {
+		return 3
+	}
+	if strings.Contains(pair18, tokenID1) && strings.Contains(pair18, tokenID2) {
+		return 3
+	}
 	return 0
 }
 
@@ -398,6 +408,8 @@ var (
 	pair14 = "be02b225bcd26eeae00d3a51e554ac0adcdcc09de77ad03202904666d427a7e4" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
 	pair15 = common.PRVCoinID.String() + "e5032c083f0da67ca141331b6005e4a3740c50218f151a5e829e9d03227e33e2"
 	pair16 = common.PRVCoinID.String() + "dae027b21d8d57114da11209dce8eeb587d01adf59d4fc356a8be5eedc146859"
+	pair17 = common.PRVCoinID.String() + "6eed691cb14d11066f939630ff647f5f1c843a8f964d9a4d295fa9cd1111c474"
+	pair18 = common.PRVCoinID.String() + "b3586e4d68932427ce1daecb25a602811059f1d20751f4e3dd8be2a08c17affd"
 )
 
 func getUniqueIdx(list []string) []int {
@@ -412,18 +424,23 @@ func getUniqueIdx(list []string) []int {
 	return result
 }
 
-func getToken24hPriceChange(tokenID, pairTokenID, poolPair, baseToken string, prv24hChange float64) float64 {
-	if pairTokenID == baseToken {
-		return getPoolPair24hChange(poolPair)
+func getToken24hPriceChange(tokenID, pairTokenID, poolPair, stableCoinList string, prv24hChange float64, priorityTokens []string) float64 {
+	if strings.Contains(stableCoinList, pairTokenID) {
+		tks := strings.Split(poolPair, "-")
+		willSwap := false
+		if tks[0] == pairTokenID {
+			willSwap = true
+		}
+		return getPoolPair24hChange(poolPair, willSwap)
 	}
 	if pairTokenID == common.PRVCoinID.String() {
-		return getPoolPair24hChange(poolPair) + prv24hChange
+		return ((1+getPoolPair24hChange(poolPair, true)/100)*(1+prv24hChange/100) - 1) * 100
 	}
 	return 0
 }
 
-func getPoolPair24hChange(poolID string) float64 {
-	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT15M", "PT24H")
+func getPoolPair24hChange(poolID string, willSwap bool) float64 {
+	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT1H", "P1D")
 	if err != nil {
 		log.Println(err)
 		return 0
@@ -433,7 +450,11 @@ func getPoolPair24hChange(poolID string) float64 {
 	}
 	p1 := analyticsData.Result[0].Close
 	p2 := analyticsData.Result[len(analyticsData.Result)-1].Close
-	r := (p2 - p1) / p1 * 100
+	r := (p2/p1 - 1) * 100
+	if willSwap {
+		r2 := ((1 / (1 + r/100)) - 1) * 100
+		return r2
+	}
 	return r
 }
 func getTokenRoute(sellToken string, route []string) []string {

@@ -1,6 +1,15 @@
 package apiservice
 
-import "github.com/incognitochain/coin-service/shared"
+import (
+	"github.com/incognitochain/coin-service/coordinator"
+	"github.com/incognitochain/coin-service/shared"
+)
+
+type CoordinatorState struct {
+	coordinatorConn *coordinator.ServiceConn
+	pauseService    bool
+	serviceStatus   string
+}
 
 type APICheckKeyImagesRequest struct {
 	Keyimages []string
@@ -92,9 +101,10 @@ type PdexV3EstimateTradeRespond struct {
 	IsSignificant bool
 	ImpactAmount  float64
 	// Debug         struct {
-	// 	ImpactAmount float64
-	// 	Rate         float64
-	// 	Rate1        float64
+	// 	RateMk  float64
+	// 	Rate    float64
+	// 	RateTk1 float64
+	// 	RateTk2 float64
 	// }
 }
 
@@ -127,6 +137,7 @@ type PdexV3PoolDetail struct {
 	PriceChange24h float64
 	APY            uint64
 	IsVerify       bool
+	willSwapToken  bool
 }
 
 type PdexV3LiquidityHistoryRespond struct {

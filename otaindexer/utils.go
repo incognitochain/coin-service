@@ -196,7 +196,7 @@ func extractPubkeyAndTxRandom(tx shared.TxData) (*coin.TxRandom, *operation.Poin
 		return nil, nil, err
 	}
 	for _, v := range meta.Receiver {
-		return &v.TxRandom, &v.PublicKey, nil
+		return &v.TxRandom, v.PublicKey, nil
 	}
 	return nil, nil, errors.New("len(meta.Receiver) == 0")
 }
