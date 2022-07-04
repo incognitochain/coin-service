@@ -1,4 +1,4 @@
-FROM golang:1.17.2-stretch AS build
+FROM golang:1.18-bullseye AS build
 
 WORKDIR /app
 
@@ -9,16 +9,17 @@ RUN go mod download
 COPY . .
 
 RUN go build -tags=jsoniter -ldflags "-linkmode external -extldflags -static" -o coinservice
+RUN chmod +x ./etc/docker/copy-incognitochain-config.sh && ./etc/docker/copy-incognitochain-config.sh
 
-
-FROM alpine
+FROM debian:bullseye-slim
 
 WORKDIR /app
 
 COPY --from=build /app/coinservice /app/coinservice
+COPY --from=build /app/config /app/config
 
 COPY ./etc/docker/run.sh /app/run.sh
-COPY ./deploy/csv/config /app/config
+#COPY ./deploy/csv/config /app/config
 
 
 CMD [ "./coinservice" ]
