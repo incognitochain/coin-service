@@ -10,7 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-playground/validator/v10 v10.5.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/incognitochain/incognito-chain v0.0.0-20220623035349-967f47b1dca2
+	github.com/incognitochain/incognito-chain v0.0.0-20220705105521-0568f85c2477
 	github.com/jrick/logrotate v1.0.0
 	github.com/json-iterator/go v1.1.12
 	github.com/kamva/mgm/v3 v3.1.0
