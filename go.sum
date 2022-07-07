@@ -35,6 +35,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20220607022555-63ad13bdfa45 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20220607022555-63ad13bdfa45/go.mod h1:pvXnfYNCAF94z4I5vCT1NIflfJURsNtE0L04WyGA9X4=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20220707033738-b16f20dd7e16 h1:h1E/Pu3gdAytNytumv7dH5dGGvYblv3CKTm9BxlHutE=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20220707033738-b16f20dd7e16/go.mod h1:qKWGKXvJXb9SZnuWjSirxcmD6P6TprCIaXgt9cMTwsQ=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20220707102803-c381479a23a9 h1:aqYVdNOd31Dt1p5eDJJjqqyGOClS1zrS1uLG5y8EEvc=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20220707102803-c381479a23a9/go.mod h1:qKWGKXvJXb9SZnuWjSirxcmD6P6TprCIaXgt9cMTwsQ=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/3rf/mongo-lint v0.0.0-20140604191638-3550fdcf1f43 h1:0vMGqPI4f0gagBvQrgsQYXKmb6NL2+2WT+AlWCCmb9Q=
