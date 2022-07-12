@@ -308,6 +308,7 @@ type TokenInfo struct {
 	Verified           bool
 	UserID             int
 	ListChildToken     []TokenInfo
+	ListUnifiedToken   []TokenInfo
 	PSymbol            string
 	OriginalSymbol     string
 	LiquidityReward    float64
@@ -323,6 +324,10 @@ type TokenInfo struct {
 	Network            string
 	DefaultPoolPair    string
 	DefaultPairToken   string
+	//additional p-unified token
+	NetworkID         int
+	MovedUnifiedToken bool
+	ParentUnifiedID   int
 }
 
 type ContributionDataV1 struct {

@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
@@ -168,10 +169,11 @@ func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
 	id := uuid.NewV4()
 	newServiceConn := coordinator.ServiceConn{
-		ServiceName: coordinator.SERVICEGROUP_INDEXER,
-		ID:          id.String(),
-		ReadCh:      make(chan []byte),
-		WriteCh:     make(chan []byte),
+		ServiceGroup: coordinator.SERVICEGROUP_INDEXER,
+		ID:           id.String(),
+		GitCommit:    shared.GITCOMMIT,
+		ReadCh:       make(chan []byte),
+		WriteCh:      make(chan []byte),
 	}
 
 	var wg sync.WaitGroup
@@ -193,6 +195,7 @@ func StartWorkerAssigner() {
 	}
 	wg.Wait()
 
+	logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
 	coordinatorState.coordinatorConn = &newServiceConn
 	coordinatorState.serviceStatus = "pause"
 	coordinatorState.pauseService = true
