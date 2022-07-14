@@ -59,7 +59,7 @@ func tokenListWatcher() {
 	tokenMap = make(map[string]int)
 	for {
 		retrieveTokenList()
-		time.Sleep(15 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
@@ -181,22 +181,27 @@ func retrieveTokenList() {
 				if tks[0] == data.TokenID {
 					tkPair = tks[1]
 				}
-				for idx, ptk := range priorityTokens {
-					if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
-						if idx > defaultPairTokenIdx {
-							defaultPool = poolID
-							defaultPairToken = tkPair
-							defaultPairTokenIdx = idx
-							currentPoolAmount = pa
-						}
-						if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
-							defaultPool = poolID
-							defaultPairToken = tkPair
-							defaultPairTokenIdx = idx
-							currentPoolAmount = pa
-						}
-					}
+
+				if tkPair != common.PRVCoinID.String() && !strings.Contains(stableCoinList, tkPair) {
+					continue
 				}
+
+				// for idx, ptk := range priorityTokens {
+				// 	if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
+				// 		if idx > defaultPairTokenIdx {
+				// 			defaultPool = poolID
+				// 			defaultPairToken = tkPair
+				// 			defaultPairTokenIdx = idx
+				// 			currentPoolAmount = pa
+				// 		}
+				// 		if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
+				// 			defaultPool = poolID
+				// 			defaultPairToken = tkPair
+				// 			defaultPairTokenIdx = idx
+				// 			currentPoolAmount = pa
+				// 		}
+				// 	}
+				// }
 
 				if defaultPool == "" {
 					if pa > 0 {
@@ -219,7 +224,7 @@ func retrieveTokenList() {
 			data.PercentChange24h = fmt.Sprintf("%.2f", prvUsdtPair24h)
 		} else {
 			if data.DefaultPairToken != "" && data.TokenID != baseToken {
-				data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, stableCoinList, prvUsdtPair24h))
+				data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, stableCoinList, prvUsdtPair24h, priorityTokens))
 			}
 		}
 		if etki, ok := customTokenInfoMap[v.TokenID]; ok {

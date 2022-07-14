@@ -19,7 +19,6 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
-	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
@@ -926,12 +925,14 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		return
 	}
 	// dcrate := float64(1)
-	dcrate, tk1Decimal, _, err := getPdecimalRate(buyToken, sellToken)
+	dcrate, tk1Decimal, tk2Decimal, err := getPdecimalRate(buyToken, sellToken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	// _ = tk2Decimal
+	dcrate1 := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
+	_ = tk1Decimal
+	_ = tk2Decimal
 	if !req.Pdecimal {
 		dcrate = 1
 	}
@@ -966,7 +967,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	if sellAmount > 0 {
 		//feePRV
 		chosenPath, receive := pathfinder.FindGoodTradePath(
-			pdexv3Meta.MaxTradePathLength,
+			// pdexv3Meta.MaxTradePathLength,
+			3,
 			newPools,
 			poolPairStates,
 			sellToken,
@@ -993,7 +995,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			if req.IsMax && sellToken == common.PRVCoinID.String() && feePRV.Fee > 0 {
 				newSellAmount := sellAmount - tradingFeePRV - 100 - (tradingFeePRV / 100)
 				chosenPath, receive := pathfinder.FindGoodTradePath(
-					pdexv3Meta.MaxTradePathLength,
+					// pdexv3Meta.MaxTradePathLength,
+					3,
 					newPools,
 					poolPairStates,
 					sellToken,
@@ -1017,6 +1020,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 
 		//feeToken
+
 		if sellToken == common.PRVCoinID.String() {
 			feeToken = feePRV
 		} else {
@@ -1035,7 +1039,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				if req.IsMax && feeToken.Fee > 0 {
 					newSellAmount := sellAmount - tradingFeeToken
 					chosenPath, receive := pathfinder.FindGoodTradePath(
-						pdexv3Meta.MaxTradePathLength,
+						// pdexv3Meta.MaxTradePathLength,
+						3,
 						newPools,
 						poolPairStates,
 						sellToken,
@@ -1060,7 +1065,8 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	} else {
 		chosenPath, foundSellAmount := pathfinder.FindSellAmount(
-			pdexv3Meta.MaxTradePathLength,
+			// pdexv3Meta.MaxTradePathLength,
+			3,
 			newPools,
 			poolPairStates,
 			sellToken,
@@ -1098,35 +1104,32 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feeToken.TokenRoute = getTokenRoute(sellToken, feeToken.Route)
 		}
 	}
+	tksInfo := getCustomTokenList([]string{sellToken, buyToken})
 	if feePRV.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
-		if rt == 0 {
-			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
-			if rt == 0 {
-				rt = feePRV.MaxGet / feePRV.SellAmount
-			}
-		}
-		rt1 := feePRV.SellAmount / feePRV.MaxGet
+		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
+		rt1 := feePRV.SellAmount / feePRV.MaxGet * dcrate1
 		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
 		feePRV.ImpactAmount = ia
+		// feePRV.Debug.RateMk = rt
+		// feePRV.Debug.Rate = rt1
+		// feePRV.Debug.RateTk1 = tksInfo[0].PriceUsd
+		// feePRV.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	if feeToken.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
-		if rt == 0 {
-			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
-			if rt == 0 {
-				rt = feeToken.MaxGet / feeToken.SellAmount
-			}
-		}
-		rt1 := feeToken.SellAmount / feeToken.MaxGet
+		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
+		rt1 := feeToken.SellAmount / feeToken.MaxGet * dcrate1
 		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feeToken.IsSignificant = true
 		}
 		feeToken.ImpactAmount = ia
+		// feeToken.Debug.RateMk = rt
+		// feeToken.Debug.Rate = rt1
+		// feeToken.Debug.RateTk1 = tksInfo[0].PriceUsd
+		// feeToken.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken

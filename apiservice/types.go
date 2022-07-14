@@ -101,9 +101,10 @@ type PdexV3EstimateTradeRespond struct {
 	IsSignificant bool
 	ImpactAmount  float64
 	// Debug         struct {
-	// 	ImpactAmount float64
-	// 	Rate         float64
-	// 	Rate1        float64
+	// 	RateMk  float64
+	// 	Rate    float64
+	// 	RateTk1 float64
+	// 	RateTk2 float64
 	// }
 }
 
