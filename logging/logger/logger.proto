@@ -10,7 +10,11 @@ service Logger {
 
 // The request message containing the user's name.
 message LogRequest {
-  bytes data = 1;
+  bytes service_id = 1;
+  bytes service_group = 2;
+  bytes type = 3;
+  bytes data = 4;
+  sint64 timestamp = 5;
 }
 
 
