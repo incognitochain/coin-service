@@ -352,7 +352,7 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 	if strings.Contains(pair6, tokenID1) && strings.Contains(pair6, tokenID2) {
 		return 3
 	}
-	if strings.Contains(pair7, tokenID1) && strings.Contains(pair7, tokenID2) {
+	if (strings.Contains(pair7, tokenID1) && strings.Contains(pair7, tokenID2)) || (strings.Contains(pair7Unified, tokenID1) && strings.Contains(pair7Unified, tokenID2)) {
 		return 2.2 //
 	}
 	if (strings.Contains(pair8, tokenID1) && strings.Contains(pair8, tokenID2)) || (strings.Contains(pair8Unified, tokenID1) && strings.Contains(pair8Unified, tokenID2)) {
@@ -413,6 +413,7 @@ var (
 
 	pair2Unified = common.PRVCoinID.String() + "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e"
 
+	pair7Unified = common.PRVCoinID.String() + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
 	pair8Unified = "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
 	// pair9Unified  = "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
 	pair10Unified = "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
