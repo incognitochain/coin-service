@@ -18,7 +18,7 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				Symbol             string        `json:"Symbol"`
 				PSymbol            string        `json:"PSymbol"`
 				PDecimals          uint64        `json:"PDecimals"`
-				Decimals           uint64        `json:"Decimals"`
+				Decimals           int64         `json:"Decimals"`
 				ContractID         string        `json:"ContractID"`
 				Status             int           `json:"Status"`
 				Type               int           `json:"Type"`
