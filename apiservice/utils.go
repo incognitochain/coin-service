@@ -337,7 +337,7 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 	if strings.Contains(pair1, tokenID1) && strings.Contains(pair1, tokenID2) {
 		return 3
 	}
-	if strings.Contains(pair2, tokenID1) && strings.Contains(pair2, tokenID2) {
+	if (strings.Contains(pair2, tokenID1) && strings.Contains(pair2, tokenID2)) || (strings.Contains(pair2Unified, tokenID1) && strings.Contains(pair2Unified, tokenID2)) {
 		return 3
 	}
 	if strings.Contains(pair3, tokenID1) && strings.Contains(pair3, tokenID2) {
@@ -353,27 +353,27 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 		return 3
 	}
 	if strings.Contains(pair7, tokenID1) && strings.Contains(pair7, tokenID2) {
-		return 2.2
+		return 2.2 //
 	}
-	if strings.Contains(pair8, tokenID1) && strings.Contains(pair8, tokenID2) {
+	if (strings.Contains(pair8, tokenID1) && strings.Contains(pair8, tokenID2)) || (strings.Contains(pair8Unified, tokenID1) && strings.Contains(pair8Unified, tokenID2)) {
 		return 3
 	}
-	if strings.Contains(pair9, tokenID1) && strings.Contains(pair9, tokenID2) {
+	if strings.Contains(pair9, tokenID1) && strings.Contains(pair9, tokenID2) { // || (strings.Contains(pair9Unified, tokenID1) && strings.Contains(pair9Unified, tokenID2)) {
 		return 2.5
 	}
-	if strings.Contains(pair10, tokenID1) && strings.Contains(pair10, tokenID2) {
+	if (strings.Contains(pair10, tokenID1) && strings.Contains(pair10, tokenID2)) || (strings.Contains(pair10Unified, tokenID1) && strings.Contains(pair10Unified, tokenID2)) {
 		return 2
 	}
-	if strings.Contains(pair11, tokenID1) && strings.Contains(pair11, tokenID2) {
+	if (strings.Contains(pair11, tokenID1) && strings.Contains(pair11, tokenID2)) || (strings.Contains(pair11Unified, tokenID1) && strings.Contains(pair11Unified, tokenID2)) {
 		return 2.5
 	}
-	if strings.Contains(pair12, tokenID1) && strings.Contains(pair12, tokenID2) {
+	if (strings.Contains(pair12, tokenID1) && strings.Contains(pair12, tokenID2)) || (strings.Contains(pair12Unified, tokenID1) && strings.Contains(pair12Unified, tokenID2)) {
 		return 100
 	}
-	if strings.Contains(pair13, tokenID1) && strings.Contains(pair13, tokenID2) {
+	if (strings.Contains(pair13, tokenID1) && strings.Contains(pair13, tokenID2)) || (strings.Contains(pair13Unified, tokenID1) && strings.Contains(pair13Unified, tokenID2)) {
 		return 100
 	}
-	if strings.Contains(pair14, tokenID1) && strings.Contains(pair14, tokenID2) {
+	if (strings.Contains(pair14, tokenID1) && strings.Contains(pair14, tokenID2)) || (strings.Contains(pair14Unified, tokenID1) && strings.Contains(pair14Unified, tokenID2)) {
 		return 100
 	}
 	if strings.Contains(pair15, tokenID1) && strings.Contains(pair15, tokenID2) {
@@ -385,7 +385,7 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 	if strings.Contains(pair17, tokenID1) && strings.Contains(pair17, tokenID2) {
 		return 3
 	}
-	if strings.Contains(pair18, tokenID1) && strings.Contains(pair18, tokenID2) {
+	if (strings.Contains(pair18, tokenID1) && strings.Contains(pair18, tokenID2)) || (strings.Contains(pair18Unified, tokenID1) && strings.Contains(pair18Unified, tokenID2)) {
 		return 3
 	}
 	return 0
@@ -410,6 +410,18 @@ var (
 	pair16 = common.PRVCoinID.String() + "dae027b21d8d57114da11209dce8eeb587d01adf59d4fc356a8be5eedc146859"
 	pair17 = common.PRVCoinID.String() + "6eed691cb14d11066f939630ff647f5f1c843a8f964d9a4d295fa9cd1111c474"
 	pair18 = common.PRVCoinID.String() + "b3586e4d68932427ce1daecb25a602811059f1d20751f4e3dd8be2a08c17affd"
+
+	pair2Unified = common.PRVCoinID.String() + "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e"
+
+	pair8Unified = "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	// pair9Unified  = "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair10Unified = "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair11Unified = "e5032c083f0da67ca141331b6005e4a3740c50218f151a5e829e9d03227e33e2" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair12Unified = "545ef6e26d4d428b16117523935b6be85ec0a63e8c2afeb0162315eb0ce3d151" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair13Unified = "0d953a47a7a488cee562e64c80c25d3dbe29d3b477ccd2b54408c0553a93f126" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair14Unified = "be02b225bcd26eeae00d3a51e554ac0adcdcc09de77ad03202904666d427a7e4" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+
+	pair18Unified = common.PRVCoinID.String() + "26df4d1bca9fd1a8871a24b9b84fc97f3dd62ca8809975c6d971d1b79d1d9f31"
 )
 
 func getUniqueIdx(list []string) []int {
