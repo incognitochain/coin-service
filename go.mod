@@ -10,7 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20220810043400-ca2ef301fed0
+	github.com/incognitochain/incognito-chain v0.0.0-20220812081630-f17843d34df2
 	github.com/json-iterator/go v1.1.12
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
