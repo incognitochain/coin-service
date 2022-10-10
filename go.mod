@@ -10,7 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20220919071732-8620ee3efe40
+	github.com/incognitochain/incognito-chain v0.0.0-20221007032907-588c6350b745
 	github.com/json-iterator/go v1.1.12
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -53,6 +53,9 @@ require (
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b // indirect
 	github.com/elastic/gosigar v0.10.4 // indirect
 	github.com/etcd-io/bbolt v1.3.3 // indirect
+	github.com/eteu-technologies/borsh-go v0.3.2 // indirect
+	github.com/eteu-technologies/golang-uint128 v1.1.2-eteu // indirect
+	github.com/eteu-technologies/near-api-go v0.0.1 // indirect
 	github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
