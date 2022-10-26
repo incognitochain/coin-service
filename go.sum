@@ -162,6 +162,8 @@ github.com/eteu-technologies/golang-uint128 v1.1.2-eteu h1:hEc9sN76qbV0l40GUq2lM
 github.com/eteu-technologies/golang-uint128 v1.1.2-eteu/go.mod h1:5Vr5yDsJV9eBl44ziSgt1xDZbVfJv4+IpqnUf0wa8t4=
 github.com/eteu-technologies/near-api-go v0.0.1 h1:nYinLfSNIPYgxCQLOgug1eOYMq99xmn/dTriqXVmlco=
 github.com/eteu-technologies/near-api-go v0.0.1/go.mod h1:yNWEYxhMGw0rIAaJfNnDsOG3dHs/y85RDiUGKVGy+oc=
+github.com/eteu-technologies/near-api-go v0.0.2-0.20220525104145-c042eac16f21 h1:7rSGgzt9qL9HcBpwCelCTCNZAILv49MqrrEMOOF4YSM=
+github.com/eteu-technologies/near-api-go v0.0.2-0.20220525104145-c042eac16f21/go.mod h1:yNWEYxhMGw0rIAaJfNnDsOG3dHs/y85RDiUGKVGy+oc=
 github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6 h1:dh8n8lldXURQjoTMEFflYHgSWIIIiIeqN7+0MeLZXfY=
 github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6/go.mod h1:PwpWDrCLZrV+tfrhqqF6kPknbISMHaJv9Ln3kPCZLwY=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6 h1:u/UEqS66A5ckRmS4yNpjmVH56sVtS/RfclBAYocb4as=
@@ -439,6 +441,10 @@ github.com/incognitochain/incognito-chain v0.0.0-20220919071732-8620ee3efe40 h1:
 github.com/incognitochain/incognito-chain v0.0.0-20220919071732-8620ee3efe40/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
 github.com/incognitochain/incognito-chain v0.0.0-20221007032907-588c6350b745 h1:jmGjA6cQbu9MPEa9nefLkgEOHDpVMDHL5uJQxu1aj8M=
 github.com/incognitochain/incognito-chain v0.0.0-20221007032907-588c6350b745/go.mod h1:KTI6XNcA+1oyvspuBAqwUYWO0+CExaIexhTobTFQ2rw=
+github.com/incognitochain/incognito-chain v0.0.0-20221024085859-59a6e2bca0b3 h1:YizH2KbjCQwi9CufG78I29Qd/fompKJdgDWjQ6XFltk=
+github.com/incognitochain/incognito-chain v0.0.0-20221024085859-59a6e2bca0b3/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
+github.com/incognitochain/incognito-chain v0.0.0-20221024090529-248feb562589 h1:aSQv0JMMta3lK6zw1UPKDc+y7PUQem3kVr3pCQgFqug=
+github.com/incognitochain/incognito-chain v0.0.0-20221024090529-248feb562589/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=

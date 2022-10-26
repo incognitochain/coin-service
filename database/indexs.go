@@ -400,6 +400,10 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "verified", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
+		},
 	}
 	_, err = mgm.Coll(&shared.ExtraTokenInfo{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)
 	if err != nil {
