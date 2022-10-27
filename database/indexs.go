@@ -66,6 +66,9 @@ func DBCreateCoinV2Index() error {
 			Keys:    bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "coin", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "shardid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+		},
 	}
 	_, err := mgm.Coll(&shared.CoinData{}).Indexes().CreateMany(context.Background(), coinMdl)
 	if err != nil {
@@ -226,6 +229,17 @@ func DBCreateShieldIndex() error {
 		return err
 	}
 	log.Println("indexName", indexName)
+
+	bridgeStateModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "version", Value: bsonx.Int32(1)}, {Key: "height", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.BridgeStateData{}).Indexes().CreateMany(context.Background(), bridgeStateModel)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -385,6 +399,10 @@ func DBCreateLiquidityIndex() error {
 		},
 		{
 			Keys: bsonx.Doc{{Key: "verified", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
 		},
 	}
 	_, err = mgm.Coll(&shared.ExtraTokenInfo{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)

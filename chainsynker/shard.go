@@ -14,6 +14,7 @@ import (
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
 	"github.com/incognitochain/incognito-chain/metadata"
+	"github.com/incognitochain/incognito-chain/metadata/bridge"
 	metadataCommon "github.com/incognitochain/incognito-chain/metadata/common"
 	"github.com/incognitochain/incognito-chain/peerv2/proto"
 	"github.com/incognitochain/incognito-chain/transaction"
@@ -21,6 +22,7 @@ import (
 )
 
 func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
+	willPauseOperation(chainID)
 	var ShardTransactionStateDB *statedb.StateDB
 	var blk *types.ShardBlock
 	blockHeight := height
@@ -139,14 +141,14 @@ func OnNewShardBlock(bc *blockchain.BlockChain, h common.Hash, height uint64, ch
 		}
 	}
 reCheckCrossShardHeight:
-	blockProcessedLock.RLock()
+	currentState.blockProcessedLock.RLock()
 	pass := true
 	for csID, v := range crossShardHeightMap {
-		if v > blockProcessed[csID] {
+		if v > currentState.BlockProcessed[csID] {
 			pass = false
 		}
 	}
-	blockProcessedLock.RUnlock()
+	currentState.blockProcessedLock.RUnlock()
 	if !pass {
 		time.Sleep(5 * time.Second)
 		goto reCheckCrossShardHeight
@@ -516,7 +518,7 @@ reCheckCrossShardHeight:
 				}
 			}
 		case metadata.BurningRequestMeta, metadata.BurningRequestMetaV2, metadata.BurningForDepositToSCRequestMeta, metadata.BurningForDepositToSCRequestMetaV2, metadata.BurningPBSCRequestMeta:
-			burningReqAction := tx.GetMetadata().(*metadata.BurningRequest)
+			burningReqAction := tx.GetMetadata().(*bridge.BurningRequest)
 			realTokenID = burningReqAction.TokenID.String()
 			pubkey = base58.EncodeCheck(burningReqAction.BurnerAddress.GetPublicSpend().ToBytesS())
 		case metadata.ContractingRequestMeta:
@@ -586,7 +588,7 @@ reCheckCrossShardHeight:
 
 	if !useFullnodeData {
 		batchData := bc.GetShardChainDatabase(blk.Header.ShardID).NewBatch()
-		err = bc.BackupShardViews(batchData, blk.Header.ShardID)
+		err = bc.BackupShardViews(batchData, blk.Header.ShardID, nil)
 		if err != nil {
 			panic("Backup shard view error")
 		}
@@ -595,8 +597,12 @@ reCheckCrossShardHeight:
 		}
 	}
 
-	blockProcessedLock.Lock()
-	blockProcessed[shardID] = blk.Header.Height
-	blockProcessedLock.Unlock()
+	currentState.blockProcessedLock.Lock()
+	currentState.BlockProcessed[shardID] = blk.Header.Height
+	currentState.blockProcessedLock.Unlock()
+	err = updateState()
+	if err != nil {
+		panic(err)
+	}
 	log.Printf("finish processing coin for block %v shard %v in %v\n", blk.GetHeight(), shardID, time.Since(startTime))
 }

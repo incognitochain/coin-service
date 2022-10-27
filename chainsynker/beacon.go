@@ -34,7 +34,10 @@ type IncPdexState struct {
 
 var pdexV3State pdex.State
 
+// var bridgeManager *bridgeagg.Manager
+
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
+	willPauseOperation(-1)
 	log.Printf("start processing coin for block %v beacon\n", height)
 	blk, _, err := Localnode.GetBlockchain().GetBeaconBlockByHash(h)
 	if err != nil {
@@ -45,67 +48,102 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		sort.Slice(blks, func(i, j int) bool { return blks[i].Height > blks[j].Height })
 	retry:
 		pass := true
-		blockProcessedLock.RLock()
-		if blockProcessed[int(shardID)] < blks[0].Height {
+
+		currentState.blockProcessedLock.RLock()
+		if currentState.BlockProcessed[int(shardID)] < blks[0].Height {
 			pass = false
 		}
-		blockProcessedLock.RUnlock()
+		currentState.blockProcessedLock.RUnlock()
 		if !pass {
 			time.Sleep(500 * time.Millisecond)
 			goto retry
 		}
 	}
 	startTime := time.Now()
-	_ = startTime
-	// Process PDEstatev1
-	willProcess := true
-
-	if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-100 {
-		willProcess = false
+	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false, true)
+	beaconFeatureStateDB := beaconBestState.GetBeaconFeatureStateDB()
+	// if bridgeManager == nil {
+	// 	bridgeManager, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// } else {
+	// 	bridgeManager.ClearCache()
+	// 	err = bridgeManager.Process(blk.Body.Instructions, beaconFeatureStateDB)
+	// 	if err != nil {
+	// 		log.Println("Error when processing bridge state: ", err)
+	// 		bridgeManager, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	}
+	// }
+	bridgeManagerJson := &jsonresult.BridgeAggState{
+		BeaconTimeStamp:     blk.Header.Timestamp,
+		UnifiedTokenVaults:  beaconBestState.BridgeAggManager().State().UnifiedTokenVaults(),
+		WaitingUnshieldReqs: beaconBestState.BridgeAggManager().State().CloneWaitingUnshieldReqs(),
+		BaseDecimal:         config.Param().BridgeAggParam.BaseDecimal,
+		MaxLenOfPath:        config.Param().BridgeAggParam.MaxLenOfPath,
 	}
-	if height < config.Param().PDexParams.Pdexv3BreakPointHeight && willProcess {
-		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
-		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
-		tradingFees := state.Reader().TradingFees()
-		shares := state.Reader().Shares()
+	bridgeStr, err := json.MarshalToString(bridgeManagerJson)
+	if err != nil {
+		log.Println(err)
+	}
+	err = database.DBSaveBridgeState(bridgeStr, height, 1)
+	if err != nil {
+		log.Println(err)
+	}
 
-		waitingContributions := map[string]*rawdbv2.PDEContribution{}
-		poolPairs := map[string]*rawdbv2.PDEPoolForPair{}
+	// Process PDEstatev1
+	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
+		willProcess := true
+		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-100 {
+			willProcess = false
+		}
+		if willProcess {
+			// beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
+			state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
+			tradingFees := state.Reader().TradingFees()
+			shares := state.Reader().Shares()
 
-		err = json.Unmarshal(state.Reader().PoolPairs(), &poolPairs)
-		if err != nil {
-			panic(err)
+			waitingContributions := map[string]*rawdbv2.PDEContribution{}
+			poolPairs := map[string]*rawdbv2.PDEPoolForPair{}
+
+			err = json.Unmarshal(state.Reader().PoolPairs(), &poolPairs)
+			if err != nil {
+				panic(err)
+			}
+
+			err = json.Unmarshal(state.Reader().WaitingContributions(), &waitingContributions)
+			if err != nil {
+				panic(err)
+			}
+
+			pdeStateJSON := jsonresult.CurrentPDEState{
+				BeaconTimeStamp:         beaconBestState.BestBlock.Header.Timestamp,
+				PDEPoolPairs:            poolPairs,
+				PDEShares:               shares,
+				WaitingPDEContributions: waitingContributions,
+				PDETradingFees:          tradingFees,
+			}
+			log.Printf("prepare pdeStateJSON for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+			pdeStr, err := json.MarshalToString(pdeStateJSON)
+			if err != nil {
+				log.Println(err)
+			}
+			err = database.DBSavePDEState(pdeStr, height, 1)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 
-		err = json.Unmarshal(state.Reader().WaitingContributions(), &waitingContributions)
-		if err != nil {
-			panic(err)
-		}
-
-		pdeStateJSON := jsonresult.CurrentPDEState{
-			BeaconTimeStamp:         beaconBestState.BestBlock.Header.Timestamp,
-			PDEPoolPairs:            poolPairs,
-			PDEShares:               shares,
-			WaitingPDEContributions: waitingContributions,
-			PDETradingFees:          tradingFees,
-		}
-		log.Printf("prepare pdeStateJSON for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-		pdeStr, err := json.MarshalToString(pdeStateJSON)
-		if err != nil {
-			log.Println(err)
-		}
-		err = database.DBSavePDEState(pdeStr, height, 1)
-		if err != nil {
-			log.Println(err)
-		}
 		log.Printf("mongo stored pdeStateJSON for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 	}
 
 	//process PDEstateV2
 	if blk.GetHeight() >= config.Param().PDexParams.Pdexv3BreakPointHeight {
-		beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
-		beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
-		beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
+		// beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
+		// beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
 		var prevStateV2 *shared.PDEStateV2
 		stateV2 := &shared.PDEStateV2{
 			StakingPoolsState: make(map[string]*pdex.StakingPoolState),
@@ -206,11 +244,17 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		wg.Add(2)
 		go func() {
 			paramJSON := pdexV3State.Reader().Params().Clone()
+			waitingContributions := map[string]*rawdbv2.Pdexv3Contribution{}
+			err = json.Unmarshal(pdexV3State.Reader().WaitingContributions(), &waitingContributions)
+			if err != nil {
+				panic(err)
+			}
 			pdeStateJSON = jsonresult.Pdexv3State{
-				BeaconTimeStamp: blk.Header.Timestamp,
-				PoolPairs:       &poolPairsJSON,
-				StakingPools:    &stateV2.StakingPoolsState,
-				Params:          paramJSON,
+				BeaconTimeStamp:      blk.Header.Timestamp,
+				PoolPairs:            &poolPairsJSON,
+				StakingPools:         &stateV2.StakingPoolsState,
+				Params:               paramJSON,
+				WaitingContributions: &waitingContributions,
 			}
 			pdeStr, err = json.MarshalToString(pdeStateJSON)
 			if err != nil {
@@ -357,9 +401,13 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		panic(err)
 	}
 	log.Printf("lvdb stored coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(t10))
-	blockProcessedLock.Lock()
-	blockProcessed[-1] = blk.Header.Height
-	blockProcessedLock.Unlock()
+	currentState.blockProcessedLock.Lock()
+	currentState.BlockProcessed[-1] = blk.Header.Height
+	currentState.blockProcessedLock.Unlock()
+	err = updateState()
+	if err != nil {
+		panic(err)
+	}
 	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
@@ -477,7 +525,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				tk2Amount += a2
 			}
 			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
-			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
+			data.Token2Amount = fmt.Sprintf("%v", tk2Amount)
 			pairList = append(pairList, data)
 		}
 		wg.Done()

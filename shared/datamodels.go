@@ -274,6 +274,37 @@ func (model *TxData) Saving() error {
 	return nil
 }
 
+type BridgeStateData struct {
+	mgm.DefaultModel `bson:",inline"`
+	Version          int    `json:"version" bson:"version"`
+	State            string `json:"state" bson:"state"`
+	Height           uint64 `json:"height" bson:"height"`
+}
+
+func (model *BridgeStateData) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *BridgeStateData) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func NewBridgeStateData(state string, version int) *BridgeStateData {
+	return &BridgeStateData{
+		Version: version,
+		State:   state,
+	}
+}
+
 type PDEStateData struct {
 	mgm.DefaultModel `bson:",inline"`
 	Version          int    `json:"version" bson:"version"`
@@ -969,7 +1000,7 @@ type ExtraTokenInfo struct {
 	Symbol           string `json:"Symbol" bson:"symbol"`
 	PSymbol          string `json:"PSymbol" bson:"psymbol"`
 	PDecimals        uint64 `json:"PDecimals" bson:"pdecimals"`
-	Decimals         uint64 `json:"Decimals" bson:"decimals"`
+	Decimals         int64  `json:"Decimals" bson:"decimals"`
 	ContractID       string `json:"ContractID" bson:"contractid"`
 	Status           int    `json:"Status" bson:"status"`
 	Type             int    `json:"Type" bson:"type"`
@@ -988,8 +1019,12 @@ type ExtraTokenInfo struct {
 	OriginalSymbol     string  `json:"OriginalSymbol" bson:"originalsymbol"`
 	LiquidityReward    float64 `json:"LiquidityReward" bson:"liquidityreward"`
 
-	Network        string `json:"Network" bson:"Network"`
-	ListChildToken string `json:"ListChildToken" bson:"listchildtoken"`
+	Network           string `json:"Network" bson:"Network"`
+	ListChildToken    string `json:"ListChildToken" bson:"listchildtoken"`
+	ListUnifiedToken  string `json:"ListUnifiedToken"`
+	NetworkID         int    `json:"NetworkID"`
+	MovedUnifiedToken bool   `json:"MovedUnifiedToken"`
+	ParentUnifiedID   int    `json:"ParentUnifiedID"`
 }
 
 func (model *ExtraTokenInfo) Creating() error {

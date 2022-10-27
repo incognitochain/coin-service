@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+package logger;
+option go_package="./logger";
+
+service Logger {
+  rpc RecordLog (LogRequest) returns (google.protobuf.Empty) {}
+}
+
+// The request message containing the user's name.
+message LogRequest {
+  bytes service_id = 1;
+  bytes service_group = 2;
+  bytes type = 3;
+  bytes data = 4;
+  sint64 timestamp = 5;
+}
+
+
+

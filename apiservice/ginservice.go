@@ -10,10 +10,13 @@ import (
 	"time"
 
 	"github.com/incognitochain/coin-service/chainsynker"
+	"github.com/incognitochain/coin-service/coordinator"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/patrickmn/go-cache"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -30,11 +33,27 @@ func StartGinService() {
 	cachedb = cache.New(5*time.Minute, 5*time.Minute)
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
+
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
+		id := uuid.NewV4()
+		newServiceConn := coordinator.ServiceConn{
+			ServiceGroup: coordinator.SERVICEGROUP_QUERY,
+			ID:           id.String(),
+			GitCommit:    shared.GITCOMMIT,
+			ReadCh:       make(chan []byte),
+			WriteCh:      make(chan []byte),
+		}
+		logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
+		coordinatorState.coordinatorConn = &newServiceConn
+		coordinatorState.serviceStatus = "pause"
+		coordinatorState.pauseService = true
+		connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+		go willPauseOperation()
 		go tokenListWatcher()
 		go poolListWatcher()
+		go bridgeStateWatcher()
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
@@ -87,7 +106,6 @@ func StartGinService() {
 		shieldGroup := r.Group("/shield")
 		shieldGroup.GET("/getshieldhistory", APIGetShieldHistory)
 		shieldGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
-		shieldGroup.GET("/gettxshield", APIGetTxShield)
 
 		//pdex
 		pdex := r.Group("/pdex")
@@ -137,6 +155,13 @@ func StartGinService() {
 		deviceGroup := r.Group("/device")
 		deviceGroup.GET("/getdevicebyqrcode", APIGetDeviceByQRCode)
 
+		bridgeGroup := r.Group("/bridge")
+		bridgeGroup.GET("/aggregatestate", APIGetBridgeAggState)
+		bridgeGroup.GET("/getshieldhistory", APIGetShieldHistory)
+		bridgeGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
+		bridgeGroup.GET("/gettxshield", APIGetTxShield)
+		// bridgeGroup.GET("/getsupportedvault", APIGetSupportedVault)
+
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
@@ -144,6 +169,18 @@ func StartGinService() {
 		r.POST("/rescanotakey", APIRescanOTA)
 		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
 		r.GET("/workerstat", otaindexer.GetWorkerStat)
+	}
+
+	if shared.ServiceCfg.Mode == shared.COORDINATORMODE {
+		coordinatorGroup := r.Group("/coordinator")
+		coordinatorGroup.GET("/connectservice", coordinator.ServiceRegisterHandler)
+		coordinatorGroup.GET("/backup", coordinator.BackupHandler)
+		coordinatorGroup.GET("/backupstatus", coordinator.BackupStatusHandler)
+		coordinatorGroup.GET("/servicestat", coordinator.GetServiceStatusHandler)
+		coordinatorGroup.GET("/listbackups", coordinator.ListBackupsHandler)
+		coordinatorGroup.GET("/incident-summary", coordinator.IncidentSummaryHandler)
+		coordinatorGroup.GET("/incident-detail", coordinator.IncidentDetailHandler)
+		coordinatorGroup.GET("/reset-incidentlogs", coordinator.ResetIncidentLogsHandler)
 	}
 
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))

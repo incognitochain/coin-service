@@ -25,6 +25,8 @@ committee_size:
   shard_committee_size_key_list_v2: 4
   beacon_committee_size_key_list_v2: 4
   number_of_fixed_shard_block_validators: 4
+  increase_max_shard_committee_size:
+    - 1000000000000: 48
 block_time:
   min_beacon_block_interval: 8s
   max_beacon_block_creation: 5s
@@ -39,12 +41,12 @@ epoch_param:
   epoch_v2_break_point: 1000000000000
   random_time: 25
   random_time_v2: 1000000000000
-eth_contract_address: "0xE7b8DA0EC40719b9048CB81Ab5ABb468Da9cC9E0"
-bsc_contract_address: "0x6CbCDEBe5449D43c2AaD03da6f2BEE8813a33E6a"
-prv_erc20_contract_address: "0xf4933b0288644778f6f2264EaB009fD04fF669a1"
-prv_bep20_contract_address: "0x5A15626f6beA715870D46f43f50bE9821368963f"
-pdex_erc20_contract_address: "0x9c59b98fcC33f2859A2aB11BC2aAfDcf513b6c33"
-pdex_bep20_contract_address: "0xa43F2911dF4a560A1F687Eba359D047753Cd9BD9"
+eth_contract_address: "0xf90860014c7e13dE4A86B81c54dDE797820c72bE"
+bsc_contract_address: "0x5cAA31ADf0Ae8767f651EdEe1Cd6C57C0a707EC1"
+plg_contract_address: "0x141aa0C4c7d27f7B526a254202F979B60F056333"
+ftm_contract_address: "0x526768A37feD86Fd8D5D72ca78913DFF64AC5E15"
+prv_erc20_contract_address: "0xAbFf10a3F834517Fa106f4BAA4b4CB8D608517F7"
+prv_bep20_contract_address: "0x0C61C7F99DeE0270a5934F1520d109dc44A51d6c"
 dao_address: "12S5Lrs1XeQLbqN4ySyKtjAjd2d7sBP2tjFijzmp6avrrkQCNFMpkXm3FPzj2Wcu2ZNqJEmh9JriVuRErVwhuQnLmWSaggobEWsBEci" # community fund
 centralized_website_payment_address: "12S5Lrs1XeQLbqN4ySyKtjAjd2d7sBP2tjFijzmp6avrrkQCNFMpkXm3FPzj2Wcu2ZNqJEmh9JriVuRErVwhuQnLmWSaggobEWsBEci"
 swap_committee_param:
@@ -55,9 +57,12 @@ consensus_param:
   consensus_v2_epoch: 1
   staking_flow_v2_height: 1
   enable_slashing_height: 1
+  lemma2_height: 1000000000000
+  byzantine_detector_height: 1000000000000
   assign_rule_v3_height: 1000000000000
   enable_slashing_height_v2: 1000000000000
   staking_flow_v3_height: 1000000000000
+  force_not_use_burned_coins: 1
   block_producing_v3_height: 1000000000000
   timeslot: 10
   epoch_break_point_swap_new_key: # read from file key list v2
@@ -74,8 +79,23 @@ enable_feature_flags:
   - PortalV4: 1
 portal_v3_height: 1000000000000
 tx_pool_version: 0
+geth_param:
+  host: 
+    - "https://kovan.infura.io/v3/1138a1e99b154b10bae5c382ad894361"
 bsc_param:
-  host: "https://data-seed-prebsc-1-s1.binance.org:8545"
+  host: 
+    - "https://data-seed-prebsc-1-s1.binance.org:8545"
+    - "https://data-seed-prebsc-1-s2.binance.org:8545"
+    - "https://data-seed-prebsc-2-s2.binance.org:8545"
+    - "https://data-seed-prebsc-2-s3.binance.org:8545"
+plg_param:
+  host: 
+    - "https://polygon-mumbai.g.alchemy.com/v2/V8SP0S8Q-sT35ca4VKH3Iwyvh8K8wTRn"
+    - "https://rpc-mumbai.maticvigil.com"
+    - "https://matic-mumbai.chainstacklabs.com"
+ftm_param:
+  host: 
+    - "https://rpc.testnet.fantom.network"
 pdex_param:
   pdex_v3_break_point_height: 11
   protocol_fund_address: "12svfkP6w5UDJDSCwqH978PvqiqBxKmUnA9em9yAYWYJVRv7wuXY1qhhYpPAm4BDz2mLbFrRmdK3yRhnTqJCZXKHUmoi7NV83HCH2YFpctHNaDdkSiQshsjw2UFUuwdEvcidgaKmF3VJpY5f8RdN"
@@ -93,3 +113,12 @@ pdex_param:
     auto_withdraw_order_limit_amount: 10
     min_prv_reserve_trading_rate: 1000000000000
 is_enable_bpv3_stats: false
+auto_enable_feature:
+  - maxcommitteesize48:
+      min_trigger: 1e9
+      force_trigger: 1e9
+      require_percentage: 100
+bridge_agg_param:
+  admin_address: "12svfkP6w5UDJDSCwqH978PvqiqBxKmUnA9em9yAYWYJVRv7wuXY1qhhYpPAm4BDz2mLbFrRmdK3yRhnTqJCZXKHUmoi7NV83HCH2YFpctHNaDdkSiQshsjw2UFUuwdEvcidgaKmF3VJpY5f8RdN"
+  base_decimal: 9
+  max_len_of_path: 3

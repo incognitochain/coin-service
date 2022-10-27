@@ -1,13 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"syscall"
 
 	"github.com/incognitochain/coin-service/apiservice"
 	"github.com/incognitochain/coin-service/assistant"
 	"github.com/incognitochain/coin-service/chainsynker"
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/processors/liquidity"
@@ -17,7 +20,15 @@ import (
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
+func init() {
+	log.SetPrefix(fmt.Sprintf("pid:%d ", syscall.Getpid()))
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
+
+var GitCommit string
+
 func main() {
+	shared.GITCOMMIT = GitCommit
 	shared.ReadConfigAndArg()
 	err := database.ConnectDB(shared.ServiceCfg.MongoDB, shared.ServiceCfg.MongoAddress)
 	if err != nil {
@@ -29,10 +40,6 @@ func main() {
 		panic(err)
 	}
 	switch shared.ServiceCfg.Mode {
-	// case shared.FULLMODE:
-	// 	chainsynker.InitChainSynker(shared.ServiceCfg)
-	// 	go otaindexer.StartOTAIndexingFull()
-	// 	go apiservice.StartGinService()
 	case shared.QUERYMODE:
 		go apiservice.StartGinService()
 	case shared.CHAINSYNCMODE:
@@ -51,6 +58,9 @@ func main() {
 		go trade.StartProcessor()
 	case shared.ASTMODE:
 		go assistant.StartAssistant()
+	case shared.COORDINATORMODE:
+		go coordinator.StartCoordinator()
+		go apiservice.StartGinService()
 	}
 
 	if shared.ENABLE_PROFILER {

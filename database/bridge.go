@@ -174,3 +174,32 @@ func DBGetShieldWithRespond(fromtime uint64, offset int64) ([]shared.TxData, err
 
 	return result, nil
 }
+
+func DBSaveBridgeState(state string, height uint64, version int) error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
+
+	doc := bson.M{
+		"$set": bson.M{
+			"version": version,
+			"state":   state,
+			"height":  height,
+		},
+	}
+	filter := bson.M{"version": bson.M{operator.Eq: version}}
+	_, err := mgm.Coll(&shared.BridgeStateData{}).UpdateOne(ctx, filter, doc, mgm.UpsertTrueOption())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DBGetBridgeState(version int) (string, error) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
+	var result shared.BridgeStateData
+	err := mgm.Coll(&shared.BridgeStateData{}).FirstWithCtx(ctx, bson.M{"version": bson.M{operator.Eq: version}}, &result)
+	if err != nil {
+		log.Println(err)
+		return "", err
+	}
+	return result.State, nil
+}

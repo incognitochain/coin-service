@@ -2,9 +2,7 @@ package assistant
 
 import (
 	"errors"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -20,7 +18,7 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				Symbol             string        `json:"Symbol"`
 				PSymbol            string        `json:"PSymbol"`
 				PDecimals          uint64        `json:"PDecimals"`
-				Decimals           uint64        `json:"Decimals"`
+				Decimals           int64         `json:"Decimals"`
 				ContractID         string        `json:"ContractID"`
 				Status             int           `json:"Status"`
 				Type               int           `json:"Type"`
@@ -39,6 +37,10 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				Network            string        `json:"Network"`
 				OriginalSymbol     string        `json:"OriginalSymbol"`
 				LiquidityReward    float64       `json:"LiquidityReward"`
+				ListUnifiedToken   []interface{} `json:"ListUnifiedToken"`
+				NetworkID          int           `json:"NetworkID"`
+				MovedUnifiedToken  bool          `json:"MovedUnifiedToken"`
+				ParentUnifiedID    int           `json:"ParentUnifiedID"`
 			}
 			Error string `json:"Error"`
 		}
@@ -48,25 +50,25 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 		if retryTimes > 5 {
 			return nil, errors.New("retry reached updatePDecimal")
 		}
-		resp, err := http.Get(shared.ServiceCfg.ExternalDecimals)
+
+		_, err := shared.RestyClient.R().
+			EnableTrace().
+			SetHeader("Accept-Encoding", "gzip").
+			SetResult(&decimal).
+			Get(shared.ServiceCfg.ExternalDecimals)
 		if err != nil {
-			log.Println(err)
+			log.Printf("Error getting token: %s\n", err.Error())
 			time.Sleep(1 * time.Second)
 			goto retry
 		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		err = json.Unmarshal(body, &decimal)
-		if err != nil {
-			log.Println(err)
-			goto retry
-		}
-		resp.Body.Close()
+
 		var result []shared.ExtraTokenInfo
 		for _, v := range decimal.Result {
 			listChildTkBytes, err := json.Marshal(v.ListChildToken)
+			if err != nil {
+				return nil, err
+			}
+			listUnifiedTkBytes, err := json.Marshal(v.ListUnifiedToken)
 			if err != nil {
 				return nil, err
 			}
@@ -95,6 +97,10 @@ func getExtraTokenInfo() ([]shared.ExtraTokenInfo, error) {
 				OriginalSymbol:     v.OriginalSymbol,
 				LiquidityReward:    v.LiquidityReward,
 				Network:            v.Network,
+				ListUnifiedToken:   string(listUnifiedTkBytes),
+				MovedUnifiedToken:  v.MovedUnifiedToken,
+				NetworkID:          v.NetworkID,
+				ParentUnifiedID:    v.ParentUnifiedID,
 			})
 		}
 		return result, nil
@@ -128,22 +134,19 @@ func getCustomTokenInfo() ([]shared.CustomTokenInfo, error) {
 			return nil, errors.New("retry reached updatePDecimal")
 		}
 		urls := strings.Split(shared.ServiceCfg.ExternalDecimals, "/")
-		resp, err := http.Get(urls[0] + "//" + urls[2] + "/pcustomtoken/list")
+		pCustomList := urls[0] + "//" + urls[2] + "/pcustomtoken/list"
+		_, err := shared.RestyClient.R().
+			EnableTrace().
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Accept-Encoding", "gzip").
+			SetResult(&decimal).
+			Get(pCustomList)
 		if err != nil {
-			log.Println(err)
+			log.Printf("Error getting token: %s\n", err.Error())
 			time.Sleep(1 * time.Second)
 			goto retry
 		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		err = json.Unmarshal(body, &decimal)
-		if err != nil {
-			log.Println(err)
-			goto retry
-		}
-		resp.Body.Close()
+
 		var result []shared.CustomTokenInfo
 		for _, v := range decimal.Result {
 			result = append(result, shared.CustomTokenInfo{

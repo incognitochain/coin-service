@@ -295,11 +295,13 @@ retry:
 	return float64(receive) / float64(a)
 }
 
-func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) float64 {
+func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) (float64, []*shared.Pdexv3PoolPairWithId) {
 	a := uint64(minAmount)
+	a0 := uint64(0)
 	a1 := uint64(0)
+	var tradedPoolIDList []*shared.Pdexv3PoolPairWithId
 retry:
-	_, receive := pathfinder.FindGoodTradePath(
+	poolIDList, receive := pathfinder.FindGoodTradePath(
 		pdexv3Meta.MaxTradePathLength,
 		pools,
 		poolPairStates,
@@ -312,9 +314,11 @@ retry:
 		if a < 1e6 {
 			goto retry
 		}
-		return 0
+		return float64(a1) / float64(a0), tradedPoolIDList
 	} else {
 		if receive > a1*10 {
+			a0 = a
+			tradedPoolIDList = poolIDList
 			a *= 10
 			a1 = receive
 			goto retry
@@ -326,14 +330,14 @@ retry:
 			}
 		}
 	}
-	return float64(receive) / float64(a)
+	return float64(receive) / float64(a), tradedPoolIDList
 }
 
 func ampHardCode(tokenID1, tokenID2 string) float64 {
 	if strings.Contains(pair1, tokenID1) && strings.Contains(pair1, tokenID2) {
 		return 3
 	}
-	if strings.Contains(pair2, tokenID1) && strings.Contains(pair2, tokenID2) {
+	if (strings.Contains(pair2, tokenID1) && strings.Contains(pair2, tokenID2)) || (strings.Contains(pair2Unified, tokenID1) && strings.Contains(pair2Unified, tokenID2)) {
 		return 3
 	}
 	if strings.Contains(pair3, tokenID1) && strings.Contains(pair3, tokenID2) {
@@ -348,28 +352,28 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 	if strings.Contains(pair6, tokenID1) && strings.Contains(pair6, tokenID2) {
 		return 3
 	}
-	if strings.Contains(pair7, tokenID1) && strings.Contains(pair7, tokenID2) {
-		return 2.2
+	if (strings.Contains(pair7, tokenID1) && strings.Contains(pair7, tokenID2)) || (strings.Contains(pair7Unified, tokenID1) && strings.Contains(pair7Unified, tokenID2)) {
+		return 2.2 //
 	}
-	if strings.Contains(pair8, tokenID1) && strings.Contains(pair8, tokenID2) {
+	if (strings.Contains(pair8, tokenID1) && strings.Contains(pair8, tokenID2)) || (strings.Contains(pair8Unified, tokenID1) && strings.Contains(pair8Unified, tokenID2)) {
 		return 3
 	}
-	if strings.Contains(pair9, tokenID1) && strings.Contains(pair9, tokenID2) {
+	if strings.Contains(pair9, tokenID1) && strings.Contains(pair9, tokenID2) { // || (strings.Contains(pair9Unified, tokenID1) && strings.Contains(pair9Unified, tokenID2)) {
 		return 2.5
 	}
-	if strings.Contains(pair10, tokenID1) && strings.Contains(pair10, tokenID2) {
+	if (strings.Contains(pair10, tokenID1) && strings.Contains(pair10, tokenID2)) || (strings.Contains(pair10Unified, tokenID1) && strings.Contains(pair10Unified, tokenID2)) {
 		return 2
 	}
-	if strings.Contains(pair11, tokenID1) && strings.Contains(pair11, tokenID2) {
+	if (strings.Contains(pair11, tokenID1) && strings.Contains(pair11, tokenID2)) || (strings.Contains(pair11Unified, tokenID1) && strings.Contains(pair11Unified, tokenID2)) {
 		return 2.5
 	}
-	if strings.Contains(pair12, tokenID1) && strings.Contains(pair12, tokenID2) {
+	if (strings.Contains(pair12, tokenID1) && strings.Contains(pair12, tokenID2)) || (strings.Contains(pair12Unified, tokenID1) && strings.Contains(pair12Unified, tokenID2)) {
 		return 100
 	}
-	if strings.Contains(pair13, tokenID1) && strings.Contains(pair13, tokenID2) {
+	if (strings.Contains(pair13, tokenID1) && strings.Contains(pair13, tokenID2)) || (strings.Contains(pair13Unified, tokenID1) && strings.Contains(pair13Unified, tokenID2)) {
 		return 100
 	}
-	if strings.Contains(pair14, tokenID1) && strings.Contains(pair14, tokenID2) {
+	if (strings.Contains(pair14, tokenID1) && strings.Contains(pair14, tokenID2)) || (strings.Contains(pair14Unified, tokenID1) && strings.Contains(pair14Unified, tokenID2)) {
 		return 100
 	}
 	if strings.Contains(pair15, tokenID1) && strings.Contains(pair15, tokenID2) {
@@ -377,6 +381,12 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 	}
 	if strings.Contains(pair16, tokenID1) && strings.Contains(pair16, tokenID2) {
 		return 2
+	}
+	if strings.Contains(pair17, tokenID1) && strings.Contains(pair17, tokenID2) {
+		return 3
+	}
+	if (strings.Contains(pair18, tokenID1) && strings.Contains(pair18, tokenID2)) || (strings.Contains(pair18Unified, tokenID1) && strings.Contains(pair18Unified, tokenID2)) {
+		return 3
 	}
 	return 0
 }
@@ -398,6 +408,21 @@ var (
 	pair14 = "be02b225bcd26eeae00d3a51e554ac0adcdcc09de77ad03202904666d427a7e4" + "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0"
 	pair15 = common.PRVCoinID.String() + "e5032c083f0da67ca141331b6005e4a3740c50218f151a5e829e9d03227e33e2"
 	pair16 = common.PRVCoinID.String() + "dae027b21d8d57114da11209dce8eeb587d01adf59d4fc356a8be5eedc146859"
+	pair17 = common.PRVCoinID.String() + "6eed691cb14d11066f939630ff647f5f1c843a8f964d9a4d295fa9cd1111c474"
+	pair18 = common.PRVCoinID.String() + "b3586e4d68932427ce1daecb25a602811059f1d20751f4e3dd8be2a08c17affd"
+
+	pair2Unified = common.PRVCoinID.String() + "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e"
+
+	pair7Unified = common.PRVCoinID.String() + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair8Unified = "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	// pair9Unified  = "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair10Unified = "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair11Unified = "e5032c083f0da67ca141331b6005e4a3740c50218f151a5e829e9d03227e33e2" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair12Unified = "545ef6e26d4d428b16117523935b6be85ec0a63e8c2afeb0162315eb0ce3d151" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair13Unified = "0d953a47a7a488cee562e64c80c25d3dbe29d3b477ccd2b54408c0553a93f126" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+	pair14Unified = "be02b225bcd26eeae00d3a51e554ac0adcdcc09de77ad03202904666d427a7e4" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
+
+	pair18Unified = common.PRVCoinID.String() + "26df4d1bca9fd1a8871a24b9b84fc97f3dd62ca8809975c6d971d1b79d1d9f31"
 )
 
 func getUniqueIdx(list []string) []int {
@@ -412,18 +437,23 @@ func getUniqueIdx(list []string) []int {
 	return result
 }
 
-func getToken24hPriceChange(tokenID, pairTokenID, poolPair, baseToken string, prv24hChange float64) float64 {
-	if pairTokenID == baseToken {
-		return getPoolPair24hChange(poolPair)
+func getToken24hPriceChange(tokenID, pairTokenID, poolPair, stableCoinList string, prv24hChange float64, priorityTokens []string) float64 {
+	if strings.Contains(stableCoinList, pairTokenID) {
+		tks := strings.Split(poolPair, "-")
+		willSwap := false
+		if tks[0] == pairTokenID {
+			willSwap = true
+		}
+		return getPoolPair24hChange(poolPair, willSwap)
 	}
 	if pairTokenID == common.PRVCoinID.String() {
-		return getPoolPair24hChange(poolPair) + prv24hChange
+		return ((1+getPoolPair24hChange(poolPair, true)/100)*(1+prv24hChange/100) - 1) * 100
 	}
 	return 0
 }
 
-func getPoolPair24hChange(poolID string) float64 {
-	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT15M", "PT24H")
+func getPoolPair24hChange(poolID string, willSwap bool) float64 {
+	analyticsData, err := analyticsquery.APIGetPDexV3PairRateHistories(poolID, "PT1H", "P1D")
 	if err != nil {
 		log.Println(err)
 		return 0
@@ -433,7 +463,11 @@ func getPoolPair24hChange(poolID string) float64 {
 	}
 	p1 := analyticsData.Result[0].Close
 	p2 := analyticsData.Result[len(analyticsData.Result)-1].Close
-	r := (p2 - p1) / p1 * 100
+	r := (p2/p1 - 1) * 100
+	if willSwap {
+		r2 := ((1 / (1 + r/100)) - 1) * 100
+		return r2
+	}
 	return r
 }
 func getTokenRoute(sellToken string, route []string) []string {
