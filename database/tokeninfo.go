@@ -106,6 +106,7 @@ func DBGetTokenByTokenID(tokenids []string) ([]shared.TokenInfoData, error) {
 func DBSaveExtraTokenInfo(list []shared.ExtraTokenInfo) error {
 	docs := []interface{}{}
 	for _, tx := range list {
+		tx.UpdatedAt = time.Now()
 		update := bson.M{
 			"$set": tx,
 		}
