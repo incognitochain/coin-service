@@ -1000,7 +1000,7 @@ type ExtraTokenInfo struct {
 	Symbol           string `json:"Symbol" bson:"symbol"`
 	PSymbol          string `json:"PSymbol" bson:"psymbol"`
 	PDecimals        uint64 `json:"PDecimals" bson:"pdecimals"`
-	Decimals         uint64 `json:"Decimals" bson:"decimals"`
+	Decimals         int64  `json:"Decimals" bson:"decimals"`
 	ContractID       string `json:"ContractID" bson:"contractid"`
 	Status           int    `json:"Status" bson:"status"`
 	Type             int    `json:"Type" bson:"type"`

@@ -3,14 +3,14 @@ module github.com/incognitochain/coin-service
 go 1.17
 
 require (
-	github.com/0xkumi/incognito-dev-framework v0.0.0-20220707102803-c381479a23a9
+	github.com/0xkumi/incognito-dev-framework v0.0.0-20220808070820-35bed723bfd2
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.8.22-0.20190710074244-72029f0f88f6
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/incognitochain/incognito-chain v0.0.0-20220705105521-0568f85c2477
+	github.com/incognitochain/incognito-chain v0.0.0-20221027013332-d88ab047cb9a
 	github.com/json-iterator/go v1.1.12
 	github.com/kamva/mgm/v3 v3.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -53,6 +53,9 @@ require (
 	github.com/ebfe/keccak v0.0.0-20150115210727-5cc570678d1b // indirect
 	github.com/elastic/gosigar v0.10.4 // indirect
 	github.com/etcd-io/bbolt v1.3.3 // indirect
+	github.com/eteu-technologies/borsh-go v0.3.2 // indirect
+	github.com/eteu-technologies/golang-uint128 v1.1.2-eteu // indirect
+	github.com/eteu-technologies/near-api-go v0.0.2-0.20220525104145-c042eac16f21 // indirect
 	github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect

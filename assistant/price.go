@@ -260,6 +260,9 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 					if v.TokenID != common.PRVCoinID.String() {
 						if strings.Contains(poolID, v.TokenID) && (strings.Contains(poolID, stableCoinStr) || strings.Contains(poolID, common.PRVCoinID.String())) {
 							pool := getPool(poolID)
+							if pool == nil {
+								continue
+							}
 							tks := strings.Split(poolID, "-")
 							tokenAmount := uint64(0)
 							if tks[0] == v.TokenID {

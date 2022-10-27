@@ -372,6 +372,7 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 	var contributeList []PdexV3ContributionData
 	var result []PdexV3ContributionData
 	completedTxs := make(map[string]struct{})
+
 	for _, v := range list {
 		ctrbAmount := []uint64{}
 		ctrbToken := []string{}
@@ -416,11 +417,18 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 			if v.ContributeTokens[0] != v.ContributeTokens[1] {
 				data.Status = "completed"
 			} else {
-				data.Status = "refunding"
+				if v.RequestTxs[0] == v.RequestTxs[1] {
+					data.RequestTxs = []string{data.RequestTxs[0]}
+					data.ContributeTokens = []string{data.ContributeTokens[0]}
+					data.ContributeAmount = []uint64{data.ContributeAmount[0]}
+					data.Status = "waiting"
+				} else {
+					data.Status = "refunding"
+				}
 			}
 		}
-		if len(v.RequestTxs) == 2 {
-			for _, tx := range v.RequestTxs {
+		if len(data.RequestTxs) == 2 {
+			for _, tx := range data.RequestTxs {
 				completedTxs[tx] = struct{}{}
 			}
 		}
