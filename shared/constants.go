@@ -58,6 +58,7 @@ const (
 )
 
 var InvalidPubCoinStr = []string{
+	"1yw8N5XsqtRSAjbzLgb4hGu4ZVQKKigqwm2CmUrbAQ29cEDruM",
 	"12FkdZV8tohXvMiE6VdZ74MdRALBsMSacrC9u6V2h4xjDL9otY3",
 	"12bWPjArz154Dq5a6A6CJoDpRWiqUDx4dbvRREm8GzebP3Rfhxb",
 	"1MDXHEWKxEgKYdeaWQydpK2dnLbr5GBR9wuznx2FoC6vF6paBz",
