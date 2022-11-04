@@ -27,9 +27,15 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 var cachedb *cache.Cache
 
 // var cache *lru.Cache
+var invalidPubCoinStr map[string]struct{}
 
 func StartGinService() {
 	log.Println("initiating api-service...")
+	invalidPubCoinStr = make(map[string]struct{})
+
+	for _, v := range shared.InvalidPubCoinStr {
+		invalidPubCoinStr[v] = struct{}{}
+	}
 	cachedb = cache.New(5*time.Minute, 5*time.Minute)
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
