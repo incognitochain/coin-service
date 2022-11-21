@@ -138,7 +138,8 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 	for otakey, _ := range list {
 		otakeys = append(otakeys, otakey)
 	}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	// ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	ctx := context.Background()
 	KeyInfoDatas := []shared.KeyInfoData{}
 	filter := bson.M{"otakey": bson.M{operator.In: otakeys}}
 	err := mgm.Coll(&shared.KeyInfoDataV2{}).SimpleFindWithCtx(ctx, &KeyInfoDatas, filter)
@@ -172,7 +173,8 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 		keysToInsert = append(keysToInsert, *newKeyInfo)
 	}
 	if len(keysToInsert) > 0 {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToInsert)+10)*shared.DB_OPERATION_TIMEOUT)
+		// ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToInsert)+10)*shared.DB_OPERATION_TIMEOUT)
+		ctx := context.Background()
 		docs := []interface{}{}
 		for _, key := range keysToInsert {
 			key.Creating()
@@ -193,7 +195,8 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 			docs = append(docs, update)
 		}
 		for idx, doc := range docs {
-			ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+			// ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+			ctx := context.Background()
 			_, err := mgm.Coll(&shared.KeyInfoDataV2{}).UpdateByID(ctx, keysToUpdate[idx].GetID(), doc)
 			if err != nil {
 				return err
