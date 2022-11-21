@@ -124,6 +124,11 @@ func InitChainSynker(cfg shared.Config) {
 		panic(err)
 	}
 
+	err = database.DBCreateInstructionIndex()
+	if err != nil {
+		panic(err)
+	}
+
 	err = loadState()
 	if err != nil {
 		panic(err)

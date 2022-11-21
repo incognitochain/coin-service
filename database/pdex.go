@@ -1413,8 +1413,7 @@ func DBUpdatePDEWithdrawRewardStakingStatus(list []shared.PoolStakeRewardHistory
 func DBGetBeaconInstructionByTx(txhash string) (*shared.InstructionBeaconData, error) {
 	var results []shared.InstructionBeaconData
 	filter := bson.M{"txrequest": bson.M{operator.Eq: txhash}}
-	// ctx, _ := context.WithTimeout(context.Background(), 2*shared.DB_OPERATION_TIMEOUT)
-	err := mgm.Coll(&shared.InstructionBeaconData{}).SimpleFind(&results, filter)
+	err := mgm.Coll(&shared.InstructionBeaconData{}).SimpleFindWithCtx(context.Background(), &results, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -1429,7 +1428,7 @@ func DBGetPendingWithdrawOrder(limit int64, offset int64) ([]shared.TradeOrderDa
 		limit = int64(10000)
 	}
 	var result []shared.TradeOrderData
-	filter := bson.M{"withdrawpendings": bson.M{operator.Not: bson.M{operator.Size: 0}, operator.Exists: true}}
+	filter := bson.M{"withdrawpendings.0": bson.M{operator.Exists: true}}
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(limit)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TradeOrderData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"_id", 1}},

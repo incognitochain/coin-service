@@ -15,7 +15,8 @@ import (
 
 func DBSaveTokenInfo(list []shared.TokenInfoData) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	// ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	ctx := context.Background()
 	docs := []interface{}{}
 	for _, coin := range list {
 		coin.Creating()
@@ -50,7 +51,7 @@ func DBSaveTokenInfo(list []shared.TokenInfoData) error {
 			}
 		}
 	}
-	log.Printf("inserted %v keyimages in %v", len(list), time.Since(startTime))
+	log.Printf("inserted %v tokens in %v", len(list), time.Since(startTime))
 	return nil
 }
 
