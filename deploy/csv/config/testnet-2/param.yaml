@@ -25,6 +25,7 @@ committee_size:
   shard_committee_size_key_list_v2: 4
   beacon_committee_size_key_list_v2: 4
   number_of_fixed_shard_block_validators: 4
+  number_of_fixed_shard_validators_v2: 6
   increase_max_shard_committee_size:
     - 1000000000000: 48
 block_time:
@@ -50,6 +51,7 @@ prv_erc20_contract_address: "0xaE61fEFD69BacF3951F1C86c9A4D3F006810Ac21"
 prv_bep20_contract_address: "0xB49E8844a72CF1ce885aEf13F82BeeAEEFc01527"
 aurora_contract_address: "0x4cF1d43999606858BaC64B7DbFC196fb4A6853af"
 avax_contract_address: "0x01f6549BeF494C8b0B00C2790577AcC1A3Fa0Bd0"
+near_contract_address: "inc.prv.testnet"
 dao_address: "12S5Lrs1XeQLbqN4ySyKtjAjd2d7sBP2tjFijzmp6avrrkQCNFMpkXm3FPzj2Wcu2ZNqJEmh9JriVuRErVwhuQnLmWSaggobEWsBEci" # community fund
 centralized_website_payment_address: "12S5Lrs1XeQLbqN4ySyKtjAjd2d7sBP2tjFijzmp6avrrkQCNFMpkXm3FPzj2Wcu2ZNqJEmh9JriVuRErVwhuQnLmWSaggobEWsBEci"
 swap_committee_param:
@@ -135,6 +137,15 @@ auto_enable_feature:
   - instantfinalityv2:
       min_trigger: 5167674
       require_percentage: 90
+  - reduce_fix_node:
+      min_trigger: 5647323
+      require_percentage: 90
+  - reduce_fix_node_v2:
+      min_trigger: 5647323
+      require_percentage: 90
+  - reduce_fix_node_v3:
+      min_trigger: 5647323
+      require_percentage: 90
   - maxcommitteesize48:
       min_trigger: 3965040
       require_percentage: 90
@@ -171,6 +182,9 @@ auto_enable_feature:
   - unified_token_230620227:
       min_trigger: 5507731
       require_percentage: 90
+  - nearbridge:
+      min_trigger: 5601070
+      require_percentage: 90
 blocktime_param:
   - "blocktimedef": 10
   - "blocktime30s_23_8": 30
@@ -179,6 +193,9 @@ feature_version:
   - instantfinalityv2: 9
   - blocktime30s_23_8: 10
   - blocktime15s_30_8: 11
+  - reduce_fix_node: 12
+  - reduce_fix_node_v2: 13
+  - reduce_fix_node_v3: 14
 transactions_param:
   lowerbound: 15
   upperbound: 100
