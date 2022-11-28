@@ -123,21 +123,22 @@ type PdexV3OrderBookVolume struct {
 	Volume  uint64
 }
 type PdexV3PoolDetail struct {
-	PoolID         string
-	Token1ID       string
-	Token2ID       string
-	Token1Value    uint64
-	Token2Value    uint64
-	Virtual1Value  uint64
-	Virtual2Value  uint64
-	TotalShare     uint64
-	AMP            uint
-	Price          float64
-	Volume         float64
-	PriceChange24h float64
-	APY            uint64
-	IsVerify       bool
-	willSwapToken  bool
+	PoolID            string
+	Token1ID          string
+	Token2ID          string
+	Token1Value       uint64
+	Token2Value       uint64
+	Virtual1Value     uint64
+	Virtual2Value     uint64
+	TotalShare        uint64
+	AMP               uint
+	Price             float64
+	Volume            float64
+	TotalValueLockUSD float64
+	PriceChange24h    float64
+	APY               uint64
+	IsVerify          bool
+	willSwapToken     bool
 }
 
 type PdexV3LiquidityHistoryRespond struct {
