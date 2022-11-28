@@ -203,9 +203,11 @@ func tokenListWatcher() {
 			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount, nftToken[token.ID], externalID)
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
+	retrySave:
 		err = database.DBSaveTokenInfo(tokenInfoList)
 		if err != nil {
-			panic(err)
+			log.Println("DBSaveTokenInfo", err)
+			goto retrySave
 		}
 		lastTokenIDLock.Lock()
 

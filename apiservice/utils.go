@@ -388,6 +388,9 @@ func ampHardCode(tokenID1, tokenID2 string) float64 {
 	if (strings.Contains(pair18, tokenID1) && strings.Contains(pair18, tokenID2)) || (strings.Contains(pair18Unified, tokenID1) && strings.Contains(pair18Unified, tokenID2)) {
 		return 3
 	}
+	if strings.Contains(pair19Unified, tokenID1) && strings.Contains(pair19Unified, tokenID2) {
+		return 2
+	}
 	return 0
 }
 
@@ -423,6 +426,8 @@ var (
 	pair14Unified = "be02b225bcd26eeae00d3a51e554ac0adcdcc09de77ad03202904666d427a7e4" + "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229"
 
 	pair18Unified = common.PRVCoinID.String() + "26df4d1bca9fd1a8871a24b9b84fc97f3dd62ca8809975c6d971d1b79d1d9f31"
+
+	pair19Unified = "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229" + "6833151cd13f5d8449f1c9c998d8c1b07e536bdd3e00a7b180d5a9191ba084bf"
 )
 
 func getUniqueIdx(list []string) []int {
