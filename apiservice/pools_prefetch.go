@@ -197,11 +197,11 @@ func retrievePoolList() {
 			if tokenMap != nil {
 				tokenListLock.RLock()
 				tkIdx, ok := tokenMap[v.Token1ID]
-				value := float64(v.Token1Value) * math.Pow10(-alltokenList[tkIdx].PDecimals) * (alltokenList[tkIdx].PriceUsd) * 2
-				tokenListLock.RUnlock()
 				if ok {
+					value := float64(v.Token1Value) * math.Pow10(-alltokenList[tkIdx].PDecimals) * (alltokenList[tkIdx].PriceUsd) * 2
 					v.TotalValueLockUSD = value
 				}
+				tokenListLock.RUnlock()
 			}
 			verifyPoolList = append(verifyPoolList, v)
 		}
