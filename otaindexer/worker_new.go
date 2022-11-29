@@ -19,6 +19,7 @@ func filterCoinsByOTAKeyV2(coinList []shared.CoinData, keys []*OTAkeyInfo, token
 
 	var wg sync.WaitGroup
 	tempOTACoinsCh := make(chan map[string]shared.CoinData, shared.ServiceCfg.MaxConcurrentOTACheck)
+	var keyLock sync.Mutex
 	for idx, c := range coinList {
 		wg.Add(1)
 		go func(cn shared.CoinData) {
@@ -30,7 +31,7 @@ func filterCoinsByOTAKeyV2(coinList []shared.CoinData, keys []*OTAkeyInfo, token
 			pass := false
 			tokenID := ""
 			isNFT := false
-			for _, keyData := range assignedOTAKeys.Keys[cn.ShardID] {
+			for _, keyData := range keys {
 				if _, ok := keyData.KeyInfo.CoinIndex[cn.TokenID]; ok {
 					if cn.CoinIndex < keyData.KeyInfo.CoinIndex[cn.TokenID].LastScanned {
 						continue
@@ -48,7 +49,7 @@ func filterCoinsByOTAKeyV2(coinList []shared.CoinData, keys []*OTAkeyInfo, token
 					if isNFT {
 						cn.IsNFT = isNFT
 					}
-
+					keyLock.Lock()
 					if !isNFT {
 						if _, ok := keyData.KeyInfo.CoinIndex[cn.RealTokenID]; !ok {
 							keyData.KeyInfo.CoinIndex[cn.RealTokenID] = shared.CoinInfo{
@@ -94,7 +95,7 @@ func filterCoinsByOTAKeyV2(coinList []shared.CoinData, keys []*OTAkeyInfo, token
 							keyData.KeyInfo.NFTIndex[cn.RealTokenID] = d
 						}
 					}
-
+					keyLock.Unlock()
 					tempOTACoinsCh <- map[string]shared.CoinData{keyData.OTAKey: cn}
 					break
 				}
