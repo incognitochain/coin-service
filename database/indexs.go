@@ -8,6 +8,8 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 
 	"github.com/kamva/mgm/v3"
+	"github.com/kamva/mgm/v3/operator"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx"
@@ -95,6 +97,9 @@ func DBCreateCoinV2Index() error {
 		{
 			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bsonx.Doc{{Key: "pubkey", Value: bsonx.Int32(1)}},
 		},
 	}
 	_, err = mgm.Coll(&shared.KeyInfoDataV2{}).Indexes().CreateMany(context.Background(), keyInfoMdl)
@@ -451,6 +456,10 @@ func DBCreateTradeIndex() error {
 			Keys: bsonx.Doc{{Key: "withdrawpendings", Value: bsonx.Int32(1)}},
 		},
 		{
+			Keys:    bsonx.Doc{{Key: "withdrawpendings.0", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetPartialFilterExpression(bson.M{"withdrawpendings.0": bson.M{operator.Exists: true}}),
+		},
+		{
 			Keys: bsonx.Doc{{Key: "withdrawtxs", Value: bsonx.Int32(1)}},
 		},
 		{
@@ -506,8 +515,7 @@ func DBCreateProcessorIndex() error {
 func DBCreateInstructionIndex() error {
 	instructionModal := []mongo.IndexModel{
 		{
-			Keys:    bsonx.Doc{{Key: "txrequest", Value: bsonx.Int32(1)}},
-			Options: options.Index().SetUnique(true),
+			Keys: bsonx.Doc{{Key: "txrequest", Value: bsonx.Int32(1)}},
 		},
 	}
 	_, err := mgm.Coll(&shared.InstructionBeaconData{}).Indexes().CreateMany(context.Background(), instructionModal)

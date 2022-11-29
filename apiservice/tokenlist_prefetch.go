@@ -218,6 +218,7 @@ func retrieveTokenList() {
 				}
 			}
 		}
+
 		data.DefaultPairToken = defaultPairToken
 		data.DefaultPoolPair = defaultPool
 		if data.TokenID == common.PRVCoinID.String() {
@@ -286,6 +287,11 @@ func retrieveTokenList() {
 			}
 		}
 		if !v.IsNFT {
+			if data.MovedUnifiedToken {
+				data.DefaultPoolPair = ""
+				data.DefaultPairToken = ""
+			}
+
 			datalist = append(datalist, data)
 		}
 	}

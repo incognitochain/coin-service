@@ -2,6 +2,7 @@ package apiservice
 
 import (
 	"log"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -193,6 +194,15 @@ func retrievePoolList() {
 	verifyPoolList = []PdexV3PoolDetail{}
 	for _, v := range result {
 		if v.IsVerify {
+			if tokenMap != nil {
+				tokenListLock.RLock()
+				tkIdx, ok := tokenMap[v.Token1ID]
+				if ok {
+					value := float64(v.Token1Value) * math.Pow10(-alltokenList[tkIdx].PDecimals) * (alltokenList[tkIdx].PriceUsd) * 2
+					v.TotalValueLockUSD = value
+				}
+				tokenListLock.RUnlock()
+			}
 			verifyPoolList = append(verifyPoolList, v)
 		}
 	}

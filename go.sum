@@ -431,6 +431,8 @@ github.com/incognitochain/incognito-chain v0.0.0-20220812081630-f17843d34df2 h1:
 github.com/incognitochain/incognito-chain v0.0.0-20220812081630-f17843d34df2/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
 github.com/incognitochain/incognito-chain v0.0.0-20220822090441-2cd9345a4741 h1:mJtat091jxP/2ES9yNOIikNgnr6OQsF6X76v89+uZZo=
 github.com/incognitochain/incognito-chain v0.0.0-20220822090441-2cd9345a4741/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
+github.com/incognitochain/incognito-chain v0.0.0-20220822100437-caa1415c4c95 h1:K7p5xymRMRzfVkBnaZtiJDiWeZ3kVeyLw9daiC4VLSM=
+github.com/incognitochain/incognito-chain v0.0.0-20220822100437-caa1415c4c95/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
 github.com/incognitochain/incognito-chain v0.0.0-20220822104039-a3ea4127c559 h1:5myjCPgCkaGGvTyKMhn64yGjjbmowjf2tiVctp/YSag=
 github.com/incognitochain/incognito-chain v0.0.0-20220822104039-a3ea4127c559/go.mod h1:xBVYe9GjXRq2HyVWM6KSC5V6jj/f3ZVA+0IUkXgJTuE=
 github.com/incognitochain/incognito-chain v0.0.0-20220825032950-866a56587727 h1:sOdbmjqkBAuMBgkGUiAZzFXEyMyPfOeKb07i0ppDa1Q=
