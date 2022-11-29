@@ -997,6 +997,9 @@ func APIGetKeyInfo(c *gin.Context) {
 			}
 			delete(result.CoinIndex, common.ConfidentialAssetID.String())
 
+			if result.NFTIndex == nil {
+				result.NFTIndex = make(map[string]shared.CoinInfo)
+			}
 			for id, nft := range result.NFTIndex {
 				if d, ok := result.CoinIndex[id]; ok {
 					if nft.Start > d.Start {
