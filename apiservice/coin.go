@@ -1014,7 +1014,7 @@ func APIGetKeyInfo(c *gin.Context) {
 				}
 			}
 			for id, v := range result.CoinIndex {
-				if v.Total == 1 {
+				if id != common.PRVIDStr && id != common.ConfidentialAssetID.String() {
 					if database.DBIsTokenNFT(id) {
 						result.NFTIndex[id] = v
 						delete(result.CoinIndex, id)
