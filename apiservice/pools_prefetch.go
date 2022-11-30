@@ -198,8 +198,15 @@ func retrievePoolList() {
 				tokenListLock.RLock()
 				tkIdx, ok := tokenMap[v.Token1ID]
 				if ok {
+					v.Token1Symbol = alltokenList[tkIdx].Symbol
+					v.Token1CurrencyType = alltokenList[tkIdx].CurrencyType
 					value := float64(v.Token1Value) * math.Pow10(-alltokenList[tkIdx].PDecimals) * (alltokenList[tkIdx].PriceUsd) * 2
 					v.TotalValueLockUSD = value
+				}
+				tk2Idx, ok := tokenMap[v.Token2ID]
+				if ok {
+					v.Token2Symbol = alltokenList[tk2Idx].Symbol
+					v.Token2CurrencyType = alltokenList[tk2Idx].CurrencyType
 				}
 				tokenListLock.RUnlock()
 			}
