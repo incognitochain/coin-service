@@ -280,6 +280,7 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 				for poolID, tokenAmount := range filterPools {
 					if tokenAmount > tempPoolAmount {
 						chosenPoolID = poolID
+						tempPoolAmount = tokenAmount
 					}
 				}
 

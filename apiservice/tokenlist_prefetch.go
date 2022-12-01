@@ -186,22 +186,22 @@ func retrieveTokenList() {
 					continue
 				}
 
-				// for idx, ptk := range priorityTokens {
-				// 	if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
-				// 		if idx > defaultPairTokenIdx {
-				// 			defaultPool = poolID
-				// 			defaultPairToken = tkPair
-				// 			defaultPairTokenIdx = idx
-				// 			currentPoolAmount = pa
-				// 		}
-				// 		if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
-				// 			defaultPool = poolID
-				// 			defaultPairToken = tkPair
-				// 			defaultPairTokenIdx = idx
-				// 			currentPoolAmount = pa
-				// 		}
-				// 	}
-				// }
+				for idx, ptk := range priorityTokens {
+					if (ptk == tkPair) && (idx >= defaultPairTokenIdx) {
+						if idx > defaultPairTokenIdx {
+							defaultPool = poolID
+							defaultPairToken = tkPair
+							defaultPairTokenIdx = idx
+							currentPoolAmount = pa
+						}
+						if (idx == defaultPairTokenIdx) && (pa > currentPoolAmount) {
+							defaultPool = poolID
+							defaultPairToken = tkPair
+							defaultPairTokenIdx = idx
+							currentPoolAmount = pa
+						}
+					}
+				}
 
 				if defaultPool == "" {
 					if pa > 0 {
