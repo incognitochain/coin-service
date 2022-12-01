@@ -288,12 +288,12 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 					continue
 				}
 
-				if strings.Contains(chosenPoolID, stableCoinStr) {
+				tks := strings.Split(chosenPoolID, "-")
+				if strings.Contains(tks[0], stableCoinStr) || strings.Contains(tks[1], stableCoinStr) {
 					pool := getPool(chosenPoolID)
 					if pool == nil {
 						continue
 					}
-					tks := strings.Split(chosenPoolID, "-")
 					if tks[0] == v.TokenID {
 						dcrate, _, _, err := getPdecimalRate(v.TokenID, tks[1])
 						if err != nil {
