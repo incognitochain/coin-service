@@ -258,12 +258,12 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 				filterPools := make(map[string]uint64)
 				for poolID, _ := range defaultPools {
 					if v.TokenID != common.PRVCoinID.String() {
-						if strings.Contains(poolID, v.TokenID) && (strings.Contains(poolID, stableCoinStr) || strings.Contains(poolID, common.PRVCoinID.String())) {
+						tks := strings.Split(poolID, "-")
+						if strings.Contains(poolID, v.TokenID) && (strings.Contains(stableCoinStr, tks[0]) || strings.Contains(stableCoinStr, tks[1]) || strings.Contains(poolID, common.PRVCoinID.String())) {
 							pool := getPool(poolID)
 							if pool == nil {
 								continue
 							}
-							tks := strings.Split(poolID, "-")
 							tokenAmount := uint64(0)
 							if tks[0] == v.TokenID {
 								tokenAmount, _ = strconv.ParseUint(pool.Token1Amount, 10, 64)
@@ -289,7 +289,7 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 				}
 
 				tks := strings.Split(chosenPoolID, "-")
-				if strings.Contains(tks[0], stableCoinStr) || strings.Contains(tks[1], stableCoinStr) {
+				if strings.Contains(stableCoinStr, tks[0]) || strings.Contains(stableCoinStr, tks[1]) {
 					pool := getPool(chosenPoolID)
 					if pool == nil {
 						continue
