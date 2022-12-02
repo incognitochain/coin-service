@@ -50,6 +50,10 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 	if err != nil {
 		return "", err
 	}
+	disPoolMap, err := database.DBGetDisqualifyPools()
+	if err != nil {
+		return "", err
+	}
 	prvPrice := getPRVPrice(defaultPools, baseTk)
 	if prvPrice == 0 {
 		return "", nil
@@ -58,7 +62,8 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 	for _, pool := range pools {
 		_, ok1 := verifiedTks[pool.TokenID1]
 		_, ok2 := verifiedTks[pool.TokenID2]
-		if ok1 && ok2 {
+		_, ok3 := disPoolMap[pool.PoolID]
+		if ok1 && ok2 && !ok3 {
 			q1 := false
 			tk1Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
 			tk2Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
@@ -100,7 +105,6 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 				}
 			}
 		}
-
 	}
 
 	poolsLqNew := make(map[string]uint64)
