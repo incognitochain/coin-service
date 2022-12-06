@@ -41,6 +41,8 @@ github.com/0xkumi/incognito-dev-framework v0.0.0-20220808070820-35bed723bfd2 h1:
 github.com/0xkumi/incognito-dev-framework v0.0.0-20220808070820-35bed723bfd2/go.mod h1:9DVs4UJyDpAfbG/akBwnC744D0uCbNbXDMvdRsTRecI=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20221102051209-7c3b1f69edf3 h1:59c8TLekOMBJtf56wL453U92SAym6IIL0qR+/p6RP0Y=
 github.com/0xkumi/incognito-dev-framework v0.0.0-20221102051209-7c3b1f69edf3/go.mod h1:RmBP3ITtA0xCAIWuHdhAStRozb3uULhDcCa61l4J9K8=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20221206134609-50faf4b33a82 h1:HgVU2rcYWlKxvk79TGWeZFelp6wLW9anzaCJdV7rXpo=
+github.com/0xkumi/incognito-dev-framework v0.0.0-20221206134609-50faf4b33a82/go.mod h1:VTm5bPuApnGgGKlfhCaT40B3Pnf5xghNtPDMAIdE1AU=
 github.com/0xsirrush/color v1.7.0 h1:mSESSHkG+VATi/QUGZnQ04OrThAF6GgSVQ5EseZl+CE=
 github.com/0xsirrush/color v1.7.0/go.mod h1:UtXoM20hkeN5yeWN3ViqZSPLgrDymeQZA9opU2CqAGo=
 github.com/3rf/mongo-lint v0.0.0-20140604191638-3550fdcf1f43 h1:0vMGqPI4f0gagBvQrgsQYXKmb6NL2+2WT+AlWCCmb9Q=
@@ -457,6 +459,8 @@ github.com/incognitochain/incognito-chain v0.0.0-20221108095729-a4e8817c7210 h1:
 github.com/incognitochain/incognito-chain v0.0.0-20221108095729-a4e8817c7210/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
 github.com/incognitochain/incognito-chain v0.0.0-20221119043309-de5a8bf1c218 h1:pTNi0Mab8wpXFYF18eM7z2cFBs0zK4VFsIXYy8f40a0=
 github.com/incognitochain/incognito-chain v0.0.0-20221119043309-de5a8bf1c218/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
+github.com/incognitochain/incognito-chain v0.0.0-20221202044029-7a79293a4613 h1:hly9AxfCQ1/clLeb89tmtXz1kekdNCv5ppgjyieErNM=
+github.com/incognitochain/incognito-chain v0.0.0-20221202044029-7a79293a4613/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
