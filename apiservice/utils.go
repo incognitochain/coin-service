@@ -261,7 +261,7 @@ func getPoolAmount(poolID string, buyTokenID string) uint64 {
 	return 0
 }
 
-func getRate(tokenID1, tokenID2 string, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) float64 {
+func getRate(tokenID1, tokenID2 string, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState, feeRateBPS uint) float64 {
 	a := uint64(1)
 	a1 := uint64(0)
 retry:
@@ -271,7 +271,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, feeRateBPS)
 
 	if receive == 0 {
 		a *= 10
@@ -295,7 +295,7 @@ retry:
 	return float64(receive) / float64(a)
 }
 
-func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) (float64, []*shared.Pdexv3PoolPairWithId) {
+func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState, feeRateBPS uint) (float64, []*shared.Pdexv3PoolPairWithId) {
 	a := uint64(minAmount)
 	a0 := uint64(0)
 	a1 := uint64(0)
@@ -307,7 +307,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, feeRateBPS)
 
 	if receive == 0 {
 		a *= 10

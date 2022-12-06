@@ -223,7 +223,7 @@ func recomputeLPFee(
 	return result, nil
 }
 
-func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) float64 {
+func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState, feeRateBPS uint) float64 {
 	a := uint64(minAmount)
 	a1 := uint64(0)
 retry:
@@ -233,7 +233,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, feeRateBPS)
 
 	if receive == 0 {
 		a *= 10

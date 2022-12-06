@@ -6,6 +6,7 @@ import (
 	"math"
 	"sort"
 
+	"github.com/incognitochain/coin-service/pdexv3/feeestimator"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex/v2utils"
 	"github.com/incognitochain/incognito-chain/privacy"
@@ -209,18 +210,26 @@ func chooseBestPoolFromAPair(
 	poolPairStates map[string]*pdex.PoolPairState,
 	tokenIDStrNodeSource string,
 	tokenIDStrNodeDest string,
-	sellAmt uint64,
+	sellAmt uint64, feeRateBPS uint,
 ) (*shared.Pdexv3PoolPairWithId, uint64) {
 	maxReceive := uint64(0)
 	var chosenPool *shared.Pdexv3PoolPairWithId
 	for _, pool := range pools {
 		if (tokenIDStrNodeSource == pool.Token0ID().String() && tokenIDStrNodeDest == pool.Token1ID().String()) || (tokenIDStrNodeSource == pool.Token1ID().String() && tokenIDStrNodeDest == pool.Token0ID().String()) {
+			// find the min feeAmount that feeAmount * BPS >= sellAmount * feeRateBPS
+			numerator := new(big.Int).Mul(new(big.Int).SetUint64(sellAmt), new(big.Int).SetUint64(uint64(feeRateBPS)))
+			denominator := new(big.Int).SetUint64(feeestimator.BPS)
+			fee := new(big.Int).Div(numerator, denominator)
+			if new(big.Int).Mod(numerator, denominator).Cmp(big.NewInt(0)) != 0 {
+				fee = new(big.Int).Add(fee, big.NewInt(1))
+			}
+
 			receive := trade(
 				pool,
 				poolPairStates,
 				tokenIDStrNodeDest,
 				tokenIDStrNodeSource,
-				sellAmt,
+				sellAmt-fee.Uint64(),
 			)
 			if receive > maxReceive {
 				maxReceive = receive
@@ -237,7 +246,7 @@ func FindGoodTradePath(
 	poolPairStates map[string]*pdex.PoolPairState,
 	tokenIDStrSource string,
 	tokenIDStrDest string,
-	originalSellAmount uint64,
+	originalSellAmount uint64, feeRateBPS uint,
 ) ([]*shared.Pdexv3PoolPairWithId, uint64) {
 
 	pc := &PriceCalculator{
@@ -245,7 +254,6 @@ func FindGoodTradePath(
 	}
 
 	simplePools := make([]*SimplePoolNodeData, 0)
-
 	for _, pool := range pools {
 		token0Liq := new(big.Int).Mul(pool.Token0VirtualAmount(), big.NewInt(int64(BaseAmplifier)))
 		token0Liq.Div(token0Liq, new(big.Int).SetUint64(uint64(pool.Amplifier())))
@@ -270,6 +278,7 @@ func FindGoodTradePath(
 	var chosenPath []*shared.Pdexv3PoolPairWithId
 
 	for _, path := range allPaths {
+
 		sellAmt := originalSellAmount
 
 		var pathByPool []*shared.Pdexv3PoolPairWithId
@@ -278,7 +287,7 @@ func FindGoodTradePath(
 			tokenIDStrNodeSource := path[i]
 			tokenIDStrNodeDest := path[i+1]
 
-			pool, receive := chooseBestPoolFromAPair(pools, poolPairStates, tokenIDStrNodeSource, tokenIDStrNodeDest, sellAmt)
+			pool, receive := chooseBestPoolFromAPair(pools, poolPairStates, tokenIDStrNodeSource, tokenIDStrNodeDest, sellAmt, feeRateBPS)
 			sellAmt = receive
 			pathByPool = append(pathByPool, pool)
 		}
@@ -299,7 +308,7 @@ func FindSellAmount(
 	poolPairStates map[string]*pdex.PoolPairState,
 	tokenIDStrSource string,
 	tokenIDStrDest string,
-	expectedBuyAmount uint64,
+	expectedBuyAmount uint64, feeRateBPS uint,
 ) ([]*shared.Pdexv3PoolPairWithId, uint64) {
 	left := uint64(1)
 	right := uint64(math.MaxUint64)
@@ -307,7 +316,7 @@ func FindSellAmount(
 	bestPath := []*shared.Pdexv3PoolPairWithId{}
 	for left <= right {
 		mid := left + (right-left)/2
-		path, receive := FindGoodTradePath(maxPathLen, pools, poolPairStates, tokenIDStrSource, tokenIDStrDest, mid)
+		path, receive := FindGoodTradePath(maxPathLen, pools, poolPairStates, tokenIDStrSource, tokenIDStrDest, mid, feeRateBPS)
 		if receive == 0 {
 			if sellAmount == 0 {
 				right = mid - 1
