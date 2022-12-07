@@ -981,7 +981,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			poolPairStates,
 			sellToken,
 			buyToken,
-			sellAmount)
+			sellAmount, pdexState.Params.DefaultFeeRateBPS)
 		feePRV.SellAmount = float64(sellAmount) / dcrate
 		feePRV.MaxGet = float64(receive) * dcrate
 
@@ -1009,7 +1009,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					poolPairStates,
 					sellToken,
 					buyToken,
-					newSellAmount)
+					newSellAmount, pdexState.Params.DefaultFeeRateBPS)
 				feePRV.SellAmount = float64(newSellAmount) / dcrate
 				feePRV.MaxGet = float64(receive) * dcrate
 				feePRV.Route = make([]string, 0)
@@ -1053,7 +1053,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 						poolPairStates,
 						sellToken,
 						buyToken,
-						newSellAmount)
+						newSellAmount, pdexState.Params.DefaultFeeRateBPS)
 					feeToken.SellAmount = float64(newSellAmount) / dcrate
 					feeToken.MaxGet = float64(receive) * dcrate
 					feeToken.Route = make([]string, 0)
@@ -1079,7 +1079,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			poolPairStates,
 			sellToken,
 			buyToken,
-			buyAmount)
+			buyAmount, pdexState.Params.DefaultFeeRateBPS)
 		sellAmount = foundSellAmount
 		receive := buyAmount
 
@@ -1419,8 +1419,15 @@ func (pdexv3) GetRate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
+
+	pdeState := jsonresult.Pdexv3State{}
+	err = json.UnmarshalFromString(data, &pdeState)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
 	for _, v := range req.TokenIDs {
-		rt := getRate(req.Against, v, pools, poolPairStates)
+		rt := getRate(req.Against, v, pools, poolPairStates, pdeState.Params.DefaultFeeRateBPS)
 		result[v] = rt
 	}
 
