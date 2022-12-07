@@ -504,7 +504,7 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 	return result, nil
 }
 
-func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) (float64, uint64, uint64) {
+func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState, feeRateBPS uint) (float64, uint64, uint64) {
 	a := uint64(minAmount)
 	a1 := uint64(0)
 retry:
@@ -514,7 +514,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, feeRateBPS)
 
 	if receive == 0 {
 		a *= 10
@@ -571,7 +571,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, pdeState.Params.DefaultFeeRateBPS)
 
 	if receive == 0 {
 		a *= 10
