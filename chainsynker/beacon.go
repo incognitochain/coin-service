@@ -633,7 +633,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if tkInfo != nil {
 						tkDecimal = int(tkInfo.PDecimals)
 					}
-					rateRw := getRateMinimum(tokenID, common.PRVCoinID.String(), uint64(math.Pow10(tkDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rateRw := getRateMinimum(tokenID, common.PRVCoinID.String(), uint64(math.Pow10(tkDecimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
 					receiveStake = uint64(float64(tokenStakeAmount) * rateRw)
 				}
@@ -651,7 +651,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if tkInfo != nil {
 						tkRwDecimal = int(tkInfo.PDecimals)
 					}
-					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
 					receive := uint64(float64(v) * rateRw)
 					rewardReceive += receive
@@ -714,9 +714,9 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if tk2 != nil {
 						tk2Decimal = int(tk2.PDecimals)
 					}
-					rate1 := getRateMinimum(state.State.Token0ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk1Decimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rate1 := getRateMinimum(state.State.Token0ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk1Decimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
-					rate2 := getRateMinimum(state.State.Token1ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk2Decimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rate2 := getRateMinimum(state.State.Token1ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk2Decimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
 					total1 = uint64(float64(token1Amount) * rate1)
 					total2 = uint64(float64(token2Amount) * rate2)
@@ -736,7 +736,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if tkInfo != nil {
 						tkRwDecimal = int(tkInfo.PDecimals)
 					}
-					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
 					receive := uint64(float64(v) * rateRw)
 					rewardReceive += receive

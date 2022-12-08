@@ -301,7 +301,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, pdeState.Params.DefaultFeeRateBPS)
 
 	if receive == 0 {
 		a *= 10
