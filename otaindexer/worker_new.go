@@ -73,6 +73,9 @@ func filterCoinsByOTAKeyV2(coinList []shared.CoinData, keys []*OTAkeyInfo, token
 							keyData.KeyInfo.CoinIndex[cn.RealTokenID] = d
 						}
 					} else {
+						if len(keyData.KeyInfo.NFTIndex) == 0 {
+							keyData.KeyInfo.NFTIndex = make(map[string]shared.CoinInfo)
+						}
 						if _, ok := keyData.KeyInfo.NFTIndex[cn.RealTokenID]; !ok {
 							keyData.KeyInfo.NFTIndex[cn.RealTokenID] = shared.CoinInfo{
 								Start: cn.CoinIndex,
