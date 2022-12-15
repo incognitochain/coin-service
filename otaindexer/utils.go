@@ -79,23 +79,28 @@ retryCheckTokenID:
 		if tk, ok := tokenIDs[assetTag.String()]; ok {
 			tokenID = tk
 		} else {
-			blinder, err := coin.ComputeAssetTagBlinder(rK)
-			if err != nil {
-				log.Println(err)
-				return false, "", nil, false
-			}
-
-			rawAssetTag := new(operation.Point).Sub(
-				assetTag,
-				new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder),
-			)
-
-			if tkID, ok := tokenIDs[rawAssetTag.String()]; ok {
-				tokenID = tkID
-			}
-			if tkID, ok := nftIDs[rawAssetTag.String()]; ok {
-				tokenID = tkID
+			if tk, ok := nftIDs[assetTag.String()]; ok {
+				tokenID = tk
 				isNFT = true
+			} else {
+				blinder, err := coin.ComputeAssetTagBlinder(rK)
+				if err != nil {
+					log.Println(err)
+					return false, "", nil, false
+				}
+
+				rawAssetTag := new(operation.Point).Sub(
+					assetTag,
+					new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder),
+				)
+
+				if tkID, ok := tokenIDs[rawAssetTag.String()]; ok {
+					tokenID = tkID
+				}
+				if tkID, ok := nftIDs[rawAssetTag.String()]; ok {
+					tokenID = tkID
+					isNFT = true
+				}
 			}
 		}
 		if tokenID == "" {
