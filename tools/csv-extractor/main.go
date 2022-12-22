@@ -132,6 +132,7 @@ func getTradeCSVSwap(fromTime, toTime, offset int64) ([]TradeCSV, error) {
 		data.FormatedDate = timeText
 		data.Unix = fmt.Sprintf("%v", tradeInfo.Requesttime)
 		data.unixint = tradeInfo.Requesttime
+		data.TradePath = tradeInfo.TradingPath
 		result = append(result, data)
 	}
 

@@ -21,18 +21,19 @@ type TradeCSV struct {
 	Unix                  string
 	FormatedDate          string
 	IsSwap                bool
+	TradePath             []string
 	unixint               int64
 }
 
 func (*TradeCSV) CSVheader(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{"TxRequest", "TxRespond", "SellToken", "BuyToken", "Amount", "MinAcceptableReceiver", "Receive", "TradingFee", "FeeToken", "User", "Unix", "FormatedDate"})
+	cw.Write([]string{"TxRequest", "TxRespond", "SellToken", "BuyToken", "Amount", "MinAcceptableReceiver", "Receive", "TradingFee", "FeeToken", "User", "Unix", "FormatedDate", "TradePath"})
 	cw.Flush()
 }
 
 func (rm *TradeCSV) CSVrow(w io.Writer) {
 	cw := csv.NewWriter(w)
-	cw.Write([]string{rm.TxRequest, rm.TxRespond, rm.SellToken, rm.BuyToken, fmt.Sprintf("%v", rm.Amount), fmt.Sprintf("%v", rm.MinAcceptableReceiver), fmt.Sprintf("%v", rm.Receive), fmt.Sprintf("%v", rm.TradingFee), rm.FeeToken, rm.User, rm.Unix, rm.FormatedDate})
+	cw.Write([]string{rm.TxRequest, rm.TxRespond, rm.SellToken, rm.BuyToken, fmt.Sprintf("%v", rm.Amount), fmt.Sprintf("%v", rm.MinAcceptableReceiver), fmt.Sprintf("%v", rm.Receive), fmt.Sprintf("%v", rm.TradingFee), rm.FeeToken, rm.User, rm.Unix, rm.FormatedDate, strings.Join(rm.TradePath, ",")})
 	cw.Flush()
 }
 
