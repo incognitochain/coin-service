@@ -97,7 +97,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	// Process PDEstatev1
 	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
 		willProcess := true
-		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-100 {
+		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-50 {
 			willProcess = false
 		}
 		if willProcess {
@@ -680,15 +680,18 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				rewardRecords = append(rewardRecords, data)
 			}
 			for poolID, state := range statev2.PoolPairs {
-				rw, err := extractLqReward(poolID, statev2.PoolPairs, prevStatev2.PoolPairs)
-				if err != nil {
-					panic(err)
-				}
 				rewardReceive := uint64(0)
 				token1Amount := state.State.Token0RealAmount()
 				token2Amount := state.State.Token1RealAmount()
 				total1 := uint64(0)
 				total2 := uint64(0)
+				if token1Amount == 0 || token2Amount == 0 {
+					continue
+				}
+				rw, err := extractLqReward(poolID, statev2.PoolPairs, prevStatev2.PoolPairs)
+				if err != nil {
+					panic(err)
+				}
 				if state.State.Token0ID().String() == common.PRVCoinID.String() || state.State.Token1ID().String() == common.PRVCoinID.String() {
 					if state.State.Token0ID().String() == common.PRVCoinID.String() {
 						total1 = token1Amount
