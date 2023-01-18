@@ -274,10 +274,10 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}()
 		wg.Wait()
 
-		log.Printf("prepare state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+		log.Printf("prepare state beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 		willProcess := true
 
-		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-100 {
+		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-50 {
 			willProcess = false
 		}
 		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, blk.GetHeight(), willProcess)
@@ -286,12 +286,12 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}
 		wg.Add(14)
 		go func() {
-			log.Printf("done process state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+			log.Printf("done process state beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 			err = database.DBSavePDEState(pdeStr, height, 2)
 			if err != nil {
 				log.Println(err)
 			}
-			log.Printf("save pdex state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+			log.Printf("save pdex state beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 
 			wg.Done()
 		}()
@@ -390,7 +390,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 			wg.Done()
 		}()
 		wg.Wait()
-		log.Printf("save pdex state 11 %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+		log.Printf("save pdex state 11 beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 
 	}
 
@@ -400,7 +400,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("lvdb stored coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(t10))
+	log.Printf("lvdb stored coin for block beacon %v in %v\n", blk.GetHeight(), time.Since(t10))
 	currentState.blockProcessedLock.Lock()
 	currentState.BlockProcessed[-1] = blk.Header.Height
 	currentState.blockProcessedLock.Unlock()
@@ -408,7 +408,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+	log.Printf("finish processing coin for block beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
 func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, stateV2Json *jsonresult.Pdexv3State, beaconHeight uint64, willProcess bool) ([]shared.PairInfoData, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.RewardRecord, error) {
@@ -709,13 +709,16 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if err != nil {
 						log.Println(err)
 					}
-					tk1Decimal := 1
-					tk2Decimal := 2
+					tk1Decimal := 9
+					tk2Decimal := 9
 					if tk1 != nil {
 						tk1Decimal = int(tk1.PDecimals)
 					}
 					if tk2 != nil {
 						tk2Decimal = int(tk2.PDecimals)
+					}
+					if token1Amount < uint64(math.Pow10(tk1Decimal-3)) || token2Amount < uint64(math.Pow10(tk2Decimal-3)) {
+						continue
 					}
 					rate1 := getRateMinimum(state.State.Token0ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk1Decimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
@@ -735,7 +738,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if err != nil {
 						log.Println(err)
 					}
-					tkRwDecimal := 1
+					tkRwDecimal := 9
 					if tkInfo != nil {
 						tkRwDecimal = int(tkInfo.PDecimals)
 					}
