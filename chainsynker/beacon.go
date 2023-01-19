@@ -48,7 +48,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		sort.Slice(blks, func(i, j int) bool { return blks[i].Height > blks[j].Height })
 	retry:
 		pass := true
-
 		currentState.blockProcessedLock.RLock()
 		if currentState.BlockProcessed[int(shardID)] < blks[0].Height {
 			pass = false
@@ -277,9 +276,9 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		log.Printf("prepare state beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 		willProcess := true
 
-		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-50 {
-			willProcess = false
-		}
+		// if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-50 {
+		// 	willProcess = false
+		// }
 		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, blk.GetHeight(), willProcess)
 		if err != nil {
 			panic(err)
@@ -391,7 +390,6 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}()
 		wg.Wait()
 		log.Printf("save pdex state 11 beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
-
 	}
 
 	statePrefix := BeaconData
@@ -591,7 +589,28 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				shared.Pdexv3PoolPairChild{
 					PoolID: poolId},
 			}
-
+			if poolPair.ShareAmount() == 0 {
+				continue
+			}
+			tk1, err := database.DBGetExtraTokenInfo(poolPair.Token0ID().String())
+			if err != nil {
+				log.Println(err)
+			}
+			tk2, err := database.DBGetExtraTokenInfo(poolPair.Token1ID().String())
+			if err != nil {
+				log.Println(err)
+			}
+			tk1Decimal := 9
+			tk2Decimal := 9
+			if tk1 != nil {
+				tk1Decimal = int(tk1.PDecimals)
+			}
+			if tk2 != nil {
+				tk2Decimal = int(tk2.PDecimals)
+			}
+			if poolPair.Token0RealAmount() < uint64(math.Pow10(tk1Decimal-3)) || poolPair.Token1RealAmount() < uint64(math.Pow10(tk2Decimal-3)) {
+				continue
+			}
 			poolPairsArr = append(poolPairsArr, &poolPairWithId)
 		}
 		wg.Add(3)
