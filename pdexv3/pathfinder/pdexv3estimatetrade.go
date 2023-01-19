@@ -132,7 +132,7 @@ func (pc *PriceCalculator) findPath(
 	allPaths *[][]string,
 ) {
 	if len(*allPaths) == MaxPaths {
-		// log.Println("MaxPaths exceeded")
+		log.Println("MaxPaths exceeded")
 		return
 	}
 	path = append(path, tokenIDStrSource)

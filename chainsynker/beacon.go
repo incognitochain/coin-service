@@ -276,9 +276,9 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		log.Printf("prepare state beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 		willProcess := true
 
-		// if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-50 {
-		// 	willProcess = false
-		// }
+		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-2 {
+			willProcess = false
+		}
 		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, blk.GetHeight(), willProcess)
 		if err != nil {
 			panic(err)
