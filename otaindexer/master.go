@@ -503,7 +503,17 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 	totalCoins := make(map[string]uint64)
 	totalNFTCoins := make(map[string]uint64)
 	for _, coin := range totalCoinList {
+
+		if len(data.NFTIndex) == 0 {
+			data.NFTIndex = make(map[string]shared.CoinInfo)
+		}
+		if len(data.CoinIndex) == 0 {
+			data.CoinIndex = make(map[string]shared.CoinInfo)
+		}
 		if coin.IsNFT {
+			if len(data.NFTIndex) == 0 {
+				data.NFTIndex = make(map[string]shared.CoinInfo)
+			}
 			if cidx, ok := data.NFTIndex[coin.RealTokenID]; !ok {
 				data.NFTIndex[coin.RealTokenID] = shared.CoinInfo{
 					Start:       coin.CoinIndex,
@@ -531,6 +541,9 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 				data.NFTIndex[coin.RealTokenID] = cidx
 			}
 		} else {
+			if len(data.CoinIndex) == 0 {
+				data.CoinIndex = make(map[string]shared.CoinInfo)
+			}
 			if cidx, ok := data.CoinIndex[coin.RealTokenID]; !ok {
 				data.CoinIndex[coin.RealTokenID] = shared.CoinInfo{
 					Start:       coin.CoinIndex,

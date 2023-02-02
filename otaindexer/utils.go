@@ -45,6 +45,12 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	}
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
+	} else {
+		// if assetTag.String() == shared.AccessTokenAssetTag {
+		// 	tokenID = common.PdexAccessCoinID.String()
+		// 	isNFT = true
+		// 	return pass, tokenID, rK, isNFT
+		// }
 	}
 	tokenCount := lastTokenListCount
 retryCheckTokenID:
@@ -96,34 +102,6 @@ retryCheckTokenID:
 					isNFT = true
 				}
 			}
-			// for tkStr, tkID := range tokenIDs {
-			// 	recomputedAssetTag, err := new(operation.Point).UnmarshalText([]byte(tkStr))
-			// 	if err != nil {
-			// 		log.Println("UnmarshalText tkStr", err)
-			// 		return false, "", nil, false
-			// 	}
-			// 	recomputedAssetTag.Add(recomputedAssetTag, new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder))
-			// 	if operation.IsPointEqual(recomputedAssetTag, assetTag) {
-			// 		tokenID = tkID
-			// 		break
-			// 	}
-			// }
-
-			// if tokenID == "" {
-			// 	for tkStr, tkID := range nftIDs {
-			// 		recomputedAssetTag, err := new(operation.Point).UnmarshalText([]byte(tkStr))
-			// 		if err != nil {
-			// 			log.Println("UnmarshalText tkStr", err)
-			// 			return false, "", nil, false
-			// 		}
-			// 		recomputedAssetTag.Add(recomputedAssetTag, new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder))
-			// 		if operation.IsPointEqual(recomputedAssetTag, assetTag) {
-			// 			tokenID = tkID
-			// 			isNFT = true
-			// 			break
-			// 		}
-			// 	}
-			// }
 		}
 		if tokenID == "" {
 			log.Println("retryCheckTokenID")
