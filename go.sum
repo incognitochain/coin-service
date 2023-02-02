@@ -467,6 +467,14 @@ github.com/incognitochain/incognito-chain v0.0.0-20221231141332-432e8b09116f h1:
 github.com/incognitochain/incognito-chain v0.0.0-20221231141332-432e8b09116f/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
 github.com/incognitochain/incognito-chain v0.0.0-20230117061907-62081946c223 h1:Z2NzsVGrvAD59L9CPhh4NAiSvofc1DRGSLjbCuYE9lA=
 github.com/incognitochain/incognito-chain v0.0.0-20230117061907-62081946c223/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
+github.com/incognitochain/incognito-chain v0.0.0-20230201045232-1f5cb82b4374 h1:Na4F31TKkoozrT/GZZodfQQosM+7eRpKXQZlP78hgZs=
+github.com/incognitochain/incognito-chain v0.0.0-20230201045232-1f5cb82b4374/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
+github.com/incognitochain/incognito-chain v0.0.0-20230202050357-57e4aabe7f6e h1:pkm8Yw0KFn4jFQyB16U5iMZoNkJw0LpfR1hj/Bfeavg=
+github.com/incognitochain/incognito-chain v0.0.0-20230202050357-57e4aabe7f6e/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
+github.com/incognitochain/incognito-chain v0.0.0-20230202051620-77c949b919b7 h1:6hdWzvEodN9iHDzuSY2dE1pL/rMCxBbprQGmLqHgtUo=
+github.com/incognitochain/incognito-chain v0.0.0-20230202051620-77c949b919b7/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
+github.com/incognitochain/incognito-chain v0.0.0-20230202052200-9dc21240c7e0 h1:KNlvjtkdppxwJlCqaHuV3SCLiv/rbVN5h2wAEO5pwBo=
+github.com/incognitochain/incognito-chain v0.0.0-20230202052200-9dc21240c7e0/go.mod h1:Hk7JWVRM2feijIPK1hoOU/XnB4AtJtsjOZ+167PzcZs=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
