@@ -139,6 +139,8 @@ func filterCoinsByOTAKeyV2(coinList []shared.CoinData, keys []*OTAkeyInfo, token
 	}
 	close(tempOTACoinsCh)
 	lastCoinIdx := coinList[len(coinList)-1].CoinIndex
+
+	assignedOTAKeys.Lock()
 	for _, key := range keys {
 		if len(tokenIDMap) != 0 {
 			a := key.KeyInfo.CoinIndex[common.ConfidentialAssetID.String()]
@@ -150,6 +152,7 @@ func filterCoinsByOTAKeyV2(coinList []shared.CoinData, keys []*OTAkeyInfo, token
 			key.KeyInfo.CoinIndex[common.PRVCoinID.String()] = a
 		}
 	}
+	assignedOTAKeys.Unlock()
 
 	log.Printf("finish filter %v coins with %v keys in %v \n", len(coinList), len(keys), time.Since(startTime))
 	return indexedCoins, txsToUpdate

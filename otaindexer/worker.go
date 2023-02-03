@@ -209,10 +209,8 @@ func StartOTAIndexing() {
 				log.Println("len(assignedOTAKeys.Keys) == 0")
 				continue
 			}
-			assignedOTAKeys.Lock()
 			scanOTACoins()
 			scanTxsSwap()
-			assignedOTAKeys.Unlock()
 		}
 	}
 }
@@ -227,11 +225,14 @@ func cleanAssignedOTA() {
 func scanOTACoins() {
 	startTime := time.Now()
 	shardKeyGroup := make(map[int]map[string]map[uint64][]*OTAkeyInfo)
+
+	assignedOTAKeys.Lock()
 	for shardID, keyinfos := range assignedOTAKeys.Keys {
 		coinIndexs := groupLastScannedIndexs(keyinfos)
 		keysGroup := groupKeysToCoinIndex(coinIndexs, keyinfos)
 		shardKeyGroup[shardID] = keysGroup
 	}
+	assignedOTAKeys.Unlock()
 
 	tokenListLock.RLock()
 	tokenIDMap := make(map[string]string)
@@ -248,6 +249,8 @@ func scanOTACoins() {
 		wg.Add(1)
 		go func(tkIndexMap map[string]map[uint64][]*OTAkeyInfo, sID int) {
 			startTime2 := time.Now()
+			coinsToUpdate := []shared.CoinData{}
+			txsToUpdate := make(map[string]map[string][]string)
 			for tk, indices := range tkIndexMap {
 				for index, keys := range indices {
 					coinList := GetUnknownCoinsV2(sID, index, tk)
@@ -261,8 +264,6 @@ func scanOTACoins() {
 					if len(coinList) == 0 {
 						continue
 					}
-					coinsToUpdate := []shared.CoinData{}
-					txsToUpdate := make(map[string]map[string][]string)
 
 					indexedCoins, txsUpdate := filterCoinsByOTAKeyV2(coinList, keys, newTokenIDMap, newNFTIDMap)
 					coinsToUpdate = append(coinsToUpdate, indexedCoins...)
@@ -276,32 +277,32 @@ func scanOTACoins() {
 							}
 						}
 					}
-					if len(coinsToUpdate) > 0 {
-						log.Println("\n=========================================")
-						log.Println("len(coinsToUpdate)", len(coinsToUpdate))
-						log.Println("=========================================\n")
-						err := database.DBUpdateCoins(coinsToUpdate, context.Background())
+				}
+			}
+			if len(coinsToUpdate) > 0 {
+				log.Println("\n=========================================")
+				log.Println("len(coinsToUpdate)", len(coinsToUpdate))
+				log.Println("=========================================\n")
+				err := database.DBUpdateCoins(coinsToUpdate, context.Background())
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			if len(txsToUpdate) > 0 {
+				for pubkey, tokenTxs := range txsToUpdate {
+					for tokenID, txHashs := range tokenTxs {
+						err := database.DBUpdateTxPubkeyReceiverAndTokenID(txHashs, pubkey, tokenID, context.Background())
 						if err != nil {
 							panic(err)
 						}
 					}
-
-					if len(txsToUpdate) > 0 {
-						for pubkey, tokenTxs := range txsToUpdate {
-							for tokenID, txHashs := range tokenTxs {
-								err := database.DBUpdateTxPubkeyReceiverAndTokenID(txHashs, pubkey, tokenID, context.Background())
-								if err != nil {
-									panic(err)
-								}
-							}
-						}
-					}
-
-					err := updateSubmittedOTAKey(context.Background())
-					if err != nil {
-						panic(err)
-					}
 				}
+			}
+
+			err := updateSubmittedOTAKey(context.Background())
+			if err != nil {
+				panic(err)
 			}
 
 			log.Printf("worker/%v finish scanning coins for shardKeyGroup %v in %v\n", workerID, sID, time.Since(startTime2))
@@ -617,6 +618,8 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 
 func updateSubmittedOTAKey(ctx context.Context) error {
 	docs := []interface{}{}
+	assignedOTAKeys.Lock()
+	defer assignedOTAKeys.Unlock()
 	KeyInfoList := []*shared.KeyInfoData{}
 	for _, keys := range assignedOTAKeys.Keys {
 		for _, key := range keys {
