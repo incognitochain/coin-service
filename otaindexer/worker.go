@@ -197,7 +197,7 @@ func StartOTAIndexing() {
 	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
 
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 		willPauseOperation()
 		err := retrieveTokenIDList()
 		if err != nil {
@@ -249,10 +249,10 @@ func scanOTACoins() {
 		wg.Add(1)
 		go func(tkIndexMap map[string]map[uint64][]*OTAkeyInfo, sID int) {
 			startTime2 := time.Now()
-			coinsToUpdate := []shared.CoinData{}
-			txsToUpdate := make(map[string]map[string][]string)
 			for tk, indices := range tkIndexMap {
 				for index, keys := range indices {
+					coinsToUpdate := []shared.CoinData{}
+					txsToUpdate := make(map[string]map[string][]string)
 					coinList := GetUnknownCoinsV2(sID, index, tk)
 					var newTokenIDMap map[string]string
 					var newNFTIDMap map[string]string
@@ -277,32 +277,32 @@ func scanOTACoins() {
 							}
 						}
 					}
-				}
-			}
-			if len(coinsToUpdate) > 0 {
-				log.Println("\n=========================================")
-				log.Println("len(coinsToUpdate)", len(coinsToUpdate))
-				log.Println("=========================================\n")
-				err := database.DBUpdateCoins(coinsToUpdate, context.Background())
-				if err != nil {
-					panic(err)
-				}
-			}
-
-			if len(txsToUpdate) > 0 {
-				for pubkey, tokenTxs := range txsToUpdate {
-					for tokenID, txHashs := range tokenTxs {
-						err := database.DBUpdateTxPubkeyReceiverAndTokenID(txHashs, pubkey, tokenID, context.Background())
+					if len(coinsToUpdate) > 0 {
+						log.Println("\n=========================================")
+						log.Println("len(coinsToUpdate)", len(coinsToUpdate))
+						log.Println("=========================================\n")
+						err := database.DBUpdateCoins(coinsToUpdate, context.Background())
 						if err != nil {
 							panic(err)
 						}
 					}
-				}
-			}
 
-			err := updateSubmittedOTAKey(context.Background())
-			if err != nil {
-				panic(err)
+					if len(txsToUpdate) > 0 {
+						for pubkey, tokenTxs := range txsToUpdate {
+							for tokenID, txHashs := range tokenTxs {
+								err := database.DBUpdateTxPubkeyReceiverAndTokenID(txHashs, pubkey, tokenID, context.Background())
+								if err != nil {
+									panic(err)
+								}
+							}
+						}
+					}
+
+					err := updateSubmittedOTAKey(context.Background())
+					if err != nil {
+						panic(err)
+					}
+				}
 			}
 
 			log.Printf("worker/%v finish scanning coins for shardKeyGroup %v in %v\n", workerID, sID, time.Since(startTime2))
@@ -700,7 +700,7 @@ func GetUnknownCoinsFromDB(fromPRVIndex, fromTokenIndex map[int]uint64) []shared
 
 func GetUnknownCoinsV2(shardID int, fromIndex uint64, tokenID string) []shared.CoinData {
 	var result []shared.CoinData
-	coinList, err := database.DBGetUnknownCoinsV21(shardID, tokenID, int64(fromIndex), 10000)
+	coinList, err := database.DBGetUnknownCoinsV21(shardID, tokenID, int64(fromIndex), 5000)
 	if err != nil {
 		panic(err)
 	}
