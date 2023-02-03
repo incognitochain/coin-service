@@ -233,9 +233,6 @@ func scanOTACoins() {
 		shardKeyGroup[shardID] = keysGroup
 	}
 
-	coinsToUpdate := []shared.CoinData{}
-	txsToUpdate := make(map[string]map[string][]string)
-
 	tokenListLock.RLock()
 	tokenIDMap := make(map[string]string)
 	for k, v := range lastTokenIDMap {
@@ -246,11 +243,11 @@ func scanOTACoins() {
 		nftIDMap[k] = v
 	}
 	tokenListLock.RUnlock()
-
 	var wg sync.WaitGroup
 	for shardID, tkMap := range shardKeyGroup {
 		wg.Add(1)
 		go func(tkIndexMap map[string]map[uint64][]*OTAkeyInfo, sID int) {
+			startTime2 := time.Now()
 			for tk, indices := range tkIndexMap {
 				for index, keys := range indices {
 					coinList := GetUnknownCoinsV2(sID, index, tk)
@@ -264,6 +261,9 @@ func scanOTACoins() {
 					if len(coinList) == 0 {
 						continue
 					}
+					coinsToUpdate := []shared.CoinData{}
+					txsToUpdate := make(map[string]map[string][]string)
+
 					indexedCoins, txsUpdate := filterCoinsByOTAKeyV2(coinList, keys, newTokenIDMap, newNFTIDMap)
 					coinsToUpdate = append(coinsToUpdate, indexedCoins...)
 					for pubkey, tokenTxs := range txsUpdate {
@@ -276,38 +276,39 @@ func scanOTACoins() {
 							}
 						}
 					}
+					if len(coinsToUpdate) > 0 {
+						log.Println("\n=========================================")
+						log.Println("len(coinsToUpdate)", len(coinsToUpdate))
+						log.Println("=========================================\n")
+						err := database.DBUpdateCoins(coinsToUpdate, context.Background())
+						if err != nil {
+							panic(err)
+						}
+					}
+
+					if len(txsToUpdate) > 0 {
+						for pubkey, tokenTxs := range txsToUpdate {
+							for tokenID, txHashs := range tokenTxs {
+								err := database.DBUpdateTxPubkeyReceiverAndTokenID(txHashs, pubkey, tokenID, context.Background())
+								if err != nil {
+									panic(err)
+								}
+							}
+						}
+					}
+
+					err := updateSubmittedOTAKey(context.Background())
+					if err != nil {
+						panic(err)
+					}
 				}
 			}
+
+			log.Printf("worker/%v finish scanning coins for shardKeyGroup %v in %v\n", workerID, sID, time.Since(startTime2))
 			wg.Done()
 		}(tkMap, shardID)
 	}
 	wg.Wait()
-
-	if len(coinsToUpdate) > 0 {
-		log.Println("\n=========================================")
-		log.Println("len(coinsToUpdate)", len(coinsToUpdate))
-		log.Println("=========================================\n")
-		err := database.DBUpdateCoins(coinsToUpdate, context.Background())
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if len(txsToUpdate) > 0 {
-		for pubkey, tokenTxs := range txsToUpdate {
-			for tokenID, txHashs := range tokenTxs {
-				err := database.DBUpdateTxPubkeyReceiverAndTokenID(txHashs, pubkey, tokenID, context.Background())
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
-	}
-
-	err := updateSubmittedOTAKey(context.Background())
-	if err != nil {
-		panic(err)
-	}
 
 	log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
 }
