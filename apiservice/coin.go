@@ -1091,7 +1091,7 @@ func APISubmitOTA(c *gin.Context) {
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,
-		FromNow: req.FromNow,
+		FromNow: true,
 		Respond: resp,
 	}
 	err = <-resp
