@@ -45,12 +45,6 @@ func doesCoinBelongToKeySet(c *coin.CoinV2, keySet *incognitokey.KeySet, tokenID
 	}
 	if assetTag == nil {
 		tokenID = common.PRVCoinID.String()
-	} else {
-		// if assetTag.String() == shared.AccessTokenAssetTag {
-		// 	tokenID = common.PdexAccessCoinID.String()
-		// 	isNFT = true
-		// 	return pass, tokenID, rK, isNFT
-		// }
 	}
 	tokenCount := lastTokenListCount
 retryCheckTokenID:
