@@ -8,6 +8,8 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 
 	"github.com/kamva/mgm/v3"
+	"github.com/kamva/mgm/v3/operator"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx"
@@ -66,6 +68,9 @@ func DBCreateCoinV2Index() error {
 			Keys:    bsonx.Doc{{Key: "coinpubkey", Value: bsonx.Int32(1)}, {Key: "coin", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "shardid", Value: bsonx.Int32(1)}, {Key: "coinidx", Value: bsonx.Int32(1)}},
+		},
 	}
 	_, err := mgm.Coll(&shared.CoinData{}).Indexes().CreateMany(context.Background(), coinMdl)
 	if err != nil {
@@ -92,6 +97,9 @@ func DBCreateCoinV2Index() error {
 		{
 			Keys:    bsonx.Doc{{Key: "otakey", Value: bsonx.Int32(1)}},
 			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys: bsonx.Doc{{Key: "pubkey", Value: bsonx.Int32(1)}},
 		},
 	}
 	_, err = mgm.Coll(&shared.KeyInfoDataV2{}).Indexes().CreateMany(context.Background(), keyInfoMdl)
@@ -163,7 +171,11 @@ func DBCreateTxIndex() error {
 			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}, {Key: "shardid", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}},
 		},
 		{
-			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
+			Keys: bsonx.Doc{{Key: "metatype", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(1)}},
+		},
+
+		{
+			Keys: bsonx.Doc{{Key: "shardid", Value: bsonx.Int32(1)}, {Key: "metatype", Value: bsonx.Int32(1)}, {Key: "locktime", Value: bsonx.Int32(1)}},
 		},
 	}
 	indexName, err := mgm.Coll(&shared.TxData{}).Indexes().CreateMany(context.Background(), txMdl)
@@ -222,6 +234,17 @@ func DBCreateShieldIndex() error {
 		return err
 	}
 	log.Println("indexName", indexName)
+
+	bridgeStateModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "version", Value: bsonx.Int32(1)}, {Key: "height", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.BridgeStateData{}).Indexes().CreateMany(context.Background(), bridgeStateModel)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -282,6 +305,10 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "pairid", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
+		},
 	}
 	_, err = mgm.Coll(&shared.PoolInfoData{}).Indexes().CreateMany(context.Background(), poolPairModel)
 	if err != nil {
@@ -291,6 +318,10 @@ func DBCreateLiquidityIndex() error {
 	poolShareModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
 		},
 	}
 	_, err = mgm.Coll(&shared.PoolShareData{}).Indexes().CreateMany(context.Background(), poolShareModel)
@@ -302,6 +333,10 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
+		},
 	}
 	_, err = mgm.Coll(&shared.PoolStakeData{}).Indexes().CreateMany(context.Background(), poolStakeModel)
 	if err != nil {
@@ -311,6 +346,10 @@ func DBCreateLiquidityIndex() error {
 	poolStakerModel := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "nftid", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
 		},
 	}
 	_, err = mgm.Coll(&shared.PoolStakerData{}).Indexes().CreateMany(context.Background(), poolStakerModel)
@@ -363,6 +402,13 @@ func DBCreateLiquidityIndex() error {
 		{
 			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}},
 		},
+		{
+			Keys: bsonx.Doc{{Key: "verified", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
+		},
 	}
 	_, err = mgm.Coll(&shared.ExtraTokenInfo{}).Indexes().CreateMany(context.Background(), pDecimalAPYModel)
 	if err != nil {
@@ -404,7 +450,20 @@ func DBCreateTradeIndex() error {
 			Keys: bsonx.Doc{{Key: "status", Value: bsonx.Int32(1)}, {Key: "poolid", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(-1)}},
 		},
 		{
+			Keys: bsonx.Doc{{Key: "version", Value: bsonx.Int32(1)}, {Key: "requesttime", Value: bsonx.Int32(1)}, {Key: "isswap", Value: bsonx.Int32(1)}, {Key: "status", Value: bsonx.Int32(1)}},
+		},
+		{
 			Keys: bsonx.Doc{{Key: "withdrawpendings", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "withdrawpendings.0", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetPartialFilterExpression(bson.M{"withdrawpendings.0": bson.M{operator.Exists: true}}),
+		},
+		{
+			Keys: bsonx.Doc{{Key: "withdrawtxs", Value: bsonx.Int32(1)}},
+		},
+		{
+			Keys: bsonx.Doc{{Key: "respondtxs", Value: bsonx.Int32(1)}},
 		},
 	}
 	_, err := mgm.Coll(&shared.TradeOrderData{}).Indexes().CreateMany(context.Background(), tradeOrderModel)
@@ -427,7 +486,7 @@ func DBCreateTradeIndex() error {
 		},
 		{
 			Keys:    bsonx.Doc{{Key: "updated_at", Value: bsonx.Int32(1)}},
-			Options: options.Index().SetExpireAfterSeconds(60 * 5),
+			Options: options.Index().SetExpireAfterSeconds(60 * 10),
 		},
 	}
 	_, err = mgm.Coll(&shared.LimitOrderStatus{}).Indexes().CreateMany(context.Background(), orderStatusModel)
@@ -456,8 +515,7 @@ func DBCreateProcessorIndex() error {
 func DBCreateInstructionIndex() error {
 	instructionModal := []mongo.IndexModel{
 		{
-			Keys:    bsonx.Doc{{Key: "txrequest", Value: bsonx.Int32(1)}},
-			Options: options.Index().SetUnique(true),
+			Keys: bsonx.Doc{{Key: "txrequest", Value: bsonx.Int32(1)}},
 		},
 	}
 	_, err := mgm.Coll(&shared.InstructionBeaconData{}).Indexes().CreateMany(context.Background(), instructionModal)
@@ -476,6 +534,26 @@ func DBCreateClientAssistantIndex() error {
 		},
 	}
 	_, err := mgm.Coll(&shared.ClientAssistantData{}).Indexes().CreateMany(context.Background(), modal)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DBCreatePNodeDeviceIndex() error {
+	log.Println("DBCreatePNodeDeviceIndex")
+	modal := []mongo.IndexModel{
+		{
+			Keys:    bsonx.Doc{{Key: "qr_code", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bsonx.Doc{{Key: "bls", Value: bsonx.Int32(1)}},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err := mgm.Coll(&shared.PNodeDevice{}).Indexes().CreateMany(context.Background(), modal)
 	if err != nil {
 		return err
 	}

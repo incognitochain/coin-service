@@ -34,79 +34,115 @@ type IncPdexState struct {
 
 var pdexV3State pdex.State
 
+// var bridgeManager *bridgeagg.Manager
+
 func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chainID int) {
+	willPauseOperation(-1)
 	log.Printf("start processing coin for block %v beacon\n", height)
-	startTime1 := time.Now()
-	var beaconBestState *blockchain.BeaconBestState
-	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
-		beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
-	} else {
-		beaconBestState, _ = Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, true)
-	}
-	blk := beaconBestState.BestBlock
-	beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
-	beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
+	blk, _, err := Localnode.GetBlockchain().GetBeaconBlockByHash(h)
 	if err != nil {
-		log.Println(err)
+		panic(err)
 	}
-	log.Printf("beaconFeatureStateDB loaded for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime1))
 	// this is a requirement check
 	for shardID, blks := range blk.Body.ShardState {
 		sort.Slice(blks, func(i, j int) bool { return blks[i].Height > blks[j].Height })
 	retry:
 		pass := true
-		blockProcessedLock.RLock()
-		if blockProcessed[int(shardID)] < blks[0].Height {
+		currentState.blockProcessedLock.RLock()
+		if currentState.BlockProcessed[int(shardID)] < blks[0].Height {
 			pass = false
 		}
-		blockProcessedLock.RUnlock()
+		currentState.blockProcessedLock.RUnlock()
 		if !pass {
 			time.Sleep(500 * time.Millisecond)
 			goto retry
 		}
 	}
 	startTime := time.Now()
-	log.Printf("beaconFeatureStateDB loaded for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+	beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false, true)
+	beaconFeatureStateDB := beaconBestState.GetBeaconFeatureStateDB()
+	// if bridgeManager == nil {
+	// 	bridgeManager, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// } else {
+	// 	bridgeManager.ClearCache()
+	// 	err = bridgeManager.Process(blk.Body.Instructions, beaconFeatureStateDB)
+	// 	if err != nil {
+	// 		log.Println("Error when processing bridge state: ", err)
+	// 		bridgeManager, err = bridgeagg.InitStateFromDB(beaconFeatureStateDB)
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	}
+	// }
+	bridgeManagerJson := &jsonresult.BridgeAggState{
+		BeaconTimeStamp:     blk.Header.Timestamp,
+		UnifiedTokenVaults:  beaconBestState.BridgeAggManager().State().UnifiedTokenVaults(),
+		WaitingUnshieldReqs: beaconBestState.BridgeAggManager().State().CloneWaitingUnshieldReqs(),
+		BaseDecimal:         config.Param().BridgeAggParam.BaseDecimal,
+		MaxLenOfPath:        config.Param().BridgeAggParam.MaxLenOfPath,
+	}
+	bridgeStr, err := json.MarshalToString(bridgeManagerJson)
+	if err != nil {
+		log.Println(err)
+	}
+	err = database.DBSaveBridgeState(bridgeStr, height, 1)
+	if err != nil {
+		log.Println(err)
+	}
+
 	// Process PDEstatev1
 	if height < config.Param().PDexParams.Pdexv3BreakPointHeight {
-		state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
-		tradingFees := state.Reader().TradingFees()
-		shares := state.Reader().Shares()
+		willProcess := true
+		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-50 {
+			willProcess = false
+		}
+		if willProcess {
+			// beaconBestState, _ := Localnode.GetBlockchain().GetBeaconViewStateDataFromBlockHash(h, false, false)
+			state := Localnode.GetBlockchain().GetBeaconBestState().PdeState(1)
+			tradingFees := state.Reader().TradingFees()
+			shares := state.Reader().Shares()
 
-		waitingContributions := map[string]*rawdbv2.PDEContribution{}
-		poolPairs := map[string]*rawdbv2.PDEPoolForPair{}
+			waitingContributions := map[string]*rawdbv2.PDEContribution{}
+			poolPairs := map[string]*rawdbv2.PDEPoolForPair{}
 
-		err = json.Unmarshal(state.Reader().PoolPairs(), &poolPairs)
-		if err != nil {
-			panic(err)
+			err = json.Unmarshal(state.Reader().PoolPairs(), &poolPairs)
+			if err != nil {
+				panic(err)
+			}
+
+			err = json.Unmarshal(state.Reader().WaitingContributions(), &waitingContributions)
+			if err != nil {
+				panic(err)
+			}
+
+			pdeStateJSON := jsonresult.CurrentPDEState{
+				BeaconTimeStamp:         beaconBestState.BestBlock.Header.Timestamp,
+				PDEPoolPairs:            poolPairs,
+				PDEShares:               shares,
+				WaitingPDEContributions: waitingContributions,
+				PDETradingFees:          tradingFees,
+			}
+			log.Printf("prepare pdeStateJSON for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+			pdeStr, err := json.MarshalToString(pdeStateJSON)
+			if err != nil {
+				log.Println(err)
+			}
+			err = database.DBSavePDEState(pdeStr, height, 1)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 
-		err = json.Unmarshal(state.Reader().WaitingContributions(), &waitingContributions)
-		if err != nil {
-			panic(err)
-		}
-
-		pdeStateJSON := jsonresult.CurrentPDEState{
-			BeaconTimeStamp:         beaconBestState.BestBlock.Header.Timestamp,
-			PDEPoolPairs:            poolPairs,
-			PDEShares:               shares,
-			WaitingPDEContributions: waitingContributions,
-			PDETradingFees:          tradingFees,
-		}
-		log.Printf("prepare pdeStateJSON for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-		pdeStr, err := json.MarshalToString(pdeStateJSON)
-		if err != nil {
-			log.Println(err)
-		}
-		err = database.DBSavePDEState(pdeStr, height, 1)
-		if err != nil {
-			log.Println(err)
-		}
 		log.Printf("mongo stored pdeStateJSON for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
 	}
 
 	//process PDEstateV2
-	if beaconBestState.BeaconHeight >= config.Param().PDexParams.Pdexv3BreakPointHeight {
+	if blk.GetHeight() >= config.Param().PDexParams.Pdexv3BreakPointHeight {
+		// beaconFeatureStateRootHash := beaconBestState.FeatureStateDBRootHash
+		// beaconFeatureStateDB, err := statedb.NewWithPrefixTrie(beaconFeatureStateRootHash, statedb.NewDatabaseAccessWarper(Localnode.GetBlockchain().GetBeaconChainDatabase()))
 		var prevStateV2 *shared.PDEStateV2
 		stateV2 := &shared.PDEStateV2{
 			StakingPoolsState: make(map[string]*pdex.StakingPoolState),
@@ -167,26 +203,27 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 
 		}
 		if pdexV3State == nil {
-			pdeStates, err := pdex.InitStatesFromDB(beaconFeatureStateDB, beaconBestState.BeaconHeight)
+			pdeStates, err := pdex.InitStatesFromDB(beaconFeatureStateDB, blk.GetHeight())
 			if err != nil {
 				panic(err)
 			}
 			pdexV3State = pdeStates[2]
+		} else {
+			pdeStateEnv := pdex.
+				NewStateEnvBuilder().
+				BuildBeaconInstructions(blk.Body.Instructions).
+				BuildStateDB(beaconFeatureStateDB).
+				BuildPrevBeaconHeight(blk.Header.Height - 1).
+				BuildBCHeightBreakPointPrivacyV2(config.Param().BCHeightBreakPointPrivacyV2).
+				BuildPdexv3BreakPoint(config.Param().PDexParams.Pdexv3BreakPointHeight).
+				Build()
+			err = pdexV3State.Process(pdeStateEnv)
+			if err != nil {
+				panic(err)
+			}
+			pdexV3State.ClearCache()
 		}
 
-		pdeStateEnv := pdex.
-			NewStateEnvBuilder().
-			BuildBeaconInstructions(blk.Body.Instructions).
-			BuildStateDB(beaconFeatureStateDB).
-			BuildPrevBeaconHeight(blk.Header.Height - 1).
-			BuildBCHeightBreakPointPrivacyV2(config.Param().BCHeightBreakPointPrivacyV2).
-			BuildPdexv3BreakPoint(config.Param().PDexParams.Pdexv3BreakPointHeight).
-			Build()
-		err = pdexV3State.Process(pdeStateEnv)
-		if err != nil {
-			panic(err)
-		}
-		pdexV3State.ClearCache()
 		params := pdexV3State.Reader().Params()
 		stateV2.StakingPoolsState = pdexV3State.Reader().StakingPools()
 		pools := make(map[string]*shared.PoolPairState)
@@ -206,11 +243,17 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		wg.Add(2)
 		go func() {
 			paramJSON := pdexV3State.Reader().Params().Clone()
+			waitingContributions := map[string]*rawdbv2.Pdexv3Contribution{}
+			err = json.Unmarshal(pdexV3State.Reader().WaitingContributions(), &waitingContributions)
+			if err != nil {
+				panic(err)
+			}
 			pdeStateJSON = jsonresult.Pdexv3State{
-				BeaconTimeStamp: beaconBestState.BestBlock.Header.Timestamp,
-				PoolPairs:       &poolPairsJSON,
-				StakingPools:    &stateV2.StakingPoolsState,
-				Params:          paramJSON,
+				BeaconTimeStamp:      blk.Header.Timestamp,
+				PoolPairs:            &poolPairsJSON,
+				StakingPools:         &stateV2.StakingPoolsState,
+				Params:               paramJSON,
+				WaitingContributions: &waitingContributions,
 			}
 			pdeStr, err = json.MarshalToString(pdeStateJSON)
 			if err != nil {
@@ -222,7 +265,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		var instructions []shared.InstructionBeaconData
 		go func() {
 			log.Printf("extractBeaconInstruction %v \n", blk.GetHeight())
-			instructions, err = extractBeaconInstruction(beaconBestState.BestBlock.Body.Instructions)
+			instructions, err = extractBeaconInstruction(blk.Body.Instructions)
 			if err != nil {
 				panic(err)
 			}
@@ -230,20 +273,24 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		}()
 		wg.Wait()
 
-		log.Printf("prepare state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, beaconBestState.BeaconHeight)
+		log.Printf("prepare state beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
+		willProcess := true
+
+		if blk.GetHeight() <= Localnode.GetBlockchain().GetCurrentBeaconBlockHeight(0)-2 {
+			willProcess = false
+		}
+		pairDatas, poolDatas, sharesDatas, poolStakeDatas, poolStakersDatas, orderBook, poolDatasToBeDel, sharesDatasToBeDel, poolStakeDatasToBeDel, poolStakersDatasToBeDel, orderBookToBeDel, rewardRecords, err := processPoolPairs(stateV2, prevStateV2, &pdeStateJSON, blk.GetHeight(), willProcess)
 		if err != nil {
 			panic(err)
 		}
-
 		wg.Add(14)
 		go func() {
-			log.Printf("done process state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+			log.Printf("done process state beacon %v in %v %v \n", blk.GetHeight(), time.Since(startTime), willProcess)
 			err = database.DBSavePDEState(pdeStr, height, 2)
 			if err != nil {
 				log.Println(err)
 			}
-			log.Printf("save pdex state %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+			log.Printf("save pdex state beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 
 			wg.Done()
 		}()
@@ -342,8 +389,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 			wg.Done()
 		}()
 		wg.Wait()
-		log.Printf("save pdex state 11 %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
-
+		log.Printf("save pdex state 11 beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 	}
 
 	statePrefix := BeaconData
@@ -352,14 +398,18 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("lvdb stored coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(t10))
-	blockProcessedLock.Lock()
-	blockProcessed[-1] = blk.Header.Height
-	blockProcessedLock.Unlock()
-	log.Printf("finish processing coin for block %v beacon in %v\n", blk.GetHeight(), time.Since(startTime))
+	log.Printf("lvdb stored coin for block beacon %v in %v\n", blk.GetHeight(), time.Since(t10))
+	currentState.blockProcessedLock.Lock()
+	currentState.BlockProcessed[-1] = blk.Header.Height
+	currentState.blockProcessedLock.Unlock()
+	err = updateState()
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("finish processing coin for block beacon %v in %v\n", blk.GetHeight(), time.Since(startTime))
 }
 
-func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, stateV2Json *jsonresult.Pdexv3State, beaconHeight uint64) ([]shared.PairInfoData, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.RewardRecord, error) {
+func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2, stateV2Json *jsonresult.Pdexv3State, beaconHeight uint64, willProcess bool) ([]shared.PairInfoData, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.PoolInfoData, []shared.PoolShareData, []shared.PoolStakeData, []shared.PoolStakerData, []shared.LimitOrderStatus, []shared.RewardRecord, error) {
 	var pairList []shared.PairInfoData
 	pairListMap := make(map[string][]shared.PoolInfoData)
 	var poolPairs []shared.PoolInfoData
@@ -374,6 +424,9 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 	var stakePoolsToBeDelete []shared.PoolStakeData
 	var poolStakingToBeDelete []shared.PoolStakerData
 	var orderStatusToBeDelete []shared.LimitOrderStatus
+	if !willProcess {
+		return pairList, poolPairs, poolShare, stakePools, poolStaking, orderStatus, poolPairsToBeDelete, poolShareToBeDelete, stakePoolsToBeDelete, poolStakingToBeDelete, orderStatusToBeDelete, rewardRecords, nil
+	}
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
@@ -393,6 +446,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 			}
 			poolPairs = append(poolPairs, poolData)
 			pairListMap[poolData.PairID] = append(pairListMap[poolData.PairID], poolData)
+			collectedShared := make(map[string]struct{})
 			for shareID, share := range state.Shares {
 				tradingFee := make(map[string]uint64)
 				orderReward := make(map[string]uint64)
@@ -400,7 +454,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				if err != nil {
 					panic(err)
 				}
-				rewards, err := recomputeLPFee(state.Shares, state.LpFeesPerShare, *shareIDHash)
+				rewards, err := recomputeLPFee(state.Shares, state.LpFeesPerShare, state.LmRewardsPerShare, *shareIDHash)
 				if err != nil {
 					panic(err)
 				}
@@ -408,6 +462,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					for tokenID, amount := range state.OrderRewards[shareID].UncollectedRewards {
 						orderReward[tokenID.String()] = amount
 					}
+					collectedShared[shareID] = struct{}{}
 				}
 				for k, v := range rewards {
 					tradingFee[k.String()] = v
@@ -421,6 +476,22 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					NFTID:       shareID,
 				}
 				poolShare = append(poolShare, shareData)
+			}
+
+			for shareID, share := range state.OrderRewards {
+				orderReward := make(map[string]uint64)
+				if _, ok := collectedShared[shareID]; !ok {
+					for tokenID, amount := range share.UncollectedRewards {
+						orderReward[tokenID.String()] = amount
+					}
+					shareData := shared.PoolShareData{
+						Version:     2,
+						PoolID:      poolID,
+						OrderReward: orderReward,
+						NFTID:       shareID,
+					}
+					poolShare = append(poolShare, shareData)
+				}
 			}
 
 			for _, order := range state.Orderbook.Orders {
@@ -452,7 +523,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				tk2Amount += a2
 			}
 			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
-			data.Token1Amount = fmt.Sprintf("%v", tk1Amount)
+			data.Token2Amount = fmt.Sprintf("%v", tk2Amount)
 			pairList = append(pairList, data)
 		}
 		wg.Done()
@@ -518,7 +589,28 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				shared.Pdexv3PoolPairChild{
 					PoolID: poolId},
 			}
-
+			if poolPair.ShareAmount() == 0 {
+				continue
+			}
+			tk1, err := database.DBGetExtraTokenInfo(poolPair.Token0ID().String())
+			if err != nil {
+				log.Println(err)
+			}
+			tk2, err := database.DBGetExtraTokenInfo(poolPair.Token1ID().String())
+			if err != nil {
+				log.Println(err)
+			}
+			tk1Decimal := 9
+			tk2Decimal := 9
+			if tk1 != nil {
+				tk1Decimal = int(tk1.PDecimals)
+			}
+			if tk2 != nil {
+				tk2Decimal = int(tk2.PDecimals)
+			}
+			if poolPair.Token0RealAmount() < uint64(math.Pow10(tk1Decimal-3)) || poolPair.Token1RealAmount() < uint64(math.Pow10(tk2Decimal-3)) {
+				continue
+			}
 			poolPairsArr = append(poolPairsArr, &poolPairWithId)
 		}
 		wg.Add(3)
@@ -560,7 +652,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if tkInfo != nil {
 						tkDecimal = int(tkInfo.PDecimals)
 					}
-					rateRw := getRateMinimum(tokenID, common.PRVCoinID.String(), uint64(math.Pow10(tkDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rateRw := getRateMinimum(tokenID, common.PRVCoinID.String(), uint64(math.Pow10(tkDecimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
 					receiveStake = uint64(float64(tokenStakeAmount) * rateRw)
 				}
@@ -578,7 +670,7 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if tkInfo != nil {
 						tkRwDecimal = int(tkInfo.PDecimals)
 					}
-					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
 					receive := uint64(float64(v) * rateRw)
 					rewardReceive += receive
@@ -607,15 +699,18 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 				rewardRecords = append(rewardRecords, data)
 			}
 			for poolID, state := range statev2.PoolPairs {
-				rw, err := extractLqReward(poolID, statev2.PoolPairs, prevStatev2.PoolPairs)
-				if err != nil {
-					panic(err)
-				}
 				rewardReceive := uint64(0)
 				token1Amount := state.State.Token0RealAmount()
 				token2Amount := state.State.Token1RealAmount()
 				total1 := uint64(0)
 				total2 := uint64(0)
+				if token1Amount == 0 || token2Amount == 0 {
+					continue
+				}
+				rw, err := extractLqReward(poolID, statev2.PoolPairs, prevStatev2.PoolPairs)
+				if err != nil {
+					panic(err)
+				}
 				if state.State.Token0ID().String() == common.PRVCoinID.String() || state.State.Token1ID().String() == common.PRVCoinID.String() {
 					if state.State.Token0ID().String() == common.PRVCoinID.String() {
 						total1 = token1Amount
@@ -633,17 +728,20 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if err != nil {
 						log.Println(err)
 					}
-					tk1Decimal := 1
-					tk2Decimal := 2
+					tk1Decimal := 9
+					tk2Decimal := 9
 					if tk1 != nil {
 						tk1Decimal = int(tk1.PDecimals)
 					}
 					if tk2 != nil {
 						tk2Decimal = int(tk2.PDecimals)
 					}
-					rate1 := getRateMinimum(state.State.Token0ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk1Decimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					if token1Amount < uint64(math.Pow10(tk1Decimal-3)) || token2Amount < uint64(math.Pow10(tk2Decimal-3)) {
+						continue
+					}
+					rate1 := getRateMinimum(state.State.Token0ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk1Decimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
-					rate2 := getRateMinimum(state.State.Token1ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk2Decimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rate2 := getRateMinimum(state.State.Token1ID().String(), common.PRVCoinID.String(), uint64(math.Pow10(tk2Decimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
 					total1 = uint64(float64(token1Amount) * rate1)
 					total2 = uint64(float64(token2Amount) * rate2)
@@ -659,11 +757,11 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					if err != nil {
 						log.Println(err)
 					}
-					tkRwDecimal := 1
+					tkRwDecimal := 9
 					if tkInfo != nil {
 						tkRwDecimal = int(tkInfo.PDecimals)
 					}
-					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs)
+					rateRw := getRateMinimum(tk, common.PRVCoinID.String(), uint64(math.Pow10(tkRwDecimal)), poolPairsArr, *stateV2Json.PoolPairs, stateV2Json.Params.DefaultFeeRateBPS)
 
 					receive := uint64(float64(v) * rateRw)
 					rewardReceive += receive
@@ -729,7 +827,9 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 					for shareID, _ := range state.Shares {
 						willDelete := false
 						if _, ok := newState.Shares[shareID]; !ok {
-							willDelete = true
+							if _, ok2 := newState.OrderRewards[shareID]; !ok2 {
+								willDelete = true
+							}
 						}
 						if willDelete {
 							shareData := shared.PoolShareData{
@@ -798,7 +898,6 @@ func processPoolPairs(statev2 *shared.PDEStateV2, prevStatev2 *shared.PDEStateV2
 		}()
 		wg.Wait()
 	}
-
 	return pairList, poolPairs, poolShare, stakePools, poolStaking, orderStatus, poolPairsToBeDelete, poolShareToBeDelete, stakePoolsToBeDelete, poolStakingToBeDelete, orderStatusToBeDelete, rewardRecords, nil
 }
 
@@ -959,12 +1058,12 @@ func extractBeaconInstruction(insts [][]string) ([]shared.InstructionBeaconData,
 func extractLqReward(poolID string, curPools map[string]*shared.PoolPairState, prevPools map[string]*shared.PoolPairState) (map[string]uint64, error) {
 	result := make(map[string]uint64)
 
-	curLPFeesPerShare, shareAmount, err := getLPFeesPerShare(poolID, curPools)
+	curLPFeesPerShare, curLMFeesPerShare, shareAmount, LmLockedShareAmount, err := getLPFeesPerShare(poolID, curPools)
 	if err != nil {
 		return nil, err
 	}
 
-	oldLPFeesPerShare, _, err := getLPFeesPerShare(poolID, prevPools)
+	oldLPFeesPerShare, oldLMFeesPerShare, _, _, err := getLPFeesPerShare(poolID, prevPools)
 	if err != nil {
 		oldLPFeesPerShare = map[common.Hash]*big.Int{}
 	}
@@ -987,15 +1086,38 @@ func extractLqReward(poolID string, curPools map[string]*shared.PoolPairState, p
 		}
 	}
 
+	for tokenID := range curLMFeesPerShare {
+		oldFees, isExisted := oldLMFeesPerShare[tokenID]
+		if !isExisted {
+			oldFees = big.NewInt(0)
+		}
+		newFees := curLMFeesPerShare[tokenID]
+
+		reward := new(big.Int).Mul(new(big.Int).Sub(newFees, oldFees), new(big.Int).SetUint64(shareAmount-LmLockedShareAmount))
+		reward = new(big.Int).Div(reward, pdex.BaseLPFeesPerShare)
+
+		if !reward.IsUint64() {
+			return nil, fmt.Errorf("Reward of token %v is out of range", tokenID)
+		}
+		if reward.Uint64() > 0 {
+			if _, ok := result[tokenID.String()]; ok {
+				result[tokenID.String()] += reward.Uint64()
+			} else {
+
+				result[tokenID.String()] = reward.Uint64()
+			}
+		}
+	}
+
 	return result, nil
 }
 
-func getLPFeesPerShare(pairID string, pools map[string]*shared.PoolPairState) (map[common.Hash]*big.Int, uint64, error) {
+func getLPFeesPerShare(pairID string, pools map[string]*shared.PoolPairState) (map[common.Hash]*big.Int, map[common.Hash]*big.Int, uint64, uint64, error) {
 	if _, ok := pools[pairID]; !ok {
-		return nil, 0, fmt.Errorf("Pool pair %s not found", pairID)
+		return nil, nil, 0, 0, fmt.Errorf("Pool pair %s not found", pairID)
 	}
 	pair := pools[pairID]
-	return pair.LpFeesPerShare, pair.State.ShareAmount(), nil
+	return pair.LpFeesPerShare, pair.LmRewardsPerShare, pair.State.ShareAmount(), pair.State.LmLockedShareAmount(), nil
 }
 
 func getStakingRewardsPerShare(

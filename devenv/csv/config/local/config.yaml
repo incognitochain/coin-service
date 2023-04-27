@@ -12,7 +12,7 @@ max_peers: 1000 #
 max_out_peers: 1000 #
 max_in_peers: 1000 #
 discover_peers: true #
-discover_peers_address: "139.162.55.124:9330" #
+discover_peers_address: "172.105.114.134:9330" #
 max_peers_same_shard: 300 #
 max_pmax_peers_other_shard: 600 #
 max_peers_other: 300 #
@@ -60,7 +60,3 @@ use_coin_data:
   - true
 num_indexer_workers: 5
 indexer_access_token: "0c3d46946bbf99c8213dd7f6c640ed6433bdc056a5b68e7e80f5525311b0ca11"
-geth_param:
-  host: "kovan.infura.io/v3/1138a1e99b154b10bae5c382ad894361"
-  protocol: "https"
-  port: ""

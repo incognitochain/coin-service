@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +19,6 @@ import (
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/metadata"
-	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
 )
 
@@ -56,150 +54,21 @@ func (pdexv3) ListPairs(c *gin.Context) {
 
 func (pdexv3) ListPools(c *gin.Context) {
 	pair := c.Query("pair")
-	if pair == "all" {
-		var result []PdexV3PoolDetail
-		err := cacheGet("ListPools-all", &result)
-		if err != nil {
-			fmt.Println("cacheStoreCustom failed")
-			log.Println(err)
-		} else {
-			fmt.Println("cacheStoreCustom success 1111")
-			respond := APIRespond{
-				Result: result,
-				Error:  nil,
-			}
-			c.JSON(http.StatusOK, respond)
-			return
-		}
-	}
-	list, err := database.DBGetPoolPairsByPairID(pair)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	var defaultPools map[string]struct{}
-	var priorityTokens []string
-	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
-		defaultPools, err = database.DBGetDefaultPool(true)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		err = cacheStore(defaultPoolsKey, defaultPools)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-	}
-	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
-		priorityTokens, err = database.DBGetTokenPriority()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		err = cacheStore(tokenPriorityKey, priorityTokens)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-	}
-	// Get pool pair rate changes
-	poolIds := make([]string, 0)
-	for _, v := range list {
-		poolIds = append(poolIds, v.PoolID)
-	}
-	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(poolIds)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-
+	verify := c.Query("verify")
 	var result []PdexV3PoolDetail
-	var wg sync.WaitGroup
-	wg.Add(len(list))
-	resultCh := make(chan PdexV3PoolDetail, len(list))
-	for _, v := range list {
-		go func(d shared.PoolInfoData) {
-			var data *PdexV3PoolDetail
-			defer func() {
-				wg.Done()
-				if data != nil {
-					resultCh <- *data
-				}
-			}()
-			tk1Amount, _ := strconv.ParseUint(d.Token1Amount, 10, 64)
-			tk2Amount, _ := strconv.ParseUint(d.Token2Amount, 10, 64)
-			if tk1Amount == 0 || tk2Amount == 0 {
-				return
-			}
-			dcrate, _, _, err := getPdecimalRate(d.TokenID1, d.TokenID2)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			token1ID := d.TokenID1
-			token2ID := d.TokenID2
-			tk1VA, _ := strconv.ParseUint(d.Virtual1Amount, 10, 64)
-			tk2VA, _ := strconv.ParseUint(d.Virtual2Amount, 10, 64)
-			totalShare, _ := strconv.ParseUint(d.TotalShare, 10, 64)
-
-			willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
-			if willSwap {
-				token1ID = d.TokenID2
-				token2ID = d.TokenID1
-				tk1VA, _ = strconv.ParseUint(d.Virtual2Amount, 10, 64)
-				tk2VA, _ = strconv.ParseUint(d.Virtual1Amount, 10, 64)
-				tk1Amount, _ = strconv.ParseUint(d.Token2Amount, 10, 64)
-				tk2Amount, _ = strconv.ParseUint(d.Token1Amount, 10, 64)
-				dcrate, _, _, err = getPdecimalRate(d.TokenID2, d.TokenID1)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-			}
-
-			data = &PdexV3PoolDetail{
-				PoolID:         d.PoolID,
-				Token1ID:       token1ID,
-				Token2ID:       token2ID,
-				Token1Value:    tk1Amount,
-				Token2Value:    tk2Amount,
-				Virtual1Value:  tk1VA,
-				Virtual2Value:  tk2VA,
-				Volume:         0,
-				PriceChange24h: 0,
-				AMP:            d.AMP,
-				Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
-				TotalShare:     totalShare,
-			}
-
-			if poolChange, found := poolLiquidityChanges[d.PoolID]; found {
-				data.PriceChange24h = poolChange.RateChangePercentage
-				data.Volume = poolChange.TradingVolume24h
-			}
-
-			apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			if apy != nil {
-				data.APY = uint64(apy.APY2)
-			}
-			if _, found := defaultPools[d.PoolID]; found {
-				data.IsVerify = true
-			}
-			return
-		}(v)
+	if pair == "all" {
+		if verify == "true" {
+			result = getPoolList(true)
+		} else {
+			result = getPoolList(false)
+		}
+	} else {
+		if verify == "true" {
+			getPoolListByPairID(pair, true)
+		} else {
+			getPoolListByPairID(pair, false)
+		}
 	}
-	wg.Wait()
-	close(resultCh)
-	for v := range resultCh {
-		result = append(result, v)
-	}
-	go cacheStoreCustom("ListPools-all", result, 10*time.Second)
-	fmt.Println("cacheStoreCustom success")
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
@@ -295,7 +164,7 @@ func (pdexv3) PoolShare(c *gin.Context) {
 		if len(l) == 0 {
 			continue
 		}
-		if (v.Amount == 0) && len(v.TradingFee) == 0 {
+		if (v.Amount == 0) && len(v.TradingFee) == 0 && len(v.OrderReward) == 0 {
 			continue
 		}
 		token1ID := l[0].TokenID1
@@ -491,21 +360,18 @@ func (pdexv3) TradeHistory(c *gin.Context) {
 func (pdexv3) ContributeHistory(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.Query("offset"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	poolID := c.Query("poolid")
 	nftID := c.Query("nftid")
 	var err error
 	var list []shared.ContributionData
-	if poolID != "" {
-
-	} else {
-		list, err = database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
+	list, err = database.DBGetPDEV3ContributeRespond(nftID, int64(limit), int64(offset))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
 	}
 
+	var contributeList []PdexV3ContributionData
 	var result []PdexV3ContributionData
+	completedTxs := make(map[string]struct{})
 
 	for _, v := range list {
 		ctrbAmount := []uint64{}
@@ -551,14 +417,39 @@ func (pdexv3) ContributeHistory(c *gin.Context) {
 			if v.ContributeTokens[0] != v.ContributeTokens[1] {
 				data.Status = "completed"
 			} else {
-				data.Status = "refunding"
+				if v.RequestTxs[0] == v.RequestTxs[1] {
+					data.RequestTxs = []string{data.RequestTxs[0]}
+					data.ContributeTokens = []string{data.ContributeTokens[0]}
+					data.ContributeAmount = []uint64{data.ContributeAmount[0]}
+					data.Status = "waiting"
+				} else {
+					data.Status = "refunding"
+				}
+			}
+		}
+		if len(data.RequestTxs) == 2 {
+			for _, tx := range data.RequestTxs {
+				completedTxs[tx] = struct{}{}
 			}
 		}
 		if len(v.RespondTxs) > 0 {
 			data.Status = "refunded"
 		}
-		result = append(result, data)
+		contributeList = append(contributeList, data)
 	}
+
+	//remove unneeded data
+	for _, v := range contributeList {
+		if len(v.RequestTxs) == 1 {
+			if _, ok := completedTxs[v.RequestTxs[0]]; !ok {
+				result = append(result, v)
+			}
+		}
+		if len(v.RequestTxs) == 2 {
+			result = append(result, v)
+		}
+	}
+
 	respond := APIRespond{
 		Result: result,
 	}
@@ -843,110 +734,7 @@ func (pdexv3) PoolsDetail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	list, err := database.DBGetPoolPairsByPoolID(req.PoolIDs)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	var defaultPools map[string]struct{}
-	var priorityTokens []string
-	if err := cacheGet(defaultPoolsKey, &defaultPools); err != nil {
-		defaultPools, err = database.DBGetDefaultPool(true)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		err = cacheStore(defaultPoolsKey, defaultPools)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-	}
-	if err := cacheGet(tokenPriorityKey, &priorityTokens); err != nil {
-		priorityTokens, err = database.DBGetTokenPriority()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		err = cacheStore(tokenPriorityKey, priorityTokens)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-	}
-
-	poolLiquidityChanges, err := analyticsquery.APIGetPDexV3PairRateChangesAndVolume24h(req.PoolIDs)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-
-	var result []PdexV3PoolDetail
-	for _, v := range list {
-		tk1Amount, _ := strconv.ParseUint(v.Token1Amount, 10, 64)
-		tk2Amount, _ := strconv.ParseUint(v.Token2Amount, 10, 64)
-		if tk1Amount == 0 || tk2Amount == 0 {
-			continue
-		}
-		dcrate, _, _, err := getPdecimalRate(v.TokenID1, v.TokenID2)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		token1ID := v.TokenID1
-		token2ID := v.TokenID2
-		tk1VA, _ := strconv.ParseUint(v.Virtual1Amount, 10, 64)
-		tk2VA, _ := strconv.ParseUint(v.Virtual2Amount, 10, 64)
-		totalShare, _ := strconv.ParseUint(v.TotalShare, 10, 64)
-
-		willSwap := willSwapTokenPlace(token1ID, token2ID, priorityTokens)
-		if willSwap {
-			token1ID = v.TokenID2
-			token2ID = v.TokenID1
-			tk1VA, _ = strconv.ParseUint(v.Virtual2Amount, 10, 64)
-			tk2VA, _ = strconv.ParseUint(v.Virtual1Amount, 10, 64)
-			tk1Amount, _ = strconv.ParseUint(v.Token2Amount, 10, 64)
-			tk2Amount, _ = strconv.ParseUint(v.Token1Amount, 10, 64)
-			dcrate, _, _, err = getPdecimalRate(v.TokenID2, v.TokenID1)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}
-
-		data := PdexV3PoolDetail{
-			PoolID:         v.PoolID,
-			Token1ID:       token1ID,
-			Token2ID:       token2ID,
-			Token1Value:    tk1Amount,
-			Token2Value:    tk2Amount,
-			Virtual1Value:  tk1VA,
-			Virtual2Value:  tk2VA,
-			PriceChange24h: 0,
-			Volume:         0,
-			AMP:            v.AMP,
-			Price:          calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate,
-			TotalShare:     totalShare,
-		}
-
-		if poolChange, found := poolLiquidityChanges[v.PoolID]; found {
-			data.PriceChange24h = poolChange.RateChangePercentage
-			data.Volume = poolChange.TradingVolume24h
-		}
-
-		apy, err := database.DBGetPDEPoolPairRewardAPY(data.PoolID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		if apy != nil {
-			data.APY = uint64(apy.APY2)
-		}
-		if _, found := defaultPools[v.PoolID]; found {
-			data.IsVerify = true
-		}
-		result = append(result, data)
-	}
+	result := getCustomPoolList(req.PoolIDs)
 	respond := APIRespond{
 		Result: result,
 		Error:  nil,
@@ -1145,12 +933,14 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		return
 	}
 	// dcrate := float64(1)
-	dcrate, tk1Decimal, _, err := getPdecimalRate(buyToken, sellToken)
+	dcrate, tk1Decimal, tk2Decimal, err := getPdecimalRate(buyToken, sellToken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	// _ = tk2Decimal
+	dcrate1 := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
+	_ = tk1Decimal
+	_ = tk2Decimal
 	if !req.Pdecimal {
 		dcrate = 1
 	}
@@ -1185,12 +975,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	if sellAmount > 0 {
 		//feePRV
 		chosenPath, receive := pathfinder.FindGoodTradePath(
-			pdexv3Meta.MaxTradePathLength,
+			// pdexv3Meta.MaxTradePathLength,
+			3,
 			newPools,
 			poolPairStates,
 			sellToken,
 			buyToken,
-			sellAmount)
+			sellAmount, pdexState.Params.DefaultFeeRateBPS)
 		feePRV.SellAmount = float64(sellAmount) / dcrate
 		feePRV.MaxGet = float64(receive) * dcrate
 
@@ -1212,12 +1003,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			if req.IsMax && sellToken == common.PRVCoinID.String() && feePRV.Fee > 0 {
 				newSellAmount := sellAmount - tradingFeePRV - 100 - (tradingFeePRV / 100)
 				chosenPath, receive := pathfinder.FindGoodTradePath(
-					pdexv3Meta.MaxTradePathLength,
+					// pdexv3Meta.MaxTradePathLength,
+					3,
 					newPools,
 					poolPairStates,
 					sellToken,
 					buyToken,
-					newSellAmount)
+					newSellAmount, pdexState.Params.DefaultFeeRateBPS)
 				feePRV.SellAmount = float64(newSellAmount) / dcrate
 				feePRV.MaxGet = float64(receive) * dcrate
 				feePRV.Route = make([]string, 0)
@@ -1236,6 +1028,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 
 		//feeToken
+
 		if sellToken == common.PRVCoinID.String() {
 			feeToken = feePRV
 		} else {
@@ -1254,12 +1047,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 				if req.IsMax && feeToken.Fee > 0 {
 					newSellAmount := sellAmount - tradingFeeToken
 					chosenPath, receive := pathfinder.FindGoodTradePath(
-						pdexv3Meta.MaxTradePathLength,
+						// pdexv3Meta.MaxTradePathLength,
+						3,
 						newPools,
 						poolPairStates,
 						sellToken,
 						buyToken,
-						newSellAmount)
+						newSellAmount, pdexState.Params.DefaultFeeRateBPS)
 					feeToken.SellAmount = float64(newSellAmount) / dcrate
 					feeToken.MaxGet = float64(receive) * dcrate
 					feeToken.Route = make([]string, 0)
@@ -1279,12 +1073,13 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	} else {
 		chosenPath, foundSellAmount := pathfinder.FindSellAmount(
-			pdexv3Meta.MaxTradePathLength,
+			// pdexv3Meta.MaxTradePathLength,
+			3,
 			newPools,
 			poolPairStates,
 			sellToken,
 			buyToken,
-			buyAmount)
+			buyAmount, pdexState.Params.DefaultFeeRateBPS)
 		sellAmount = foundSellAmount
 		receive := buyAmount
 
@@ -1317,35 +1112,32 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feeToken.TokenRoute = getTokenRoute(sellToken, feeToken.Route)
 		}
 	}
+	tksInfo := getCustomTokenList([]string{sellToken, buyToken})
 	if feePRV.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
-		if rt == 0 {
-			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
-			if rt == 0 {
-				rt = feePRV.MaxGet / feePRV.SellAmount
-			}
-		}
-		rt1 := feePRV.SellAmount / feePRV.MaxGet
-		ia := ((rt1 / rt) - 1) * 100
+		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
+		rt1 := feePRV.SellAmount / feePRV.MaxGet * dcrate1
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feePRV.IsSignificant = true
 		}
 		feePRV.ImpactAmount = ia
+		// feePRV.Debug.RateMk = rt
+		// feePRV.Debug.Rate = rt1
+		// feePRV.Debug.RateTk1 = tksInfo[0].PriceUsd
+		// feePRV.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	if feeToken.Fee != 0 {
-		rt := getRateMinimum(buyToken, sellToken, uint64(math.Pow10(tk1Decimal)), newPools, poolPairStates)
-		if rt == 0 {
-			rt = getRateMinimum(buyToken, sellToken, 1, pools, poolPairStates)
-			if rt == 0 {
-				rt = feeToken.MaxGet / feeToken.SellAmount
-			}
-		}
-		rt1 := feeToken.SellAmount / feeToken.MaxGet
-		ia := ((rt1 / rt) - 1) * 100
+		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
+		rt1 := feeToken.SellAmount / feeToken.MaxGet * dcrate1
+		ia := (1 - (rt / rt1)) * 100
 		if ia >= 20 {
 			feeToken.IsSignificant = true
 		}
 		feeToken.ImpactAmount = ia
+		// feeToken.Debug.RateMk = rt
+		// feeToken.Debug.Rate = rt1
+		// feeToken.Debug.RateTk1 = tksInfo[0].PriceUsd
+		// feeToken.Debug.RateTk2 = tksInfo[1].PriceUsd
 	}
 	result.FeePRV = feePRV
 	result.FeeToken = feeToken
@@ -1627,8 +1419,15 @@ func (pdexv3) GetRate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
 		return
 	}
+
+	pdeState := jsonresult.Pdexv3State{}
+	err = json.UnmarshalFromString(data, &pdeState)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, buildGinErrorRespond(err))
+		return
+	}
 	for _, v := range req.TokenIDs {
-		rt := getRate(req.Against, v, pools, poolPairStates)
+		rt := getRate(req.Against, v, pools, poolPairStates, pdeState.Params.DefaultFeeRateBPS)
 		result[v] = rt
 	}
 
@@ -1706,7 +1505,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			Token2Remain: tk2Amount - tk2Balance,
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
-			Rate:         float64(tk2Amount) / float64(tk1Amount),
+		}
+		if tk1Amount != 0 {
+			data.Rate = float64(tk2Amount) / float64(tk1Amount)
 		}
 		if willSwap {
 			data = PdexV3PendingOrderData{
@@ -1715,7 +1516,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 				Token2Remain: tk1Balance,
 				Token1Amount: tk2Amount,
 				Token2Amount: tk1Amount,
-				Rate:         float64(tk1Amount) / float64(tk2Amount),
+			}
+			if tk2Amount != 0 {
+				data.Rate = float64(tk1Amount) / float64(tk2Amount)
 			}
 		}
 		sellOrders = append(sellOrders, data)
@@ -1734,7 +1537,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 			Token2Remain: tk2Balance,
 			Token1Amount: tk1Amount,
 			Token2Amount: tk2Amount,
-			Rate:         float64(tk2Amount) / float64(tk1Amount),
+		}
+		if tk1Amount != 0 {
+			data.Rate = float64(tk2Amount) / float64(tk1Amount)
 		}
 		if willSwap {
 			data = PdexV3PendingOrderData{
@@ -1743,7 +1548,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 				Token2Remain: tk1Amount - tk1Balance,
 				Token1Amount: tk2Amount,
 				Token2Amount: tk1Amount,
-				Rate:         float64(tk1Amount) / float64(tk2Amount),
+			}
+			if tk2Amount != 0 {
+				data.Rate = float64(tk1Amount) / float64(tk2Amount)
 			}
 		}
 		buyOrders = append(buyOrders, data)
@@ -1857,6 +1664,15 @@ func (pdexv3) PendingLimit(c *gin.Context) {
 	}
 	respond := APIRespond{
 		Result: result,
+		Error:  nil,
+	}
+	c.JSON(http.StatusOK, respond)
+}
+
+func (pdexv3) ListMarkets(c *gin.Context) {
+	datalist := getMarketTokenList()
+	respond := APIRespond{
+		Result: datalist,
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

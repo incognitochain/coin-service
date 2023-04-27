@@ -105,7 +105,12 @@ func tokenListWatcher() {
 		shardStateDB := make(map[byte]*statedb.StateDB)
 		for i := 0; i < activeShards; i++ {
 			shardID := byte(i)
-			shardStateDB[shardID] = TransactionStateDB[shardID].Copy()
+			if useFullnodeData {
+				shardStateDB[shardID] = Localnode.GetBlockchain().GetBestStateTransactionStateDB(byte(shardID))
+			} else {
+				shardStateDB[shardID] = TransactionStateDB[shardID].Copy()
+			}
+
 		}
 
 		tokenStates := make(map[common.Hash]*statedb.TokenState)
@@ -198,9 +203,11 @@ func tokenListWatcher() {
 			tokenInfo := shared.NewTokenInfoData(token.ID, token.Name, token.Symbol, token.Image, token.IsPrivacy, token.IsBridgeToken, token.Amount, nftToken[token.ID], externalID)
 			tokenInfoList = append(tokenInfoList, *tokenInfo)
 		}
+	retrySave:
 		err = database.DBSaveTokenInfo(tokenInfoList)
 		if err != nil {
-			panic(err)
+			log.Println("DBSaveTokenInfo", err)
+			goto retrySave
 		}
 		lastTokenIDLock.Lock()
 

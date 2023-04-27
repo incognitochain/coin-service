@@ -220,6 +220,7 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 			if meta != nil {
 				metaData, _ := json.Marshal(meta)
 				result.Metadata = string(metaData)
+				result.Metatype = meta.GetType()
 			}
 			if result.Proof != nil {
 				result.ProofDetail.ConvertFromProof(result.Proof)
@@ -312,6 +313,7 @@ func NewTransactionDetail(tx metadata.Transaction, blockHash *common.Hash, block
 			if tx.GetMetadata() != nil {
 				metaData, _ := json.Marshal(tx.GetMetadata())
 				result.Metadata = string(metaData)
+				result.Metatype = tx.GetMetadataType()
 			}
 			if result.Proof != nil {
 				result.ProofDetail.ConvertFromProof(result.Proof)

@@ -73,23 +73,28 @@ retryCheckTokenID:
 		if tk, ok := tokenIDs[assetTag.String()]; ok {
 			tokenID = tk
 		} else {
-			blinder, err := coin.ComputeAssetTagBlinder(rK)
-			if err != nil {
-				log.Println(err)
-				return false, "", nil, false
-			}
-
-			rawAssetTag := new(operation.Point).Sub(
-				assetTag,
-				new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder),
-			)
-
-			if tkID, ok := tokenIDs[rawAssetTag.String()]; ok {
-				tokenID = tkID
-			}
-			if tkID, ok := nftIDs[rawAssetTag.String()]; ok {
-				tokenID = tkID
+			if tk, ok := nftIDs[assetTag.String()]; ok {
+				tokenID = tk
 				isNFT = true
+			} else {
+				blinder, err := coin.ComputeAssetTagBlinder(rK)
+				if err != nil {
+					log.Println(err)
+					return false, "", nil, false
+				}
+
+				rawAssetTag := new(operation.Point).Sub(
+					assetTag,
+					new(operation.Point).ScalarMult(operation.PedCom.G[coin.PedersenRandomnessIndex], blinder),
+				)
+
+				if tkID, ok := tokenIDs[rawAssetTag.String()]; ok {
+					tokenID = tkID
+				}
+				if tkID, ok := nftIDs[rawAssetTag.String()]; ok {
+					tokenID = tkID
+					isNFT = true
+				}
 			}
 			// for tkStr, tkID := range tokenIDs {
 			// 	recomputedAssetTag, err := new(operation.Point).UnmarshalText([]byte(tkStr))
@@ -218,7 +223,7 @@ func extractPubkeyAndTxRandom(tx shared.TxData) (*coin.TxRandom, *operation.Poin
 		return nil, nil, err
 	}
 	for _, v := range meta.Receiver {
-		return &v.TxRandom, &v.PublicKey, nil
+		return &v.TxRandom, v.PublicKey, nil
 	}
 	return nil, nil, errors.New("len(meta.Receiver) == 0")
 }

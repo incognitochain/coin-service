@@ -11,12 +11,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
 	"github.com/incognitochain/incognito-chain/incognitokey"
 	jsoniter "github.com/json-iterator/go"
+	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -164,6 +167,15 @@ var OTAAssignChn chan OTAAssignRequest
 
 func StartWorkerAssigner() {
 	loadSubmittedOTAKey()
+	id := uuid.NewV4()
+	newServiceConn := coordinator.ServiceConn{
+		ServiceGroup: coordinator.SERVICEGROUP_INDEXER,
+		ID:           id.String(),
+		GitCommit:    shared.GITCOMMIT,
+		ReadCh:       make(chan []byte),
+		WriteCh:      make(chan []byte),
+	}
+
 	var wg sync.WaitGroup
 	d := 0
 	for _, v := range Submitted_OTAKey.Keys {
@@ -182,7 +194,16 @@ func StartWorkerAssigner() {
 		}(v)
 	}
 	wg.Wait()
+
+	logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "pause"
+	coordinatorState.pauseService = true
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
+	log.Println("All OTAKey checked")
 	go func() {
+		log.Println("Listen for submit OTAKey request")
 		for {
 			request := <-OTAAssignChn
 			Submitted_OTAKey.RLock()
@@ -217,7 +238,9 @@ func StartWorkerAssigner() {
 	}()
 
 	for {
+		log.Println("Start worker assign")
 		time.Sleep(10 * time.Second)
+		willPauseOperation()
 		Submitted_OTAKey.Lock()
 		isAllKeyAssigned := true
 		for key, worker := range Submitted_OTAKey.AssignedKey {
@@ -409,11 +432,14 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 }
 
 func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
+	log.Println("ReCheckOTAKey", otaKey)
 	Submitted_OTAKey.RLock()
-	defer Submitted_OTAKey.RUnlock()
 	if _, ok := Submitted_OTAKey.Keys[pubKey]; !ok {
+		Submitted_OTAKey.RUnlock()
 		return errors.New("wrong indexer")
 	}
+	Submitted_OTAKey.RUnlock()
+
 	pubkey, _, err := base58.Base58Check{}.Decode(pubKey)
 	if err != nil {
 		return err
@@ -435,7 +461,7 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		return err
 	}
 	data.OTAKey = otaKey
-	highestTkIndex := uint64(0)
+	// highestTkIndex := uint64(0)
 	totalCoinList := []shared.CoinData{}
 	offset := int64(0)
 	limit := 10000
@@ -497,11 +523,11 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 				if cidx.Start > coin.CoinIndex {
 					cidx.Start = coin.CoinIndex
 				}
-				if highestTkIndex < cidx.End {
-					if coin.RealTokenID != common.PRVCoinID.String() {
-						highestTkIndex = cidx.End
-					}
-				}
+				// if highestTkIndex < cidx.End {
+				// 	if coin.RealTokenID != common.PRVCoinID.String() {
+				// 		highestTkIndex = cidx.End
+				// 	}
+				// }
 				data.NFTIndex[coin.RealTokenID] = cidx
 			}
 		} else {
@@ -524,11 +550,11 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 				if cidx.Start > coin.CoinIndex {
 					cidx.Start = coin.CoinIndex
 				}
-				if highestTkIndex < cidx.End {
-					if coin.RealTokenID != common.PRVCoinID.String() {
-						highestTkIndex = cidx.End
-					}
-				}
+				// if highestTkIndex < cidx.End {
+				// 	if coin.RealTokenID != common.PRVCoinID.String() {
+				// 		highestTkIndex = cidx.End
+				// 	}
+				// }
 				data.CoinIndex[coin.RealTokenID] = cidx
 			}
 		}
@@ -564,21 +590,18 @@ func ReCheckOTAKey(otaKey, pubKey string, reIndex bool) error {
 		data.TotalReceiveTxs[tokenID] = uint64(txs)
 	}
 
-	if len(data.CoinIndex) != 0 {
+	if reIndex {
 		cinf := data.CoinIndex[common.ConfidentialAssetID.String()]
-		if cinf.LastScanned < highestTkIndex {
-			cinf.LastScanned = highestTkIndex
-		}
-		if reIndex {
-			pinf := data.CoinIndex[common.PRVCoinID.String()]
-			cinf.LastScanned = 0
-			pinf.LastScanned = 0
-			data.CoinIndex[common.PRVCoinID.String()] = pinf
-		}
+		pinf := data.CoinIndex[common.PRVCoinID.String()]
+		cinf.LastScanned = 0
+		pinf.LastScanned = 0
+		data.CoinIndex[common.PRVCoinID.String()] = pinf
 		data.CoinIndex[common.ConfidentialAssetID.String()] = cinf
 	}
 
+	Submitted_OTAKey.Lock()
 	Submitted_OTAKey.Keys[pubKey].KeyInfo = data
+	Submitted_OTAKey.Unlock()
 	err = data.Saving()
 	if err != nil {
 		return err
@@ -594,6 +617,7 @@ retryStore:
 	}
 
 	if reIndex {
+		Submitted_OTAKey.RLock()
 		if w, ok := Submitted_OTAKey.AssignedKey[pubKey]; ok {
 			if w.Heartbeat != 0 {
 				keyAction := WorkerOTACmd{
@@ -607,6 +631,7 @@ retryStore:
 				w.writeCh <- keyBytes
 			}
 		}
+		Submitted_OTAKey.RUnlock()
 	}
 
 	return nil

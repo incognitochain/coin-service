@@ -13,7 +13,10 @@ CONFIG_JSON=$(cat <<EOF
    "masterindexer": "$MASTER_INDEXER",
    "fullnodeendpoint": "$FULLNODE_ENDPOINT",
    "analyticsAPIEndpoint": "$ANALYTICS_API_ENDPOINT",
-   "externaldecimals": "$EXTERNAL_DECIMALS"
+   "fullnodedata": $FULLNODEDATA,
+   "externaldecimals": "$EXTERNAL_DECIMALS",
+   "coordinator": "$COORDINATOR_ENDPOINT",
+   "logrecorder": "$LOG_RECORDER_ENDPOINT"
 }
 EOF
 )

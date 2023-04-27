@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/common/base58"
@@ -76,6 +78,7 @@ retry:
 	for {
 		select {
 		case <-done:
+			t.Stop()
 			cleanAssignedOTA()
 			goto retry
 		case msg := <-writeCh:
@@ -176,11 +179,26 @@ func StartOTAIndexing() {
 	workerID = id.String()
 	readCh := make(chan []byte)
 	writeCh := make(chan []byte)
+	willRun = false
 	go connectMasterIndexer(shared.ServiceCfg.MasterIndexerAddr, id.String(), readCh, writeCh)
 	go processMsgFromMaster(readCh, writeCh)
-	time.Sleep(10 * time.Second)
+
+	newServiceConn := coordinator.ServiceConn{
+		ServiceGroup: coordinator.SERVICEGROUP_INDEXWORKER,
+		ID:           workerID,
+		GitCommit:    shared.GITCOMMIT,
+		ReadCh:       make(chan []byte),
+		WriteCh:      make(chan []byte),
+	}
+	logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "resume"
+	coordinatorState.pauseService = false
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
 	for {
 		time.Sleep(5 * time.Second)
+		willPauseOperation()
 		err := retrieveTokenIDList()
 		if err != nil {
 			panic(err)
@@ -208,7 +226,6 @@ func cleanAssignedOTA() {
 }
 
 func scanOTACoins() {
-	var err error
 	startTime := time.Now()
 	lastPRVIndex, lastTokenIndex := GetOTAKeyListMinScannedCoinIndex(assignedOTAKeys.Keys)
 	//scan coins
@@ -217,12 +234,28 @@ func scanOTACoins() {
 		if len(coinList) == 0 {
 			break
 		}
-		filteredCoins := make(map[string][]shared.CoinData)
-		filteredCoins, _, lastPRVIndex, lastTokenIndex, err = filterCoinsByOTAKey(coinList)
+		filteredCoins, _, lastPRVIndexNew, lastTokenIndexNew, err := filterCoinsByOTAKey(coinList)
 		if err != nil {
 			panic(err)
 		}
-		updateCoinState(filteredCoins, lastPRVIndex, lastTokenIndex)
+		updateCoinState(filteredCoins, lastPRVIndexNew, lastTokenIndexNew)
+
+		unchange := true
+		for k, v := range lastPRVIndexNew {
+			if v != lastPRVIndex[k] {
+				unchange = false
+			}
+		}
+		for k, v := range lastTokenIndexNew {
+			if v != lastTokenIndex[k] {
+				unchange = false
+			}
+		}
+		if unchange {
+			break
+		}
+		lastPRVIndex = lastPRVIndexNew
+		lastTokenIndex = lastTokenIndexNew
 	}
 	log.Printf("worker/%v finish scanning coins in %v\n", workerID, time.Since(startTime))
 }
@@ -240,8 +273,7 @@ func scanTxsSwap() {
 		if len(txList) == 0 {
 			break
 		}
-		filteredTx := []shared.TxData{}
-		filteredTx, lastTxIndex, err = filterTxsByOTAKey(txList)
+		filteredTx, lastTxIndex, err := filterTxsByOTAKey(txList)
 		if err != nil {
 			panic(err)
 		}
@@ -524,6 +556,7 @@ func filterCoinsByOTAKey(coinList []shared.CoinData) (map[string][]shared.CoinDa
 		log.Println("len(otaCoins)", len(otaCoins))
 		log.Printf("filtered %v coins with %v keys in %v", len(coinList), assignedOTAKeys.TotalKeys, time.Since(startTime))
 		log.Println("lastPRVIndex", lastPRVIndex, lastTokenIndex)
+
 		return otaCoins, otherCoins, lastPRVIndex, lastTokenIndex, nil
 	}
 	return nil, nil, nil, nil, errors.New("no key to scan")
@@ -642,7 +675,6 @@ func getTxToProcess(lastID map[int]string, limit int64) ([]shared.TxData, error)
 				result = append(result, v)
 			}
 		}
-
 	}
 
 	return result, nil

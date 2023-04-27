@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"log"
 
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/kamva/mgm/v3"
@@ -44,6 +45,29 @@ func DBGetQualifyPools() (map[string]struct{}, error) {
 	return result, nil
 }
 
+func DBGetDisqualifyPools() (map[string]struct{}, error) {
+	result := make(map[string]struct{})
+	datas := []shared.ClientAssistantData{}
+	list := []string{}
+	filter := bson.M{"dataname": bson.M{operator.Eq: "disqualifypools"}}
+	err := mgm.Coll(&shared.ClientAssistantData{}).SimpleFind(&datas, filter)
+	if err != nil {
+		return nil, err
+	}
+	if len(datas) == 0 {
+		return result, nil
+	}
+	err = json.Unmarshal([]byte(datas[0].Data), &list)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range list {
+		result[v] = struct{}{}
+	}
+	return result, nil
+}
+
 func DBGetDefaultPool(includeQualify bool) (map[string]struct{}, error) {
 	var datas []shared.ClientAssistantData
 	var list []string
@@ -66,12 +90,25 @@ func DBGetDefaultPool(includeQualify bool) (map[string]struct{}, error) {
 	if includeQualify {
 		list, err := DBGetQualifyPools()
 		if err != nil {
-			return nil, err
+			log.Println(err)
+			return result, nil
 		}
 		for v, _ := range list {
 			result[v] = struct{}{}
 		}
 	}
+
+	dislist, err := DBGetDisqualifyPools()
+	if err != nil {
+		log.Println(err)
+		return result, nil
+	}
+	for v, _ := range dislist {
+		if _, exist := result[v]; exist {
+			delete(result, v)
+		}
+	}
+
 	return result, nil
 }
 
@@ -241,4 +278,22 @@ func DBGetBasePriceToken() (string, error) {
 		return "", nil
 	}
 	return datas[0].Data, nil
+}
+
+func DBGetDefaultTokens() ([]string, error) {
+	var datas []shared.ClientAssistantData
+	var list []string
+	filter := bson.M{"dataname": bson.M{operator.Eq: "defaulttokens"}}
+	err := mgm.Coll(&shared.ClientAssistantData{}).SimpleFind(&datas, filter)
+	if err != nil {
+		return nil, err
+	}
+	if len(datas) == 0 {
+		return nil, nil
+	}
+	err = json.Unmarshal([]byte(datas[0].Data), &list)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }

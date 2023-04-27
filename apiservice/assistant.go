@@ -2,7 +2,6 @@ package apiservice
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"github.com/incognitochain/coin-service/pdexv3/analyticsquery"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/rawdbv2"
 	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 	"github.com/incognitochain/incognito-chain/rpcserver/jsonresult"
@@ -140,6 +140,13 @@ func APICheckRate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
+	if tk1Price == nil && token1 == common.PRVCoinID.String() {
+		prvTk := getCustomTokenList([]string{common.PRVCoinID.String()})
+		tk1Price = &shared.TokenPrice{
+			TokenID: common.PRVCoinID.String(),
+			Price:   fmt.Sprintf("%f", prvTk[0].PriceUsd),
+		}
+	}
 	dcrate, _, _, err := getPdecimalRate(token1, token2)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
@@ -150,6 +157,13 @@ func APICheckRate(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 			return
+		}
+		if tk2Price == nil && token2 == common.PRVCoinID.String() {
+			prvTk := getCustomTokenList([]string{common.PRVCoinID.String()})
+			tk2Price = &shared.TokenPrice{
+				TokenID: common.PRVCoinID.String(),
+				Price:   fmt.Sprintf("%f", prvTk[0].PriceUsd),
+			}
 		}
 		if tk2Price != nil {
 			tokenSymbols := []string{tk1Price.TokenSymbol, tk2Price.TokenSymbol}
@@ -217,24 +231,24 @@ func APICheckRate(c *gin.Context) {
 			c.JSON(http.StatusOK, respond)
 			return
 		} else {
-			rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
-			if err != nil {
-				c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-				return
-			}
-			if rate != 0 {
-				userRate = rate
-			}
+			// rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
+			// if err != nil {
+			// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+			// 	return
+			// }
+			// if rate != 0 {
+			// 	userRate = rate
+			// }
 		}
 	} else {
-		rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-			return
-		}
-		if rate != 0 {
-			userRate = rate
-		}
+		// rate, err := getRateSimple(token1, token2, uint64(amount1), uint64(amount2))
+		// if err != nil {
+		// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		// 	return
+		// }
+		// if rate != 0 {
+		// 	userRate = rate
+		// }
 	}
 	result.Rate = fmt.Sprintf("%g", userRate*dcrate)
 	ampH := ampHardCode(token1, token2)
@@ -287,7 +301,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, pdeState.Params.DefaultFeeRateBPS)
 
 	if receive == 0 {
 		a *= 10
@@ -362,7 +376,6 @@ func getPdecimalRate(tokenID1, tokenID2 string) (float64, int, int, error) {
 		tk2Decimal = int(tk2.PDecimals)
 	}
 	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
-	fmt.Println("getPdecimalRate", result)
 	return result, tk1Decimal, tk2Decimal, nil
 }
 
@@ -379,23 +392,33 @@ func APIGetPdecimal(c *gin.Context) {
 		c.JSON(http.StatusOK, respond)
 		return
 	}
-	resp, err := http.Get(shared.ServiceCfg.ExternalDecimals)
-	if err != nil {
-		errStr := err.Error()
-		respond := APIRespond{
-			Result: nil,
-			Error:  &errStr,
-		}
-		c.JSON(http.StatusOK, respond)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
+	// resp, err := http.Get(shared.ServiceCfg.ExternalDecimals)
+	// if err != nil {
+	// 	errStr := err.Error()
+	// 	respond := APIRespond{
+	// 		Result: nil,
+	// 		Error:  &errStr,
+	// 	}
+	// 	c.JSON(http.StatusOK, respond)
+	// }
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
+
+	body, err := shared.RestyClient.R().
+		EnableTrace().
+		SetHeader("Accept-Encoding", "gzip").
+		Get(shared.ServiceCfg.ExternalDecimals)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-	go cacheStoreCustom("pdecimal", body, 5*time.Minute)
+
+	go cacheStoreCustom("pdecimal", body.Body(), 5*time.Minute)
 	respond := APIRespond{
-		Result: body,
+		Result: body.Body(),
 		Error:  nil,
 	}
 	c.JSON(http.StatusOK, respond)

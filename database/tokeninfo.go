@@ -15,7 +15,8 @@ import (
 
 func DBSaveTokenInfo(list []shared.TokenInfoData) error {
 	startTime := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	// ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list))*shared.DB_OPERATION_TIMEOUT)
+	ctx := context.Background()
 	docs := []interface{}{}
 	for _, coin := range list {
 		coin.Creating()
@@ -25,7 +26,7 @@ func DBSaveTokenInfo(list []shared.TokenInfoData) error {
 	if err != nil {
 		writeErr, ok := err.(mongo.BulkWriteException)
 		if !ok {
-			panic(err)
+			return err
 		}
 		if ctx.Err() != nil {
 			t, k := ctx.Deadline()
@@ -33,24 +34,24 @@ func DBSaveTokenInfo(list []shared.TokenInfoData) error {
 		}
 		er := writeErr.WriteErrors[0]
 		if er.WriteError.Code != 11000 {
-			panic(err)
+			return err
 		} else {
 			for _, v := range docs {
-				ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
-				_, err = mgm.Coll(&shared.TokenInfoData{}).InsertOne(ctx, v)
+				// ctx, _ := context.WithTimeout(context.Background(), time.Duration(2)*shared.DB_OPERATION_TIMEOUT)
+				_, err = mgm.Coll(&shared.TokenInfoData{}).InsertOne(context.Background(), v)
 				if err != nil {
 					writeErr, ok := err.(mongo.WriteException)
 					if !ok {
-						panic(err)
+						return err
 					}
 					if !writeErr.HasErrorCode(11000) {
-						panic(err)
+						return err
 					}
 				}
 			}
 		}
 	}
-	log.Printf("inserted %v keyimages in %v", len(list), time.Since(startTime))
+	log.Printf("inserted %v tokens in %v", len(list), time.Since(startTime))
 	return nil
 }
 
@@ -106,6 +107,7 @@ func DBGetTokenByTokenID(tokenids []string) ([]shared.TokenInfoData, error) {
 func DBSaveExtraTokenInfo(list []shared.ExtraTokenInfo) error {
 	docs := []interface{}{}
 	for _, tx := range list {
+		tx.UpdatedAt = time.Now()
 		update := bson.M{
 			"$set": tx,
 		}
@@ -117,10 +119,10 @@ func DBSaveExtraTokenInfo(list []shared.ExtraTokenInfo) error {
 		if err != nil {
 			writeErr, ok := err.(mongo.WriteException)
 			if !ok {
-				panic(err)
+				return err
 			}
 			if !writeErr.HasErrorCode(11000) {
-				panic(err)
+				return err
 			}
 		}
 	}
@@ -141,10 +143,10 @@ func DBSaveCustomTokenInfo(list []shared.CustomTokenInfo) error {
 		if err != nil {
 			writeErr, ok := err.(mongo.WriteException)
 			if !ok {
-				panic(err)
+				return err
 			}
 			if !writeErr.HasErrorCode(11000) {
-				panic(err)
+				return err
 			}
 		}
 	}

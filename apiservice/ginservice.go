@@ -4,15 +4,19 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/incognitochain/coin-service/chainsynker"
+	"github.com/incognitochain/coin-service/coordinator"
+	"github.com/incognitochain/coin-service/logging"
 	"github.com/incognitochain/coin-service/otaindexer"
 	"github.com/incognitochain/coin-service/shared"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/patrickmn/go-cache"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -23,15 +27,39 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 var cachedb *cache.Cache
 
 // var cache *lru.Cache
+var invalidPubCoinStr map[string]struct{}
 
 func StartGinService() {
 	log.Println("initiating api-service...")
+	invalidPubCoinStr = make(map[string]struct{})
+
+	for _, v := range shared.InvalidPubCoinStr {
+		invalidPubCoinStr[v] = struct{}{}
+	}
 	cachedb = cache.New(5*time.Minute, 5*time.Minute)
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
+
 	r.GET("/health", APIHealthCheck)
 
 	if shared.ServiceCfg.Mode == shared.QUERYMODE {
+		id := uuid.NewV4()
+		newServiceConn := coordinator.ServiceConn{
+			ServiceGroup: coordinator.SERVICEGROUP_QUERY,
+			ID:           id.String(),
+			GitCommit:    shared.GITCOMMIT,
+			ReadCh:       make(chan []byte),
+			WriteCh:      make(chan []byte),
+		}
+		logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
+		coordinatorState.coordinatorConn = &newServiceConn
+		coordinatorState.serviceStatus = "pause"
+		coordinatorState.pauseService = true
+		connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+		go willPauseOperation()
+		go tokenListWatcher()
+		go poolListWatcher()
+		go bridgeStateWatcher()
 		r.GET("/getcoinslength", APIGetCoinInfo)
 		r.GET("/getcoinspending", APIGetCoinsPending)
 		r.GET("/getcoins", APIGetCoins)
@@ -60,6 +88,7 @@ func StartGinService() {
 		// New API format
 		//coins
 		coinsGroup := r.Group("/coins")
+		coinsGroup.GET("/defaulttokens", APIGetDefaultTokens)
 		coinsGroup.GET("/tokenlist", APIGetTokenList)
 		coinsGroup.POST("/tokeninfo", APIGetTokenInfo)
 		coinsGroup.GET("/getcoinspending", APIGetCoinsPending)
@@ -83,7 +112,6 @@ func StartGinService() {
 		shieldGroup := r.Group("/shield")
 		shieldGroup.GET("/getshieldhistory", APIGetShieldHistory)
 		shieldGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
-		shieldGroup.GET("/gettxshield", APIGetTxShield)
 
 		//pdex
 		pdex := r.Group("/pdex")
@@ -96,11 +124,11 @@ func StartGinService() {
 		pdexv1Group.GET("/getwithdrawfeehistory", APIGetWithdrawFeeHistory)
 
 		pdexv3Group := pdex.Group("/v3")
+		pdexv3Group.GET("/markettokens", pdexv3{}.ListMarkets)
 		pdexv3Group.GET("/listpairs", pdexv3{}.ListPairs)
 		pdexv3Group.GET("/tradestatus", pdexv3{}.TradeStatus)
 		pdexv3Group.GET("/listpools", pdexv3{}.ListPools)
 		pdexv3Group.GET("/poolshare", pdexv3{}.PoolShare)
-
 		pdexv3Group.POST("/poolsdetail", pdexv3{}.PoolsDetail)
 		pdexv3Group.POST("/pairsdetail", pdexv3{}.PairsDetail)
 		pdexv3Group.GET("/tradehistory", pdexv3{}.TradeHistory)
@@ -130,6 +158,16 @@ func StartGinService() {
 		astGroup.GET("/checkrate", APICheckRate)
 		astGroup.GET("/plist", APIGetPdecimal)
 
+		deviceGroup := r.Group("/device")
+		deviceGroup.GET("/getdevicebyqrcode", APIGetDeviceByQRCode)
+
+		bridgeGroup := r.Group("/bridge")
+		bridgeGroup.GET("/aggregatestate", APIGetBridgeAggState)
+		bridgeGroup.GET("/getshieldhistory", APIGetShieldHistory)
+		bridgeGroup.GET("/getunshieldhistory", APIGetUnshieldHistory)
+		bridgeGroup.GET("/gettxshield", APIGetTxShield)
+		// bridgeGroup.GET("/getsupportedvault", APIGetSupportedVault)
+
 	}
 
 	if shared.ServiceCfg.Mode == shared.INDEXERMODE {
@@ -137,6 +175,18 @@ func StartGinService() {
 		r.POST("/rescanotakey", APIRescanOTA)
 		r.GET("/indexworker", otaindexer.WorkerRegisterHandler)
 		r.GET("/workerstat", otaindexer.GetWorkerStat)
+	}
+
+	if shared.ServiceCfg.Mode == shared.COORDINATORMODE {
+		coordinatorGroup := r.Group("/coordinator")
+		coordinatorGroup.GET("/connectservice", coordinator.ServiceRegisterHandler)
+		coordinatorGroup.GET("/backup", coordinator.BackupHandler)
+		coordinatorGroup.GET("/backupstatus", coordinator.BackupStatusHandler)
+		coordinatorGroup.GET("/servicestat", coordinator.GetServiceStatusHandler)
+		coordinatorGroup.GET("/listbackups", coordinator.ListBackupsHandler)
+		coordinatorGroup.GET("/incident-summary", coordinator.IncidentSummaryHandler)
+		coordinatorGroup.GET("/incident-detail", coordinator.IncidentDetailHandler)
+		coordinatorGroup.GET("/reset-incidentlogs", coordinator.ResetIncidentLogsHandler)
 	}
 
 	err := r.Run("0.0.0.0:" + strconv.Itoa(shared.ServiceCfg.APIPort))
@@ -152,11 +202,6 @@ func APIHealthCheck(c *gin.Context) {
 	mongoStatus := shared.MONGO_STATUS_OK
 	shardsHeight := make(map[int]string)
 	if shared.ServiceCfg.Mode == shared.CHAINSYNCMODE {
-		now := time.Now().Unix()
-		blockTime := chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetProposeTime()
-		if (now - blockTime) >= (5 * time.Minute).Nanoseconds() {
-			status = shared.HEALTH_STATUS_NOK
-		}
 		statePrefix := chainsynker.BeaconData
 		v, err := chainsynker.Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 		if err != nil {
@@ -166,10 +211,17 @@ func APIHealthCheck(c *gin.Context) {
 		if err != nil {
 			beaconHeight = 0
 		}
-		shardsHeight[-1] = fmt.Sprintf("%v|%v", beaconHeight, chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight())
+		chainHeight := chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestViewHeight()
+		if chainHeight-uint64(beaconHeight) > 5 {
+			status = shared.HEALTH_STATUS_NOK
+		}
+		shardsHeight[-1] = fmt.Sprintf("%v|%v|%v|%v", beaconHeight, chainsynker.Localnode.GetBlockchain().BeaconChain.GetBestView().GetBlock().GetHeight(), chainHeight-uint64(beaconHeight), shared.ServiceCfg.FullnodeData)
 		for i := 0; i < chainsynker.Localnode.GetBlockchain().GetActiveShardNumber(); i++ {
 			chainheight := chainsynker.Localnode.GetBlockchain().BeaconChain.GetShardBestViewHeight()[byte(i)]
 			height, _ := chainsynker.Localnode.GetShardState(i)
+			if shared.ServiceCfg.FullnodeData {
+				height = chainsynker.Localnode.GetBlockchain().GetBestStateShard(byte(i)).GetHeight()
+			}
 			statePrefix := fmt.Sprintf("coin-processed-%v", i)
 			v, err := chainsynker.Localnode.GetUserDatabase().Get([]byte(statePrefix), nil)
 			if err != nil {
@@ -179,10 +231,10 @@ func APIHealthCheck(c *gin.Context) {
 			if err != nil {
 				coinHeight = 0
 			}
-			if chainheight-height > 5 || height-uint64(coinHeight) > 5 {
+			if math.Abs(float64(height-chainheight)) > 5 || math.Abs(float64(height-uint64(coinHeight))) > 5 {
 				status = shared.HEALTH_STATUS_NOK
 			}
-			shardsHeight[i] = fmt.Sprintf("%v|%v|%v", coinHeight, height, chainheight)
+			shardsHeight[i] = fmt.Sprintf("%v|%v|%v|%v", coinHeight, height, chainheight, math.Abs(float64(height-chainheight)))
 		}
 	}
 	_, cd, _, _ := mgm.DefaultConfigs()

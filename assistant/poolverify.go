@@ -50,6 +50,10 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 	if err != nil {
 		return "", err
 	}
+	disPoolMap, err := database.DBGetDisqualifyPools()
+	if err != nil {
+		return "", err
+	}
 	prvPrice := getPRVPrice(defaultPools, baseTk)
 	if prvPrice == 0 {
 		return "", nil
@@ -58,7 +62,8 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 	for _, pool := range pools {
 		_, ok1 := verifiedTks[pool.TokenID1]
 		_, ok2 := verifiedTks[pool.TokenID2]
-		if ok1 && ok2 {
+		_, ok3 := disPoolMap[pool.PoolID]
+		if ok1 && ok2 && !ok3 {
 			q1 := false
 			tk1Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
 			tk2Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
@@ -83,11 +88,11 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 					}
 				}
 			}
-			if q1 && liquidity > mininumQualifyLiquidity {
+			if q1 && liquidity >= mininumQualifyLiquidity {
 				matchPool := ""
 				for poolID, lq := range poolsLq {
 					if strings.Contains(poolID, pool.TokenID1) && strings.Contains(poolID, pool.TokenID2) {
-						if liquidity >= lq {
+						if liquidity > lq {
 							matchPool = poolID
 						}
 					}
@@ -100,13 +105,36 @@ func checkPoolQualify(extraTokenInfo []shared.ExtraTokenInfo, customToken []shar
 				}
 			}
 		}
-
 	}
+
+	poolsLqNew := make(map[string]uint64)
+	for p, v := range poolsLq {
+		willAdd := false
+		isDup := false
+		ps := strings.Split(p, "-")
+		for p2, v2 := range poolsLq {
+			if strings.Contains(p2, ps[0]) && strings.Contains(p2, ps[1]) && p2 != p {
+				isDup = true
+				if v > v2 {
+					willAdd = true
+				} else {
+					willAdd = false
+				}
+			}
+		}
+		if willAdd {
+			poolsLqNew[p] = v
+		}
+		if !isDup {
+			poolsLqNew[p] = v
+		}
+	}
+
 	qualifyPools = "["
 	i := 0
-	for poolID, _ := range poolsLq {
+	for poolID, _ := range poolsLqNew {
 		i++
-		if i == len(poolsLq) {
+		if i == len(poolsLqNew) {
 			qualifyPools += fmt.Sprintf("\"%v\"", poolID)
 		} else {
 			qualifyPools += fmt.Sprintf("\"%v\",", poolID)

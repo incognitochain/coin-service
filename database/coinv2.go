@@ -34,6 +34,18 @@ func DBUpdateCoins(list []shared.CoinData, ctx context.Context) error {
 	return nil
 }
 
+func DBUpdateCoinsTx(coinPubkey, txhash string) error {
+	filter := bson.M{"coinpubkey": bson.M{operator.Eq: coinPubkey}}
+	update := bson.M{
+		"$set": bson.M{"txhash": txhash},
+	}
+	_, err := mgm.Coll(&shared.CoinData{}).UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func DBGetCoinsByIndex(idx uint64, shardID int, tokenID string) (*shared.CoinData, error) {
 	var result shared.CoinData
 	filter := bson.M{"coinidx": bson.M{operator.Eq: idx}, "shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
@@ -126,7 +138,8 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 	for otakey, _ := range list {
 		otakeys = append(otakeys, otakey)
 	}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	// ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(list)+1)*shared.DB_OPERATION_TIMEOUT)
+	ctx := context.Background()
 	KeyInfoDatas := []shared.KeyInfoData{}
 	filter := bson.M{"otakey": bson.M{operator.In: otakeys}}
 	err := mgm.Coll(&shared.KeyInfoDataV2{}).SimpleFindWithCtx(ctx, &KeyInfoDatas, filter)
@@ -160,7 +173,8 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 		keysToInsert = append(keysToInsert, *newKeyInfo)
 	}
 	if len(keysToInsert) > 0 {
-		ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToInsert)+10)*shared.DB_OPERATION_TIMEOUT)
+		// ctx, _ := context.WithTimeout(context.Background(), time.Duration(len(keysToInsert)+10)*shared.DB_OPERATION_TIMEOUT)
+		ctx := context.Background()
 		docs := []interface{}{}
 		for _, key := range keysToInsert {
 			key.Creating()
@@ -181,7 +195,8 @@ func DBUpdateCoinV2PubkeyInfo(list map[string]map[string]shared.CoinInfo) error 
 			docs = append(docs, update)
 		}
 		for idx, doc := range docs {
-			ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+			// ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+			ctx := context.Background()
 			_, err := mgm.Coll(&shared.KeyInfoDataV2{}).UpdateByID(ctx, keysToUpdate[idx].GetID(), doc)
 			if err != nil {
 				return err
@@ -210,11 +225,21 @@ func DBGetCoinV2PubkeyInfo(key string) (*shared.KeyInfoData, error) {
 	return &result, nil
 }
 
+func DBGetCoinV2PubkeyInfoByOTAsecret(key string) (*shared.KeyInfoData, error) {
+	var result shared.KeyInfoData
+	filter := bson.M{"otakey": bson.M{operator.Eq: key}}
+	err := mgm.Coll(&shared.KeyInfoDataV2{}).First(filter, &result)
+
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 func DBGetCoinV2OfShardCount(shardID int, tokenID string) (int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}, "tokenid": bson.M{operator.Eq: tokenID}}
 	doc := shared.CoinData{}
-	count, err := mgm.Coll(&doc).CountDocuments(ctx, filter)
+	count, err := mgm.Coll(&doc).CountDocuments(context.Background(), filter)
 	if err != nil {
 		return -1, err
 	}
@@ -279,6 +304,17 @@ func DBGetStartCoinV2OfOTAkey(shardID int, tokenID, otakey string) (uint64, erro
 		return 0, nil
 	}
 	return coinList[0].CoinIndex, nil
+}
+
+func DBGetCoinV2ByPubkey(pubkeys []string) ([]shared.CoinData, error) {
+	var result []shared.CoinData
+	filter := bson.M{"coinpubkey": bson.M{operator.In: pubkeys}}
+	err := mgm.Coll(&shared.CoinData{}).SimpleFindWithCtx(context.Background(), &result, filter)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return result, nil
 }
 
 func DBGetTxV2ByPubkey(pubkeys []string) ([]shared.TxData, []string, error) {

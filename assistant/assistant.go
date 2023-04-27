@@ -4,8 +4,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/incognitochain/coin-service/coordinator"
 	"github.com/incognitochain/coin-service/database"
+	"github.com/incognitochain/coin-service/logging"
+	"github.com/incognitochain/coin-service/shared"
 	"github.com/patrickmn/go-cache"
+	uuid "github.com/satori/go.uuid"
 )
 
 var cachedb *cache.Cache
@@ -18,53 +22,31 @@ func StartAssistant() {
 	if err != nil {
 		panic(err)
 	}
+
+	err = database.DBCreatePNodeDeviceIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	id := uuid.NewV4()
+	newServiceConn := coordinator.ServiceConn{
+		ServiceGroup: coordinator.SERVICEGROUP_ASSISTANT,
+		ID:           id.String(),
+		GitCommit:    shared.GITCOMMIT,
+		ReadCh:       make(chan []byte),
+		WriteCh:      make(chan []byte),
+	}
+	logging.InitLogger(shared.ServiceCfg.LogRecorderAddr, newServiceConn.ID, newServiceConn.ServiceGroup)
+	coordinatorState.coordinatorConn = &newServiceConn
+	coordinatorState.serviceStatus = "resume"
+	coordinatorState.pauseService = false
+	connectCoordinator(&newServiceConn, shared.ServiceCfg.CoordinatorAddr)
+
+	go calcInternalTokenPrice()
+	go getExternalTokenInfo()
 	for {
-		tokensPrice, err := getBridgeTokenExternalPrice()
-		if err != nil {
-			panic(err)
-		}
-
-		tokensMkCap, err := getExternalTokenMarketCap()
-		if err != nil {
-			panic(err)
-		}
-
-		pairRanks, err := getPairRanking()
-		if err != nil {
-			panic(err)
-		}
-
+		startTime := time.Now()
 		extraTokenInfo, err := getExtraTokenInfo()
-		if err != nil {
-			panic(err)
-		}
-
-		customTokenInfo, err := getCustomTokenInfo()
-		if err != nil {
-			panic(err)
-		}
-
-		tokenInfoUpdate, err := getInternalTokenPrice()
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBSavePairRanking(pairRanks)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBSaveTokenMkCap(tokensMkCap)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBSaveTokenPrice(tokensPrice)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.DBSaveCustomTokenInfo(customTokenInfo)
 		if err != nil {
 			panic(err)
 		}
@@ -74,10 +56,16 @@ func StartAssistant() {
 			panic(err)
 		}
 
-		err = database.DBUpdateTokenInfoPrice(tokenInfoUpdate)
+		customTokenInfo, err := getCustomTokenInfo()
 		if err != nil {
 			panic(err)
 		}
+
+		err = database.DBSaveCustomTokenInfo(customTokenInfo)
+		if err != nil {
+			panic(err)
+		}
+
 		if time.Since(scanQualifyPools) >= scanQualifyPoolsInterval {
 			log.Println("checkPoolQualify")
 			qualifyPools, err := checkPoolQualify(extraTokenInfo, customTokenInfo)
@@ -91,7 +79,54 @@ func StartAssistant() {
 			scanQualifyPools = time.Now()
 			log.Println("done checkPoolQualify")
 		}
+		log.Println("finish update info", time.Since(startTime))
+		time.Sleep(updateInterval)
+	}
+}
 
+func calcInternalTokenPrice() {
+	for {
+		tokenInfoUpdate, err := getInternalTokenPrice()
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBUpdateTokenInfoPrice(tokenInfoUpdate)
+		if err != nil {
+			panic(err)
+		}
+		time.Sleep(updateInterval)
+	}
+}
+
+func getExternalTokenInfo() {
+	for {
+		tokensExternalPrice, err := getBridgeTokenExternalPrice()
+		if err != nil {
+			panic(err)
+		}
+
+		err = database.DBSaveTokenPrice(tokensExternalPrice)
+		if err != nil {
+			panic(err)
+		}
+
+		tokensMkCap, err := getExternalTokenMarketCap()
+		if err != nil {
+			panic(err)
+		}
+		err = database.DBSaveTokenMkCap(tokensMkCap)
+		if err != nil {
+			panic(err)
+		}
+		pairRanks, err := getPairRanking()
+		if err != nil {
+			panic(err)
+		}
+		err = database.DBSavePairRanking(pairRanks)
+		if err != nil {
+			panic(err)
+		}
 		time.Sleep(updateInterval)
 	}
 }

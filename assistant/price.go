@@ -77,6 +77,12 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 		if err != nil {
 			return nil, err
 		}
+		if d == nil {
+			continue
+		}
+		if !d.Verified {
+			continue
+		}
 		price := float64(0)
 		tkname := v.Name
 		tkSymbol := v.Symbol
@@ -87,12 +93,13 @@ func getBridgeTokenExternalPrice() ([]shared.TokenPrice, error) {
 			}
 			tkname = d.Name
 			tkSymbol = d.Symbol
-		} else {
-			price, err = getExternalPrice(v.Symbol)
-			if err != nil {
-				return nil, err
-			}
 		}
+		//  else {
+		// 	price, err = getExternalPrice(v.Symbol)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// }
 		if price == 0 {
 			fmt.Printf("price for token %v is 0\n", v.TokenID)
 			continue
@@ -196,6 +203,12 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 	if err != nil {
 		return nil, err
 	}
+	stableCoins, err := database.DBGetStableCoinID()
+	if err != nil {
+		return nil, err
+	}
+	stableCoins = append(stableCoins, baseToken)
+	stableCoinStr := strings.Join(stableCoins, ",")
 	defaultPools, err := database.DBGetDefaultPool(true)
 	if err != nil {
 		return nil, err
@@ -208,64 +221,85 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 		return nil, err
 	}
 	prvPrice := getPRVPrice(defaultPools, baseToken)
+	data, err := database.DBGetPDEState(2)
+	if err != nil {
+		return nil, err
+	}
+	pdeState := jsonresult.Pdexv3State{}
+	err = json.UnmarshalFromString(data, &pdeState)
+	if err != nil {
+		return nil, err
+	}
+	poolPairStates := *pdeState.PoolPairs
+	var pools []*shared.Pdexv3PoolPairWithId
+	for poolId, element := range poolPairStates {
+
+		var poolPair rawdbv2.Pdexv3PoolPair
+		var poolPairWithId shared.Pdexv3PoolPairWithId
+
+		poolPair = element.State()
+		poolPairWithId = shared.Pdexv3PoolPairWithId{
+			poolPair,
+			shared.Pdexv3PoolPairChild{
+				PoolID: poolId},
+		}
+
+		pools = append(pools, &poolPairWithId)
+	}
 	for _, v := range tokenList {
-		if v.TokenID != baseToken {
-			data, err := database.DBGetPDEState(2)
-			if err != nil {
-				return nil, err
-			}
-			pdeState := jsonresult.Pdexv3State{}
-			err = json.UnmarshalFromString(data, &pdeState)
-			if err != nil {
-				return nil, err
-			}
-			poolPairStates := *pdeState.PoolPairs
-			var pools []*shared.Pdexv3PoolPairWithId
-			for poolId, element := range poolPairStates {
+		if v.TokenID == common.PRVCoinID.String() {
+			v.CurrentPrice = strconv.FormatFloat(prvPrice, 'f', -1, 64)
+		} else {
+			if v.TokenID != baseToken {
+				var rate float64
+				poolAmountTk := uint64(0)
+				poolAmountTkBase := uint64(0)
 
-				var poolPair rawdbv2.Pdexv3PoolPair
-				var poolPairWithId shared.Pdexv3PoolPairWithId
-
-				poolPair = element.State()
-				poolPairWithId = shared.Pdexv3PoolPairWithId{
-					poolPair,
-					shared.Pdexv3PoolPairChild{
-						PoolID: poolId},
+				filterPools := make(map[string]uint64)
+				for poolID, _ := range defaultPools {
+					if v.TokenID != common.PRVCoinID.String() {
+						tks := strings.Split(poolID, "-")
+						if strings.Contains(poolID, v.TokenID) && (strings.Contains(stableCoinStr, tks[0]) || strings.Contains(stableCoinStr, tks[1]) || strings.Contains(poolID, common.PRVCoinID.String())) {
+							pool := getPool(poolID)
+							if pool == nil {
+								continue
+							}
+							tokenAmount := uint64(0)
+							if tks[0] == v.TokenID {
+								tokenAmount, _ = strconv.ParseUint(pool.Token1Amount, 10, 64)
+							} else {
+								tokenAmount, _ = strconv.ParseUint(pool.Token2Amount, 10, 64)
+							}
+							filterPools[poolID] = tokenAmount
+						}
+					}
 				}
 
-				pools = append(pools, &poolPairWithId)
-			}
-			var rate float64
-			dcrate, _, _, err := getPdecimalRate(v.TokenID, baseToken)
-			if err != nil {
-				log.Println("getPdecimalRate", err)
-				// continue
-			}
-			poolAmountTk := uint64(0)
-			poolAmountTkBase := uint64(0)
-			for poolID, _ := range defaultPools {
-				if strings.Contains(poolID, v.TokenID) && strings.Contains(poolID, baseToken) {
-					pool := getPool(poolID)
+				chosenPoolID := ""
+				tempPoolAmount := uint64(0)
+				for poolID, tokenAmount := range filterPools {
+					if tokenAmount > tempPoolAmount {
+						chosenPoolID = poolID
+						tempPoolAmount = tokenAmount
+					}
+				}
+
+				if chosenPoolID == "" {
+					continue
+				}
+
+				tks := strings.Split(chosenPoolID, "-")
+				if strings.Contains(stableCoinStr, tks[0]) || strings.Contains(stableCoinStr, tks[1]) {
+					pool := getPool(chosenPoolID)
 					if pool == nil {
 						continue
 					}
-					tks := strings.Split(poolID, "-")
-					if tks[0] == baseToken {
-						tk1Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
-						tk2Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
-						if tk1Amount == 0 || tk2Amount == 0 {
+					if tks[0] == v.TokenID {
+						dcrate, _, _, err := getPdecimalRate(v.TokenID, tks[1])
+						if err != nil {
+							log.Println("getPdecimalRate", err)
 							continue
 						}
-						if tk2Amount < poolAmountTk && tk1Amount < poolAmountTkBase {
-							continue
-						}
-						poolAmountTk = tk2Amount
-						poolAmountTkBase = tk1Amount
-						tk1VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
-						tk2VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
-						// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
-						rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
-					} else {
 						tk1Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
 						tk2Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
 						if tk1Amount == 0 || tk2Amount == 0 {
@@ -279,33 +313,42 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						tk1VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
 						tk2VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
 						// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
-						rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
+						rate = calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate
+					} else {
+						dcrate, _, _, err := getPdecimalRate(v.TokenID, tks[0])
+						if err != nil {
+							log.Println("getPdecimalRate", err)
+							continue
+						}
+						tk1Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
+						tk2Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
+						if tk1Amount == 0 || tk2Amount == 0 {
+							continue
+						}
+						if tk2Amount < poolAmountTk && tk1Amount < poolAmountTkBase {
+							continue
+						}
+						poolAmountTk = tk2Amount
+						poolAmountTkBase = tk1Amount
+						tk1VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
+						tk2VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
+						// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+						rate = calcRateSimple(float64(tk1VA), float64(tk2VA)) * dcrate
 					}
-					if rate > 0 {
-						rate = rate * dcrate
+					// if rate > 0 {
+					// 	rate = rate * dcrate
+					// }
+				} else {
+					dcrate, _, _, err := getPdecimalRate(v.TokenID, common.PRVCoinID.String())
+					if err != nil {
+						log.Println("getPdecimalRate", err)
+						continue
 					}
-				}
-			}
-			if rate == 0 {
-				tokenPools := []string{}
-				for p, _ := range defaultPools {
-					if strings.Contains(p, v.TokenID) && strings.Contains(p, common.PRVCoinID.String()) {
-						tokenPools = append(tokenPools, p)
-					}
-				}
-
-				dcrate, _, _, err := getPdecimalRate(v.TokenID, common.PRVCoinID.String())
-				if err != nil {
-					log.Println("getPdecimalRate", err)
-					// continue
-				}
-
-				for _, poolID := range tokenPools {
-					pool := getPool(poolID)
+					pool := getPool(chosenPoolID)
 					if pool == nil {
 						continue
 					}
-					tks := strings.Split(poolID, "-")
+					tks := strings.Split(chosenPoolID, "-")
 					if tks[0] == common.PRVCoinID.String() {
 						tk1Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
 						tk2Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
@@ -337,36 +380,112 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 						// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
 						rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
 					}
-					if rate > 0 {
-						rate = rate * dcrate * prvPrice
-						break
-					}
+					rate = rate * dcrate * prvPrice
 				}
 
-				//all pools
-				if rate == 0 {
-					// for _, tk := range extraTokenInfo {
-					// 	if tk.TokenID == v.TokenID {
-					// 		rate = tk.PriceUsd
-					// 	}
-					// }
-					// if rate == 0 {
-					// 	_, re1 := pathfinder.FindGoodTradePath(
-					// 		pdexv3Meta.MaxTradePathLength,
-					// 		pools,
-					// 		poolPairStates,
-					// 		baseToken,
-					// 		v.TokenID,
-					// 		uint64(math.Pow10(tkbDecimal+1)))
-					// 	if re1 > 0 {
-					// 		rate, _, _ = getRateMinimum(v.TokenID, baseToken, re1, pools, poolPairStates)
-					// 	}
-					// }
-				}
+				// for poolID, _ := range defaultPools {
+				// 	if strings.Contains(poolID, v.TokenID) && strings.Contains(poolID, baseToken) {
+				// 		pool := getPool(poolID)
+				// 		if pool == nil {
+				// 			continue
+				// 		}
+				// 		tks := strings.Split(poolID, "-")
+				// 		if tks[0] == baseToken {
+				// 			tk1Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
+				// 			tk2Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
+				// 			if tk1Amount == 0 || tk2Amount == 0 {
+				// 				continue
+				// 			}
+				// 			if tk2Amount < poolAmountTk && tk1Amount < poolAmountTkBase {
+				// 				continue
+				// 			}
+				// 			poolAmountTk = tk2Amount
+				// 			poolAmountTkBase = tk1Amount
+				// 			tk1VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
+				// 			tk2VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
+				// 			// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+				// 			rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
+				// 		} else {
+				// 			tk1Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
+				// 			tk2Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
+				// 			if tk1Amount == 0 || tk2Amount == 0 {
+				// 				continue
+				// 			}
+				// 			if tk1Amount < poolAmountTk && tk2Amount < poolAmountTkBase {
+				// 				continue
+				// 			}
+				// 			poolAmountTk = tk1Amount
+				// 			poolAmountTkBase = tk2Amount
+				// 			tk1VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
+				// 			tk2VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
+				// 			// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+				// 			rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
+				// 		}
+				// 		if rate > 0 {
+				// 			rate = rate * dcrate
+				// 		}
+				// 	}
+				// }
+				// if rate == 0 {
+				// 	tokenPools := []string{}
+				// 	for p, _ := range defaultPools {
+				// 		if strings.Contains(p, v.TokenID) && strings.Contains(p, common.PRVCoinID.String()) {
+				// 			tokenPools = append(tokenPools, p)
+				// 		}
+				// 	}
+				// 	dcrate, _, _, err := getPdecimalRate(v.TokenID, common.PRVCoinID.String())
+				// 	if err != nil {
+				// 		log.Println("getPdecimalRate", err)
+				// 		continue
+				// 	}
+
+				// 	for _, poolID := range tokenPools {
+				// 		pool := getPool(poolID)
+				// 		if pool == nil {
+				// 			continue
+				// 		}
+				// 		tks := strings.Split(poolID, "-")
+				// 		if tks[0] == common.PRVCoinID.String() {
+				// 			tk1Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
+				// 			tk2Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
+				// 			if tk1Amount == 0 || tk2Amount == 0 {
+				// 				continue
+				// 			}
+				// 			if tk2Amount < poolAmountTk && tk1Amount < poolAmountTkBase {
+				// 				continue
+				// 			}
+				// 			poolAmountTk = tk2Amount
+				// 			poolAmountTkBase = tk1Amount
+				// 			tk1VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
+				// 			tk2VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
+				// 			// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+				// 			rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
+				// 		} else {
+				// 			tk1Amount, _ := strconv.ParseUint(pool.Token1Amount, 10, 64)
+				// 			tk2Amount, _ := strconv.ParseUint(pool.Token2Amount, 10, 64)
+				// 			if tk1Amount == 0 || tk2Amount == 0 {
+				// 				continue
+				// 			}
+				// 			if tk1Amount < poolAmountTk && tk2Amount < poolAmountTkBase {
+				// 				continue
+				// 			}
+				// 			poolAmountTk = tk1Amount
+				// 			poolAmountTkBase = tk2Amount
+				// 			tk1VA, _ := strconv.ParseUint(pool.Virtual1Amount, 10, 64)
+				// 			tk2VA, _ := strconv.ParseUint(pool.Virtual2Amount, 10, 64)
+				// 			// rate = calcAMPRate(float64(tk1VA), float64(tk2VA), float64(tk1Amount)/100)
+				// 			rate = calcRateSimple(float64(tk1VA), float64(tk2VA))
+				// 		}
+				// 		if rate > 0 {
+				// 			rate = rate * dcrate * prvPrice
+				// 			break
+				// 		}
+				// 	}
+				// }
+				v.CurrentPrice = strconv.FormatFloat(rate, 'f', -1, 64)
+			} else {
+				v.CurrentPrice = "1"
 			}
-			v.CurrentPrice = strconv.FormatFloat(rate, 'f', -1, 64)
-		} else {
-			v.CurrentPrice = "1"
 		}
 
 		if time.Since(v.UpdatedAt) >= 24*time.Hour {
@@ -381,12 +500,11 @@ func getInternalTokenPrice() ([]shared.TokenInfoData, error) {
 			v.UpdatedAt = time.Now().UTC()
 		}
 		result = append(result, v)
-
 	}
 	return result, nil
 }
 
-func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState) (float64, uint64, uint64) {
+func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState, feeRateBPS uint) (float64, uint64, uint64) {
 	a := uint64(minAmount)
 	a1 := uint64(0)
 retry:
@@ -396,7 +514,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, feeRateBPS)
 
 	if receive == 0 {
 		a *= 10
@@ -453,7 +571,7 @@ retry:
 		poolPairStates,
 		tokenID1,
 		tokenID2,
-		a)
+		a, pdeState.Params.DefaultFeeRateBPS)
 
 	if receive == 0 {
 		a *= 10
@@ -495,7 +613,6 @@ func getPdecimalRate(tokenID1, tokenID2 string) (float64, int, int, error) {
 		tk2Decimal = int(tk2.PDecimals)
 	}
 	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
-	fmt.Println("getPdecimalRate", result)
 	return result, tk1Decimal, tk2Decimal, nil
 }
 

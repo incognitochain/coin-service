@@ -14,6 +14,7 @@ import (
 var ENABLE_PROFILER bool
 var RESET_FLAG bool
 var ServiceCfg Config
+var GITCOMMIT string
 
 type Config struct {
 	APIPort               int    `json:"apiport"`
@@ -29,9 +30,11 @@ type Config struct {
 	IndexerID             int    `json:"indexerid"`
 	MasterIndexerAddr     string `json:"masterindexer"`
 	AnalyticService       string `json:"analyticservice"`
-	// FullnodeEndpoint      string `json:"fullnodeendpoint"`
-	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
-	ExternalDecimals     string `json:"externaldecimals"`
+	AnalyticsAPIEndpoint  string `json:"analyticsAPIEndpoint"`
+	ExternalDecimals      string `json:"externaldecimals"`
+	FullnodeData          bool   `json:"fullnodedata"`
+	CoordinatorAddr       string `json:"coordinator"`
+	LogRecorderAddr       string `json:"logrecorder"`
 }
 
 type ConfigJSON struct {
@@ -46,9 +49,11 @@ type ConfigJSON struct {
 	IndexerID             int    `json:"indexerid"`
 	MasterIndexerAddr     string `json:"masterindexer"`
 	AnalyticService       string `json:"analyticservice"`
-	// FullnodeEndpoint      string `json:"fullnodeendpoint"`
-	AnalyticsAPIEndpoint string `json:"analyticsAPIEndpoint"`
-	ExternalDecimals     string `json:"externaldecimals"`
+	AnalyticsAPIEndpoint  string `json:"analyticsAPIEndpoint"`
+	ExternalDecimals      string `json:"externaldecimals"`
+	FullnodeData          bool   `json:"fullnodedata"`
+	CoordinatorAddr       string `json:"coordinator"`
+	LogRecorderAddr       string `json:"logrecorder"`
 }
 
 func ReadConfigAndArg() {
@@ -131,9 +136,11 @@ func ReadConfigAndArg() {
 	ServiceCfg.IndexerID = tempCfg.IndexerID
 	ServiceCfg.MasterIndexerAddr = tempCfg.MasterIndexerAddr
 	ServiceCfg.AnalyticService = tempCfg.AnalyticService
-	// ServiceCfg.FullnodeEndpoint = tempCfg.FullnodeEndpoint
 	ServiceCfg.AnalyticsAPIEndpoint = tempCfg.AnalyticsAPIEndpoint
 	ServiceCfg.ExternalDecimals = tempCfg.ExternalDecimals
+	ServiceCfg.FullnodeData = tempCfg.FullnodeData
+	ServiceCfg.CoordinatorAddr = tempCfg.CoordinatorAddr
+	ServiceCfg.LogRecorderAddr = tempCfg.LogRecorderAddr
 
 	common.MaxShardNumber = param.ActiveShards
 }

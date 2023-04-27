@@ -12,7 +12,7 @@ max_peers: 1000 #
 max_out_peers: 1000 #
 max_in_peers: 1000 #
 discover_peers: true #
-discover_peers_address: "51.83.237.29:9330" #
+discover_peers_address: "mainnet-bootnode.incognito.org:9330" #
 max_peers_same_shard: 300 #
 max_pmax_peers_other_shard: 600 #
 max_peers_other: 300 #
@@ -36,7 +36,7 @@ rpc_quirks: false #
 disable_rpc: false #
 disable_tls: true #
 proxy: "" #
-relay_shards: "all" #
+relay_shards: "" #
 enable_wallet: "false" #
 wallet_name: "wallet" #
 wallet_passphrase: "123456" #
@@ -45,7 +45,9 @@ wallet_shard_id: -1 #
 fast_start_up: true #
 tx_pool_ttl: 900 #
 tx_pool_max_tx: 100000 #
-limit_fee: 1 #
+limit_fee: 1000000 # 0.001 PRV
+min_fee_per_tx: 100000000 # 0.1 PRV
+specified_fee_per_tx: 10000000000 # 10 PRV
 is_load_from_mem_pool: true #
 is_persist_mem_pool: false #
 enable_mining: true #
@@ -55,12 +57,13 @@ accelerator: false #
 p2p_private_key: "" #
 force_backup: false #
 is_full_validation: false
-geth_param:
-  host: "https://eth-fullnode.incognito.org"
-  protocol: ""
-  port: ""
 coin_data_pre: "__coins__"
 use_coin_data:
   - true
 num_indexer_workers: 0
 indexer_access_token: ""
+allow_state_prune_by_rpc: true
+offline_prune: false
+state_bloom_size: 1048
+enable_auto_prune: false
+num_block_trigger_prune: 100000
