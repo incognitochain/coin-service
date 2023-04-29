@@ -1,6 +1,6 @@
 module github.com/incognitochain/coin-service
 
-go 1.17
+go 1.16
 
 require (
 	github.com/0xkumi/incognito-dev-framework v0.0.0-20221222134750-aabc104f2782
