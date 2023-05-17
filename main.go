@@ -17,6 +17,7 @@ import (
 	"github.com/incognitochain/coin-service/processors/shield"
 	"github.com/incognitochain/coin-service/processors/trade"
 	"github.com/incognitochain/coin-service/shared"
+	"github.com/incognitochain/incognito-chain/privacy/privacy_v2/bulletproofs"
 	"github.com/incognitochain/incognito-chain/wallet"
 )
 
@@ -39,6 +40,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	bulletproofs.EnableFixBulletProofv2 = true
+
 	switch shared.ServiceCfg.Mode {
 	case shared.QUERYMODE:
 		go apiservice.StartGinService()
