@@ -164,7 +164,7 @@ func DBGetCountTxByPubkey(pubkey string, tokenID string, txversion int) (int64, 
 
 func DBGetLatestTxByShardID(shardID int, limit int64) ([]shared.TxData, error) {
 	var result []shared.TxData
-	filter := bson.M{"shardID": bson.M{operator.Eq: shardID}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}}
 	if shardID == -1 {
 		filter = bson.M{}
 	}
