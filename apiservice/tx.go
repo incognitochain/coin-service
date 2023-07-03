@@ -225,7 +225,7 @@ func APIGetLatestTxs(c *gin.Context) {
 	if c.Query("base58") == "true" {
 		isBase58 = true
 	}
-	if shardID < 0 || shardID > 7 {
+	if shardID < -1 || shardID > 7 {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid shardid")))
 		return
 	}
