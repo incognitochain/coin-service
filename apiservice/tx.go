@@ -229,7 +229,7 @@ func APIGetLatestTxs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid shardid")))
 		return
 	}
-	if limit < 0 || limit > 100 {
+	if limit <= 0 || limit > 100 {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid limit")))
 		return
 	}
