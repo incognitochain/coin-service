@@ -217,6 +217,15 @@ func DBCreateTokenIndex() error {
 	if err != nil {
 		return err
 	}
+	tokenPriceModel := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "tokenid", Value: bsonx.Int32(1)}, {Key: "beaconheight", Value: bsonx.Int32(1)}},
+		},
+	}
+	_, err = mgm.Coll(&shared.TokenPdexPriceRecord{}).Indexes().CreateMany(context.Background(), tokenPriceModel)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

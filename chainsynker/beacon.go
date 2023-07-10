@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -283,7 +284,75 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		if err != nil {
 			panic(err)
 		}
-		wg.Add(14)
+		wg.Add(15)
+		go func() {
+			defer wg.Done()
+			log.Println("process tokens price")
+			pools, err := database.DBGetDefaultPool(true)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			tokensMap := make(map[string]bool)
+			for pool := range pools {
+				tokens := strings.Split(pool, "-")
+				tokensMap[tokens[0]] = true
+				tokensMap[tokens[1]] = true
+			}
+			stableTokens, err := database.DBGetStableCoinID()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			tokens := make([]string, 0)
+			for token := range tokensMap {
+				isStable := false
+				for _, v := range stableTokens {
+					if strings.EqualFold(token, v) {
+						isStable = true
+						break
+					}
+				}
+				if !isStable {
+					tokens = append(tokens, token)
+				}
+			}
+			baseToken, err := database.DBGetBasePriceToken()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			var poolPairsArr []*shared.Pdexv3PoolPairWithId
+			for poolId, element := range stateV2.PoolPairs {
+
+				var poolPair rawdbv2.Pdexv3PoolPair
+				var poolPairWithId shared.Pdexv3PoolPairWithId
+
+				poolPair = element.State
+				poolPairWithId = shared.Pdexv3PoolPairWithId{
+					poolPair,
+					shared.Pdexv3PoolPairChild{
+						PoolID: poolId},
+				}
+				poolPairsArr = append(poolPairsArr, &poolPairWithId)
+			}
+			var tokensPdexPrice []shared.TokenPdexPriceRecord
+			for _, token := range tokens {
+				tkInfo, err := database.DBGetExtraTokenInfoByTokenID([]string{token})
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				price := getRateMinimum(token, baseToken, uint64(math.Pow10(int(tkInfo[0].PDecimals))), poolPairsArr, *pdeStateJSON.PoolPairs, pdeStateJSON.Params.DefaultFeeRateBPS)
+				newRecord := shared.TokenPdexPriceRecord{
+					TokenID:      token,
+					Price:        fmt.Sprintf("%g", price),
+					BeaconHeight: blk.GetHeight(),
+					BPToken:      baseToken,
+				}
+				tokensPdexPrice = append(tokensPdexPrice, newRecord)
+			}
+		}()
 		go func() {
 			log.Printf("done process state beacon %v in %v %v \n", blk.GetHeight(), time.Since(startTime), willProcess)
 			err = database.DBSavePDEState(pdeStr, height, 2)

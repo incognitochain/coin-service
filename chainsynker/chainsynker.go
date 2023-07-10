@@ -296,5 +296,3 @@ func getCrossShardData(result map[string]string, txList []metadata.Transaction, 
 
 	return nil
 }
-
-// mongorestore --uri=mongodb://root:example@0.0.0.0:5011 --gzip --archive=/root/coin-service-tn2fn/csvtn2bk/data/mongodump/dump_1649640416.archive
