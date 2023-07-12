@@ -2,8 +2,12 @@ package chainsynker
 
 import (
 	"fmt"
+	"log"
+	"math"
 	"math/big"
+	"strings"
 
+	"github.com/incognitochain/coin-service/database"
 	"github.com/incognitochain/coin-service/pdexv3/pathfinder"
 	"github.com/incognitochain/coin-service/shared"
 	"github.com/incognitochain/incognito-chain/blockchain/pdex"
@@ -255,6 +259,80 @@ retry:
 		}
 	}
 	return float64(receive) / float64(a)
+}
+
+func calcRateSimple(virtA, virtB float64) float64 {
+	return virtB / virtA
+}
+
+func getPRVPrice(defaultPools map[string]*pdex.PoolPairState, baseToken string) float64 {
+	var result float64
+	poolAmountTk := uint64(0)
+	poolAmountTkBase := uint64(0)
+retry:
+	dcrate, _, _, err := getPdecimalRate(common.PRVCoinID.String(), baseToken)
+	if err != nil {
+		log.Println("getPdecimalRate", err)
+		goto retry
+	}
+	for poolID, poolData := range defaultPools {
+		if strings.Contains(poolID, common.PRVCoinID.String()) && strings.Contains(poolID, baseToken) {
+			state := poolData.State()
+
+			tks := strings.Split(poolID, "-")
+			if tks[0] == baseToken {
+				tk1Amount := state.Token1RealAmount()
+				tk2Amount := state.Token0RealAmount()
+				if tk1Amount == 0 || tk2Amount == 0 {
+					continue
+				}
+				if tk2Amount < poolAmountTk && tk1Amount < poolAmountTkBase {
+					continue
+				}
+				poolAmountTk = tk2Amount
+				poolAmountTkBase = tk1Amount
+				tk1VA := state.Token1VirtualAmount()
+				tk2VA := state.Token0VirtualAmount()
+				result = calcRateSimple(float64(tk1VA.Uint64()), float64(tk2VA.Uint64()))
+			} else {
+				tk1Amount := state.Token0RealAmount()
+				tk2Amount := state.Token1RealAmount()
+				if tk1Amount == 0 || tk2Amount == 0 {
+					continue
+				}
+				if tk1Amount < poolAmountTk && tk2Amount < poolAmountTkBase {
+					continue
+				}
+				poolAmountTk = tk1Amount
+				poolAmountTkBase = tk2Amount
+				tk1VA := state.Token0VirtualAmount()
+				tk2VA := state.Token1VirtualAmount()
+				result = calcRateSimple(float64(tk1VA.Uint64()), float64(tk2VA.Uint64()))
+			}
+		}
+	}
+	return result * dcrate
+}
+
+func getPdecimalRate(tokenID1, tokenID2 string) (float64, int, int, error) {
+	tk1Decimal := 0
+	tk2Decimal := 0
+	tk1, err := database.DBGetExtraTokenInfo(tokenID1)
+	if err != nil {
+		log.Println(err)
+	}
+	tk2, err := database.DBGetExtraTokenInfo(tokenID2)
+	if err != nil {
+		log.Println(err)
+	}
+	if tk1 != nil {
+		tk1Decimal = int(tk1.PDecimals)
+	}
+	if tk2 != nil {
+		tk2Decimal = int(tk2.PDecimals)
+	}
+	result := math.Pow10(tk1Decimal) / math.Pow10(tk2Decimal)
+	return result, tk1Decimal, tk2Decimal, nil
 }
 
 func extractInstructionFromBeaconBlocks(shardPrevBlkHash []byte, currentBeaconHeight uint64) ([][]string, error) {
