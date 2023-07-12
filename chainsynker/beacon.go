@@ -323,8 +323,12 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 				return
 			}
 			var poolPairsArr []*shared.Pdexv3PoolPairWithId
-			for poolId, element := range stateV2.PoolPairs {
 
+			for poolId, element := range stateV2.PoolPairs {
+				if _, ok := pools[poolId]; !ok {
+					delete(*pdeStateJSON.PoolPairs, poolId)
+					continue
+				}
 				var poolPair rawdbv2.Pdexv3PoolPair
 				var poolPairWithId shared.Pdexv3PoolPairWithId
 
