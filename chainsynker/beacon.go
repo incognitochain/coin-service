@@ -290,7 +290,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 			log.Println("process tokens price")
 			pools, err := database.DBGetDefaultPool(true)
 			if err != nil {
-				log.Println(err)
+				log.Println("PDEX token price", "DBGetDefaultPool", err)
 				return
 			}
 			tokensMap := make(map[string]bool)
@@ -301,7 +301,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 			}
 			stableTokens, err := database.DBGetStableCoinID()
 			if err != nil {
-				log.Println(err)
+				log.Println("PDEX token price", "DBGetStableCoinID", err)
 				return
 			}
 			tokens := make([]string, 0)
@@ -319,7 +319,7 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 			}
 			baseToken, err := database.DBGetBasePriceToken()
 			if err != nil {
-				log.Println(err)
+				log.Println("PDEX token price", "DBGetBasePriceToken", err)
 				return
 			}
 			var poolPairsArr []*shared.Pdexv3PoolPairWithId
@@ -340,18 +340,33 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 			for _, token := range tokens {
 				tkInfo, err := database.DBGetExtraTokenInfoByTokenID([]string{token})
 				if err != nil {
-					log.Println(err)
+					log.Println("PDEX token price", "DBGetExtraTokenInfoByTokenID", err)
 					continue
 				}
-				price := getRateMinimum(token, baseToken, uint64(math.Pow10(int(tkInfo[0].PDecimals))), poolPairsArr, *pdeStateJSON.PoolPairs, pdeStateJSON.Params.DefaultFeeRateBPS)
+				var price float64
+				if token == common.PRVCoinID.String() {
+					price = getPRVPrice(*pdeStateJSON.PoolPairs, baseToken)
+				} else {
+					price = getRateMinimum(token, baseToken, uint64(math.Pow10(int(tkInfo[0].PDecimals-6))), poolPairsArr, *pdeStateJSON.PoolPairs, pdeStateJSON.Params.DefaultFeeRateBPS)
+				}
 				newRecord := shared.TokenPdexPriceRecord{
 					TokenID:      token,
-					Price:        fmt.Sprintf("%g", price),
+					Price:        fmt.Sprintf("%f", price),
 					BeaconHeight: blk.GetHeight(),
 					BPToken:      baseToken,
 				}
 				tokensPdexPrice = append(tokensPdexPrice, newRecord)
 			}
+			if len(tokensPdexPrice) == 0 {
+				log.Println("DBSaveTokensPdexPrice success")
+				return
+			}
+			err = database.DBSaveTokensPdexPrice(tokensPdexPrice)
+			if err != nil {
+				log.Println("DBSaveTokensPdexPrice", err)
+				return
+			}
+			log.Println("DBSaveTokensPdexPrice success")
 		}()
 		go func() {
 			log.Printf("done process state beacon %v in %v %v \n", blk.GetHeight(), time.Since(startTime), willProcess)
