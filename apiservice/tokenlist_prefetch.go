@@ -215,6 +215,11 @@ func retrieveTokenList() {
 		if err != nil {
 			log.Println(err)
 		}
+		if stableCoinList != "" && strings.Contains(stableCoinList, data.TokenID) {
+			latetsPrice = 1
+			oldPrice = 1
+			percent = 0
+		}
 		data.PercentChange24hNew = fmt.Sprintf("%.5f", percent)
 		data.PercentChange24hNewDebug1 = fmt.Sprintf("%.5f", latetsPrice)
 		data.PercentChange24hNewDebug2 = fmt.Sprintf("%.5f", oldPrice)
@@ -372,24 +377,24 @@ func getTokenPdex24HPriceChange(tokenID string) (float64, float64, float64, erro
 	priceRecord, err := database.DBGetTokenPdexPriceLatest(tokenID)
 	if err != nil {
 		if priceRecord == nil {
-			return 0, 0, 0, err
+			return latestPrice, oldPrice, percentChanged, err
 		}
 		latestPrice = parseStrToFloat64(priceRecord.Price)
-		return latestPrice, 0, 0, err
+		return latestPrice, oldPrice, percentChanged, err
 	}
 	latestPrice = parseStrToFloat64(priceRecord.Price)
 
 	priceRecordOld, err := database.DBGetTokenPdexPriceAtHeight(tokenID, priceRecord.BeaconHeight-(60*60*24/15))
 	if err != nil {
 		if priceRecordOld == nil {
-			return 0, 0, 0, err
+			return latestPrice, oldPrice, percentChanged, err
 		}
 		oldPrice = parseStrToFloat64(priceRecordOld.Price)
-		return latestPrice, oldPrice, 0, err
+		return latestPrice, oldPrice, percentChanged, err
 	}
 	oldPrice = parseStrToFloat64(priceRecordOld.Price)
 	if oldPrice == 0 {
-		return latestPrice, oldPrice, 0, err
+		return latestPrice, oldPrice, percentChanged, err
 	}
 	percentChanged = ((latestPrice - oldPrice) / oldPrice) * 100
 
