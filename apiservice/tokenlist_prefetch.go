@@ -220,6 +220,7 @@ func retrieveTokenList() {
 			oldPrice = 1
 			percent = 0
 		}
+		data.PercentChange24h = fmt.Sprintf("%.5f", percent)
 		data.PercentChange24hNew = fmt.Sprintf("%.5f", percent)
 		data.PercentChange24hNewDebug1 = fmt.Sprintf("%.5f", latetsPrice)
 		data.PercentChange24hNewDebug2 = fmt.Sprintf("%.5f", oldPrice)
