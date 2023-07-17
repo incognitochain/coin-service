@@ -17,6 +17,7 @@ committee_size:
   beacon_committee_size_key_list_v2: 7
   number_of_fixed_shard_block_validators: 22
   number_of_fixed_shard_validators_v2: 16
+  number_of_fixed_beacon_block_validators: 7
   increase_max_shard_committee_size:
     - 1000000000000: 48
 block_time:
@@ -134,6 +135,9 @@ auto_enable_feature:
   - reduce_fix_node_v3:
       min_trigger: 2507098
       require_percentage: 85
+  - beacon_staking_flow_v4:
+      min_trigger: 2867678
+      require_percentage: 85
   - maxcommitteesize48:
       min_trigger: 1892003
       force_trigger: 1000000000
@@ -146,8 +150,8 @@ auto_enable_feature:
       min_trigger: 2275826
       require_percentage: 85
   - blocktime15s_27_12:
-        min_trigger: 1e9
-        require_percentage: 85
+      min_trigger: 2668878
+      require_percentage: 75
   - auroraavaxbridge:
       min_trigger: 2403039
       require_percentage: 75
@@ -163,6 +167,18 @@ auto_enable_feature:
   - pdao:
       min_trigger: 2668878
       require_percentage: 75
+  - slash2sync:
+      min_trigger: 3160740
+      require_percentage: 85
+  - delegation:
+      min_trigger: 3160740
+      require_percentage: 85
+  - fixbulletproof:
+      min_trigger: 3339169
+      require_percentage: 67
+  - fixbulletproofv2:
+      min_trigger: 3361527
+      require_percentage: 67
 blocktime_param:
   - "blocktimedef": 40
   - "blocktime20s_15_9": 20
@@ -172,6 +188,7 @@ feature_version:
   - blocktime20s_15_9: 10
   - reduce_fix_node_v3: 11
   - blocktime15s_27_12: 12
+  - beacon_staking_flow_v4 : 13
 transactions_param:
   lowerbound: 15
   upperbound: 100
@@ -182,3 +199,4 @@ bridge_agg_param:
   percent_fee_decimal: 1e6
   default_percent_fee_with_decimal: 750 # 0.075% * 1e6
 bc_height_break_point_coin_origin: 2087774
+bc_height_break_point_agg_proof_v2: 3322000

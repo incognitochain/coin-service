@@ -399,6 +399,20 @@ func APIGetTokenInfo(c *gin.Context) {
 				}
 			}
 
+			// latetsPrice, oldPrice, percent, err := getTokenPdex24HPriceChange(data.TokenID)
+			// if err != nil {
+			// 	log.Println(err)
+			// }
+			// if stableCoinList != "" && strings.Contains(stableCoinList, data.TokenID) {
+			// 	latetsPrice = 1
+			// 	oldPrice = 1
+			// 	percent = 0
+			// }
+			// data.PercentChange24hNew = fmt.Sprintf("%.5f", percent)
+			// data.PercentChange24hNewDebug1 = fmt.Sprintf("%.5f", latetsPrice)
+			// data.PercentChange24hNewDebug2 = fmt.Sprintf("%.5f", oldPrice)
+			// data.PriceUsd = latetsPrice
+
 			if etki, ok := customTokenInfoMap[v.TokenID]; ok {
 				if etki.Name != "" {
 					data.Name = etki.Name
@@ -1091,7 +1105,7 @@ func APISubmitOTA(c *gin.Context) {
 	resp := make(chan error)
 	otaindexer.OTAAssignChn <- otaindexer.OTAAssignRequest{
 		Key:     newSubmitRequest,
-		FromNow: req.FromNow,
+		FromNow: true,
 		Respond: resp,
 	}
 	err = <-resp
