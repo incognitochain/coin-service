@@ -341,6 +341,11 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 				poolPairsArr = append(poolPairsArr, &poolPairWithId)
 			}
 			var tokensPdexPrice []shared.TokenPdexPriceRecord
+			baseTkInfo, err := database.DBGetExtraTokenInfoByTokenID([]string{baseToken})
+			if err != nil {
+				log.Println("PDEX token price", "DBGetExtraTokenInfoByTokenID", err)
+				return
+			}
 			for _, token := range tokens {
 				tkInfo, err := database.DBGetExtraTokenInfoByTokenID([]string{token})
 				if err != nil {
@@ -352,6 +357,8 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 					price = getPRVPrice(*pdeStateJSON.PoolPairs, baseToken)
 				} else {
 					price = getRateMinimum(token, baseToken, uint64(math.Pow10(int(tkInfo[0].PDecimals-6))), poolPairsArr, *pdeStateJSON.PoolPairs, pdeStateJSON.Params.DefaultFeeRateBPS)
+					decimalRate := math.Pow10(int(tkInfo[0].PDecimals) - int(baseTkInfo[0].PDecimals))
+					price = price * decimalRate
 				}
 				newRecord := shared.TokenPdexPriceRecord{
 					TokenID:      token,

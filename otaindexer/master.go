@@ -388,6 +388,11 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 					time.Sleep(200 * time.Millisecond)
 					goto retryGet1
 				}
+				if prvCount < 8000 {
+					prvCount = 0
+				} else {
+					prvCount -= 8000
+				}
 				data.CoinIndex[common.PRVCoinID.String()] = shared.CoinInfo{LastScanned: uint64(prvCount)}
 
 			retryGet2:
@@ -396,6 +401,12 @@ func addKeys(keys []shared.SubmittedOTAKeyData, fromNow bool) error {
 					log.Println(err)
 					time.Sleep(200 * time.Millisecond)
 					goto retryGet2
+				}
+
+				if tokenCount < 8000 {
+					tokenCount = 0
+				} else {
+					tokenCount -= 8000
 				}
 				data.CoinIndex[common.ConfidentialAssetID.String()] = shared.CoinInfo{LastScanned: uint64(tokenCount)}
 			}

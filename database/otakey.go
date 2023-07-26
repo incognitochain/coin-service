@@ -14,9 +14,9 @@ import (
 
 func DBGetSubmittedOTAKeys(indexerID int, offset int64) ([]shared.SubmittedOTAKeyData, error) {
 	var result []shared.SubmittedOTAKeyData
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
+	// ctx, _ := context.WithTimeout(context.Background(), time.Duration(5)*shared.DB_OPERATION_TIMEOUT)
 	filter := bson.M{"indexerid": bson.M{operator.Eq: indexerID}}
-	err := mgm.Coll(&shared.SubmittedOTAKeyData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
+	err := mgm.Coll(&shared.SubmittedOTAKeyData{}).SimpleFindWithCtx(context.Background(), &result, filter, &options.FindOptions{
 		Sort: bson.D{{"created_at", 1}},
 		Skip: &offset,
 	})
