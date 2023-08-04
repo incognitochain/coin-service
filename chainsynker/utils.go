@@ -14,8 +14,6 @@ import (
 	"github.com/incognitochain/incognito-chain/blockchain/types"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
-
-	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 )
 
 func initStakers(stakingPoolID string, stateDB *statedb.StateDB) (map[string]*pdex.Staker, uint64, error) {
@@ -232,7 +230,7 @@ func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared
 	a1 := uint64(0)
 retry:
 	_, receive := pathfinder.FindGoodTradePath(
-		pdexv3Meta.MaxTradePathLength,
+		3,
 		pools,
 		poolPairStates,
 		tokenID1,
