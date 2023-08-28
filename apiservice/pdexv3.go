@@ -988,6 +988,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					delete(pdexState.PoolPairs, pool.PoolID)
 				}
 			}
+			customPools = getCustomPoolList([]string{prvTokenInfo.DefaultPoolPair})
 		} else {
 			token := buyToken
 			if buyToken == common.PRVIDStr {
@@ -1013,14 +1014,17 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					}
 				}
 			}
+			customPools = getCustomPoolList(keepPools)
 		}
 		if len(newPools2) > 0 {
-			newPools = newPools2
-			poolsStr := []string{}
-			for _, pool := range newPools {
-				poolsStr = append(poolsStr, pool.PoolID)
+			newPools = []*shared.Pdexv3PoolPairWithId{}
+			for _, pool := range customPools {
+				for _, pool2 := range newPools2 {
+					if pool.PoolID == pool2.PoolID {
+						newPools = append(newPools, pool2)
+					}
+				}
 			}
-			customPools = getCustomPoolList(poolsStr)
 			isSimpleTrade = true
 		}
 	}
@@ -1042,6 +1046,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					feePRV.MaxGet = receive
 					feeToken.SellAmount = float64(sellAmount)
 					feeToken.MaxGet = receive
+					chosenPath = newPools
 				} else {
 					poolDetail := customPools[0]
 					rate := calcRateSimple(float64(poolDetail.Virtual2Value), float64(poolDetail.Virtual1Value))
@@ -1051,6 +1056,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					feePRV.MaxGet = receive
 					feeToken.SellAmount = float64(sellAmount)
 					feeToken.MaxGet = receive
+					chosenPath = newPools
 				}
 			} else {
 				if sellToken == common.PRVIDStr {
@@ -1058,25 +1064,27 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 					rate := calcRateSimple(float64(poolDetail.Virtual1Value), float64(poolDetail.Virtual2Value))
 					receiveUSDT := float64(sellAmount) * rate
 					poolDetail2 := customPools[1]
-					rate2 := calcRateSimple(float64(poolDetail2.Virtual1Value), float64(poolDetail2.Virtual2Value))
+					rate2 := calcRateSimple(float64(poolDetail2.Virtual2Value), float64(poolDetail2.Virtual1Value))
 					receive := receiveUSDT * rate2
 
 					feePRV.SellAmount = float64(sellAmount)
 					feePRV.MaxGet = receive
 					feeToken.SellAmount = float64(sellAmount)
 					feeToken.MaxGet = receive
+					chosenPath = newPools
 				} else {
 					poolDetail := customPools[1]
 					rate := calcRateSimple(float64(poolDetail.Virtual1Value), float64(poolDetail.Virtual2Value))
 					receiveUSDT := float64(sellAmount) * rate
 					poolDetail2 := customPools[0]
-					rate2 := calcRateSimple(float64(poolDetail2.Virtual1Value), float64(poolDetail2.Virtual2Value))
+					rate2 := calcRateSimple(float64(poolDetail2.Virtual2Value), float64(poolDetail2.Virtual1Value))
 					receive := receiveUSDT * rate2
 
 					feePRV.SellAmount = float64(sellAmount)
 					feePRV.MaxGet = receive
 					feeToken.SellAmount = float64(sellAmount)
 					feeToken.MaxGet = receive
+					chosenPath = []*shared.Pdexv3PoolPairWithId{newPools[1], newPools[0]}
 				}
 			}
 		} else {
