@@ -356,7 +356,15 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 				if token == common.PRVCoinID.String() {
 					price = getPRVPrice(*pdeStateJSON.PoolPairs, baseToken)
 				} else {
-					price = getRateMinimum(token, baseToken, uint64(math.Pow10(int(tkInfo[0].PDecimals-6))), poolPairsArr, *pdeStateJSON.PoolPairs, pdeStateJSON.Params.DefaultFeeRateBPS)
+					amount := math.Pow10(int(tkInfo[0].PDecimals))
+					switch token {
+					case "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696":
+						amount = math.Pow10(7) //0,01
+					case "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e":
+						amount = math.Pow10(8) //0,1
+					}
+
+					price = getRateMinimum2(token, baseToken, uint64(amount), poolPairsArr, *pdeStateJSON.PoolPairs, pdeStateJSON.Params.DefaultFeeRateBPS)
 					decimalRate := math.Pow10(int(tkInfo[0].PDecimals) - int(baseTkInfo[0].PDecimals))
 					price = price * decimalRate
 				}

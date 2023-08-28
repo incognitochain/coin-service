@@ -14,8 +14,6 @@ import (
 	"github.com/incognitochain/incognito-chain/blockchain/types"
 	"github.com/incognitochain/incognito-chain/common"
 	"github.com/incognitochain/incognito-chain/dataaccessobject/statedb"
-
-	pdexv3Meta "github.com/incognitochain/incognito-chain/metadata/pdexv3"
 )
 
 func initStakers(stakingPoolID string, stateDB *statedb.StateDB) (map[string]*pdex.Staker, uint64, error) {
@@ -232,7 +230,7 @@ func getRateMinimum(tokenID1, tokenID2 string, minAmount uint64, pools []*shared
 	a1 := uint64(0)
 retry:
 	_, receive := pathfinder.FindGoodTradePath(
-		pdexv3Meta.MaxTradePathLength,
+		3,
 		pools,
 		poolPairStates,
 		tokenID1,
@@ -258,6 +256,40 @@ retry:
 			}
 		}
 	}
+	return float64(receive) / float64(a)
+}
+
+func getRateMinimum2(tokenID1, tokenID2 string, minAmount uint64, pools []*shared.Pdexv3PoolPairWithId, poolPairStates map[string]*pdex.PoolPairState, feeRateBPS uint) float64 {
+	a := uint64(minAmount)
+	// 	a1 := uint64(0)
+	// retry:
+	_, receive := pathfinder.FindGoodTradePath(
+		3,
+		pools,
+		poolPairStates,
+		tokenID1,
+		tokenID2,
+		a, feeRateBPS)
+
+	// if receive == 0 {
+	// 	a *= 10
+	// 	if a < 1e6 {
+	// 		goto retry
+	// 	}
+	// 	return 0
+	// } else {
+	// 	if receive > a1*10 {
+	// 		a *= 10
+	// 		a1 = receive
+	// 		goto retry
+	// 	} else {
+	// 		if receive < a1*10 {
+	// 			a /= 10
+	// 			receive = a1
+	// 			fmt.Println("receive", a, receive)
+	// 		}
+	// 	}
+	// }
 	return float64(receive) / float64(a)
 }
 
