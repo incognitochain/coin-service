@@ -968,6 +968,56 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 
+	baseTk, err := database.DBGetBasePriceToken()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+
+	if sellToken == common.PRVIDStr || buyToken == common.PRVIDStr {
+		tks := getCustomTokenList([]string{common.PRVIDStr})
+		prvTokenInfo := tks[0]
+		newPools2 := []*shared.Pdexv3PoolPairWithId{}
+		if sellToken == baseTk || buyToken == baseTk {
+			for _, pool := range newPools {
+				if pool.PoolID == prvTokenInfo.DefaultPoolPair {
+					newPools2 = append(newPools2, pool)
+				} else {
+					delete(poolPairStates, pool.PoolID)
+					delete(pdexState.PoolPairs, pool.PoolID)
+				}
+			}
+		} else {
+			token := buyToken
+			if buyToken == common.PRVIDStr {
+				token = sellToken
+			}
+			keepPools := []string{prvTokenInfo.DefaultPoolPair}
+
+			switch token {
+			case "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696": //BTC
+				keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696-b25a4f3fca722bbd4a1146a405f00b30403ddeb61340e5350a086ea48757169f")
+			case "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4": //XMR
+				keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4-27599db211de559bf97d7f8542f8af39a680699307da151635abf34c6452a0e8")
+			case "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e": //ETH
+				keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e-d3976e67fbefe50eb3f4ec9f2266b734a49f3c97effa825117db84ac08f60b6d")
+			}
+			if len(keepPools) > 1 {
+				for _, pool := range newPools {
+					if pool.PoolID == keepPools[0] || pool.PoolID == keepPools[1] {
+						newPools2 = append(newPools2, pool)
+					} else {
+						delete(poolPairStates, pool.PoolID)
+						delete(pdexState.PoolPairs, pool.PoolID)
+					}
+				}
+			}
+		}
+		if len(newPools2) > 0 {
+			newPools = newPools2
+		}
+	}
+
 	// var chosenPath []*shared.Pdexv3PoolPairWithId
 	// var foundSellAmount uint64
 	// var receive uint64
