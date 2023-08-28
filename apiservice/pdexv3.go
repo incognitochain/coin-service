@@ -973,10 +973,11 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return
 	}
-
+	isSimpleTrade := false
+	customPools := []PdexV3PoolDetail{}
+	tks := getCustomTokenList([]string{common.PRVIDStr})
+	prvTokenInfo := tks[0]
 	if sellToken == common.PRVIDStr || buyToken == common.PRVIDStr {
-		tks := getCustomTokenList([]string{common.PRVIDStr})
-		prvTokenInfo := tks[0]
 		newPools2 := []*shared.Pdexv3PoolPairWithId{}
 		if sellToken == baseTk || buyToken == baseTk {
 			for _, pool := range newPools {
@@ -1015,28 +1016,85 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 		if len(newPools2) > 0 {
 			newPools = newPools2
+			poolsStr := []string{}
+			for _, pool := range newPools {
+				poolsStr = append(poolsStr, pool.PoolID)
+			}
+			customPools = getCustomPoolList(poolsStr)
+			isSimpleTrade = true
 		}
 	}
-
 	// var chosenPath []*shared.Pdexv3PoolPairWithId
 	// var foundSellAmount uint64
 	// var receive uint64
 
 	if sellAmount > 0 {
 		//feePRV
-		chosenPath, receive := pathfinder.FindGoodTradePath(
-			// pdexv3Meta.MaxTradePathLength,
-			3,
-			newPools,
-			poolPairStates,
-			sellToken,
-			buyToken,
-			sellAmount, pdexState.Params.DefaultFeeRateBPS)
-		feePRV.SellAmount = float64(sellAmount) / dcrate
-		feePRV.MaxGet = float64(receive) * dcrate
+		var chosenPath []*shared.Pdexv3PoolPairWithId
+		if isSimpleTrade {
+			if len(newPools) == 1 {
+				if sellToken == common.PRVIDStr {
+					poolDetail := customPools[0]
+					rate := calcRateSimple(float64(poolDetail.Virtual1Value), float64(poolDetail.Virtual2Value))
+					receive := float64(sellAmount) * rate
 
-		feeToken.SellAmount = float64(sellAmount) / dcrate
-		feeToken.MaxGet = float64(receive) * dcrate
+					feePRV.SellAmount = float64(sellAmount)
+					feePRV.MaxGet = receive
+					feeToken.SellAmount = float64(sellAmount)
+					feeToken.MaxGet = receive
+				} else {
+					poolDetail := customPools[0]
+					rate := calcRateSimple(float64(poolDetail.Virtual2Value), float64(poolDetail.Virtual1Value))
+					receive := float64(sellAmount) * rate
+
+					feePRV.SellAmount = float64(sellAmount)
+					feePRV.MaxGet = receive
+					feeToken.SellAmount = float64(sellAmount)
+					feeToken.MaxGet = receive
+				}
+			} else {
+				if sellToken == common.PRVIDStr {
+					poolDetail := customPools[0]
+					rate := calcRateSimple(float64(poolDetail.Virtual1Value), float64(poolDetail.Virtual2Value))
+					receiveUSDT := float64(sellAmount) * rate
+					poolDetail2 := customPools[1]
+					rate2 := calcRateSimple(float64(poolDetail2.Virtual1Value), float64(poolDetail2.Virtual2Value))
+					receive := receiveUSDT * rate2
+
+					feePRV.SellAmount = float64(sellAmount)
+					feePRV.MaxGet = receive
+					feeToken.SellAmount = float64(sellAmount)
+					feeToken.MaxGet = receive
+				} else {
+					poolDetail := customPools[1]
+					rate := calcRateSimple(float64(poolDetail.Virtual1Value), float64(poolDetail.Virtual2Value))
+					receiveUSDT := float64(sellAmount) * rate
+					poolDetail2 := customPools[0]
+					rate2 := calcRateSimple(float64(poolDetail2.Virtual1Value), float64(poolDetail2.Virtual2Value))
+					receive := receiveUSDT * rate2
+
+					feePRV.SellAmount = float64(sellAmount)
+					feePRV.MaxGet = receive
+					feeToken.SellAmount = float64(sellAmount)
+					feeToken.MaxGet = receive
+				}
+			}
+		} else {
+			var receive uint64
+			chosenPath, receive = pathfinder.FindGoodTradePath(
+				// pdexv3Meta.MaxTradePathLength,
+				3,
+				newPools,
+				poolPairStates,
+				sellToken,
+				buyToken,
+				sellAmount, pdexState.Params.DefaultFeeRateBPS)
+			feePRV.SellAmount = float64(sellAmount) / dcrate
+			feePRV.MaxGet = float64(receive) * dcrate
+
+			feeToken.SellAmount = float64(sellAmount) / dcrate
+			feeToken.MaxGet = float64(receive) * dcrate
+		}
 
 		if chosenPath != nil {
 			feePRV.Route = make([]string, 0)
@@ -1162,6 +1220,7 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 			feeToken.TokenRoute = getTokenRoute(sellToken, feeToken.Route)
 		}
 	}
+
 	tksInfo := getCustomTokenList([]string{sellToken, buyToken})
 	if feePRV.Fee != 0 {
 		rt := tksInfo[1].PriceUsd / tksInfo[0].PriceUsd
