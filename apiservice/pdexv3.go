@@ -1677,3 +1677,65 @@ func (pdexv3) ListMarkets(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, respond)
 }
+
+type Ticker struct {
+	TickerID       string  `json:"ticker_id"`
+	BaseID         string  `json:"base_id"`
+	BaseCurrency   string  `json:"base_currency"`
+	TargetID       string  `json:"target_id"`
+	TargetCurrency string  `json:"target_currency"`
+	PoolID         string  `json:"pool_id"`
+	LastPrice      float64 `json:"last_price"`
+	BaseVolume     int     `json:"base_volume"`
+	TargetVolume   int     `json:"target_volume"`
+}
+
+func (pdexv3) GetTickers(c *gin.Context) {
+	type Respond struct {
+		Tickers []Ticker `json:"tickers"`
+		Message string   `json:"message"`
+	}
+	var respond Respond
+
+	baseTk, err := database.DBGetBasePriceToken()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+		return
+	}
+	a := getCustomTokenList([]string{baseTk})
+	if len(a) == 0 {
+		respond.Message = "no data"
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+	baseTkInfo := a[0]
+
+	datalist := getMarketTokenList()
+	if len(datalist) == 0 {
+		respond.Message = "no data"
+		c.JSON(http.StatusOK, respond)
+		return
+	}
+	var tickerList []Ticker
+	for _, v := range datalist {
+		if v.DefaultPairToken != baseTk {
+			continue
+		}
+		tickerID := v.PSymbol + "_" + baseTkInfo.PSymbol
+		ticker := Ticker{
+			TickerID:       tickerID,
+			BaseID:         v.TokenID,
+			BaseCurrency:   v.PSymbol,
+			TargetID:       baseTk,
+			TargetCurrency: baseTkInfo.PSymbol,
+			PoolID:         v.DefaultPoolPair,
+			LastPrice:      v.PriceUsd,
+			BaseVolume:     0,
+			TargetVolume:   0,
+		}
+		tickerList = append(tickerList, ticker)
+	}
+	respond.Tickers = tickerList
+
+	c.JSON(http.StatusOK, respond)
+}
