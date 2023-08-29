@@ -356,6 +356,9 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 				if token == common.PRVCoinID.String() {
 					price = getPRVPrice(*pdeStateJSON.PoolPairs, baseToken)
 				} else {
+					if len(tkInfo) == 0 {
+						continue
+					}
 					amount := math.Pow10(int(tkInfo[0].PDecimals))
 					switch token {
 					case "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696":
