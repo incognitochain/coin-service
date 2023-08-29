@@ -1100,3 +1100,28 @@ func (model *PNodeDevice) Saving() error {
 
 	return nil
 }
+
+type TokenPdexPriceRecord struct {
+	mgm.DefaultModel `bson:",inline"`
+	TokenID          string `json:"tokenid" bson:"tokenid"`
+	Price            string `json:"price" bson:"price"`
+	BPToken          string `json:"bptoken" bson:"bptoken"`
+	BeaconHeight     uint64 `json:"beaconheight" bson:"beaconheight"`
+}
+
+func (model *TokenPdexPriceRecord) Creating() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Creating(); err != nil {
+		return err
+	}
+
+	return nil
+}
+func (model *TokenPdexPriceRecord) Saving() error {
+	// Call the DefaultModel Creating hook
+	if err := model.DefaultModel.Saving(); err != nil {
+		return err
+	}
+
+	return nil
+}

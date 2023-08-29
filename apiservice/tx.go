@@ -220,11 +220,20 @@ func APIGetTxsByReceiver(c *gin.Context) {
 func APIGetLatestTxs(c *gin.Context) {
 	shardID, _ := strconv.Atoi(c.Query("shardid"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
+	offset, _ := strconv.Atoi(c.Query("offset"))
 	isBase58 := false
 	if c.Query("base58") == "true" {
 		isBase58 = true
 	}
-	txDataList, err := database.DBGetLatestTxByShardID(shardID, int64(limit))
+	if shardID < -1 || shardID > 7 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid shardid")))
+		return
+	}
+	if limit <= 0 || limit > 100 {
+		c.JSON(http.StatusBadRequest, buildGinErrorRespond(errors.New("invalid limit")))
+		return
+	}
+	txDataList, err := database.DBGetLatestTxByShardID(shardID, int64(limit), int64(offset))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
 		return

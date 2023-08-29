@@ -18,6 +18,44 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func DBSaveTokensPdexPrice(list []shared.TokenPdexPriceRecord) error {
+	ctx := context.Background()
+	docs := []interface{}{}
+	for _, key := range list {
+		key.Creating()
+		docs = append(docs, key)
+	}
+	_, err := mgm.Coll(&shared.TokenPdexPriceRecord{}).InsertMany(ctx, docs)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DBGetTokenPdexPriceAtHeight(tokenID string, height uint64) (*shared.TokenPdexPriceRecord, error) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
+	var result shared.TokenPdexPriceRecord
+	err := mgm.Coll(&shared.TokenPdexPriceRecord{}).FirstWithCtx(ctx, bson.M{"tokenid": bson.M{operator.Eq: tokenID}, "beaconheight": bson.M{operator.Eq: height}}, &result)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &result, nil
+}
+
+func DBGetTokenPdexPriceLatest(tokenID string) (*shared.TokenPdexPriceRecord, error) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(4)*shared.DB_OPERATION_TIMEOUT)
+	var result shared.TokenPdexPriceRecord
+	err := mgm.Coll(&shared.TokenPdexPriceRecord{}).FirstWithCtx(ctx, bson.M{"tokenid": bson.M{operator.Eq: tokenID}}, &result, &options.FindOneOptions{
+		Sort: bson.D{{"beaconheight", -1}},
+	})
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &result, nil
+}
+
 func DBSavePDEState(state string, height uint64, version int) error {
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
 

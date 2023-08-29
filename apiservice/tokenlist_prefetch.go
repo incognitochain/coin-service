@@ -211,6 +211,21 @@ func retrieveTokenList() {
 				data.PercentChange24h = fmt.Sprintf("%.2f", getToken24hPriceChange(data.TokenID, data.DefaultPairToken, data.DefaultPoolPair, stableCoinList, prvUsdtPair24h, priorityTokens))
 			}
 		}
+		latetsPrice, oldPrice, percent, err := getTokenPdex24HPriceChange(data.TokenID)
+		if err != nil {
+			log.Println(err)
+		}
+		if stableCoinList != "" && strings.Contains(stableCoinList, data.TokenID) {
+			latetsPrice = 1
+			oldPrice = 1
+			percent = 0
+		}
+		data.PercentChange24h = fmt.Sprintf("%.2f", percent)
+		data.PercentChange24hNew = fmt.Sprintf("%.5f", percent)
+		data.PercentChange24hNewDebug1 = fmt.Sprintf("%.5f", latetsPrice)
+		data.PercentChange24hNewDebug2 = fmt.Sprintf("%.5f", oldPrice)
+		data.PriceUsd = latetsPrice
+
 		if etki, ok := customTokenInfoMap[v.TokenID]; ok {
 			if etki.Name != "" {
 				data.Name = etki.Name
@@ -354,4 +369,43 @@ func retrieveTokenList() {
 	for tokenID := range tokenMarketMap {
 		marketTokenList = append(marketTokenList, datalist[tokenMap[tokenID]])
 	}
+}
+
+func getTokenPdex24HPriceChange(tokenID string) (float64, float64, float64, error) {
+	var percentChanged float64
+	var latestPrice float64
+	var oldPrice float64
+	priceRecord, err := database.DBGetTokenPdexPriceLatest(tokenID)
+	if err != nil {
+		if priceRecord == nil {
+			return latestPrice, oldPrice, percentChanged, err
+		}
+		latestPrice = parseStrToFloat64(priceRecord.Price)
+		return latestPrice, oldPrice, percentChanged, err
+	}
+	latestPrice = parseStrToFloat64(priceRecord.Price)
+
+	priceRecordOld, err := database.DBGetTokenPdexPriceAtHeight(tokenID, priceRecord.BeaconHeight-(60*60*24/15))
+	if err != nil {
+		if priceRecordOld == nil {
+			return latestPrice, oldPrice, percentChanged, err
+		}
+		oldPrice = parseStrToFloat64(priceRecordOld.Price)
+		return latestPrice, oldPrice, percentChanged, err
+	}
+	oldPrice = parseStrToFloat64(priceRecordOld.Price)
+	if oldPrice == 0 {
+		return latestPrice, oldPrice, percentChanged, err
+	}
+	percentChanged = ((latestPrice - oldPrice) / oldPrice) * 100
+
+	return latestPrice, oldPrice, percentChanged, nil
+}
+
+func parseStrToFloat64(str string) float64 {
+	result, err := strconv.ParseFloat(str, 64)
+	if err != nil {
+		return 0
+	}
+	return result
 }

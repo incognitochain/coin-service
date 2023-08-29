@@ -162,16 +162,17 @@ func DBGetCountTxByPubkey(pubkey string, tokenID string, txversion int) (int64, 
 	return count, nil
 }
 
-func DBGetLatestTxByShardID(shardID int, limit int64) ([]shared.TxData, error) {
+func DBGetLatestTxByShardID(shardID int, limit int64, offset int64) ([]shared.TxData, error) {
 	var result []shared.TxData
-	filter := bson.M{"shardID": bson.M{operator.Eq: shardID}}
+	filter := bson.M{"shardid": bson.M{operator.Eq: shardID}}
 	if shardID == -1 {
 		filter = bson.M{}
 	}
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(10)*shared.DB_OPERATION_TIMEOUT)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(60)*shared.DB_OPERATION_TIMEOUT)
 	err := mgm.Coll(&shared.TxData{}).SimpleFindWithCtx(ctx, &result, filter, &options.FindOptions{
 		Sort:  bson.D{{"locktime", -1}},
 		Limit: &limit,
+		Skip:  &offset,
 	})
 	if err != nil {
 		return nil, err

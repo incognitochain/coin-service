@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -283,7 +284,112 @@ func processBeacon(bc *blockchain.BlockChain, h common.Hash, height uint64, chai
 		if err != nil {
 			panic(err)
 		}
-		wg.Add(14)
+		wg.Add(15)
+		go func() {
+			defer wg.Done()
+			log.Println("process tokens price")
+			pools, err := database.DBGetDefaultPool(true)
+			if err != nil {
+				log.Println("PDEX token price", "DBGetDefaultPool", err)
+				return
+			}
+			tokensMap := make(map[string]bool)
+			for pool := range pools {
+				tokens := strings.Split(pool, "-")
+				tokensMap[tokens[0]] = true
+				tokensMap[tokens[1]] = true
+			}
+			stableTokens, err := database.DBGetStableCoinID()
+			if err != nil {
+				log.Println("PDEX token price", "DBGetStableCoinID", err)
+				return
+			}
+			tokens := make([]string, 0)
+			for token := range tokensMap {
+				isStable := false
+				for _, v := range stableTokens {
+					if strings.EqualFold(token, v) {
+						isStable = true
+						break
+					}
+				}
+				if !isStable {
+					tokens = append(tokens, token)
+				}
+			}
+			baseToken, err := database.DBGetBasePriceToken()
+			if err != nil {
+				log.Println("PDEX token price", "DBGetBasePriceToken", err)
+				return
+			}
+			var poolPairsArr []*shared.Pdexv3PoolPairWithId
+
+			for poolId, element := range stateV2.PoolPairs {
+				if _, ok := pools[poolId]; !ok {
+					delete(*pdeStateJSON.PoolPairs, poolId)
+					continue
+				}
+				var poolPair rawdbv2.Pdexv3PoolPair
+				var poolPairWithId shared.Pdexv3PoolPairWithId
+
+				poolPair = element.State
+				poolPairWithId = shared.Pdexv3PoolPairWithId{
+					poolPair,
+					shared.Pdexv3PoolPairChild{
+						PoolID: poolId},
+				}
+				poolPairsArr = append(poolPairsArr, &poolPairWithId)
+			}
+			var tokensPdexPrice []shared.TokenPdexPriceRecord
+			baseTkInfo, err := database.DBGetExtraTokenInfoByTokenID([]string{baseToken})
+			if err != nil {
+				log.Println("PDEX token price", "DBGetExtraTokenInfoByTokenID", err)
+				return
+			}
+			for _, token := range tokens {
+				tkInfo, err := database.DBGetExtraTokenInfoByTokenID([]string{token})
+				if err != nil {
+					log.Println("PDEX token price", "DBGetExtraTokenInfoByTokenID", err)
+					continue
+				}
+				var price float64
+				if token == common.PRVCoinID.String() {
+					price = getPRVPrice(*pdeStateJSON.PoolPairs, baseToken)
+				} else {
+					if len(tkInfo) == 0 {
+						continue
+					}
+					amount := math.Pow10(int(tkInfo[0].PDecimals))
+					switch token {
+					case "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696":
+						amount = math.Pow10(7) //0,01
+					case "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e":
+						amount = math.Pow10(8) //0,1
+					}
+
+					price = getRateMinimum2(token, baseToken, uint64(amount), poolPairsArr, *pdeStateJSON.PoolPairs, pdeStateJSON.Params.DefaultFeeRateBPS)
+					decimalRate := math.Pow10(int(tkInfo[0].PDecimals) - int(baseTkInfo[0].PDecimals))
+					price = price * decimalRate
+				}
+				newRecord := shared.TokenPdexPriceRecord{
+					TokenID:      token,
+					Price:        fmt.Sprintf("%f", price),
+					BeaconHeight: blk.GetHeight(),
+					BPToken:      baseToken,
+				}
+				tokensPdexPrice = append(tokensPdexPrice, newRecord)
+			}
+			if len(tokensPdexPrice) == 0 {
+				log.Println("DBSaveTokensPdexPrice success")
+				return
+			}
+			err = database.DBSaveTokensPdexPrice(tokensPdexPrice)
+			if err != nil {
+				log.Println("DBSaveTokensPdexPrice", err)
+				return
+			}
+			log.Println("DBSaveTokensPdexPrice success")
+		}()
 		go func() {
 			log.Printf("done process state beacon %v in %v %v \n", blk.GetHeight(), time.Since(startTime), willProcess)
 			err = database.DBSavePDEState(pdeStr, height, 2)

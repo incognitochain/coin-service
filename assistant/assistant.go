@@ -88,7 +88,8 @@ func calcInternalTokenPrice() {
 	for {
 		tokenInfoUpdate, err := getInternalTokenPrice()
 		if err != nil {
-			panic(err)
+			log.Println(err)
+			continue
 		}
 
 		err = database.DBUpdateTokenInfoPrice(tokenInfoUpdate)

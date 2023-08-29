@@ -145,6 +145,7 @@ func StartGinService() {
 		pdexv3Group.POST("/rate", pdexv3{}.GetRate)
 		pdexv3Group.GET("/getpdestate", pdexv3{}.PDEState)
 		pdexv3Group.POST("/pendinglimit", pdexv3{}.PendingLimit)
+		pdexv3Group.GET("/tickers", pdexv3{}.GetTickers)
 
 		//external dependency
 		pdexv3Group.GET("/estimatetrade", pdexv3{}.EstimateTrade)
