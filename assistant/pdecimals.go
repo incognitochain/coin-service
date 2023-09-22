@@ -164,7 +164,10 @@ func getCustomTokenInfo() ([]shared.CustomTokenInfo, error) {
 				Verified:         v.Verified,
 			})
 		}
+		log.Println("getCustomTokenInfo", len(result))
 		return result, nil
+	} else {
+		log.Println("getCustomTokenInfo", "empty", shared.ServiceCfg.ExternalDecimals, shared.ServiceCfg.ExternalDecimals == "")
 	}
 
 	return nil, nil
