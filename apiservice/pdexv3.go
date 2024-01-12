@@ -1604,6 +1604,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 	}
 
 	for _, v := range sellSide {
+		if !strings.EqualFold(v.PoolID, poolID) {
+			continue
+		}
 		tk1Balance, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
 		tk2Balance, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
 		if tk1Balance == 0 {
@@ -1636,6 +1639,9 @@ func (pdexv3) PendingOrder(c *gin.Context) {
 		sellOrders = append(sellOrders, data)
 	}
 	for _, v := range buySide {
+		if !strings.EqualFold(v.PoolID, poolID) {
+			continue
+		}
 		tk1Balance, _ := strconv.ParseUint(v.Token1Balance, 10, 64)
 		tk2Balance, _ := strconv.ParseUint(v.Token2Balance, 10, 64)
 		if tk2Balance == 0 {
