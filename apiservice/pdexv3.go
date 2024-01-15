@@ -968,66 +968,66 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 		}
 	}
 
-	baseTk, err := database.DBGetBasePriceToken()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
-		return
-	}
-	isSimpleTrade := false
-	customPools := []PdexV3PoolDetail{}
-	tks := getCustomTokenList([]string{common.PRVIDStr})
-	prvTokenInfo := tks[0]
-	if sellToken == common.PRVIDStr || buyToken == common.PRVIDStr {
-		newPools2 := []*shared.Pdexv3PoolPairWithId{}
-		if sellToken == baseTk || buyToken == baseTk {
-			for _, pool := range newPools {
-				if pool.PoolID == prvTokenInfo.DefaultPoolPair {
-					newPools2 = append(newPools2, pool)
-				} else {
-					delete(poolPairStates, pool.PoolID)
-					delete(pdexState.PoolPairs, pool.PoolID)
-				}
-			}
-			customPools = getCustomPoolList([]string{prvTokenInfo.DefaultPoolPair})
-		} else {
-			token := buyToken
-			if buyToken == common.PRVIDStr {
-				token = sellToken
-			}
-			keepPools := []string{prvTokenInfo.DefaultPoolPair}
+	// baseTk, err := database.DBGetBasePriceToken()
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, buildGinErrorRespond(err))
+	// 	return
+	// }
+	// isSimpleTrade := false
+	// customPools := []PdexV3PoolDetail{}
+	// tks := getCustomTokenList([]string{common.PRVIDStr})
+	// prvTokenInfo := tks[0]
+	// if sellToken == common.PRVIDStr || buyToken == common.PRVIDStr {
+	// 	newPools2 := []*shared.Pdexv3PoolPairWithId{}
+	// 	if sellToken == baseTk || buyToken == baseTk {
+	// 		for _, pool := range newPools {
+	// 			if pool.PoolID == prvTokenInfo.DefaultPoolPair {
+	// 				newPools2 = append(newPools2, pool)
+	// 			} else {
+	// 				delete(poolPairStates, pool.PoolID)
+	// 				delete(pdexState.PoolPairs, pool.PoolID)
+	// 			}
+	// 		}
+	// 		customPools = getCustomPoolList([]string{prvTokenInfo.DefaultPoolPair})
+	// 	} else {
+	// 		token := buyToken
+	// 		if buyToken == common.PRVIDStr {
+	// 			token = sellToken
+	// 		}
+	// 		keepPools := []string{prvTokenInfo.DefaultPoolPair}
 
-			switch token {
-			case "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696": //BTC
-				keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696-b25a4f3fca722bbd4a1146a405f00b30403ddeb61340e5350a086ea48757169f")
-			case "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4": //XMR
-				keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4-27599db211de559bf97d7f8542f8af39a680699307da151635abf34c6452a0e8")
-			case "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e": //ETH
-				keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e-d3976e67fbefe50eb3f4ec9f2266b734a49f3c97effa825117db84ac08f60b6d")
-			}
-			if len(keepPools) > 1 {
-				for _, pool := range newPools {
-					if pool.PoolID == keepPools[0] || pool.PoolID == keepPools[1] {
-						newPools2 = append(newPools2, pool)
-					} else {
-						delete(poolPairStates, pool.PoolID)
-						delete(pdexState.PoolPairs, pool.PoolID)
-					}
-				}
-			}
-			customPools = getCustomPoolList(keepPools)
-		}
-		if len(newPools2) > 0 {
-			newPools = []*shared.Pdexv3PoolPairWithId{}
-			for _, pool := range customPools {
-				for _, pool2 := range newPools2 {
-					if pool.PoolID == pool2.PoolID {
-						newPools = append(newPools, pool2)
-					}
-				}
-			}
-			isSimpleTrade = true
-		}
-	}
+	// 		switch token {
+	// 		case "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696": //BTC
+	// 			keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696-b25a4f3fca722bbd4a1146a405f00b30403ddeb61340e5350a086ea48757169f")
+	// 		case "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4": //XMR
+	// 			keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4-27599db211de559bf97d7f8542f8af39a680699307da151635abf34c6452a0e8")
+	// 		case "3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e": //ETH
+	// 			keepPools = append(keepPools, "076a4423fa20922526bd50b0d7b0dc1c593ce16e15ba141ede5fb5a28aa3f229-3ee31eba6376fc16cadb52c8765f20b6ebff92c0b1c5ab5fc78c8c25703bb19e-d3976e67fbefe50eb3f4ec9f2266b734a49f3c97effa825117db84ac08f60b6d")
+	// 		}
+	// 		if len(keepPools) > 1 {
+	// 			for _, pool := range newPools {
+	// 				if pool.PoolID == keepPools[0] || pool.PoolID == keepPools[1] {
+	// 					newPools2 = append(newPools2, pool)
+	// 				} else {
+	// 					delete(poolPairStates, pool.PoolID)
+	// 					delete(pdexState.PoolPairs, pool.PoolID)
+	// 				}
+	// 			}
+	// 		}
+	// 		customPools = getCustomPoolList(keepPools)
+	// 	}
+	// 	if len(newPools2) > 0 {
+	// 		newPools = []*shared.Pdexv3PoolPairWithId{}
+	// 		for _, pool := range customPools {
+	// 			for _, pool2 := range newPools2 {
+	// 				if pool.PoolID == pool2.PoolID {
+	// 					newPools = append(newPools, pool2)
+	// 				}
+	// 			}
+	// 		}
+	// 		isSimpleTrade = true
+	// 	}
+	// }
 	// var chosenPath []*shared.Pdexv3PoolPairWithId
 	// var foundSellAmount uint64
 	// var receive uint64
@@ -1035,68 +1035,68 @@ func (pdexv3) EstimateTrade(c *gin.Context) {
 	if sellAmount > 0 {
 		//feePRV
 		var chosenPath []*shared.Pdexv3PoolPairWithId
-		if isSimpleTrade {
-			if len(newPools) == 1 {
-				if sellToken == common.PRVIDStr {
-					poolDetail := customPools[0]
-					receive := float64(poolDetail.Virtual2Value) - (float64(poolDetail.Virtual2Value) * float64(poolDetail.Virtual1Value) / float64(poolDetail.Virtual1Value+sellAmount))
+		// if isSimpleTrade {
+		// 	if len(newPools) == 1 {
+		// 		if sellToken == common.PRVIDStr {
+		// 			poolDetail := customPools[0]
+		// 			receive := float64(poolDetail.Virtual2Value) - (float64(poolDetail.Virtual2Value) * float64(poolDetail.Virtual1Value) / float64(poolDetail.Virtual1Value+sellAmount))
 
-					feePRV.SellAmount = float64(sellAmount)
-					feePRV.MaxGet = receive
-					feeToken.SellAmount = float64(sellAmount)
-					feeToken.MaxGet = receive
-					chosenPath = newPools
-				} else {
-					poolDetail := customPools[0]
-					receive := float64(poolDetail.Virtual1Value) - (float64(poolDetail.Virtual1Value) * float64(poolDetail.Virtual2Value) / float64(poolDetail.Virtual2Value+sellAmount))
+		// 			feePRV.SellAmount = float64(sellAmount)
+		// 			feePRV.MaxGet = receive
+		// 			feeToken.SellAmount = float64(sellAmount)
+		// 			feeToken.MaxGet = receive
+		// 			chosenPath = newPools
+		// 		} else {
+		// 			poolDetail := customPools[0]
+		// 			receive := float64(poolDetail.Virtual1Value) - (float64(poolDetail.Virtual1Value) * float64(poolDetail.Virtual2Value) / float64(poolDetail.Virtual2Value+sellAmount))
 
-					feePRV.SellAmount = float64(sellAmount)
-					feePRV.MaxGet = receive
-					feeToken.SellAmount = float64(sellAmount)
-					feeToken.MaxGet = receive
-					chosenPath = newPools
-				}
-			} else {
-				if sellToken == common.PRVIDStr {
-					poolDetail := customPools[0]
-					receiveUSDT := float64(poolDetail.Virtual2Value) - (float64(poolDetail.Virtual2Value) * float64(poolDetail.Virtual1Value) / float64(poolDetail.Virtual1Value+sellAmount))
-					poolDetail2 := customPools[1]
-					receive := float64(poolDetail2.Virtual1Value) - (float64(poolDetail2.Virtual1Value) * float64(poolDetail2.Virtual2Value) / float64(poolDetail2.Virtual2Value+uint64(receiveUSDT)))
+		// 			feePRV.SellAmount = float64(sellAmount)
+		// 			feePRV.MaxGet = receive
+		// 			feeToken.SellAmount = float64(sellAmount)
+		// 			feeToken.MaxGet = receive
+		// 			chosenPath = newPools
+		// 		}
+		// 	} else {
+		// 		if sellToken == common.PRVIDStr {
+		// 			poolDetail := customPools[0]
+		// 			receiveUSDT := float64(poolDetail.Virtual2Value) - (float64(poolDetail.Virtual2Value) * float64(poolDetail.Virtual1Value) / float64(poolDetail.Virtual1Value+sellAmount))
+		// 			poolDetail2 := customPools[1]
+		// 			receive := float64(poolDetail2.Virtual1Value) - (float64(poolDetail2.Virtual1Value) * float64(poolDetail2.Virtual2Value) / float64(poolDetail2.Virtual2Value+uint64(receiveUSDT)))
 
-					feePRV.SellAmount = float64(sellAmount)
-					feePRV.MaxGet = receive
-					feeToken.SellAmount = float64(sellAmount)
-					feeToken.MaxGet = receive
-					chosenPath = newPools
-				} else {
-					poolDetail := customPools[1]
-					receiveUSDT := float64(poolDetail.Virtual2Value) - (float64(poolDetail.Virtual2Value) * float64(poolDetail.Virtual1Value) / float64(poolDetail.Virtual1Value+sellAmount))
-					poolDetail2 := customPools[0]
-					receive := float64(poolDetail2.Virtual1Value) - (float64(poolDetail2.Virtual1Value) * float64(poolDetail2.Virtual2Value) / float64(poolDetail2.Virtual2Value+uint64(receiveUSDT)))
+		// 			feePRV.SellAmount = float64(sellAmount)
+		// 			feePRV.MaxGet = receive
+		// 			feeToken.SellAmount = float64(sellAmount)
+		// 			feeToken.MaxGet = receive
+		// 			chosenPath = newPools
+		// 		} else {
+		// 			poolDetail := customPools[1]
+		// 			receiveUSDT := float64(poolDetail.Virtual2Value) - (float64(poolDetail.Virtual2Value) * float64(poolDetail.Virtual1Value) / float64(poolDetail.Virtual1Value+sellAmount))
+		// 			poolDetail2 := customPools[0]
+		// 			receive := float64(poolDetail2.Virtual1Value) - (float64(poolDetail2.Virtual1Value) * float64(poolDetail2.Virtual2Value) / float64(poolDetail2.Virtual2Value+uint64(receiveUSDT)))
 
-					feePRV.SellAmount = float64(sellAmount)
-					feePRV.MaxGet = receive
-					feeToken.SellAmount = float64(sellAmount)
-					feeToken.MaxGet = receive
-					chosenPath = []*shared.Pdexv3PoolPairWithId{newPools[1], newPools[0]}
-				}
-			}
-		} else {
-			var receive uint64
-			chosenPath, receive = pathfinder.FindGoodTradePath(
-				// pdexv3Meta.MaxTradePathLength,
-				3,
-				newPools,
-				poolPairStates,
-				sellToken,
-				buyToken,
-				sellAmount, pdexState.Params.DefaultFeeRateBPS)
-			feePRV.SellAmount = float64(sellAmount) / dcrate
-			feePRV.MaxGet = float64(receive) * dcrate
+		// 			feePRV.SellAmount = float64(sellAmount)
+		// 			feePRV.MaxGet = receive
+		// 			feeToken.SellAmount = float64(sellAmount)
+		// 			feeToken.MaxGet = receive
+		// 			chosenPath = []*shared.Pdexv3PoolPairWithId{newPools[1], newPools[0]}
+		// 		}
+		// 	}
+		// } else {
+		var receive uint64
+		chosenPath, receive = pathfinder.FindGoodTradePath(
+			// pdexv3Meta.MaxTradePathLength,
+			3,
+			newPools,
+			poolPairStates,
+			sellToken,
+			buyToken,
+			sellAmount, pdexState.Params.DefaultFeeRateBPS)
+		feePRV.SellAmount = float64(sellAmount) / dcrate
+		feePRV.MaxGet = float64(receive) * dcrate
 
-			feeToken.SellAmount = float64(sellAmount) / dcrate
-			feeToken.MaxGet = float64(receive) * dcrate
-		}
+		feeToken.SellAmount = float64(sellAmount) / dcrate
+		feeToken.MaxGet = float64(receive) * dcrate
+		// }
 
 		if chosenPath != nil {
 			feePRV.Route = make([]string, 0)
